@@ -15,7 +15,7 @@
 """Tests for SpineNet."""
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.backbones import spinenet
 
@@ -34,9 +34,9 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
                             max_level):
     """Test creation of SpineNet models."""
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size, input_size, 3])
     model = spinenet.SpineNet(
         input_specs=input_specs,
@@ -49,7 +49,7 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
         init_stochastic_depth_rate=0.2,
     )
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = model(inputs)
 
     for l in range(min_level, max_level + 1):
@@ -67,8 +67,8 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test loading checkpoints with different input size."""
 
     def build_spinenet(input_size):
-      tf.keras.backend.set_image_data_format('channels_last')
-      input_specs = tf.keras.layers.InputSpec(
+      tf_keras.backend.set_image_data_format('channels_last')
+      input_specs = tf_keras.layers.InputSpec(
           shape=[None, input_size[0], input_size[1], 3])
       model = spinenet.SpineNet(
           input_specs=input_specs,

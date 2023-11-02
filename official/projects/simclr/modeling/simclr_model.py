@@ -16,9 +16,9 @@
 from typing import Optional
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 PRETRAIN = 'pretrain'
 FINETUNE = 'finetune'
@@ -27,13 +27,13 @@ PROJECTION_OUTPUT_KEY = 'projection_outputs'
 SUPERVISED_OUTPUT_KEY = 'supervised_outputs'
 
 
-class SimCLRModel(tf.keras.Model):
+class SimCLRModel(tf_keras.Model):
   """A classification model based on SimCLR framework."""
 
   def __init__(self,
-               backbone: tf.keras.models.Model,
-               projection_head: tf.keras.layers.Layer,
-               supervised_head: Optional[tf.keras.layers.Layer] = None,
+               backbone: tf_keras.models.Model,
+               projection_head: tf_keras.layers.Layer,
+               supervised_head: Optional[tf_keras.layers.Layer] = None,
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
                mode: str = PRETRAIN,
                backbone_trainable: bool = True,
@@ -45,7 +45,7 @@ class SimCLRModel(tf.keras.Model):
       projection_head: a projection head network.
       supervised_head: a head network for supervised learning, e.g.
         classification head.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
       mode: `str` indicates mode of training to be executed.
       backbone_trainable: `bool` whether the backbone is trainable or not.
       **kwargs: keyword arguments to be passed.

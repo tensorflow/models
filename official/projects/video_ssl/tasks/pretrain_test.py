@@ -18,7 +18,7 @@ import os
 import random
 
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=unused-import
 from official import vision

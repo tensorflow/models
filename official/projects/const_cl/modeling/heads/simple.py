@@ -16,11 +16,11 @@
 
 from typing import Any, Mapping, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.modeling import tf_utils
 
 
-class MLP(tf.keras.layers.Layer):
+class MLP(tf_keras.layers.Layer):
   """Constructs the Multi-Layer Perceptron head."""
 
   def __init__(self,
@@ -61,22 +61,22 @@ class MLP(tf.keras.layers.Layer):
     # MLP hidden layers
     for _ in range(num_hidden_layers):
       self._layers.append(
-          tf.keras.layers.Dense(num_hidden_channels, use_bias=False))
+          tf_keras.layers.Dense(num_hidden_channels, use_bias=False))
       if use_sync_bn:
         self._layers.append(
-            tf.keras.layers.experimental.SyncBatchNormalization(
+            tf_keras.layers.experimental.SyncBatchNormalization(
                 momentum=norm_momentum,
                 epsilon=norm_epsilon))
       else:
         self._layers.append(
-            tf.keras.layers.BatchNormalization(
+            tf_keras.layers.BatchNormalization(
                 momentum=norm_momentum,
                 epsilon=norm_epsilon))
       if activation is not None:
         self._layers.append(tf_utils.get_activation(activation))
 
     # Projection head
-    self._layers.append(tf.keras.layers.Dense(num_output_channels))
+    self._layers.append(tf_keras.layers.Dense(num_output_channels))
 
   def call(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
     """Forward calls with N-D inputs tensor."""
@@ -84,7 +84,7 @@ class MLP(tf.keras.layers.Layer):
       inputs = tf.nn.l2_normalize(inputs, axis=-1)
 
     for layer in self._layers:
-      if isinstance(layer, tf.keras.layers.Layer):
+      if isinstance(layer, tf_keras.layers.Layer):
         inputs = layer(inputs, training=training)
       else:  # activation
         inputs = layer(inputs)

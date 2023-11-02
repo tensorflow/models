@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.volumetric_models.modeling import backbones
 from official.projects.volumetric_models.modeling import decoders
 from official.projects.volumetric_models.modeling.heads import segmentation_heads_3d
@@ -35,7 +35,7 @@ class SegmentationNetworkUNet3DTest(parameterized.TestCase, tf.test.TestCase):
     """Test for creation of a segmentation network."""
     num_classes = 2
     inputs = np.random.rand(2, input_size[0], input_size[0], input_size[1], 3)
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     backbone = backbones.UNet3D(model_id=depth)
 
     decoder = decoders.UNet3DDecoder(

@@ -14,7 +14,7 @@
 
 """Tests for yolo detection generator."""
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.modeling.layers import detection_generator
 
@@ -29,7 +29,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_network_creation(self, nms_version, use_class_agnostic_nms):
     """Test creation of ResNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     input_shape = {
         '3': [1, 52, 52, 255],
         '4': [1, 26, 26, 255],

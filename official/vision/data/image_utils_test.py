@@ -16,7 +16,7 @@
 import imghdr
 from unittest import mock
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.data import fake_feature_generator
 from official.vision.data import image_utils

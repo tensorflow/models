@@ -73,7 +73,7 @@ class OptimizerFactory(optimizer_factory.OptimizerFactory):
       bias_lr: learning rate config.
 
     Returns:
-      tf.keras.optimizers.schedules.LearningRateSchedule instance. If
+      tf_keras.optimizers.schedules.LearningRateSchedule instance. If
       learning rate type is consant, lr_config.learning_rate is returned.
     """
     if self._lr_type == 'constant':

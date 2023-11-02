@@ -16,7 +16,7 @@
 import orbit
 from orbit.examples.single_task import single_task_trainer
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 
@@ -26,20 +26,20 @@ class SingleTaskTrainerTest(tf.test.TestCase):
     iris = tfds.load('iris')
     train_ds = iris['train'].batch(32).repeat()
 
-    model = tf.keras.Sequential([
-        tf.keras.Input(shape=(4,), name='features'),
-        tf.keras.layers.Dense(10, activation=tf.nn.relu),
-        tf.keras.layers.Dense(10, activation=tf.nn.relu),
-        tf.keras.layers.Dense(3),
-        tf.keras.layers.Softmax(),
+    model = tf_keras.Sequential([
+        tf_keras.Input(shape=(4,), name='features'),
+        tf_keras.layers.Dense(10, activation=tf.nn.relu),
+        tf_keras.layers.Dense(10, activation=tf.nn.relu),
+        tf_keras.layers.Dense(3),
+        tf_keras.layers.Softmax(),
     ])
 
     trainer = single_task_trainer.SingleTaskTrainer(
         train_ds,
         label_key='label',
         model=model,
-        loss_fn=tf.keras.losses.sparse_categorical_crossentropy,
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01))
+        loss_fn=tf_keras.losses.sparse_categorical_crossentropy,
+        optimizer=tf_keras.optimizers.SGD(learning_rate=0.01))
 
     controller = orbit.Controller(
         trainer=trainer,

@@ -14,11 +14,11 @@
 
 """Yolo heads."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.yolo.modeling.layers import nn_blocks
 
 
-class YoloHead(tf.keras.layers.Layer):
+class YoloHead(tf_keras.layers.Layer):
   """YOLO Prediction Head."""
 
   def __init__(self,
@@ -50,8 +50,8 @@ class YoloHead(tf.keras.layers.Layer):
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
       activation: `str`, the activation function to use typically leaky or mish.
       smart_bias: `bool`, whether to use smart bias.
       use_separable_conv: `bool` wether to use separable convs.
@@ -94,7 +94,7 @@ class YoloHead(tf.keras.layers.Layer):
   def bias_init(self, scale, inshape, isize=640, no_per_conf=8):
 
     def bias(shape, dtype):
-      init = tf.keras.initializers.Zeros()
+      init = tf_keras.initializers.Zeros()
       base = init(shape, dtype=dtype)
       if self._smart_bias:
         base = tf.reshape(base, [self._boxes_per_level, -1])

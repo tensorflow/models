@@ -15,7 +15,7 @@
 """The implementation of action transformer head."""
 from typing import Mapping, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.videoglue.modeling.heads import simple
 from official.projects.videoglue.modeling.heads import transformer_decoder
@@ -29,7 +29,7 @@ def _get_shape(x: tf.Tensor):
   return [dynamic[i] if s is None else s for i, s in enumerate(static)]
 
 
-class ActionTransformerHead(tf.keras.layers.Layer):
+class ActionTransformerHead(tf_keras.layers.Layer):
   """A Video Action Transformer Head.
 
   Reference: Girdhar, Rohit et. al. "Video action transformer network." In CVPR
@@ -58,8 +58,8 @@ class ActionTransformerHead(tf.keras.layers.Layer):
       attention_dropout_rate: float = 0.0,
       layer_norm_epsilon: float = 1e-6,
       use_positional_embedding: bool = True,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       name: str = 'action_transformer_classifier',
       **kwargs,
   ):
@@ -83,8 +83,8 @@ class ActionTransformerHead(tf.keras.layers.Layer):
       attention_dropout_rate: The attention dropout rate.
       layer_norm_epsilon: The layer norm epsilon.
       use_positional_embedding: Whether to use positional embedding.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object.
-      bias_regularizer: tf.keras.regularizers.Regularizer object.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object.
+      bias_regularizer: tf_keras.regularizers.Regularizer object.
       name: The head name.
       **kwargs: Keyword arguments to be passed.
     """
@@ -101,14 +101,14 @@ class ActionTransformerHead(tf.keras.layers.Layer):
 
     if self._use_positional_embedding:
       self._spatial_mlp = [
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               4,
               use_bias=True,
               activation='relu',
               name='spatial_mlp_l1',
               kernel_regularizer=kernel_regularizer,
               bias_regularizer=bias_regularizer),
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               8,
               use_bias=True,
               name='spatial_mlp_l2',
@@ -116,14 +116,14 @@ class ActionTransformerHead(tf.keras.layers.Layer):
               bias_regularizer=bias_regularizer),
       ]
       self._temporal_mlp = [
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               4,
               use_bias=True,
               activation='relu',
               name='temporal_mlp_l1',
               kernel_regularizer=kernel_regularizer,
               bias_regularizer=bias_regularizer),
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               8,
               use_bias=True,
               name='temporal_mlp_l2',
@@ -134,7 +134,7 @@ class ActionTransformerHead(tf.keras.layers.Layer):
     self._roi_aligner = roi_aligner.MultilevelROIAligner(
         crop_size=crop_size,
         sample_offset=sample_offset)
-    self._max_pooler = tf.keras.layers.MaxPool2D(
+    self._max_pooler = tf_keras.layers.MaxPool2D(
         pool_size=(crop_size, crop_size),
         strides=1,
         padding='valid')
@@ -153,7 +153,7 @@ class ActionTransformerHead(tf.keras.layers.Layer):
     else:
       self._attention_decoder = None
 
-    self._dropout_layer = tf.keras.layers.Dropout(dropout_rate)
+    self._dropout_layer = tf_keras.layers.Dropout(dropout_rate)
     self._classifier = simple.MLP(
         num_hidden_layers=self._num_hidden_layers,
         num_hidden_channels=self._num_hidden_channels,

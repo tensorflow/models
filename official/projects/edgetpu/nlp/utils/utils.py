@@ -18,7 +18,7 @@ import os
 import pprint
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.edgetpu.nlp.configs import params
@@ -86,7 +86,7 @@ def get_model_dir(experiment_params, flags_obj):
   return flags_obj.model_dir
 
 
-def load_checkpoint(model: tf.keras.Model, ckpt_path: str):
+def load_checkpoint(model: tf_keras.Model, ckpt_path: str):
   """Initializes model with the checkpoint."""
   ckpt_dir_or_file = ckpt_path
 

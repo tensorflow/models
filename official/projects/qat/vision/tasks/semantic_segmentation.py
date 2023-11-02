@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Semantic segmentation task definition."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.qat.vision.configs import semantic_segmentation as exp_cfg
@@ -25,10 +25,10 @@ from official.vision.tasks import semantic_segmentation
 class SemanticSegmentationTask(semantic_segmentation.SemanticSegmentationTask):
   """A task for semantic segmentation with QAT."""
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     """Builds semantic segmentation model with QAT."""
     model = super().build_model()
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size
     )
 

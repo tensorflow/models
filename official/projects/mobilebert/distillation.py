@@ -18,7 +18,7 @@ from typing import List, Optional
 
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import base_task
 from official.core import config_definitions as cfg
 from official.modeling import optimization
@@ -118,7 +118,7 @@ def build_sub_encoder(encoder, target_layer_id):
     layer_output, attention_score = encoder.transformer_layers[layer_idx](
         layer_output, attention_mask, return_attention_scores=True)
 
-  return tf.keras.Model(
+  return tf_keras.Model(
       inputs=[input_ids, input_mask, type_ids],
       outputs=[layer_output, attention_score])
 
@@ -164,7 +164,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
       raise ValueError('distill_ground_truth_ratio has to be within [0, 1].')
 
     # A non-trainable layer for feature normalization for transfer loss
-    self._layer_norm = tf.keras.layers.LayerNormalization(
+    self._layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1,
         beta_initializer='zeros',
         gamma_initializer='ones',
@@ -194,7 +194,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
     masked_lm = layers.MobileBertMaskedLM(
         embedding_table=encoder.get_embedding_table(),
         activation=tf_utils.get_activation(pretrainer_cfg.mlm_activation),
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=pretrainer_cfg.mlm_initializer_range),
         name='cls/predictions')
 
@@ -219,7 +219,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
       return self._progressive_config.pretrain_distill_config.num_steps
 
   # override policies.ProgressivePolicy
-  def get_model(self, stage_id, old_model=None) -> tf.keras.Model:
+  def get_model(self, stage_id, old_model=None) -> tf_keras.Model:
     del old_model
     return self.build_model(stage_id)
 
@@ -250,8 +250,8 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
             })
     opt_factory = optimization.OptimizerFactory(params)
     optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
-    if isinstance(optimizer, tf.keras.optimizers.experimental.Optimizer):
-      optimizer = tf.keras.__internal__.optimizers.convert_to_legacy_optimizer(
+    if isinstance(optimizer, tf_keras.optimizers.experimental.Optimizer):
+      optimizer = tf_keras.__internal__.optimizers.convert_to_legacy_optimizer(
           optimizer)
 
     return optimizer
@@ -274,7 +274,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
     return self._the_only_eval_dataset
 
   # override base_task.task
-  def build_model(self, stage_id) -> tf.keras.Model:
+  def build_model(self, stage_id) -> tf_keras.Model:
     """Build teacher/student keras models with outputs for current stage."""
     # Freeze the teacher model.
     self._teacher_pretrainer.trainable = False
@@ -307,7 +307,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
         for i in range(stage_id):
           student_encoder.transformer_layers[i].trainable = False
 
-      return tf.keras.Model(
+      return tf_keras.Model(
           inputs=inputs,
           outputs=dict(
               student_output_feature=student_output_feature,
@@ -326,7 +326,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
         for layer in student_encoder.transformer_layers:
           layer.trainable = True
 
-      model = tf.keras.Model(
+      model = tf_keras.Model(
           inputs=inputs,
           outputs=dict(
               student_pretrainer_output=student_pretrainer_output,
@@ -378,9 +378,9 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
 
   def _get_attention_loss(self, teacher_score, student_score):
     # Note that the definition of KLDivergence here is a little different from
-    # the original one (tf.keras.losses.KLDivergence). We adopt this approach
+    # the original one (tf_keras.losses.KLDivergence). We adopt this approach
     # to stay consistent with the TF1 implementation.
-    teacher_weight = tf.keras.activations.softmax(teacher_score, axis=-1)
+    teacher_weight = tf_keras.activations.softmax(teacher_score, axis=-1)
     student_log_weight = tf.nn.log_softmax(student_score, axis=-1)
     kl_divergence = -(teacher_weight * student_log_weight)
     kl_divergence = tf.math.reduce_sum(kl_divergence, axis=-1, keepdims=True)
@@ -398,7 +398,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
       teacher_feature = outputs['teacher_output_feature']
       student_feature = outputs['student_output_feature']
 
-      feature_transfer_loss = tf.keras.losses.mean_squared_error(
+      feature_transfer_loss = tf_keras.losses.mean_squared_error(
           self._layer_norm(teacher_feature), self._layer_norm(student_feature))
       feature_transfer_loss *= distill_config.hidden_distill_factor
       beta_loss, gamma_loss = self._get_distribution_losses(teacher_feature,
@@ -453,7 +453,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
         sentence_outputs = tf.cast(
             student_pretrainer_output['next_sentence'], dtype=tf.float32)
         sentence_loss = tf.reduce_mean(
-            tf.keras.losses.sparse_categorical_crossentropy(
+            tf_keras.losses.sparse_categorical_crossentropy(
                 sentence_labels, sentence_outputs, from_logits=True))
         total_loss += sentence_loss
 
@@ -479,18 +479,18 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
   def build_metrics(self, training=None):
     del training
     metrics = [
-        tf.keras.metrics.Mean(name='feature_transfer_mse'),
-        tf.keras.metrics.Mean(name='beta_transfer_loss'),
-        tf.keras.metrics.Mean(name='gamma_transfer_loss'),
-        tf.keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
-        tf.keras.metrics.Mean(name='lm_example_loss'),
-        tf.keras.metrics.Mean(name='total_loss')]
+        tf_keras.metrics.Mean(name='feature_transfer_mse'),
+        tf_keras.metrics.Mean(name='beta_transfer_loss'),
+        tf_keras.metrics.Mean(name='gamma_transfer_loss'),
+        tf_keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
+        tf_keras.metrics.Mean(name='lm_example_loss'),
+        tf_keras.metrics.Mean(name='total_loss')]
     if self._progressive_config.layer_wise_distill_config.if_transfer_attention:
-      metrics.append(tf.keras.metrics.Mean(name='attention_transfer_loss'))
+      metrics.append(tf_keras.metrics.Mean(name='attention_transfer_loss'))
     if self._task_config.train_data.use_next_sentence_label:
-      metrics.append(tf.keras.metrics.SparseCategoricalAccuracy(
+      metrics.append(tf_keras.metrics.SparseCategoricalAccuracy(
           name='next_sentence_accuracy'))
-      metrics.append(tf.keras.metrics.Mean(name='next_sentence_loss'))
+      metrics.append(tf_keras.metrics.Mean(name='next_sentence_loss'))
 
     return metrics
 
@@ -510,8 +510,8 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
             student_pretrainer_output['next_sentence'])
 
   # overrides base_task.Task
-  def train_step(self, inputs, model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer, metrics):
+  def train_step(self, inputs, model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer, metrics):
     """Does forward and backward.
 
     Args:
@@ -548,7 +548,7 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
     return {self.loss: loss}
 
   # overrides base_task.Task
-  def validation_step(self, inputs, model: tf.keras.Model, metrics):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics):
     """Validatation step.
 
     Args:

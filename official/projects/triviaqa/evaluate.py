@@ -18,7 +18,7 @@ import json
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.triviaqa import evaluation
 

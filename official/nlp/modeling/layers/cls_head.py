@@ -14,7 +14,7 @@
 
 """A Classification head layer which is common used with sequence encoders."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
@@ -22,7 +22,7 @@ from official.nlp.modeling.layers import gaussian_process
 from official.nlp.modeling.layers import spectral_normalization
 
 
-class ClassificationHead(tf.keras.layers.Layer):
+class ClassificationHead(tf_keras.layers.Layer):
   """Pooling head for sentence-level classification tasks."""
 
   def __init__(self,
@@ -50,18 +50,18 @@ class ClassificationHead(tf.keras.layers.Layer):
     self.inner_dim = inner_dim
     self.num_classes = num_classes
     self.activation = tf_utils.get_activation(activation)
-    self.initializer = tf.keras.initializers.get(initializer)
+    self.initializer = tf_keras.initializers.get(initializer)
     self.cls_token_idx = cls_token_idx
 
     if self.inner_dim:
-      self.dense = tf.keras.layers.Dense(
+      self.dense = tf_keras.layers.Dense(
           units=self.inner_dim,
           activation=self.activation,
           kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name="pooler_dense")
-    self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    self.dropout = tf_keras.layers.Dropout(rate=self.dropout_rate)
 
-    self.out_proj = tf.keras.layers.Dense(
+    self.out_proj = tf_keras.layers.Dense(
         units=num_classes,
         kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name="logits")
@@ -97,8 +97,8 @@ class ClassificationHead(tf.keras.layers.Layer):
         "dropout_rate": self.dropout_rate,
         "num_classes": self.num_classes,
         "inner_dim": self.inner_dim,
-        "activation": tf.keras.activations.serialize(self.activation),
-        "initializer": tf.keras.initializers.serialize(self.initializer),
+        "activation": tf_keras.activations.serialize(self.activation),
+        "initializer": tf_keras.initializers.serialize(self.initializer),
     }
     config.update(super(ClassificationHead, self).get_config())
     return config
@@ -112,7 +112,7 @@ class ClassificationHead(tf.keras.layers.Layer):
     return {self.dense.name: self.dense}
 
 
-class MultiClsHeads(tf.keras.layers.Layer):
+class MultiClsHeads(tf_keras.layers.Layer):
   """Pooling heads sharing the same pooling stem."""
 
   def __init__(self,
@@ -141,20 +141,20 @@ class MultiClsHeads(tf.keras.layers.Layer):
     self.inner_dim = inner_dim
     self.cls_list = cls_list
     self.activation = tf_utils.get_activation(activation)
-    self.initializer = tf.keras.initializers.get(initializer)
+    self.initializer = tf_keras.initializers.get(initializer)
     self.cls_token_idx = cls_token_idx
 
     if self.inner_dim:
-      self.dense = tf.keras.layers.Dense(
+      self.dense = tf_keras.layers.Dense(
           units=inner_dim,
           activation=self.activation,
           kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name="pooler_dense")
-    self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    self.dropout = tf_keras.layers.Dropout(rate=self.dropout_rate)
     self.out_projs = []
     for name, num_classes in cls_list:
       self.out_projs.append(
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               units=num_classes,
               kernel_initializer=tf_utils.clone_initializer(self.initializer),
               name=name))
@@ -193,8 +193,8 @@ class MultiClsHeads(tf.keras.layers.Layer):
         "cls_token_idx": self.cls_token_idx,
         "cls_list": self.cls_list,
         "inner_dim": self.inner_dim,
-        "activation": tf.keras.activations.serialize(self.activation),
-        "initializer": tf.keras.initializers.serialize(self.initializer),
+        "activation": tf_keras.activations.serialize(self.activation),
+        "initializer": tf_keras.initializers.serialize(self.initializer),
     }
     config.update(super().get_config())
     return config
@@ -366,7 +366,7 @@ def extract_spec_norm_kwargs(kwargs):
       norm_multiplier=kwargs.pop("norm_multiplier", .99))
 
 
-class PerQueryDenseHead(tf.keras.layers.Layer):
+class PerQueryDenseHead(tf_keras.layers.Layer):
   """Pooling head used for EncT5 style models.
 
     This module projects each query to use a different projection.
@@ -402,7 +402,7 @@ class PerQueryDenseHead(tf.keras.layers.Layer):
     self.features = features
 
     self.use_bias = use_bias
-    self.kernel_initializer = tf.keras.initializers.get(kernel_initializer)
+    self.kernel_initializer = tf_keras.initializers.get(kernel_initializer)
 
   def build(self, input_shape):
     input_shape = tf.TensorShape(input_shape)
@@ -450,7 +450,7 @@ class PerQueryDenseHead(tf.keras.layers.Layer):
         "features":
             self.features,
         "kernel_initializer":
-            tf.keras.activations.serialize(self.kernel_initializer),
+            tf_keras.activations.serialize(self.kernel_initializer),
     }
     config.update(super(PerQueryDenseHead, self).get_config())
     return config

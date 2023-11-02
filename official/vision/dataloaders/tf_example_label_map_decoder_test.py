@@ -18,7 +18,7 @@ import os
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.dataloaders import tf_example_label_map_decoder
 from official.vision.dataloaders import tfexample_utils

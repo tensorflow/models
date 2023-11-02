@@ -32,7 +32,7 @@ This is originally implemented in TensorFlow Object Detection API.
 from abc import ABCMeta
 from abc import abstractmethod
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.utils.object_detection import ops
 

@@ -15,11 +15,11 @@
 """Keras-based one-hot embedding layer."""
 # pylint: disable=g-classes-have-attributes
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class OnDeviceEmbedding(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class OnDeviceEmbedding(tf_keras.layers.Layer):
   """Performs an embedding lookup suitable for accelerator devices.
 
   This layer uses either tf.gather or tf.one_hot to translate integer indices to

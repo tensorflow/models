@@ -16,10 +16,10 @@
 
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 class LogisticModel(layers.Layer):
@@ -29,7 +29,7 @@ class LogisticModel(layers.Layer):
       self,
       vocab_size: int = 3862,
       return_logits: bool = False,
-      l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """Creates a logistic model.

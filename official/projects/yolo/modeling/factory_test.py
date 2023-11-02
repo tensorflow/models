@@ -15,7 +15,7 @@
 """Tests for factory.py."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=unused-import
 from official.projects.yolo.configs import backbones
@@ -37,7 +37,7 @@ class FactoryTest(tf.test.TestCase):
   def test_yolo_builder(self):
     num_classes = 3
     input_size = 640
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size, input_size, 3])
     model_config = yolo.Yolo(
         num_classes=num_classes,
@@ -55,7 +55,7 @@ class FactoryTest(tf.test.TestCase):
                 yolo.Box(box=[192, 243]),
                 yolo.Box(box=[459, 401])
             ]))
-    l2_regularizer = tf.keras.regularizers.l2(5e-5)
+    l2_regularizer = tf_keras.regularizers.l2(5e-5)
 
     yolo_model, _ = factory.build_yolo(
         input_specs=input_specs,
@@ -69,7 +69,7 @@ class FactoryTest(tf.test.TestCase):
   def test_yolov7_builder(self):
     num_classes = 3
     input_size = 640
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size, input_size, 3]
     )
     model_config = yolov7.YoloV7(
@@ -90,7 +90,7 @@ class FactoryTest(tf.test.TestCase):
             ],
         ),
     )
-    l2_regularizer = tf.keras.regularizers.l2(5e-5)
+    l2_regularizer = tf_keras.regularizers.l2(5e-5)
 
     yolo_model = factory.build_yolov7(
         input_specs=input_specs,

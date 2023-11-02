@@ -14,7 +14,7 @@
 
 """Data parser and processing for Panoptic Mask R-CNN."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.dataloaders import maskrcnn_input
 from official.vision.dataloaders import tf_example_decoder

@@ -17,7 +17,7 @@ from typing import Type
 
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.n_bit import configs

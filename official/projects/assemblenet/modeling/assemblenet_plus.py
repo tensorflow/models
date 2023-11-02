@@ -58,7 +58,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.assemblenet.configs import assemblenet as cfg
@@ -67,7 +67,7 @@ from official.projects.assemblenet.modeling import rep_flow_2d_layer as rf
 from official.vision.modeling import factory_3d as model_factory
 from official.vision.modeling.backbones import factory as backbone_factory
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 def softmax_merge_peer_attentions(peers):
@@ -80,11 +80,11 @@ def softmax_merge_peer_attentions(peers):
   Returns:
     The output `Tensor` of size `[batch*time, channels].
   """
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   dtype = peers[0].dtype
   assert data_format == 'channels_last'
 
-  initial_attn_weights = tf.keras.initializers.TruncatedNormal(stddev=0.01)(
+  initial_attn_weights = tf_keras.initializers.TruncatedNormal(stddev=0.01)(
       [len(peers)])
   attn_weights = tf.cast(tf.nn.softmax(initial_attn_weights), dtype)
   weighted_peers = []
@@ -116,7 +116,7 @@ def apply_attention(inputs,
   Returns:
     The output `Tensor` after concatenation.
   """
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   assert data_format == 'channels_last'
 
   if use_5d_mode:
@@ -128,7 +128,7 @@ def apply_attention(inputs,
     attn = softmax_merge_peer_attentions(attention_in)
   else:
     attn = tf.math.reduce_mean(inputs, [h_channel_loc, h_channel_loc + 1])
-  attn = tf.keras.layers.Dense(
+  attn = tf_keras.layers.Dense(
       units=inputs.shape[-1],
       kernel_initializer=tf.random_normal_initializer(stddev=.01))(
           inputs=attn)
@@ -180,7 +180,7 @@ class _ApplyEdgeWeight(layers.Layer):
     self._use_5d_mode = use_5d_mode
     self._model_edge_weights = model_edge_weights
     self._num_object_classes = num_object_classes
-    data_format = tf.keras.backend.image_data_format()
+    data_format = tf_keras.backend.image_data_format()
     assert data_format == 'channels_last'
 
   def get_config(self):
@@ -202,7 +202,7 @@ class _ApplyEdgeWeight(layers.Layer):
     if self._index is None or not self._model_edge_weights:
       self._edge_weights = self.add_weight(
           shape=self._weights_shape,
-          initializer=tf.keras.initializers.TruncatedNormal(
+          initializer=tf_keras.initializers.TruncatedNormal(
               mean=0.0, stddev=0.01),
           trainable=True,
           name='agg_weights')
@@ -253,11 +253,11 @@ class _ApplyEdgeWeight(layers.Layer):
         assert sm_size[0] != 0
         ratio = (inp.shape[h_channel_loc] + 1) // sm_size[0]
         if use_5d_mode:
-          inp = tf.keras.layers.MaxPool3D([1, ratio, ratio], [1, ratio, ratio],
+          inp = tf_keras.layers.MaxPool3D([1, ratio, ratio], [1, ratio, ratio],
                                           padding='same')(
                                               inp)
         else:
-          inp = tf.keras.layers.MaxPool2D([ratio, ratio], ratio,
+          inp = tf_keras.layers.MaxPool2D([ratio, ratio], ratio,
                                           padding='same')(
                                               inp)
 
@@ -375,7 +375,7 @@ def object_conv_stem(inputs):
   Returns:
     The output `Tensor`.
   """
-  inputs = tf.keras.layers.MaxPool2D(
+  inputs = tf_keras.layers.MaxPool2D(
       pool_size=4, strides=4, padding='SAME')(
           inputs=inputs)
   inputs = tf.identity(inputs, 'initial_max_pool')
@@ -383,7 +383,7 @@ def object_conv_stem(inputs):
   return inputs
 
 
-class AssembleNetPlus(tf.keras.Model):
+class AssembleNetPlus(tf_keras.Model):
   """AssembleNet++ backbone."""
 
   def __init__(self,
@@ -410,7 +410,7 @@ class AssembleNetPlus(tf.keras.Model):
         inputs of the same resolution.
       num_frames: the number of frames in the input tensor.
       model_structure: AssembleNetPlus model structure in the string format.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
         Dimension should be `[batch*time, height, width, channels]`.
       model_edge_weights: AssembleNet model structure connection weight in the
         string format.
@@ -425,7 +425,7 @@ class AssembleNetPlus(tf.keras.Model):
       Model `function` that takes in `inputs` and `is_training` and returns the
       output `Tensor` of the AssembleNetPlus model.
     """
-    data_format = tf.keras.backend.image_data_format()
+    data_format = tf_keras.backend.image_data_format()
 
     # Creation of the model graph.
     logging.info('model_structure=%r', model_structure)
@@ -434,11 +434,11 @@ class AssembleNetPlus(tf.keras.Model):
     structure = model_structure
 
     if use_object_input:
-      original_inputs = tf.keras.Input(shape=input_specs[0].shape[1:])
-      object_inputs = tf.keras.Input(shape=input_specs[1].shape[1:])
+      original_inputs = tf_keras.Input(shape=input_specs[0].shape[1:])
+      object_inputs = tf_keras.Input(shape=input_specs[1].shape[1:])
       input_specs = input_specs[0]
     else:
-      original_inputs = tf.keras.Input(shape=input_specs.shape[1:])
+      original_inputs = tf_keras.Input(shape=input_specs.shape[1:])
       object_inputs = None
 
     original_num_frames = num_frames
@@ -529,7 +529,7 @@ class AssembleNetPlus(tf.keras.Model):
             for node_index in nodes_below:
               attn = tf.reduce_mean(streams[node_index], [1, 2])
 
-              attn = tf.keras.layers.Dense(
+              attn = tf_keras.layers.Dense(
                   units=lg_channel,
                   kernel_initializer=tf.random_normal_initializer(stddev=.01))(
                       inputs=attn)
@@ -564,8 +564,8 @@ class AssembleNetPlus(tf.keras.Model):
         inputs=inputs, outputs=streams, **kwargs)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class AssembleNetPlusModel(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class AssembleNetPlusModel(tf_keras.Model):
   """An AssembleNet++ model builder."""
 
   def __init__(self,
@@ -574,7 +574,7 @@ class AssembleNetPlusModel(tf.keras.Model):
                num_frames: int,
                model_structure: List[Any],
                input_specs: Optional[Dict[str,
-                                          tf.keras.layers.InputSpec]] = None,
+                                          tf_keras.layers.InputSpec]] = None,
                max_pool_predictions: bool = False,
                use_object_input: bool = False,
                **kwargs):
@@ -602,7 +602,7 @@ class AssembleNetPlusModel(tf.keras.Model):
       grouping[model_structure[i][0]].append(i)
 
     inputs = {
-        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
 
     if use_object_input:
@@ -650,7 +650,7 @@ def assemblenet_plus(assemblenet_depth: int,
                      **kwargs):
   """Returns the AssembleNet++ model for a given size and number of output classes."""
 
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   assert data_format == 'channels_last'
 
   if assemblenet_depth not in asn.ASSEMBLENET_SPECS:
@@ -686,11 +686,11 @@ def assemblenet_plus(assemblenet_depth: int,
 
 @backbone_factory.register_backbone_builder('assemblenet_plus')
 def build_assemblenet_plus(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds assemblenet++ backbone."""
   del l2_regularizer
 
@@ -728,10 +728,10 @@ def build_assemblenet_plus(
 
 @model_factory.register_model_builder('assemblenet_plus')
 def build_assemblenet_plus_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: cfg.AssembleNetPlusModel,
     num_classes: int,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None):
   """Builds assemblenet++ model."""
   input_specs_dict = {'image': input_specs}
   backbone = build_assemblenet_plus(input_specs, model_config.backbone,

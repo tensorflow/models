@@ -16,14 +16,14 @@
 
 from typing import Any, Mapping, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.modeling import layers
 from official.projects.pointpillars.utils import utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class Decoder(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class Decoder(tf_keras.Model):
   """The decoder to process feature maps learned by a backbone.
 
   The implementation is from the network architecture of PointPillars
@@ -34,13 +34,13 @@ class Decoder(tf.keras.Model):
   def __init__(
       self,
       input_specs: Mapping[str, tf.TensorShape],
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initialize the Decoder.
 
     Args:
       input_specs: A dict of {level: tf.TensorShape} of the input tensor.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       **kwargs: Additional keyword arguments to be passed.
 
@@ -67,7 +67,7 @@ class Decoder(tf.keras.Model):
       # Set num_filters as 2c if the channels of backbone output level is c.
       if int(level) == output_level:
         num_filters = 2 * shape[-1]
-      inputs[level] = tf.keras.Input(shape=shape[1:])
+      inputs[level] = tf_keras.Input(shape=shape[1:])
 
     # Build lateral features
     lateral_feats = {}
@@ -88,7 +88,7 @@ class Decoder(tf.keras.Model):
 
     # Fuse all levels feature into the output level.
     endpoints = {}
-    endpoints[str(output_level)] = tf.keras.layers.Concatenate(axis=-1)(feats)
+    endpoints[str(output_level)] = tf_keras.layers.Concatenate(axis=-1)(feats)
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
     super(Decoder, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
@@ -97,7 +97,7 @@ class Decoder(tf.keras.Model):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf.keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
     return cls(**config)
 
   @property

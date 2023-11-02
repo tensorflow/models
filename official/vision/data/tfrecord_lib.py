@@ -21,7 +21,7 @@ import itertools
 from absl import logging
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import multiprocessing as mp
 

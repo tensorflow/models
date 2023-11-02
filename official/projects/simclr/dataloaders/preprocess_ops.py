@@ -14,7 +14,7 @@
 
 """Preprocessing ops."""
 import functools
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 CROP_PROPORTION = 0.875  # Standard for ImageNet.
 

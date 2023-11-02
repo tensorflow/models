@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Detection Data parser and processing for YOLO."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.ops import anchor
 from official.projects.yolo.ops import preprocessing_ops

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Export module for DETR model."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.detr.modeling import detr
 from official.vision.modeling import backbones
@@ -24,8 +24,8 @@ from official.vision.serving import detection
 class DETRModule(detection.DetectionModule):
   """DETR detection module."""
 
-  def _build_model(self) -> tf.keras.Model:
-    input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
+  def _build_model(self) -> tf_keras.Model:
+    input_specs = tf_keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size +
                                             [self._num_channels])
 
@@ -40,7 +40,7 @@ class DETRModule(detection.DetectionModule):
                       self.params.task.model.num_classes,
                       self.params.task.model.num_encoder_layers,
                       self.params.task.model.num_decoder_layers)
-    model(tf.keras.Input(input_specs.shape[1:]))
+    model(tf_keras.Input(input_specs.shape[1:]))
     return model
 
   def _build_inputs(self, image: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:

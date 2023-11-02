@@ -17,7 +17,7 @@
 from typing import Any, Dict, List, Mapping, Optional, Text, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 try:
   # pytype: disable=import-error
@@ -58,7 +58,7 @@ def _truncate_row_lengths(ragged_tensor: tf.RaggedTensor,
   return result
 
 
-class BertTokenizer(tf.keras.layers.Layer):
+class BertTokenizer(tf_keras.layers.Layer):
   """Wraps TF.Text's BertTokenizer with pre-defined vocab as a Keras Layer.
 
   Attributes:
@@ -235,7 +235,7 @@ class BertTokenizer(tf.keras.layers.Layer):
     return result
 
 
-class SentencepieceTokenizer(tf.keras.layers.Layer):
+class SentencepieceTokenizer(tf_keras.layers.Layer):
   """Wraps `tf_text.SentencepieceTokenizer` as a Keras Layer.
 
   Attributes:
@@ -437,7 +437,7 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
     return result
 
 
-class BertPackInputs(tf.keras.layers.Layer):
+class BertPackInputs(tf_keras.layers.Layer):
   """Packs tokens into model inputs for BERT."""
 
   def __init__(self,
@@ -602,7 +602,7 @@ class BertPackInputs(tf.keras.layers.Layer):
                 input_type_ids=_reshape(input_type_ids))
 
 
-class FastWordpieceBertTokenizer(tf.keras.layers.Layer):
+class FastWordpieceBertTokenizer(tf_keras.layers.Layer):
   """A bert tokenizer keras layer using text.FastWordpieceTokenizer.
 
   See details: "Fast WordPiece Tokenization" (https://arxiv.org/abs/2012.15524)

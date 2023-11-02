@@ -15,7 +15,7 @@
 """Tests for metrics.py."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.evaluation import instance_metrics
 

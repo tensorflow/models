@@ -14,7 +14,7 @@
 
 """Utility functions for dataloader."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.utils import input_utils
 

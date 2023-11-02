@@ -15,7 +15,7 @@
 """Contains definitions of segmentation head of the MOSAIC model."""
 from typing import List, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
@@ -25,7 +25,7 @@ from official.projects.qat.vision.quantization import configs
 from official.projects.qat.vision.quantization import helper
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class MosaicDecoderHeadQuantized(mosaic_head.MosaicDecoderHead):
   """Creates a quantized MOSAIC decoder in segmentation head.
 
@@ -49,9 +49,9 @@ class MosaicDecoderHeadQuantized(mosaic_head.MosaicDecoderHead):
       batchnorm_momentum: float = 0.99,
       batchnorm_epsilon: float = 0.001,
       kernel_initializer: str = 'GlorotUniform',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a MOSAIC segmentation head.
 
@@ -85,11 +85,11 @@ class MosaicDecoderHeadQuantized(mosaic_head.MosaicDecoderHead):
       batchnorm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: Kernel initializer for conv layers. Defaults to
         `glorot_uniform`.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
       interpolation: The interpolation method for upsampling. Defaults to
         `bilinear`.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     super().__init__(
@@ -181,7 +181,7 @@ class MosaicDecoderHeadQuantized(mosaic_head.MosaicDecoderHead):
           kernel_size=classifier_kernel_size,
           padding='same',
           bias_initializer=tf.zeros_initializer(),
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer,
           activation=helper.NoOpActivation(),

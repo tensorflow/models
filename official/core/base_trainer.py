@@ -23,7 +23,7 @@ from typing import Union, Optional
 from absl import logging
 import gin
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions
@@ -142,7 +142,7 @@ class Trainer(_AsyncTrainer):
       self,
       config: ExperimentConfig,
       task: base_task.Task,
-      model: tf.keras.Model,
+      model: tf_keras.Model,
       optimizer: tf.optimizers.Optimizer,
       train: bool = True,
       evaluate: bool = True,
@@ -156,7 +156,7 @@ class Trainer(_AsyncTrainer):
     Args:
       config: An `ExperimentConfig` instance specifying experiment config.
       task: A base_task.Task instance.
-      model: The model instance, e.g. a tf.keras.Model instance.
+      model: The model instance, e.g. a tf_keras.Model instance.
       optimizer: tf.optimizers.Optimizer instance.
       train: bool, whether or not this trainer will be used for training.
         default to True.
@@ -207,8 +207,8 @@ class Trainer(_AsyncTrainer):
         optimizer=self.optimizer,
         **checkpoint_items)
 
-    self._train_loss = tf.keras.metrics.Mean("training_loss", dtype=tf.float32)
-    self._validation_loss = tf.keras.metrics.Mean(
+    self._train_loss = tf_keras.metrics.Mean("training_loss", dtype=tf.float32)
+    self._validation_loss = tf_keras.metrics.Mean(
         "validation_loss", dtype=tf.float32)
     model_metrics = model.metrics if hasattr(model, "metrics") else []
 

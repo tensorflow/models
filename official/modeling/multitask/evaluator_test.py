@@ -15,7 +15,7 @@
 """Tests for multitask.evaluator."""
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -35,11 +35,11 @@ def all_strategy_combinations():
   )
 
 
-class MockModel(tf.keras.Model):
+class MockModel(tf_keras.Model):
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self.dense = tf.keras.layers.Dense(1)
+    self.dense = tf_keras.layers.Dense(1)
 
   def call(self, inputs):
     print(inputs, type(inputs))
@@ -55,7 +55,7 @@ class MockTask(base_task.Task):
 
   def build_metrics(self, training: bool = True):
     del training
-    return [tf.keras.metrics.Accuracy(name="acc")]
+    return [tf_keras.metrics.Accuracy(name="acc")]
 
   def build_inputs(self, params):
 
@@ -73,7 +73,7 @@ class MockTask(base_task.Task):
         generate_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     return dataset.prefetch(buffer_size=1).batch(2, drop_remainder=True)
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
     logs = super().validation_step(inputs, model, metrics)
     logs["counter"] = tf.ones((1,), dtype=tf.float32)
     return logs

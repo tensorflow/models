@@ -15,7 +15,7 @@
 """Tests for ASPP."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import deeplab
 
@@ -28,7 +28,7 @@ class DeeplabTest(tf.test.TestCase, parameterized.TestCase):
       )
   def test_aspp(self, pool_kernel_size):
     del pool_kernel_size
-    inputs = tf.keras.Input(shape=(64, 64, 128), dtype=tf.float32)
+    inputs = tf_keras.Input(shape=(64, 64, 128), dtype=tf.float32)
     layer = deeplab.SpatialPyramidPooling(output_channels=256,
                                           dilation_rates=[6, 12, 18],
                                           pool_kernel_size=None)
@@ -36,7 +36,7 @@ class DeeplabTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual([None, 64, 64, 256], output.shape)
 
   def test_aspp_invalid_shape(self):
-    inputs = tf.keras.Input(shape=(64, 64), dtype=tf.float32)
+    inputs = tf_keras.Input(shape=(64, 64), dtype=tf.float32)
     layer = deeplab.SpatialPyramidPooling(output_channels=256,
                                           dilation_rates=[6, 12, 18])
     with self.assertRaises(ValueError):

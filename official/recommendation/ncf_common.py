@@ -24,7 +24,7 @@ import os
 from absl import flags
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import distribute_utils
 from official.recommendation import constants as rconst

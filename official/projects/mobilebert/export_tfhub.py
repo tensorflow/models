@@ -16,7 +16,7 @@
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.mobilebert import model_utils
 
@@ -43,12 +43,12 @@ def create_mobilebert_model(bert_config):
   # For interchangeability with other text representations,
   # add "default" as an alias for MobileBERT's whole-input reptesentations.
   encoder_output_dict["default"] = encoder_output_dict["pooled_output"]
-  core_model = tf.keras.Model(
+  core_model = tf_keras.Model(
       inputs=encoder_inputs_dict, outputs=encoder_output_dict)
 
   pretrainer_inputs_dict = {x.name: x for x in pretrainer.inputs}
   pretrainer_output_dict = pretrainer(pretrainer_inputs_dict)
-  mlm_model = tf.keras.Model(
+  mlm_model = tf_keras.Model(
       inputs=pretrainer_inputs_dict, outputs=pretrainer_output_dict)
   # Set `_auto_track_sub_layers` to False, so that the additional weights
   # from `mlm` sub-object will not be included in the core model.
@@ -60,7 +60,7 @@ def create_mobilebert_model(bert_config):
 
 def export_bert_tfhub(bert_config, model_checkpoint_path, hub_destination,
                       vocab_file, do_lower_case):
-  """Restores a tf.keras.Model and saves for TF-Hub."""
+  """Restores a tf_keras.Model and saves for TF-Hub."""
   core_model, pretrainer = create_mobilebert_model(bert_config)
   checkpoint = tf.train.Checkpoint(**pretrainer.checkpoint_items)
 

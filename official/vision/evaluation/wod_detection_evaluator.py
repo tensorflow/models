@@ -16,7 +16,7 @@
 import pprint
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.ops import box_ops
 from waymo_open_dataset import label_pb2
 from waymo_open_dataset.metrics.python import wod_detection_evaluator

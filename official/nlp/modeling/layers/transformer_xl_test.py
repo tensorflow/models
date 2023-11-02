@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 
@@ -231,7 +231,7 @@ class TransformerXLTest(tf.test.TestCase, parameterized.TestCase):
         inner_size=inner_size,
         dropout_rate=0.,
         attention_dropout_rate=0.,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         two_stream=two_stream,
         tie_attention_biases=tie_attention_biases,
         memory_length=memory_length,
@@ -256,7 +256,7 @@ class TransformerXLTest(tf.test.TestCase, parameterized.TestCase):
         inner_size=12,
         dropout_rate=0.,
         attention_dropout_rate=0.,
-        initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        initializer=tf_keras.initializers.RandomNormal(stddev=0.1),
         two_stream=False,
         tie_attention_biases=True,
         memory_length=0,

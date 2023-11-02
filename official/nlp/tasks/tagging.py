@@ -20,7 +20,7 @@ import orbit
 
 from seqeval import metrics as seqeval_metrics
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -95,7 +95,7 @@ class TaggingTask(base_task.Task):
     return models.BertTokenClassifier(
         network=encoder_network,
         num_classes=len(self.task_config.class_names),
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=self.task_config.model.head_initializer_range),
         dropout_rate=self.task_config.model.head_dropout,
         output='logits',
@@ -104,7 +104,7 @@ class TaggingTask(base_task.Task):
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     logits = tf.cast(model_outputs['logits'], tf.float32)
     masked_labels, masked_weights = _masked_labels_and_weights(labels)
-    loss = tf.keras.losses.sparse_categorical_crossentropy(
+    loss = tf_keras.losses.sparse_categorical_crossentropy(
         masked_labels, logits, from_logits=True)
     numerator_loss = tf.reduce_sum(loss * masked_weights)
     denominator_loss = tf.reduce_sum(masked_weights)
@@ -138,13 +138,13 @@ class TaggingTask(base_task.Task):
 
     return data_loader_factory.get_data_loader(params).load(input_context)
 
-  def inference_step(self, inputs, model: tf.keras.Model):
+  def inference_step(self, inputs, model: tf_keras.Model):
     """Performs the forward step."""
     logits = model(inputs, training=False)['logits']
     return {'logits': logits,
             'predict_ids': tf.argmax(logits, axis=-1, output_type=tf.int32)}
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
     """Validatation step.
 
     Args:
@@ -207,7 +207,7 @@ class TaggingTask(base_task.Task):
 
 def predict(task: TaggingTask,
             params: cfg.DataConfig,
-            model: tf.keras.Model) -> List[Tuple[int, int, List[int]]]:
+            model: tf_keras.Model) -> List[Tuple[int, int, List[int]]]:
   """Predicts on the input data.
 
   Args:

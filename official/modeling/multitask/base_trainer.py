@@ -20,7 +20,7 @@ from typing import Union
 
 import gin
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import optimization
 from official.modeling.multitask import base_model
@@ -33,7 +33,7 @@ class MultiTaskBaseTrainer(orbit.StandardTrainer):
 
   def __init__(self,
                multi_task: multitask.MultiTask,
-               multi_task_model: Union[tf.keras.Model,
+               multi_task_model: Union[tf_keras.Model,
                                        base_model.MultiTaskBaseModel],
                optimizer: tf.optimizers.Optimizer,
                trainer_options=None,
@@ -113,9 +113,9 @@ class MultiTaskBaseTrainer(orbit.StandardTrainer):
       # Builds the per-task metrics and losses.
       # This the total summed training loss of tasks in the joint training.
       self._training_losses = dict(
-          total_loss=tf.keras.metrics.Mean("training_loss", dtype=tf.float32))
+          total_loss=tf_keras.metrics.Mean("training_loss", dtype=tf.float32))
       for name in self.multi_task.tasks:
-        self._training_losses[name] = tf.keras.metrics.Mean(
+        self._training_losses[name] = tf_keras.metrics.Mean(
             "training_loss", dtype=tf.float32)
     return self._training_losses
 

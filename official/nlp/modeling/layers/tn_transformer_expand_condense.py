@@ -17,15 +17,15 @@
 # Import libraries
 
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers.tn_expand_condense import TNExpandCondense
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
+@tf_keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
-class TNTransformerExpandCondense(tf.keras.layers.Layer):
+class TNTransformerExpandCondense(tf_keras.layers.Layer):
   """Transformer layer using tensor network Expand-Condense layer.
 
   This layer implements the Transformer from transformer.py, with a single
@@ -86,19 +86,19 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
     self._attention_dropout_rate = attention_dropout_rate
     self._dropout_rate = dropout_rate
     self._output_range = output_range
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._activity_regularizer = tf.keras.regularizers.get(activity_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
+    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
+    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
+    self._activity_regularizer = tf_keras.regularizers.get(activity_regularizer)
+    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
+    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
     self._use_bias = use_bias
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
     self._intermediate_dropout = intermediate_dropout
     if attention_initializer:
-      self._attention_initializer = tf.keras.initializers.get(
+      self._attention_initializer = tf_keras.initializers.get(
           attention_initializer)
     else:
       self._attention_initializer = tf_utils.clone_initializer(
@@ -135,7 +135,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._attention_layer = tf.keras.layers.MultiHeadAttention(
+    self._attention_layer = tf_keras.layers.MultiHeadAttention(
         num_heads=self._num_heads,
         key_dim=self._attention_head_size,
         dropout=self._attention_dropout_rate,
@@ -144,11 +144,11 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         name="self_attention",
         **common_kwargs)
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._attention_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
     self._attention_layer_norm = (
-        tf.keras.layers.LayerNormalization(
+        tf_keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
             epsilon=self._norm_epsilon,
@@ -162,9 +162,9 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer)
 
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._output_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
-    self._output_layer_norm = tf.keras.layers.LayerNormalization(
+    self._output_layer_norm = tf_keras.layers.LayerNormalization(
         name="output_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon,
@@ -187,19 +187,19 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         "output_range":
             self._output_range,
         "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
+            tf_keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
+            tf_keras.initializers.serialize(self._bias_initializer),
         "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
+            tf_keras.regularizers.serialize(self._kernel_regularizer),
         "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
+            tf_keras.regularizers.serialize(self._bias_regularizer),
         "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
+            tf_keras.regularizers.serialize(self._activity_regularizer),
         "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
+            tf_keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
+            tf_keras.constraints.serialize(self._bias_constraint),
         "use_bias":
             self._use_bias,
         "norm_first":
@@ -209,7 +209,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
         "intermediate_dropout":
             self._intermediate_dropout,
         "attention_initializer":
-            tf.keras.initializers.serialize(self._attention_initializer)
+            tf_keras.initializers.serialize(self._attention_initializer)
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

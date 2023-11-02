@@ -15,7 +15,7 @@
 """Tests for official.nlp.projects.bigbird.encoder."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.bigbird import encoder
 
@@ -53,7 +53,7 @@ class BigBirdEncoderTest(tf.test.TestCase):
     ref_outputs = network(inputs)
     model_path = self.get_temp_dir() + "/model"
     network.save(model_path)
-    loaded = tf.keras.models.load_model(model_path)
+    loaded = tf_keras.models.load_model(model_path)
     outputs = loaded(inputs)
     self.assertAllClose(outputs["sequence_output"],
                         ref_outputs["sequence_output"])

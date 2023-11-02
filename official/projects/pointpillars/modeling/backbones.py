@@ -15,14 +15,14 @@
 """Backbone models for Pointpillars."""
 
 from typing import Any, Mapping, Optional
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.modeling import layers
 from official.projects.pointpillars.utils import utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class Backbone(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class Backbone(tf_keras.Model):
   """The backbone to extract features from BEV pseudo image.
 
   The implementation is from the network architecture of PointPillars
@@ -36,7 +36,7 @@ class Backbone(tf.keras.Model):
       min_level: int = 1,
       max_level: int = 3,
       num_convs: int = 4,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initialize the backbone.
 
@@ -50,7 +50,7 @@ class Backbone(tf.keras.Model):
       min_level: An `int` of min level for output multiscale features.
       max_level: An `int` of max level for output multiscale features.
       num_convs: An `int` number of convolution layers in a downsample group.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       **kwargs: Additional keyword arguments to be passed.
 
@@ -73,7 +73,7 @@ class Backbone(tf.keras.Model):
           'The min_level must be >= 1, but {} found.'.format(min_level))
 
     input_channels = input_specs[-1]
-    inputs = tf.keras.Input(shape=input_specs[1:])
+    inputs = tf_keras.Input(shape=input_specs[1:])
 
     # build the net
     x = inputs
@@ -123,7 +123,7 @@ class Backbone(tf.keras.Model):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf.keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
     return cls(**config)
 
   @property

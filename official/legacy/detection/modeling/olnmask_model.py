@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.dataloader import anchor
 from official.legacy.detection.dataloader import mode_keys
@@ -368,31 +368,31 @@ class OlnMaskModel(MaskrcnnModel):
       batch_size = params.train.batch_size
       input_layer = {
           'image':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=input_shape,
                   batch_size=batch_size,
                   name='image',
                   dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
           'image_info':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[4, 2],
                   batch_size=batch_size,
                   name='image_info',
               ),
           'gt_boxes':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[params.olnmask_parser.max_num_instances, 4],
                   batch_size=batch_size,
                   name='gt_boxes'),
           'gt_classes':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[params.olnmask_parser.max_num_instances],
                   batch_size=batch_size,
                   name='gt_classes',
                   dtype=tf.int64),
       }
       if self._include_mask:
-        input_layer['gt_masks'] = tf.keras.layers.Input(
+        input_layer['gt_masks'] = tf_keras.layers.Input(
             shape=[
                 params.olnmask_parser.max_num_instances,
                 params.olnmask_parser.mask_crop_size,
@@ -404,13 +404,13 @@ class OlnMaskModel(MaskrcnnModel):
       batch_size = params.eval.batch_size
       input_layer = {
           'image':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=input_shape,
                   batch_size=batch_size,
                   name='image',
                   dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
           'image_info':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[4, 2],
                   batch_size=batch_size,
                   name='image_info',
@@ -423,9 +423,9 @@ class OlnMaskModel(MaskrcnnModel):
       input_layers = self.build_input_layers(self._params, mode)
       outputs = self.model_outputs(input_layers, mode)
 
-      model = tf.keras.models.Model(
+      model = tf_keras.models.Model(
           inputs=input_layers, outputs=outputs, name='olnmask')
-      assert model is not None, 'Fail to build tf.keras.Model.'
+      assert model is not None, 'Fail to build tf_keras.Model.'
       model.optimizer = self.build_optimizer()
       self._keras_model = model
 

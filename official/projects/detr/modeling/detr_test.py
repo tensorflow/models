@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Tests for tensorflow_models.official.projects.detr.detr."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.detr.modeling import detr
 from official.vision.modeling.backbones import resnet
 

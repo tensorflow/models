@@ -16,7 +16,7 @@
 
 from typing import Mapping
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.basnet.modeling import nn_blocks
@@ -52,8 +52,8 @@ BASNET_DECODER_SPECS = [
 ]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class BASNetModel(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class BASNetModel(tf_keras.Model):
   """A BASNet model.
 
   Boundary-Awar network (BASNet) were proposed in:
@@ -119,13 +119,13 @@ class BASNetModel(tf.keras.Model):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class BASNetEncoder(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class BASNetEncoder(tf_keras.Model):
   """BASNet encoder."""
 
   def __init__(
       self,
-      input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+      input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
       activation='relu',
       use_sync_bn=False,
       use_bias=True,
@@ -138,7 +138,7 @@ class BASNetEncoder(tf.keras.Model):
     """BASNet encoder initialization function.
 
     Args:
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       use_bias: if True, use bias in conv2d.
@@ -146,9 +146,9 @@ class BASNetEncoder(tf.keras.Model):
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
                           Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
                         Default to None.
       **kwargs: keyword arguments to be passed.
     """
@@ -159,22 +159,22 @@ class BASNetEncoder(tf.keras.Model):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
+      self._norm = tf_keras.layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
     else:
       bn_axis = 1
 
     # Build BASNet Encoder.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
 
-    x = tf.keras.layers.Conv2D(
+    x = tf_keras.layers.Conv2D(
         filters=64, kernel_size=3, strides=1,
         use_bias=self._use_bias, padding='same',
         kernel_initializer=self._kernel_initializer,
@@ -196,7 +196,7 @@ class BASNetEncoder(tf.keras.Model):
           name='block_group_l{}'.format(i + 2))
       endpoints[str(i)] = x
       if spec[3]:
-        x = tf.keras.layers.MaxPool2D(pool_size=2, strides=2, padding='same')(x)
+        x = tf_keras.layers.MaxPool2D(pool_size=2, strides=2, padding='same')(x)
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
     super(BASNetEncoder, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
@@ -263,9 +263,9 @@ class BASNetEncoder(tf.keras.Model):
 
 @factory.register_backbone_builder('basnet_encoder')
 def build_basnet_encoder(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds BASNet Encoder backbone from a config."""
   backbone_type = model_config.backbone.type
   norm_activation_config = model_config.norm_activation
@@ -281,8 +281,8 @@ def build_basnet_encoder(
       kernel_regularizer=l2_regularizer)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class BASNetDecoder(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class BASNetDecoder(tf_keras.layers.Layer):
   """BASNet decoder."""
 
   def __init__(self,
@@ -305,8 +305,8 @@ class BASNetDecoder(tf.keras.layers.Layer):
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
       **kwargs: keyword arguments to be passed.
     """
     super(BASNetDecoder, self).__init__(**kwargs)
@@ -322,12 +322,12 @@ class BASNetDecoder(tf.keras.layers.Layer):
     }
 
     self._activation = tf_utils.get_activation(activation)
-    self._concat = tf.keras.layers.Concatenate(axis=-1)
-    self._sigmoid = tf.keras.layers.Activation(activation='sigmoid')
+    self._concat = tf_keras.layers.Concatenate(axis=-1)
+    self._sigmoid = tf_keras.layers.Activation(activation='sigmoid')
 
   def build(self, input_shape):
     """Creates the variables of the BASNet decoder."""
-    conv_op = tf.keras.layers.Conv2D
+    conv_op = tf_keras.layers.Conv2D
     conv_kwargs = {
         'kernel_size': 3,
         'strides': 1,
@@ -358,7 +358,7 @@ class BASNetDecoder(tf.keras.layers.Layer):
           filters=1,
           padding='same',
           **conv_kwargs))
-      self._out_usmps.append(tf.keras.layers.UpSampling2D(
+      self._out_usmps.append(tf_keras.layers.UpSampling2D(
           size=spec[6],
           interpolation='bilinear'
           ))
@@ -381,7 +381,7 @@ class BASNetDecoder(tf.keras.layers.Layer):
           filters=1,
           padding='same',
           **conv_kwargs))
-      self._out_usmps.append(tf.keras.layers.UpSampling2D(
+      self._out_usmps.append(tf_keras.layers.UpSampling2D(
           size=spec[6],
           interpolation='bilinear'
           ))
@@ -415,7 +415,7 @@ class BASNetDecoder(tf.keras.layers.Layer):
       for block in blocks:
         x = block(x)
       sup[str(i+1)] = x
-      x = tf.keras.layers.UpSampling2D(
+      x = tf_keras.layers.UpSampling2D(
           size=2,
           interpolation='bilinear'
           )(x)

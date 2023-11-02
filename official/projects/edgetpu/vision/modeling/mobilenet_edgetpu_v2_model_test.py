@@ -17,7 +17,7 @@
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.edgetpu.vision.modeling import common_modules
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v2_model
@@ -28,7 +28,7 @@ class MobilenetEdgeTPUV2BuildTest(tf.test.TestCase, parameterized.TestCase):
   def setUp(self):
     super(tf.test.TestCase, self).setUp()
     # Ensure no model duplicates
-    tf.keras.backend.clear_session()
+    tf_keras.backend.clear_session()
 
   def test_create_mobilenet_edgetpu(self):
     model = mobilenet_edgetpu_v2_model.MobilenetEdgeTPUV2()
@@ -54,7 +54,7 @@ class MobilenetEdgeTPUV2BuildTest(tf.test.TestCase, parameterized.TestCase):
     first_conv_layer = model.get_layer('stem_conv2d')
     kernel_tensor = first_conv_layer.trainable_weights[0].numpy()
     model.save('/tmp/test_model')
-    loaded_model = tf.keras.models.load_model('/tmp/test_model')
+    loaded_model = tf_keras.models.load_model('/tmp/test_model')
     loaded_first_conv_layer = loaded_model.get_layer('stem_conv2d')
     loaded_kernel_tensor = loaded_first_conv_layer.trainable_weights[0].numpy()
 

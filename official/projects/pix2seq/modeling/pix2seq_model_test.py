@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Tests for Pix2Seq model."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.pix2seq.modeling import pix2seq_model
 from official.vision.modeling.backbones import resnet
 

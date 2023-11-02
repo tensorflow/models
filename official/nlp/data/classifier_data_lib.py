@@ -21,7 +21,7 @@ import json
 import os
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 from official.nlp.tools import tokenization

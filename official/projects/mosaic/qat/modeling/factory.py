@@ -15,7 +15,7 @@
 """Factory methods to build models."""
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.projects.mosaic.modeling import mosaic_blocks
@@ -30,9 +30,9 @@ from official.projects.qat.vision.quantization import schemes
 
 
 def build_qat_mosaic_model(
-    model: tf.keras.Model,
+    model: tf_keras.Model,
     quantization: common.Quantization,
-    input_specs: tf.keras.layers.InputSpec) -> tf.keras.Model:
+    input_specs: tf_keras.layers.InputSpec) -> tf_keras.Model:
   """Applies quantization aware training for mosaic segmentation model.
 
   Args:
@@ -51,11 +51,11 @@ def build_qat_mosaic_model(
     status.expect_partial().assert_existing_objects_matched()
 
   scope_dict = {
-      'L2': tf.keras.regularizers.l2,
+      'L2': tf_keras.regularizers.l2,
   }
 
   model.use_legacy_config = True  # Ensures old Keras serialization format
-  # Apply QAT to backbone (a tf.keras.Model) first, and then neck and head.
+  # Apply QAT to backbone (a tf_keras.Model) first, and then neck and head.
   with tfmot.quantization.keras.quantize_scope(scope_dict):
     annotated_backbone = tfmot.quantization.keras.quantize_annotate_model(
         model.backbone)

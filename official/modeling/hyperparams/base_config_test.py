@@ -17,7 +17,7 @@ import dataclasses
 from typing import List, Optional, Tuple
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling.hyperparams import base_config
 

@@ -15,16 +15,16 @@
 """ExpandCondense tensor network layer used in TN-BERT."""
 # pylint: disable=g-classes-have-attributes
 from typing import List, Optional, Text, Any, Dict
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
-Layer = tf.keras.layers.Layer
-activations = tf.keras.activations
-initializers = tf.keras.initializers
+Layer = tf_keras.layers.Layer
+activations = tf_keras.activations
+initializers = tf_keras.initializers
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
+@tf_keras.utils.register_keras_serializable(package='Text')
 class TNExpandCondense(Layer):
   """A TPU-optimized TensorNetwork layer.
 

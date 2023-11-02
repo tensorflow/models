@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling import backbones
 from official.vision.modeling import segmentation_model
@@ -39,7 +39,7 @@ class SegmentationNetworkTest(parameterized.TestCase, tf.test.TestCase):
     """Test for creation of a segmentation network."""
     num_classes = 10
     inputs = np.random.rand(2, input_size, input_size, 3)
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     backbone = backbones.ResNet(model_id=50)
 
     decoder = fpn.FPN(

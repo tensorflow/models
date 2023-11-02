@@ -18,7 +18,7 @@ import os
 from typing import Any, List, Mapping, Optional, Tuple, Union
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import base_task
 from official.core import base_trainer as core_lib
 from official.core import train_utils
@@ -195,7 +195,7 @@ def run_experiment_with_multitask_eval(
     best_ckpt_exporter_creator: A functor for creating best checkpoint exporter.
 
   Returns:
-      model: `tf.keras.Model` instance.
+      model: `tf_keras.Model` instance.
   """
 
   is_training = 'train' in mode

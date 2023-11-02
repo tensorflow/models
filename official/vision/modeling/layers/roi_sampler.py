@@ -15,7 +15,7 @@
 """Contains definitions of ROI sampler."""
 from typing import Optional, Tuple, Union
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import box_sampler
 from official.vision.ops import box_matcher
@@ -28,8 +28,8 @@ ROISamplerReturnType = Union[
     Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ROISampler(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ROISampler(tf_keras.layers.Layer):
   """Samples ROIs and assigns targets to the sampled ROIs."""
 
   def __init__(self,

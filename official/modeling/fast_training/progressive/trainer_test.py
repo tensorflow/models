@@ -18,7 +18,7 @@ import os
 
 from absl.testing import parameterized
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -67,11 +67,11 @@ class TestPolicy(policies.ProgressivePolicy, mock_task.MockTask):
 
   def get_model(self,
                 stage_id: int,
-                old_model: tf.keras.Model) -> tf.keras.Model:
+                old_model: tf_keras.Model) -> tf_keras.Model:
     del stage_id, old_model
     return self.build_model()
 
-  def get_optimizer(self, stage_id: int) -> tf.keras.optimizers.Optimizer:
+  def get_optimizer(self, stage_id: int) -> tf_keras.optimizers.Optimizer:
     optimizer_type = 'sgd' if stage_id == 0 else 'adamw'
     optimizer_config = cfg.OptimizationConfig({
         'optimizer': {'type': optimizer_type},
@@ -228,11 +228,11 @@ class TrainerWithMaskedLMTaskTest(tf.test.TestCase, parameterized.TestCase):
     if mixed_precision_dtype != 'float16':
       self.assertIsInstance(
           trainer.optimizer,
-          (tf.keras.optimizers.SGD, tf.keras.optimizers.legacy.SGD))
+          (tf_keras.optimizers.SGD, tf_keras.optimizers.legacy.SGD))
     elif mixed_precision_dtype == 'float16' and loss_scale is None:
       self.assertIsInstance(
           trainer.optimizer,
-          (tf.keras.optimizers.SGD, tf.keras.optimizers.legacy.SGD))
+          (tf_keras.optimizers.SGD, tf_keras.optimizers.legacy.SGD))
 
     metrics = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertIn('training_loss', metrics)

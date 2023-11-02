@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.dataloader import anchor
 from official.legacy.detection.dataloader import mode_keys
@@ -103,7 +103,7 @@ class ShapeMaskModel(base_model.Model):
 
     # Wrapping if else code paths into a layer to make the checkpoint loadable
     # in prediction mode.
-    class SampledBoxesLayer(tf.keras.layers.Layer):
+    class SampledBoxesLayer(tf_keras.layers.Layer):
       """ShapeMask model function."""
 
       def call(self, inputs, val_boxes, val_classes, val_outer_boxes, training):
@@ -210,28 +210,28 @@ class ShapeMaskModel(base_model.Model):
       batch_size = params.train.batch_size
       input_layer = {
           'image':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=input_shape,
                   batch_size=batch_size,
                   name='image',
                   dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
           'image_info':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[4, 2], batch_size=batch_size, name='image_info'),
           'mask_classes':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[params.shapemask_parser.num_sampled_masks],
                   batch_size=batch_size,
                   name='mask_classes',
                   dtype=tf.int64),
           'mask_outer_boxes':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[params.shapemask_parser.num_sampled_masks, 4],
                   batch_size=batch_size,
                   name='mask_outer_boxes',
                   dtype=tf.float32),
           'mask_boxes':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[params.shapemask_parser.num_sampled_masks, 4],
                   batch_size=batch_size,
                   name='mask_boxes',
@@ -241,13 +241,13 @@ class ShapeMaskModel(base_model.Model):
       batch_size = params.eval.batch_size
       input_layer = {
           'image':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=input_shape,
                   batch_size=batch_size,
                   name='image',
                   dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
           'image_info':
-              tf.keras.layers.Input(
+              tf_keras.layers.Input(
                   shape=[4, 2], batch_size=batch_size, name='image_info'),
       }
     return input_layer
@@ -257,9 +257,9 @@ class ShapeMaskModel(base_model.Model):
       input_layers = self.build_input_layers(self._params, mode)
       outputs = self.model_outputs(input_layers, mode)
 
-      model = tf.keras.models.Model(
+      model = tf_keras.models.Model(
           inputs=input_layers, outputs=outputs, name='shapemask')
-      assert model is not None, 'Fail to build tf.keras.Model.'
+      assert model is not None, 'Fail to build tf_keras.Model.'
       model.optimizer = self.build_optimizer()
       self._keras_model = model
 

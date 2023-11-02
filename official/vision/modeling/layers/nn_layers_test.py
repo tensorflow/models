@@ -16,7 +16,7 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import nn_layers
 
@@ -24,7 +24,7 @@ from official.vision.modeling.layers import nn_layers
 class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_scale(self):
-    scale = nn_layers.Scale(initializer=tf.keras.initializers.constant(10.))
+    scale = nn_layers.Scale(initializer=tf_keras.initializers.constant(10.))
     output = scale(3.)
     self.assertAllEqual(output, 30.)
 
@@ -118,7 +118,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_global_average_pool_keras(self):
     pool = nn_layers.GlobalAveragePool3D(keepdims=False)
-    keras_pool = tf.keras.layers.GlobalAveragePooling3D()
+    keras_pool = tf_keras.layers.GlobalAveragePooling3D()
 
     inputs = 10 * tf.random.normal([1, 2, 3, 4, 1])
 
@@ -343,7 +343,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
         use_bias=False,
     )
 
-    keras_conv3d = tf.keras.layers.Conv3D(
+    keras_conv3d = tf_keras.layers.Conv3D(
         filters=1,
         kernel_size=(1, 3, 3),
         strides=(1, 2, 2),
@@ -378,7 +378,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
         use_bias=False,
     )
 
-    keras_conv1d = tf.keras.layers.Conv1D(
+    keras_conv1d = tf_keras.layers.Conv1D(
         filters=1,
         kernel_size=3,
         strides=2,
@@ -406,7 +406,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
       ([32, 32], [6, 12, 18]),
   )
   def test_aspp(self, pool_kernel_size, dilation_rates):
-    inputs = tf.keras.Input(shape=(64, 64, 128), dtype=tf.float32)
+    inputs = tf_keras.Input(shape=(64, 64, 128), dtype=tf.float32)
     layer = nn_layers.SpatialPyramidPooling(
         output_channels=256,
         dilation_rates=dilation_rates,
@@ -422,8 +422,8 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
         max_inference_parallelism=max_inference_parallelism,
     )
     # Create a 3-dimensional input (the first dimension is implicit).
-    query = tf.keras.Input(shape=(40, 80))
-    value = tf.keras.Input(shape=(20, 80))
+    query = tf_keras.Input(shape=(40, 80))
+    value = tf_keras.Input(shape=(20, 80))
     output = layer(query=query, value=value)
     self.assertEqual(output.shape.as_list(), [None, 40, 80])
 

@@ -15,7 +15,7 @@
 """Tests for nn_layers."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yt8m.modeling import nn_layers
 
@@ -34,7 +34,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     """Test for creation of a context gate layer."""
 
     context_gate = nn_layers.ContextGate(
-        normalizer_fn=tf.keras.layers.BatchNormalization,
+        normalizer_fn=tf_keras.layers.BatchNormalization,
         hidden_layer_size=hidden_layer_size,
         additive_residual=additive_residual,
         pooling_method=pooling_method,

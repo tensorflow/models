@@ -27,7 +27,7 @@ from __future__ import division
 from __future__ import print_function
 
 from six.moves import range
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.utils.object_detection import box_list
 from official.vision.utils.object_detection import ops

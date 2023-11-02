@@ -15,7 +15,7 @@
 """Tests for S3D model."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.s3d.modeling import s3d
 
@@ -36,11 +36,11 @@ class S3dTest(parameterized.TestCase, tf.test.TestCase):
     batch_size = 5
 
     input_shape = [batch_size, num_frames, height, width, 3]
-    input_specs = tf.keras.layers.InputSpec(shape=input_shape)
+    input_specs = tf_keras.layers.InputSpec(shape=input_shape)
     network = s3d.S3D(
         input_specs=input_specs
     )
-    inputs = tf.keras.Input(shape=input_shape[1:], batch_size=input_shape[0])
+    inputs = tf_keras.Input(shape=input_shape[1:], batch_size=input_shape[0])
     endpoints = network(inputs)
 
     temporal_1a = (num_frames - 1)//2 + 1
@@ -71,7 +71,7 @@ class S3dTest(parameterized.TestCase, tf.test.TestCase):
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
     kwargs = dict(
-        input_specs=tf.keras.layers.InputSpec(shape=(5, 64, 224, 224, 3)),
+        input_specs=tf_keras.layers.InputSpec(shape=(5, 64, 224, 224, 3)),
         final_endpoint='Mixed_5c',
         first_temporal_kernel_size=3,
         temporal_conv_start_at='Conv2d_2c_3x3',
@@ -81,7 +81,7 @@ class S3dTest(parameterized.TestCase, tf.test.TestCase):
         use_sync_bn=False,
         norm_momentum=0.999,
         norm_epsilon=0.001,
-        temporal_conv_initializer=tf.keras.initializers.TruncatedNormal(
+        temporal_conv_initializer=tf_keras.initializers.TruncatedNormal(
             mean=0.0, stddev=0.01),
         temporal_conv_type='2+1d',
         kernel_initializer='truncated_normal',

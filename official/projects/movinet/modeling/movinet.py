@@ -21,7 +21,7 @@ import math
 from typing import Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.movinet.modeling import movinet_layers
@@ -297,8 +297,8 @@ BLOCK_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class Movinet(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class Movinet(tf_keras.Model):
   """Class to build Movinet family model.
 
   Reference: https://arxiv.org/pdf/2103.11511.pdf
@@ -310,7 +310,7 @@ class Movinet(tf.keras.Model):
                use_positional_encoding: bool = False,
                conv_type: str = '3d',
                se_type: str = '3d',
-               input_specs: Optional[tf.keras.layers.InputSpec] = None,
+               input_specs: Optional[tf_keras.layers.InputSpec] = None,
                activation: str = 'swish',
                gating_activation: str = 'sigmoid',
                use_sync_bn: bool = True,
@@ -350,9 +350,9 @@ class Movinet(tf.keras.Model):
       norm_epsilon: small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
         Defaults to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
         Defaults to None.
       stochastic_depth_drop_rate: the base rate for stochastic depth.
       use_external_states: if True, expects states to be passed as additional
@@ -367,7 +367,7 @@ class Movinet(tf.keras.Model):
     """
     block_specs = BLOCK_SPECS[model_id]
     if input_specs is None:
-      input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, None, 3])
+      input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, None, 3])
 
     if conv_type not in ('3d', '2plus1d', '3d_2plus1d'):
       raise ValueError('Unknown conv type: {}'.format(conv_type))
@@ -386,7 +386,7 @@ class Movinet(tf.keras.Model):
     self._gating_activation = gating_activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf_keras.layers.BatchNormalization
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -418,8 +418,8 @@ class Movinet(tf.keras.Model):
 
   def _build_network(
       self,
-      input_specs: tf.keras.layers.InputSpec,
-      state_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      input_specs: tf_keras.layers.InputSpec,
+      state_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
   ) -> Tuple[TensorMap, Union[TensorMap, Tuple[TensorMap, TensorMap]]]:
     """Builds the model network.
 
@@ -435,10 +435,10 @@ class Movinet(tf.keras.Model):
     """
     state_specs = state_specs if state_specs is not None else {}
 
-    image_input = tf.keras.Input(shape=input_specs.shape[1:], name='inputs')
+    image_input = tf_keras.Input(shape=input_specs.shape[1:], name='inputs')
 
     states = {
-        name: tf.keras.Input(shape=spec.shape[1:], dtype=spec.dtype, name=name)
+        name: tf_keras.Input(shape=spec.shape[1:], dtype=spec.dtype, name=name)
         for name, spec in state_specs.items()
     }
 
@@ -640,7 +640,7 @@ class Movinet(tf.keras.Model):
     return self.dtype
 
   def initial_state_specs(
-      self, input_shape: Sequence[int]) -> Dict[str, tf.keras.layers.InputSpec]:
+      self, input_shape: Sequence[int]) -> Dict[str, tf_keras.layers.InputSpec]:
     """Creates a mapping of state name to InputSpec from the input shape."""
     state_shapes = self._get_initial_state_shapes(
         self._block_specs,
@@ -648,7 +648,7 @@ class Movinet(tf.keras.Model):
         use_positional_encoding=self._use_positional_encoding)
 
     return {
-        name: tf.keras.layers.InputSpec(
+        name: tf_keras.layers.InputSpec(
             shape=shape, dtype=self._get_state_dtype(name))
         for name, shape in state_shapes.items()
     }
@@ -707,10 +707,10 @@ class Movinet(tf.keras.Model):
 
 @factory.register_backbone_builder('movinet')
 def build_movinet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds MoViNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

@@ -21,21 +21,21 @@ directly used from `official/vision/modeling` directory.
 
 from typing import Any, Mapping
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.examples.starter import example_config as example_cfg
 
 
-class ExampleModel(tf.keras.Model):
+class ExampleModel(tf_keras.Model):
   """A example model class.
 
-  A model is a subclass of tf.keras.Model where layers are built in the
+  A model is a subclass of tf_keras.Model where layers are built in the
   constructor.
   """
 
   def __init__(
       self,
       num_classes: int,
-      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+      input_specs: tf_keras.layers.InputSpec = tf_keras.layers.InputSpec(
           shape=[None, None, None, 3]),
       **kwargs):
     """Initializes the example model.
@@ -45,22 +45,22 @@ class ExampleModel(tf.keras.Model):
 
     Args:
       num_classes: The number of classes in classification task.
-      input_specs: A `tf.keras.layers.InputSpec` spec of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` spec of the input tensor.
       **kwargs: Additional keyword arguments to be passed.
     """
-    inputs = tf.keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
-    outputs = tf.keras.layers.Conv2D(
+    inputs = tf_keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
+    outputs = tf_keras.layers.Conv2D(
         filters=16, kernel_size=3, strides=2, padding='same', use_bias=False)(
             inputs)
-    outputs = tf.keras.layers.Conv2D(
+    outputs = tf_keras.layers.Conv2D(
         filters=32, kernel_size=3, strides=2, padding='same', use_bias=False)(
             outputs)
-    outputs = tf.keras.layers.Conv2D(
+    outputs = tf_keras.layers.Conv2D(
         filters=64, kernel_size=3, strides=2, padding='same', use_bias=False)(
             outputs)
-    outputs = tf.keras.layers.GlobalAveragePooling2D()(outputs)
-    outputs = tf.keras.layers.Dense(1024, activation='relu')(outputs)
-    outputs = tf.keras.layers.Dense(num_classes)(outputs)
+    outputs = tf_keras.layers.GlobalAveragePooling2D()(outputs)
+    outputs = tf_keras.layers.Dense(1024, activation='relu')(outputs)
+    outputs = tf_keras.layers.Dense(num_classes)(outputs)
 
     super().__init__(inputs=inputs, outputs=outputs, **kwargs)
     self._input_specs = input_specs
@@ -76,9 +76,9 @@ class ExampleModel(tf.keras.Model):
     return cls(**config)
 
 
-def build_example_model(input_specs: tf.keras.layers.InputSpec,
+def build_example_model(input_specs: tf_keras.layers.InputSpec,
                         model_config: example_cfg.ExampleModel,
-                        **kwargs) -> tf.keras.Model:
+                        **kwargs) -> tf_keras.Model:
   """Builds and returns the example model.
 
   This function is the main entry point to build a model. Commonly, it builds a
@@ -95,7 +95,7 @@ def build_example_model(input_specs: tf.keras.layers.InputSpec,
     **kwargs: Additional keyword arguments to be passed.
 
   Returns:
-    A tf.keras.Model object.
+    A tf_keras.Model object.
   """
   return ExampleModel(
       num_classes=model_config.num_classes, input_specs=input_specs, **kwargs)

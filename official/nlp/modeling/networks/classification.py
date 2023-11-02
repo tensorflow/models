@@ -15,12 +15,12 @@
 """Classification and regression network."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tensorflow.python.util import deprecation
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class Classification(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class Classification(tf_keras.Model):
   """Classification network head for BERT modeling.
 
   This network implements a simple classifier head based on a dense layer. If
@@ -49,10 +49,10 @@ class Classification(tf.keras.Model):
                output='logits',
                **kwargs):
 
-    cls_output = tf.keras.layers.Input(
+    cls_output = tf_keras.layers.Input(
         shape=(input_width,), name='cls_output', dtype=tf.float32)
 
-    logits = tf.keras.layers.Dense(
+    logits = tf_keras.layers.Dense(
         num_classes,
         activation=None,
         kernel_initializer=initializer,
@@ -62,11 +62,11 @@ class Classification(tf.keras.Model):
     if output == 'logits':
       output_tensors = logits
     elif output == 'predictions':
-      policy = tf.keras.mixed_precision.global_policy()
+      policy = tf_keras.mixed_precision.global_policy()
       if policy.name == 'mixed_bfloat16':
         # b/158514794: bf16 is not stable with post-softmax cross-entropy.
         policy = tf.float32
-      output_tensors = tf.keras.layers.Activation(
+      output_tensors = tf_keras.layers.Activation(
           tf.nn.log_softmax, dtype=policy)(
               logits)
     else:

@@ -21,13 +21,13 @@ from __future__ import print_function
 import functools
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.modeling.architecture import nn_ops
 from official.legacy.detection.ops import spatial_transform_ops
 
 
-class RpnHead(tf.keras.layers.Layer):
+class RpnHead(tf_keras.layers.Layer):
   """Region Proposal Network head."""
 
   def __init__(
@@ -74,13 +74,13 @@ class RpnHead(tf.keras.layers.Layer):
 
     if use_separable_conv:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.SeparableConv2D,
+          tf_keras.layers.SeparableConv2D,
           depth_multiplier=1,
           bias_initializer=tf.zeros_initializer())
     else:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.Conv2D,
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          tf_keras.layers.Conv2D,
+          kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
           bias_initializer=tf.zeros_initializer())
 
     self._rpn_conv = self._conv2d_op(
@@ -138,7 +138,7 @@ class RpnHead(tf.keras.layers.Layer):
       return scores_outputs, box_outputs
 
 
-class OlnRpnHead(tf.keras.layers.Layer):
+class OlnRpnHead(tf_keras.layers.Layer):
   """Region Proposal Network for Object Localization Network (OLN)."""
 
   def __init__(
@@ -183,13 +183,13 @@ class OlnRpnHead(tf.keras.layers.Layer):
 
     if use_separable_conv:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.SeparableConv2D,
+          tf_keras.layers.SeparableConv2D,
           depth_multiplier=1,
           bias_initializer=tf.zeros_initializer())
     else:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.Conv2D,
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          tf_keras.layers.Conv2D,
+          kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
           bias_initializer=tf.zeros_initializer())
 
     self._rpn_conv = self._conv2d_op(
@@ -262,7 +262,7 @@ class OlnRpnHead(tf.keras.layers.Layer):
       return scores_outputs, box_outputs, center_outputs
 
 
-class FastrcnnHead(tf.keras.layers.Layer):
+class FastrcnnHead(tf_keras.layers.Layer):
   """Fast R-CNN box head."""
 
   def __init__(
@@ -303,13 +303,13 @@ class FastrcnnHead(tf.keras.layers.Layer):
     self._num_filters = num_filters
     if use_separable_conv:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.SeparableConv2D,
+          tf_keras.layers.SeparableConv2D,
           depth_multiplier=1,
           bias_initializer=tf.zeros_initializer())
     else:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.Conv2D,
-          kernel_initializer=tf.keras.initializers.VarianceScaling(
+          tf_keras.layers.Conv2D,
+          kernel_initializer=tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           bias_initializer=tf.zeros_initializer())
 
@@ -344,7 +344,7 @@ class FastrcnnHead(tf.keras.layers.Layer):
     self._fc_bn_ops = []
     for i in range(self._num_fcs):
       self._fc_ops.append(
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               units=self._fc_dims,
               activation=(None
                           if self._use_batch_norm else self._activation_op),
@@ -352,14 +352,14 @@ class FastrcnnHead(tf.keras.layers.Layer):
       if self._use_batch_norm:
         self._fc_bn_ops.append(self._norm_activation(fused=False))
 
-    self._class_predict = tf.keras.layers.Dense(
+    self._class_predict = tf_keras.layers.Dense(
         self._num_classes,
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         bias_initializer=tf.zeros_initializer(),
         name='class-predict')
-    self._box_predict = tf.keras.layers.Dense(
+    self._box_predict = tf_keras.layers.Dense(
         self._num_classes * 4,
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.001),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.001),
         bias_initializer=tf.zeros_initializer(),
         name='box-predict')
 
@@ -403,7 +403,7 @@ class FastrcnnHead(tf.keras.layers.Layer):
       return class_outputs, box_outputs
 
 
-class OlnBoxScoreHead(tf.keras.layers.Layer):
+class OlnBoxScoreHead(tf_keras.layers.Layer):
   """Box head of Object Localization Network (OLN)."""
 
   def __init__(
@@ -442,13 +442,13 @@ class OlnBoxScoreHead(tf.keras.layers.Layer):
     self._num_filters = num_filters
     if use_separable_conv:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.SeparableConv2D,
+          tf_keras.layers.SeparableConv2D,
           depth_multiplier=1,
           bias_initializer=tf.zeros_initializer())
     else:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.Conv2D,
-          kernel_initializer=tf.keras.initializers.VarianceScaling(
+          tf_keras.layers.Conv2D,
+          kernel_initializer=tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           bias_initializer=tf.zeros_initializer())
 
@@ -483,7 +483,7 @@ class OlnBoxScoreHead(tf.keras.layers.Layer):
     self._fc_bn_ops = []
     for i in range(self._num_fcs):
       self._fc_ops.append(
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               units=self._fc_dims,
               activation=(None
                           if self._use_batch_norm else self._activation_op),
@@ -491,19 +491,19 @@ class OlnBoxScoreHead(tf.keras.layers.Layer):
       if self._use_batch_norm:
         self._fc_bn_ops.append(self._norm_activation(fused=False))
 
-    self._class_predict = tf.keras.layers.Dense(
+    self._class_predict = tf_keras.layers.Dense(
         self._num_classes,
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         bias_initializer=tf.zeros_initializer(),
         name='class-predict')
-    self._box_predict = tf.keras.layers.Dense(
+    self._box_predict = tf_keras.layers.Dense(
         self._num_classes * 4,
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.001),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.001),
         bias_initializer=tf.zeros_initializer(),
         name='box-predict')
-    self._score_predict = tf.keras.layers.Dense(
+    self._score_predict = tf_keras.layers.Dense(
         1,
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         bias_initializer=tf.zeros_initializer(),
         name='score-predict')
 
@@ -547,7 +547,7 @@ class OlnBoxScoreHead(tf.keras.layers.Layer):
       return class_outputs, box_outputs, score_outputs
 
 
-class MaskrcnnHead(tf.keras.layers.Layer):
+class MaskrcnnHead(tf_keras.layers.Layer):
   """Mask R-CNN head."""
 
   def __init__(
@@ -584,13 +584,13 @@ class MaskrcnnHead(tf.keras.layers.Layer):
     self._num_filters = num_filters
     if use_separable_conv:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.SeparableConv2D,
+          tf_keras.layers.SeparableConv2D,
           depth_multiplier=1,
           bias_initializer=tf.zeros_initializer())
     else:
       self._conv2d_op = functools.partial(
-          tf.keras.layers.Conv2D,
-          kernel_initializer=tf.keras.initializers.VarianceScaling(
+          tf_keras.layers.Conv2D,
+          kernel_initializer=tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           bias_initializer=tf.zeros_initializer())
     if activation == 'relu':
@@ -613,13 +613,13 @@ class MaskrcnnHead(tf.keras.layers.Layer):
               activation=(None
                           if self._use_batch_norm else self._activation_op),
               name='mask-conv-l%d' % i))
-    self._mask_conv_transpose = tf.keras.layers.Conv2DTranspose(
+    self._mask_conv_transpose = tf_keras.layers.Conv2DTranspose(
         self._num_filters,
         kernel_size=(2, 2),
         strides=(2, 2),
         padding='valid',
         activation=(None if self._use_batch_norm else self._activation_op),
-        kernel_initializer=tf.keras.initializers.VarianceScaling(
+        kernel_initializer=tf_keras.initializers.VarianceScaling(
             scale=2, mode='fan_out', distribution='untruncated_normal'),
         bias_initializer=tf.zeros_initializer(),
         name='conv5-mask')
@@ -735,18 +735,18 @@ class RetinanetHead(object):
   def _build_class_net_layers(self, norm_activation):
     """Build re-usable layers for class prediction network."""
     if self._use_separable_conv:
-      self._class_predict = tf.keras.layers.SeparableConv2D(
+      self._class_predict = tf_keras.layers.SeparableConv2D(
           self._num_classes * self._anchors_per_location,
           kernel_size=(3, 3),
           bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
           padding='same',
           name='class-predict')
     else:
-      self._class_predict = tf.keras.layers.Conv2D(
+      self._class_predict = tf_keras.layers.Conv2D(
           self._num_classes * self._anchors_per_location,
           kernel_size=(3, 3),
           bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
+          kernel_initializer=tf_keras.initializers.RandomNormal(stddev=1e-5),
           padding='same',
           name='class-predict')
     self._class_conv = []
@@ -754,7 +754,7 @@ class RetinanetHead(object):
     for i in range(self._num_convs):
       if self._use_separable_conv:
         self._class_conv.append(
-            tf.keras.layers.SeparableConv2D(
+            tf_keras.layers.SeparableConv2D(
                 self._num_filters,
                 kernel_size=(3, 3),
                 bias_initializer=tf.zeros_initializer(),
@@ -763,11 +763,11 @@ class RetinanetHead(object):
                 name='class-' + str(i)))
       else:
         self._class_conv.append(
-            tf.keras.layers.Conv2D(
+            tf_keras.layers.Conv2D(
                 self._num_filters,
                 kernel_size=(3, 3),
                 bias_initializer=tf.zeros_initializer(),
-                kernel_initializer=tf.keras.initializers.RandomNormal(
+                kernel_initializer=tf_keras.initializers.RandomNormal(
                     stddev=0.01),
                 activation=None,
                 padding='same',
@@ -779,18 +779,18 @@ class RetinanetHead(object):
   def _build_box_net_layers(self, norm_activation):
     """Build re-usable layers for box prediction network."""
     if self._use_separable_conv:
-      self._box_predict = tf.keras.layers.SeparableConv2D(
+      self._box_predict = tf_keras.layers.SeparableConv2D(
           4 * self._anchors_per_location,
           kernel_size=(3, 3),
           bias_initializer=tf.zeros_initializer(),
           padding='same',
           name='box-predict')
     else:
-      self._box_predict = tf.keras.layers.Conv2D(
+      self._box_predict = tf_keras.layers.Conv2D(
           4 * self._anchors_per_location,
           kernel_size=(3, 3),
           bias_initializer=tf.zeros_initializer(),
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
+          kernel_initializer=tf_keras.initializers.RandomNormal(stddev=1e-5),
           padding='same',
           name='box-predict')
     self._box_conv = []
@@ -798,7 +798,7 @@ class RetinanetHead(object):
     for i in range(self._num_convs):
       if self._use_separable_conv:
         self._box_conv.append(
-            tf.keras.layers.SeparableConv2D(
+            tf_keras.layers.SeparableConv2D(
                 self._num_filters,
                 kernel_size=(3, 3),
                 activation=None,
@@ -807,12 +807,12 @@ class RetinanetHead(object):
                 name='box-' + str(i)))
       else:
         self._box_conv.append(
-            tf.keras.layers.Conv2D(
+            tf_keras.layers.Conv2D(
                 self._num_filters,
                 kernel_size=(3, 3),
                 activation=None,
                 bias_initializer=tf.zeros_initializer(),
-                kernel_initializer=tf.keras.initializers.RandomNormal(
+                kernel_initializer=tf_keras.initializers.RandomNormal(
                     stddev=0.01),
                 padding='same',
                 name='box-' + str(i)))
@@ -886,7 +886,7 @@ class ShapemaskPriorHead(object):
     self._shape_prior_path = shape_prior_path
     self._use_category_for_mask = use_category_for_mask
 
-    self._shape_prior_fc = tf.keras.layers.Dense(
+    self._shape_prior_fc = tf_keras.layers.Dense(
         self._num_downsample_channels, name='shape-prior-fc')
 
   def __call__(self, fpn_features, boxes, outer_boxes, classes, is_training):
@@ -986,7 +986,7 @@ class ShapemaskPriorHead(object):
     # Reduce spatial dimension of features. The features have shape
     # [batch_size, num_instances, num_channels].
     features = tf.reduce_mean(features, axis=(2, 3))
-    logits = tf.keras.layers.Dense(
+    logits = tf_keras.layers.Dense(
         self._mask_num_classes * self._num_clusters,
         kernel_initializer=tf.random_normal_initializer(stddev=0.01),
         name='classify-shape-prior-fc')(features)
@@ -1032,7 +1032,7 @@ class ShapemaskCoarsemaskHead(object):
     self._num_convs = num_convs
     self._norm_activation = norm_activation
 
-    self._coarse_mask_fc = tf.keras.layers.Dense(
+    self._coarse_mask_fc = tf_keras.layers.Dense(
         self._num_downsample_channels, name='coarse-mask-fc')
 
     self._class_conv = []
@@ -1040,11 +1040,11 @@ class ShapemaskCoarsemaskHead(object):
 
     for i in range(self._num_convs):
       self._class_conv.append(
-          tf.keras.layers.Conv2D(
+          tf_keras.layers.Conv2D(
               self._num_downsample_channels,
               kernel_size=(3, 3),
               bias_initializer=tf.zeros_initializer(),
-              kernel_initializer=tf.keras.initializers.RandomNormal(
+              kernel_initializer=tf_keras.initializers.RandomNormal(
                   stddev=0.01),
               padding='same',
               name='coarse-mask-class-%d' % i))
@@ -1052,12 +1052,12 @@ class ShapemaskCoarsemaskHead(object):
       self._class_norm_activation.append(
           norm_activation(name='coarse-mask-class-%d-bn' % i))
 
-    self._class_predict = tf.keras.layers.Conv2D(
+    self._class_predict = tf_keras.layers.Conv2D(
         self._mask_num_classes,
         kernel_size=(1, 1),
         # Focal loss bias initialization to have foreground 0.01 probability.
         bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         padding='same',
         name='coarse-mask-class-predict')
 
@@ -1158,10 +1158,10 @@ class ShapemaskFinemaskHead(object):
     self._num_convs = num_convs
     self.up_sample_factor = upsample_factor
 
-    self._fine_mask_fc = tf.keras.layers.Dense(
+    self._fine_mask_fc = tf_keras.layers.Dense(
         self._num_downsample_channels, name='fine-mask-fc')
 
-    self._upsample_conv = tf.keras.layers.Conv2DTranspose(
+    self._upsample_conv = tf_keras.layers.Conv2DTranspose(
         self._num_downsample_channels,
         (self.up_sample_factor, self.up_sample_factor),
         (self.up_sample_factor, self.up_sample_factor),
@@ -1171,11 +1171,11 @@ class ShapemaskFinemaskHead(object):
     self._fine_class_bn = []
     for i in range(self._num_convs):
       self._fine_class_conv.append(
-          tf.keras.layers.Conv2D(
+          tf_keras.layers.Conv2D(
               self._num_downsample_channels,
               kernel_size=(3, 3),
               bias_initializer=tf.zeros_initializer(),
-              kernel_initializer=tf.keras.initializers.RandomNormal(
+              kernel_initializer=tf_keras.initializers.RandomNormal(
                   stddev=0.01),
               activation=None,
               padding='same',
@@ -1183,12 +1183,12 @@ class ShapemaskFinemaskHead(object):
       self._fine_class_bn.append(
           norm_activation(name='fine-mask-class-%d-bn' % i))
 
-    self._class_predict_conv = tf.keras.layers.Conv2D(
+    self._class_predict_conv = tf_keras.layers.Conv2D(
         self._mask_num_classes,
         kernel_size=(1, 1),
         # Focal loss bias initialization to have foreground 0.01 probability.
         bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
         padding='same',
         name='fine-mask-class-predict')
 

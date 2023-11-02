@@ -15,7 +15,7 @@
 """Quantized multi head attention layer."""
 import math
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
@@ -28,7 +28,7 @@ _MASK_CONSTANT_FOR_INT8_QUANTIZATION = 6
 
 
 class MultiHeadAttentionQuantized(helper.LayerQuantizerHelper,
-                                  tf.keras.layers.MultiHeadAttention):
+                                  tf_keras.layers.MultiHeadAttention):
   """Quantized multi head attention layer.
 
    This layer only quantized _compute_attention part. EinsumDense child layers

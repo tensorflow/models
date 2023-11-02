@@ -16,7 +16,7 @@
 from typing import Dict, Text
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling.multitask import base_model
 from official.projects.simclr.configs import multitask_config as simclr_multitask_config
@@ -36,7 +36,7 @@ class SimCLRMTModel(base_model.MultiTaskBaseModel):
     self._config = config
 
     # Build shared backbone.
-    self._input_specs = tf.keras.layers.InputSpec(shape=[None] +
+    self._input_specs = tf_keras.layers.InputSpec(shape=[None] +
                                                   config.input_size)
 
     l2_weight_decay = config.l2_weight_decay
@@ -44,7 +44,7 @@ class SimCLRMTModel(base_model.MultiTaskBaseModel):
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
     self._l2_regularizer = (
-        tf.keras.regularizers.l2(l2_weight_decay /
+        tf_keras.regularizers.l2(l2_weight_decay /
                                  2.0) if l2_weight_decay else None)
 
     self._backbone = backbones.factory.build_backbone(
@@ -67,7 +67,7 @@ class SimCLRMTModel(base_model.MultiTaskBaseModel):
 
     super().__init__(**kwargs)
 
-  def _instantiate_sub_tasks(self) -> Dict[Text, tf.keras.Model]:
+  def _instantiate_sub_tasks(self) -> Dict[Text, tf_keras.Model]:
     tasks = {}
 
     for model_config in self._config.heads:

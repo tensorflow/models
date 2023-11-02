@@ -17,7 +17,7 @@
 import abc
 from typing import Dict, List, Mapping, Optional, Text
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import config_definitions as cfg
 from official.core import export_base
 
@@ -32,7 +32,7 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
                input_image_size: List[int],
                input_type: str = 'image_tensor',
                num_channels: int = 3,
-               model: Optional[tf.keras.Model] = None,
+               model: Optional[tf_keras.Model] = None,
                input_name: Optional[str] = None):
     """Initializes a module for export.
 
@@ -43,7 +43,7 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
         it is [height, width].
       input_type: The input signature type.
       num_channels: The number of the image channels.
-      model: A tf.keras.Model instance to be exported.
+      model: A tf_keras.Model instance to be exported.
       input_name: A customized input tensor name.
     """
     self.params = params

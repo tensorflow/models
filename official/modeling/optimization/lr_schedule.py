@@ -17,7 +17,7 @@
 import math
 from typing import Mapping, Any, Union, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _make_offset_wrapper(new_class_name: str, base_lr_class):
@@ -31,7 +31,7 @@ def _make_offset_wrapper(new_class_name: str, base_lr_class):
   Example:
     CosineDecayWithOffset = _make_offset_wrapper(
                      'CosineDecayWithOffset', 
-                     tf.keras.optimizers.schedules.CosineDecay)
+                     tf_keras.optimizers.schedules.CosineDecay)
     # Use the lr:
     lr = CosineDecayWithOffset(offset=100, initial_learning_rate=0.1,
                                decay_steps=1000)
@@ -40,13 +40,13 @@ def _make_offset_wrapper(new_class_name: str, base_lr_class):
   Args:
     new_class_name: the name of the new class.
     base_lr_class: the base learning rate schedule class. Should be subclass of
-      tf.keras.optimizers.schedules.LearningRateSchedule
+      tf_keras.optimizers.schedules.LearningRateSchedule
 
   Returns:
     A new class (subclass of the base_lr_class) that can take an offset.
   """
   assert issubclass(base_lr_class,
-                    tf.keras.optimizers.schedules.LearningRateSchedule), (
+                    tf_keras.optimizers.schedules.LearningRateSchedule), (
                         "base_lr_class should be subclass of keras "
                         f"LearningRateSchedule, got {base_lr_class}")
 
@@ -80,24 +80,24 @@ def _make_offset_wrapper(new_class_name: str, base_lr_class):
 
 PiecewiseConstantDecayWithOffset = _make_offset_wrapper(
     "PiecewiseConstantDecayWithOffset",
-    tf.keras.optimizers.schedules.PiecewiseConstantDecay)
+    tf_keras.optimizers.schedules.PiecewiseConstantDecay)
 PolynomialDecayWithOffset = _make_offset_wrapper(
-    "PolynomialDecayWithOffset", tf.keras.optimizers.schedules.PolynomialDecay)
+    "PolynomialDecayWithOffset", tf_keras.optimizers.schedules.PolynomialDecay)
 ExponentialDecayWithOffset = _make_offset_wrapper(
     "ExponentialDecayWithOffset",
-    tf.keras.optimizers.schedules.ExponentialDecay)
+    tf_keras.optimizers.schedules.ExponentialDecay)
 CosineDecayWithOffset = _make_offset_wrapper(
     "CosineDecayWithOffset",
-    tf.keras.optimizers.schedules.CosineDecay,
+    tf_keras.optimizers.schedules.CosineDecay,
 )
 
 
-class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
+class LinearWarmup(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Linear warmup schedule."""
 
   def __init__(self,
                after_warmup_lr_sched: Union[
-                   tf.keras.optimizers.schedules.LearningRateSchedule, float],
+                   tf_keras.optimizers.schedules.LearningRateSchedule, float],
                warmup_steps: int,
                warmup_learning_rate: float,
                name: Optional[str] = None):
@@ -113,7 +113,7 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
     steps.
 
     Args:
-      after_warmup_lr_sched: tf.keras.optimizers.schedules .LearningRateSchedule
+      after_warmup_lr_sched: tf_keras.optimizers.schedules .LearningRateSchedule
         or a constant.
       warmup_steps: Number of the warmup steps.
       warmup_learning_rate: Initial learning rate for the warmup.
@@ -125,7 +125,7 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
     self._warmup_steps = warmup_steps
     self._init_warmup_lr = warmup_learning_rate
     if isinstance(after_warmup_lr_sched,
-                  tf.keras.optimizers.schedules.LearningRateSchedule):
+                  tf_keras.optimizers.schedules.LearningRateSchedule):
       self._final_warmup_lr = after_warmup_lr_sched(warmup_steps)
     else:
       self._final_warmup_lr = tf.cast(after_warmup_lr_sched, dtype=tf.float32)
@@ -139,7 +139,7 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
         (self._final_warmup_lr - self._init_warmup_lr))
 
     if isinstance(self._after_warmup_lr_sched,
-                  tf.keras.optimizers.schedules.LearningRateSchedule):
+                  tf_keras.optimizers.schedules.LearningRateSchedule):
       after_warmup_lr = self._after_warmup_lr_sched(step)
     else:
       after_warmup_lr = tf.cast(self._after_warmup_lr_sched, dtype=tf.float32)
@@ -151,7 +151,7 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
 
   def get_config(self) -> Mapping[str, Any]:
     if isinstance(self._after_warmup_lr_sched,
-                  tf.keras.optimizers.schedules.LearningRateSchedule):
+                  tf_keras.optimizers.schedules.LearningRateSchedule):
       config = {
           "after_warmup_lr_sched": self._after_warmup_lr_sched.get_config()}  # pytype: disable=attribute-error
     else:
@@ -165,18 +165,18 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
     return config
 
 
-class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
+class PolynomialWarmUp(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Applies polynomial warmup schedule on a given learning rate decay schedule."""
 
   def __init__(self,
                after_warmup_lr_sched: Union[
-                   tf.keras.optimizers.schedules.LearningRateSchedule, float],
+                   tf_keras.optimizers.schedules.LearningRateSchedule, float],
                warmup_steps: int,
                power: float = 1.0,
                name: str = "PolynomialWarmup"):
     super().__init__()
     if isinstance(after_warmup_lr_sched,
-                  tf.keras.optimizers.schedules.LearningRateSchedule):
+                  tf_keras.optimizers.schedules.LearningRateSchedule):
       self._initial_learning_rate = after_warmup_lr_sched(warmup_steps)
     else:
       self._initial_learning_rate = tf.cast(
@@ -206,7 +206,7 @@ class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
           tf.math.pow(warmup_percent_done, self._power))
 
       if isinstance(self._after_warmup_lr_sched,
-                    tf.keras.optimizers.schedules.LearningRateSchedule):
+                    tf_keras.optimizers.schedules.LearningRateSchedule):
         after_warmup_lr = self._after_warmup_lr_sched(step)
       else:
         after_warmup_lr = tf.cast(self._after_warmup_lr_sched, dtype=tf.float32)
@@ -219,7 +219,7 @@ class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
 
   def get_config(self) -> Mapping[str, Any]:
     if isinstance(self._after_warmup_lr_sched,
-                  tf.keras.optimizers.schedules.LearningRateSchedule):
+                  tf_keras.optimizers.schedules.LearningRateSchedule):
       config = {
           "after_warmup_lr_sched": self._after_warmup_lr_sched.get_config()}  # pytype: disable=attribute-error
     else:
@@ -233,7 +233,7 @@ class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     return config
 
 
-class DirectPowerDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+class DirectPowerDecay(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Learning rate schedule follows lr * (step)^power."""
 
   def __init__(self,
@@ -270,7 +270,7 @@ class DirectPowerDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     }
 
 
-class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+class PowerAndLinearDecay(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Learning rate schedule with multiplied by linear decay at the end.
 
   The schedule has the following behavoir.
@@ -337,7 +337,7 @@ class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     }
 
 
-class PowerDecayWithOffset(tf.keras.optimizers.schedules.LearningRateSchedule):
+class PowerDecayWithOffset(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Power learning rate decay with offset.
 
   Learning rate equals to `pre_offset_learning_rate` if `step` < `offset`.
@@ -390,7 +390,7 @@ class PowerDecayWithOffset(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 
 class StepCosineDecayWithOffset(
-    tf.keras.optimizers.schedules.LearningRateSchedule):
+    tf_keras.optimizers.schedules.LearningRateSchedule):
   """Stepwise cosine learning rate decay with offset.
 
   Learning rate is equivalent to one or more cosine decay(s) starting and

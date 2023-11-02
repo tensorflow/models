@@ -18,7 +18,7 @@ import os
 
 from absl import app
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import transformers
 
 from official.modeling import tf_utils
@@ -54,7 +54,7 @@ def _create_longformer_model():
       attention_dropout=encoder_cfg.attention_dropout_rate,
       max_sequence_length=encoder_cfg.max_position_embeddings,
       type_vocab_size=encoder_cfg.type_vocab_size,
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       output_range=encoder_cfg.output_range,
       embedding_width=encoder_cfg.embedding_size,

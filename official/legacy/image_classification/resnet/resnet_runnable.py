@@ -15,7 +15,7 @@
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.image_classification.resnet import common
 from official.legacy.image_classification.resnet import imagenet_preprocessing
 from official.legacy.image_classification.resnet import resnet_model
@@ -76,11 +76,11 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
         use_float16=self.dtype == tf.float16,
         loss_scale=flags_core.get_loss_scale(flags_obj, default_for_fp16=128))
 
-    self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
-    self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
+    self.train_loss = tf_keras.metrics.Mean('train_loss', dtype=tf.float32)
+    self.train_accuracy = tf_keras.metrics.SparseCategoricalAccuracy(
         'train_accuracy', dtype=tf.float32)
-    self.test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
-    self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
+    self.test_loss = tf_keras.metrics.Mean('test_loss', dtype=tf.float32)
+    self.test_accuracy = tf_keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
 
     self.checkpoint = tf.train.Checkpoint(
@@ -140,7 +140,7 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
       with tf.GradientTape() as tape:
         logits = self.model(images, training=True)
 
-        prediction_loss = tf.keras.losses.sparse_categorical_crossentropy(
+        prediction_loss = tf_keras.losses.sparse_categorical_crossentropy(
             labels, logits)
         loss = tf.reduce_sum(prediction_loss) * (1.0 /
                                                  self.flags_obj.batch_size)
@@ -187,7 +187,7 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
       """Function to run on the device."""
       images, labels = inputs
       logits = self.model(images, training=False)
-      loss = tf.keras.losses.sparse_categorical_crossentropy(labels, logits)
+      loss = tf_keras.losses.sparse_categorical_crossentropy(labels, logits)
       loss = tf.reduce_sum(loss) * (1.0 / self.flags_obj.batch_size)
       self.test_loss.update_state(loss)
       self.test_accuracy.update_state(labels, logits)

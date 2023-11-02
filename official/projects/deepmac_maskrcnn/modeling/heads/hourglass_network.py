@@ -32,14 +32,14 @@
 """
 
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 BATCH_NORM_EPSILON = 1e-5
 BATCH_NORM_MOMENTUM = 0.1
 BATCH_NORM_FUSED = True
 
 
-class IdentityLayer(tf.keras.layers.Layer):
+class IdentityLayer(tf_keras.layers.Layer):
   """A layer which passes through the input as it is."""
 
   def call(self, inputs):
@@ -58,14 +58,14 @@ def _get_padding_for_kernel_size(kernel_size):
 
 def batchnorm():
   try:
-    return tf.keras.layers.experimental.SyncBatchNormalization(
+    return tf_keras.layers.experimental.SyncBatchNormalization(
         name='batchnorm', epsilon=1e-5, momentum=0.1)
   except AttributeError:
-    return tf.keras.layers.BatchNormalization(
+    return tf_keras.layers.BatchNormalization(
         name='batchnorm', epsilon=1e-5, momentum=0.1, fused=BATCH_NORM_FUSED)
 
 
-class ConvolutionalBlock(tf.keras.layers.Layer):
+class ConvolutionalBlock(tf_keras.layers.Layer):
   """Block that aggregates Convolution + Norm layer + ReLU."""
 
   def __init__(self, kernel_size, out_channels, stride=1, relu=True,
@@ -87,18 +87,18 @@ class ConvolutionalBlock(tf.keras.layers.Layer):
 
       # TODO(vighneshb) Explore if removing and using padding option in conv
       # layer works.
-      self.pad = tf.keras.layers.ZeroPadding2D(padding_size)
+      self.pad = tf_keras.layers.ZeroPadding2D(padding_size)
     else:
       self.pad = IdentityLayer()
 
-    self.conv = tf.keras.layers.Conv2D(
+    self.conv = tf_keras.layers.Conv2D(
         filters=out_channels, kernel_size=kernel_size, use_bias=False,
         strides=stride, padding=padding)
 
     self.norm = batchnorm()
 
     if relu:
-      self.relu = tf.keras.layers.ReLU()
+      self.relu = tf_keras.layers.ReLU()
     else:
       self.relu = IdentityLayer()
 
@@ -123,7 +123,7 @@ class SkipConvolution(ConvolutionalBlock):
         out_channels=out_channels, kernel_size=1, stride=stride, relu=False)
 
 
-class ResidualBlock(tf.keras.layers.Layer):
+class ResidualBlock(tf_keras.layers.Layer):
   """A Residual block."""
 
   def __init__(self, out_channels, skip_conv=False, kernel_size=3, stride=1,
@@ -142,7 +142,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     self.conv_block = ConvolutionalBlock(
         kernel_size=kernel_size, out_channels=out_channels, stride=stride)
 
-    self.conv = tf.keras.layers.Conv2D(
+    self.conv = tf_keras.layers.Conv2D(
         filters=out_channels, kernel_size=kernel_size, use_bias=False,
         strides=1, padding=padding)
     self.norm = batchnorm()
@@ -153,7 +153,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     else:
       self.skip = IdentityLayer()
 
-    self.relu = tf.keras.layers.ReLU()
+    self.relu = tf_keras.layers.ReLU()
 
   def call(self, inputs):
     net = self.conv_block(inputs)
@@ -163,7 +163,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     return self.relu(net + net_skip)
 
 
-class InputDownsampleBlock(tf.keras.layers.Layer):
+class InputDownsampleBlock(tf_keras.layers.Layer):
   """Block for the initial feature downsampling."""
 
   def __init__(self, out_channels_initial_conv, out_channels_residual_block):
@@ -187,7 +187,7 @@ class InputDownsampleBlock(tf.keras.layers.Layer):
     return self.residual_block(self.conv_block(inputs))
 
 
-class InputConvBlock(tf.keras.layers.Layer):
+class InputConvBlock(tf_keras.layers.Layer):
   """Block for the initial feature convolution.
 
   This block is used in the hourglass network when we don't want to downsample
@@ -283,7 +283,7 @@ def _apply_blocks(inputs, blocks):
   return net
 
 
-class EncoderDecoderBlock(tf.keras.layers.Layer):
+class EncoderDecoderBlock(tf_keras.layers.Layer):
   """An encoder-decoder block which recursively defines the hourglass network."""
 
   def __init__(self, num_stages, channel_dims, blocks_per_stage,
@@ -316,7 +316,7 @@ class EncoderDecoderBlock(tf.keras.layers.Layer):
     self.encoder_decoder_shortcut = encoder_decoder_shortcut
 
     if encoder_decoder_shortcut:
-      self.merge_features = tf.keras.layers.Add()
+      self.merge_features = tf_keras.layers.Add()
       self.encoder_block1 = _make_repeated_residual_blocks(
           out_channels=out_channels, num_blocks=blocks_per_stage[0],
           initial_stride=1)
@@ -343,7 +343,7 @@ class EncoderDecoderBlock(tf.keras.layers.Layer):
         residual_channels=out_channels_downsampled,
         out_channels=out_channels, num_blocks=blocks_per_stage[0])
 
-    self.upsample = tf.keras.layers.UpSampling2D(initial_stride)
+    self.upsample = tf_keras.layers.UpSampling2D(initial_stride)
 
   def call(self, inputs):
 
@@ -362,7 +362,7 @@ class EncoderDecoderBlock(tf.keras.layers.Layer):
       return upsampled_outputs
 
 
-class HourglassNetwork(tf.keras.Model):
+class HourglassNetwork(tf_keras.Model):
   """The hourglass network."""
 
   def __init__(self, num_stages, input_channel_dims, channel_dims_per_stage,
@@ -437,7 +437,7 @@ class HourglassNetwork(tf.keras.Model):
           ResidualBlock(out_channels=channel_dims_per_stage[0])
       )
 
-    self.intermediate_relu = tf.keras.layers.ReLU()
+    self.intermediate_relu = tf_keras.layers.ReLU()
 
   def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
 

@@ -15,7 +15,7 @@
 """Tests for tfds factory functions."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.dataloaders import decoder as base_decoder
 from official.vision.dataloaders import tfds_factory

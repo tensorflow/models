@@ -18,7 +18,7 @@ import dataclasses
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -95,18 +95,18 @@ class FFFNerTask(base_task.Task):
           num_classes_is_entity=self.task_config.model.num_classes_is_entity,
           num_classes_entity_type=self.task_config.model
           .num_classes_entity_type,
-          initializer=tf.keras.initializers.TruncatedNormal(
+          initializer=tf_keras.initializers.TruncatedNormal(
               stddev=encoder_cfg.initializer_range),
           use_encoder_pooler=self.task_config.model.use_encoder_pooler)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     label_ids_is_entity = labels[self.label_field_is_entity]
     label_ids_entity_type = labels[self.label_field_entity_type]
-    loss_is_entity = tf.keras.losses.sparse_categorical_crossentropy(
+    loss_is_entity = tf_keras.losses.sparse_categorical_crossentropy(
         label_ids_is_entity,
         tf.cast(model_outputs[0], tf.float32),
         from_logits=True)
-    loss_entity_type = tf.keras.losses.sparse_categorical_crossentropy(
+    loss_entity_type = tf_keras.losses.sparse_categorical_crossentropy(
         label_ids_entity_type,
         tf.cast(model_outputs[1], tf.float32),
         from_logits=True)
@@ -144,9 +144,9 @@ class FFFNerTask(base_task.Task):
   def build_metrics(self, training=None):
     del training
     metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(
+        tf_keras.metrics.SparseCategoricalAccuracy(
             name='cls_accuracy_is_entity'),
-        tf.keras.metrics.SparseCategoricalAccuracy(
+        tf_keras.metrics.SparseCategoricalAccuracy(
             name='cls_accuracy_entity_type'),
     ]
     return metrics
@@ -166,7 +166,7 @@ class FFFNerTask(base_task.Task):
     compiled_metrics.update_state(labels[self.label_field_entity_type],
                                   model_outputs[1])
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
     features, labels = inputs, inputs
     outputs = self.inference_step(features, model)
     loss = self.build_losses(

@@ -17,7 +17,7 @@ import abc
 import collections
 import functools
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.ops import box_ops
 from official.projects.yolo.ops import loss_utils
@@ -411,7 +411,7 @@ class DarknetLoss(YoloLossBase):
       # make training more unstable but may also return higher APs.
       pred_class = loss_utils.apply_mask(
           ind_mask, tf.gather_nd(pred_class, inds, batch_dims=1))
-      class_loss = tf.keras.losses.binary_crossentropy(
+      class_loss = tf_keras.losses.binary_crossentropy(
           tf.expand_dims(true_class, axis=-1),
           tf.expand_dims(pred_class, axis=-1),
           label_smoothing=self._label_smoothing,
@@ -556,7 +556,7 @@ class ScaledLoss(YoloLossBase):
     true_conf = tf.squeeze(true_conf, axis=-1)
 
     # Compute the cross entropy loss for the confidence map.
-    bce = tf.keras.losses.binary_crossentropy(
+    bce = tf_keras.losses.binary_crossentropy(
         tf.expand_dims(true_conf, axis=-1), pred_conf, from_logits=True)
     if self._ignore_thresh != 0.0:
       bce = loss_utils.apply_mask(obj_mask, bce)
@@ -565,7 +565,7 @@ class ScaledLoss(YoloLossBase):
       conf_loss = tf.reduce_mean(bce)
 
     # Compute the cross entropy loss for the class maps.
-    class_loss = tf.keras.losses.binary_crossentropy(
+    class_loss = tf_keras.losses.binary_crossentropy(
         true_class,
         pred_class,
         label_smoothing=self._label_smoothing,

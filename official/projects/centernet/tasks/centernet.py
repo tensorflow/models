@@ -17,7 +17,7 @@
 from typing import Any, List, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import input_reader
@@ -90,14 +90,14 @@ class CenterNetTask(base_task.Task):
   def build_model(self):
     """get an instance of CenterNet."""
     model_config = self.task_config.model
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None] + model_config.input_size)
 
     l2_weight_decay = self.task_config.weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
+    l2_regularizer = (tf_keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     backbone = factory.build_backbone(
@@ -145,7 +145,7 @@ class CenterNetTask(base_task.Task):
 
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -305,7 +305,7 @@ class CenterNetTask(base_task.Task):
     metrics = []
     metric_names = ['total_loss', 'ct_loss', 'scale_loss', 'ct_offset_loss']
     for name in metric_names:
-      metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
       if (self.task_config.validation_data.tfds_name
@@ -321,8 +321,8 @@ class CenterNetTask(base_task.Task):
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
@@ -349,7 +349,7 @@ class CenterNetTask(base_task.Task):
       scaled_loss = losses['total_loss'] / num_replicas
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     # compute the gradient
@@ -357,7 +357,7 @@ class CenterNetTask(base_task.Task):
     gradients = tape.gradient(scaled_loss, tvars)
 
     # get unscaled loss if the scaled loss was used
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       gradients = optimizer.get_unscaled_gradients(gradients)
 
     if self.task_config.gradient_clip_norm > 0.0:
@@ -377,7 +377,7 @@ class CenterNetTask(base_task.Task):
 
   def validation_step(self,
                       inputs: Tuple[Any, Any],
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
     """Validation step.
 

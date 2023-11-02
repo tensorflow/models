@@ -17,7 +17,7 @@ import functools
 from typing import Iterator, List, Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -100,7 +100,7 @@ def convert_tflite_model(
   Args:
     saved_model_dir: The directory to the SavedModel.
     concrete_function: An optional concrete function to be exported.
-    model: An optional tf.keras.Model instance. If both `saved_model_dir` and
+    model: An optional tf_keras.Model instance. If both `saved_model_dir` and
       `concrete_function` are not available, convert this model to TFLite.
     quant_type: The post training quantization (PTQ) method. It can be one of
       `default` (dynamic range), `fp16` (float16), `int8` (integer wih float

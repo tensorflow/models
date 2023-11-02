@@ -14,7 +14,7 @@
 
 """Tests for PerDimScaleAttention."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import per_dim_scale_attention as attention
 

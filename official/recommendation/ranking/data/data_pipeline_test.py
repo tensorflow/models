@@ -15,7 +15,7 @@
 """Unit tests for data_pipeline."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.recommendation.ranking.configs import config
 from official.recommendation.ranking.data import data_pipeline

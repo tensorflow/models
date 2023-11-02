@@ -14,7 +14,7 @@
 
 """Tests for metrics.py."""
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.basnet.evaluation import metrics
 
@@ -32,7 +32,7 @@ class BASNetMetricTest(parameterized.TestCase, tf.test.TestCase):
     mae_obj.update_state(labels, inputs)
     output = mae_obj.result()
 
-    mae_tf = tf.keras.metrics.MeanAbsoluteError()
+    mae_tf = tf_keras.metrics.MeanAbsoluteError()
     mae_tf.reset_state()
     mae_tf.update_state(labels[0], inputs[0])
     compare = mae_tf.result().numpy()
@@ -51,8 +51,8 @@ class BASNetMetricTest(parameterized.TestCase, tf.test.TestCase):
     max_f_obj.update_state(labels, inputs)
     output = max_f_obj.result()
 
-    pre_tf = tf.keras.metrics.Precision(thresholds=0.78)
-    rec_tf = tf.keras.metrics.Recall(thresholds=0.78)
+    pre_tf = tf_keras.metrics.Precision(thresholds=0.78)
+    rec_tf = tf_keras.metrics.Recall(thresholds=0.78)
     pre_tf.reset_state()
     rec_tf.reset_state()
     pre_tf.update_state(labels[0], inputs[0])

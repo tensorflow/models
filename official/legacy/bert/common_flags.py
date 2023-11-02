@@ -15,7 +15,7 @@
 """Defining common flags used across all BERT models/applications."""
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.utils import hyperparams_flags
 from official.utils.flags import core as flags_core

@@ -25,7 +25,7 @@ from absl import flags
 from absl import logging
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=unused-import,g-import-not-at-top,redefined-outer-name,reimported
 from official.common import distribute_utils
@@ -63,12 +63,12 @@ def metrics_as_dict(metric):
 
   Args:
     metric: metric(s) to be put into the list. `metric` could be an object, a
-      list, or a dict of tf.keras.metrics.Metric or has the `required_method`.
+      list, or a dict of tf_keras.metrics.Metric or has the `required_method`.
 
   Returns:
     A dictionary of valid metrics.
   """
-  if isinstance(metric, tf.keras.metrics.Metric):
+  if isinstance(metric, tf_keras.metrics.Metric):
     metrics = {metric.name: metric}
   elif isinstance(metric, list):
     metrics = {m.name: m for m in metric}
@@ -141,7 +141,7 @@ class DistributedExecutor(object):
       strategy: an instance of tf.distribute.Strategy.
       params: Model configuration needed to run distribution strategy.
       model_fn: Keras model function. Signature:
-        (params: ParamsDict) -> tf.keras.models.Model.
+        (params: ParamsDict) -> tf_keras.models.Model.
       loss_fn: loss function. Signature:
         (y_true: Tensor, y_pred: Tensor) -> Tensor
       is_multi_host: Set to True when using multi hosts for training, like multi
@@ -223,8 +223,8 @@ class DistributedExecutor(object):
       strategy: an instance of tf.distribute.Strategy.
       model: (Tensor, bool) -> Tensor. model function.
       loss_fn: (y_true: Tensor, y_pred: Tensor) -> Tensor.
-      optimizer: tf.keras.optimizers.Optimizer.
-      metric: tf.keras.metrics.Metric subclass.
+      optimizer: tf_keras.optimizers.Optimizer.
+      metric: tf_keras.metrics.Metric subclass.
 
     Returns:
       The training step callable.
@@ -261,8 +261,8 @@ class DistributedExecutor(object):
       strategy: an instance of tf.distribute.Strategy.
       model: (Tensor, bool) -> Tensor. model function.
       loss_fn: (y_true: Tensor, y_pred: Tensor) -> Tensor.
-      optimizer: tf.keras.optimizers.Optimizer.
-      metric: tf.keras.metrics.Metric subclass.
+      optimizer: tf_keras.optimizers.Optimizer.
+      metric: tf_keras.metrics.Metric subclass.
 
     Returns:
       The training step callable.
@@ -332,8 +332,8 @@ class DistributedExecutor(object):
       train_metric_fn: Optional[Callable[[], Any]] = None,
       eval_metric_fn: Optional[Callable[[], Any]] = None,
       summary_writer_fn: Callable[[Text, Text], SummaryWriter] = SummaryWriter,
-      init_checkpoint: Optional[Callable[[tf.keras.Model], Any]] = None,
-      custom_callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+      init_checkpoint: Optional[Callable[[tf_keras.Model], Any]] = None,
+      custom_callbacks: Optional[List[tf_keras.callbacks.Callback]] = None,
       continuous_eval: bool = False,
       save_config: bool = True):
     """Runs distributed training.
@@ -412,7 +412,7 @@ class DistributedExecutor(object):
     train_loss = None
     train_metric_result = None
     eval_metric_result = None
-    tf.keras.backend.set_learning_phase(1)
+    tf_keras.backend.set_learning_phase(1)
     with strategy.scope():
       # To correctly place the model weights on accelerators,
       # model and optimizer should be created in scope.
@@ -662,8 +662,8 @@ class DistributedExecutor(object):
       raise ValueError('if `eval_metric_fn` is specified, '
                        'eval_metric_fn must be a callable.')
 
-    old_phase = tf.keras.backend.learning_phase()
-    tf.keras.backend.set_learning_phase(0)
+    old_phase = tf_keras.backend.learning_phase()
+    tf_keras.backend.set_learning_phase(0)
     params = self._params
     strategy = self._strategy
     # To reduce unnecessary send/receive input pipeline operation, we place
@@ -705,7 +705,7 @@ class DistributedExecutor(object):
       summary_writer(metrics=eval_metric_result, step=current_step)
       reset_states(eval_metric)
 
-    tf.keras.backend.set_learning_phase(old_phase)
+    tf_keras.backend.set_learning_phase(old_phase)
     return eval_metric_result, current_step
 
   def predict(self):

@@ -15,7 +15,7 @@
 """Tests for export_saved_model."""
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_hub as hub
 
 from official.projects.movinet.tools import export_saved_model
@@ -37,13 +37,13 @@ class ExportSavedModelTest(tf.test.TestCase):
 
     encoder = hub.KerasLayer(saved_model_path, trainable=True)
 
-    inputs = tf.keras.layers.Input(
+    inputs = tf_keras.layers.Input(
         shape=[None, None, None, 3],
         dtype=tf.float32)
 
     outputs = encoder(dict(image=inputs))
 
-    model = tf.keras.Model(inputs, outputs)
+    model = tf_keras.Model(inputs, outputs)
 
     example_input = tf.ones([1, 8, 172, 172, 3])
     outputs = model(example_input)
@@ -62,7 +62,7 @@ class ExportSavedModelTest(tf.test.TestCase):
 
     encoder = hub.KerasLayer(saved_model_path, trainable=True)
 
-    image_input = tf.keras.layers.Input(
+    image_input = tf_keras.layers.Input(
         shape=[None, None, None, 3],
         dtype=tf.float32,
         name='image')
@@ -73,7 +73,7 @@ class ExportSavedModelTest(tf.test.TestCase):
         for name, state in init_states_fn(tf.constant([0, 0, 0, 0, 3])).items()
     }
     states_input = {
-        name: tf.keras.Input(shape[1:], dtype=dtype, name=name)
+        name: tf_keras.Input(shape[1:], dtype=dtype, name=name)
         for name, (shape, dtype) in state_shapes.items()
     }
 
@@ -81,7 +81,7 @@ class ExportSavedModelTest(tf.test.TestCase):
 
     outputs = encoder(inputs)
 
-    model = tf.keras.Model(inputs, outputs)
+    model = tf_keras.Model(inputs, outputs)
 
     example_input = tf.ones([1, 8, 172, 172, 3])
     frames = tf.split(example_input, example_input.shape[1], axis=1)

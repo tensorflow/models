@@ -15,7 +15,7 @@
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.nlp.modeling import models
 from official.nlp.modeling.networks import mobile_bert_encoder
 
@@ -55,9 +55,9 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
         normalization_type=normalization_type,
         classifier_activation=use_pooler)
 
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     outputs = test_network([word_ids, mask, type_ids])
     layer_output, pooler_output = outputs['sequence_output'], outputs[
         'pooled_output']
@@ -80,9 +80,9 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
         hidden_size=hidden_size,
         num_blocks=num_blocks)
 
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     outputs = test_network([word_ids, mask, type_ids])
     all_layer_output = outputs['encoder_outputs']
 
@@ -101,11 +101,11 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
         num_blocks=num_blocks,
         input_mask_dtype=input_mask_dtype)
 
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=input_mask_dtype)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=input_mask_dtype)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     outputs = test_network([word_ids, mask, type_ids])
-    model = tf.keras.Model([word_ids, mask, type_ids], outputs)
+    model = tf_keras.Model([word_ids, mask, type_ids], outputs)
 
     input_seq = generate_fake_input(
         batch_size=1, seq_len=sequence_length, vocab_size=vocab_size)
@@ -130,11 +130,11 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
         hidden_size=hidden_size,
         num_blocks=num_blocks)
 
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     outputs = test_network([word_ids, mask, type_ids])
-    model = tf.keras.Model([word_ids, mask, type_ids], outputs)
+    model = tf_keras.Model([word_ids, mask, type_ids], outputs)
 
     input_seq = generate_fake_input(
         batch_size=1, seq_len=sequence_length, vocab_size=vocab_size)
@@ -156,9 +156,9 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     num_classes = 5
     classifier = task(network=mobilebert_encoder, num_classes=num_classes)
 
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     prediction = classifier([word_ids, mask, type_ids])
     if task == models.BertTokenClassifier:
       prediction = prediction['logits']

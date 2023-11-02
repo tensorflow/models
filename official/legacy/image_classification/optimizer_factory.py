@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional, Text, Union
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.image_classification import learning_rate
 from official.legacy.image_classification.configs import base_configs
@@ -33,7 +33,7 @@ from official.modeling.optimization import legacy_adamw
 FloatTensorLike = Union[tf.Tensor, float, np.float16, np.float32, np.float64]
 
 
-class Lookahead(tf.keras.optimizers.legacy.Optimizer):
+class Lookahead(tf_keras.optimizers.legacy.Optimizer):
   """This class allows to extend optimizers with the lookahead mechanism.
 
   The mechanism is proposed by Michael R. Zhang et.al in the paper [Lookahead
@@ -47,14 +47,14 @@ class Lookahead(tf.keras.optimizers.legacy.Optimizer):
   Example of usage:
 
   ```python
-  opt = tf.keras.optimizers.SGD(learning_rate) opt =
+  opt = tf_keras.optimizers.SGD(learning_rate) opt =
   tfa.optimizers.Lookahead(opt)
   ```
   """
 
   def __init__(
       self,
-      optimizer: tf.keras.optimizers.Optimizer,
+      optimizer: tf_keras.optimizers.Optimizer,
       sync_period: int = 6,
       slow_step_size: FloatTensorLike = 0.5,
       name: str = 'Lookahead',
@@ -80,13 +80,13 @@ class Lookahead(tf.keras.optimizers.legacy.Optimizer):
     super().__init__(name, **kwargs)
 
     if isinstance(optimizer, str):
-      optimizer = tf.keras.optimizers.get(optimizer)
+      optimizer = tf_keras.optimizers.get(optimizer)
     if not isinstance(
         optimizer,
-        (tf.keras.optimizers.Optimizer, tf.keras.optimizers.legacy.Optimizer),
+        (tf_keras.optimizers.Optimizer, tf_keras.optimizers.legacy.Optimizer),
     ):
       raise TypeError(
-          'optimizer is not an object of tf.keras.optimizers.Optimizer'
+          'optimizer is not an object of tf_keras.optimizers.Optimizer'
       )
 
     self._optimizer = optimizer
@@ -152,7 +152,7 @@ class Lookahead(tf.keras.optimizers.legacy.Optimizer):
 
   def get_config(self):
     config = {
-        'optimizer': tf.keras.optimizers.serialize(self._optimizer),
+        'optimizer': tf_keras.optimizers.serialize(self._optimizer),
         'sync_period': self._serialize_hyperparameter('sync_period'),
         'slow_step_size': self._serialize_hyperparameter('slow_step_size'),
     }
@@ -177,7 +177,7 @@ class Lookahead(tf.keras.optimizers.legacy.Optimizer):
 
   @classmethod
   def from_config(cls, config, custom_objects=None):
-    optimizer = tf.keras.optimizers.deserialize(
+    optimizer = tf_keras.optimizers.deserialize(
         config.pop('optimizer'), custom_objects=custom_objects
     )
     return cls(optimizer, **config)
@@ -185,24 +185,24 @@ class Lookahead(tf.keras.optimizers.legacy.Optimizer):
 
 def build_optimizer(
     optimizer_name: Text,
-    base_learning_rate: tf.keras.optimizers.schedules.LearningRateSchedule,
+    base_learning_rate: tf_keras.optimizers.schedules.LearningRateSchedule,
     params: Dict[Text, Any],
-    model: Optional[tf.keras.Model] = None):
+    model: Optional[tf_keras.Model] = None):
   """Build the optimizer based on name.
 
   Args:
     optimizer_name: String representation of the optimizer name. Examples: sgd,
       momentum, rmsprop.
-    base_learning_rate: `tf.keras.optimizers.schedules.LearningRateSchedule`
+    base_learning_rate: `tf_keras.optimizers.schedules.LearningRateSchedule`
       base learning rate.
     params: String -> Any dictionary representing the optimizer params. This
       should contain optimizer specific parameters such as `base_learning_rate`,
       `decay`, etc.
-    model: The `tf.keras.Model`. This is used for the shadow copy if using
+    model: The `tf_keras.Model`. This is used for the shadow copy if using
       `ExponentialMovingAverage`.
 
   Returns:
-    A tf.keras.optimizers.legacy.Optimizer.
+    A tf_keras.optimizers.legacy.Optimizer.
 
   Raises:
     ValueError if the provided optimizer_name is not supported.
@@ -214,12 +214,12 @@ def build_optimizer(
   if optimizer_name == 'sgd':
     logging.info('Using SGD optimizer')
     nesterov = params.get('nesterov', False)
-    optimizer = tf.keras.optimizers.legacy.SGD(
+    optimizer = tf_keras.optimizers.legacy.SGD(
         learning_rate=base_learning_rate, nesterov=nesterov)
   elif optimizer_name == 'momentum':
     logging.info('Using momentum optimizer')
     nesterov = params.get('nesterov', False)
-    optimizer = tf.keras.optimizers.legacy.SGD(
+    optimizer = tf_keras.optimizers.legacy.SGD(
         learning_rate=base_learning_rate,
         momentum=params['momentum'],
         nesterov=nesterov)
@@ -228,7 +228,7 @@ def build_optimizer(
     rho = params.get('decay', None) or params.get('rho', 0.9)
     momentum = params.get('momentum', 0.9)
     epsilon = params.get('epsilon', 1e-07)
-    optimizer = tf.keras.optimizers.legacy.RMSprop(
+    optimizer = tf_keras.optimizers.legacy.RMSprop(
         learning_rate=base_learning_rate,
         rho=rho,
         momentum=momentum,
@@ -238,7 +238,7 @@ def build_optimizer(
     beta_1 = params.get('beta_1', 0.9)
     beta_2 = params.get('beta_2', 0.999)
     epsilon = params.get('epsilon', 1e-07)
-    optimizer = tf.keras.optimizers.legacy.Adam(
+    optimizer = tf_keras.optimizers.legacy.Adam(
         learning_rate=base_learning_rate,
         beta_1=beta_1,
         beta_2=beta_2,
@@ -307,7 +307,7 @@ def build_learning_rate(params: base_configs.LearningRateConfig,
         'Using exponential learning rate with: '
         'initial_learning_rate: %f, decay_steps: %d, '
         'decay_rate: %f', base_lr, decay_steps, decay_rate)
-    lr = tf.keras.optimizers.schedules.ExponentialDecay(
+    lr = tf_keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=base_lr,
         decay_steps=decay_steps,
         decay_rate=decay_rate,
@@ -319,7 +319,7 @@ def build_learning_rate(params: base_configs.LearningRateConfig,
     logging.info(
         'Using stepwise learning rate. Parameters: '
         'boundaries: %s, values: %s', boundaries, multipliers)
-    lr = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+    lr = tf_keras.optimizers.schedules.PiecewiseConstantDecay(
         boundaries=boundaries, values=multipliers)
   elif decay_type == 'cosine_with_warmup':
     lr = learning_rate.CosineDecayWithWarmup(

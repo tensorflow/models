@@ -14,7 +14,7 @@
 
 """ResNet50 model for Keras.
 
-Adapted from tf.keras.applications.resnet50.ResNet50().
+Adapted from tf_keras.applications.resnet50.ResNet50().
 This is ResNet model version 1.5.
 
 Related papers/blogs:
@@ -27,14 +27,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.image_classification.resnet import imagenet_preprocessing
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 def _gen_l2_regularizer(use_l2_regularizer=True, l2_weight_decay=1e-4):
-  return tf.keras.regularizers.L2(
+  return tf_keras.regularizers.L2(
       l2_weight_decay) if use_l2_regularizer else None
 
 
@@ -62,7 +62,7 @@ def identity_block(input_tensor,
     Output tensor for the block.
   """
   filters1, filters2, filters3 = filters
-  if tf.keras.backend.image_data_format() == 'channels_last':
+  if tf_keras.backend.image_data_format() == 'channels_last':
     bn_axis = 3
   else:
     bn_axis = 1
@@ -150,7 +150,7 @@ def conv_block(input_tensor,
     Output tensor for the block.
   """
   filters1, filters2, filters3 = filters
-  if tf.keras.backend.image_data_format() == 'channels_last':
+  if tf_keras.backend.image_data_format() == 'channels_last':
     bn_axis = 3
   else:
     bn_axis = 1
@@ -249,7 +249,7 @@ def resnet50(num_classes,
     # Hub image modules expect inputs in the range [0, 1]. This rescales these
     # inputs to the range expected by the trained model.
     x = layers.Lambda(
-        lambda x: x * 255.0 - tf.keras.backend.constant(    # pylint: disable=g-long-lambda
+        lambda x: x * 255.0 - tf_keras.backend.constant(    # pylint: disable=g-long-lambda
             imagenet_preprocessing.CHANNEL_MEANS,
             shape=[1, 1, 3],
             dtype=x.dtype),
@@ -258,7 +258,7 @@ def resnet50(num_classes,
   else:
     x = img_input
 
-  if tf.keras.backend.image_data_format() == 'channels_first':
+  if tf_keras.backend.image_data_format() == 'channels_first':
     x = layers.Permute((3, 1, 2))(x)
     bn_axis = 1
   else:  # channels_last
@@ -322,4 +322,4 @@ def resnet50(num_classes,
   x = layers.Activation('softmax', dtype='float32')(x)
 
   # Create model.
-  return tf.keras.Model(img_input, x, name='resnet50')
+  return tf_keras.Model(img_input, x, name='resnet50')

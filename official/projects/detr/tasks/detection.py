@@ -16,7 +16,7 @@
 from typing import Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -47,7 +47,7 @@ class DetectionTask(base_task.Task):
   def build_model(self):
     """Build DETR model."""
 
-    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+    input_specs = tf_keras.layers.InputSpec(shape=[None] +
                                             self._task_config.model.input_size)
 
     backbone = backbones.factory.build_backbone(
@@ -64,7 +64,7 @@ class DetectionTask(base_task.Task):
                       self._task_config.model.num_decoder_layers)
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
     if not self._task_config.init_checkpoint:
       return
@@ -229,7 +229,7 @@ class DetectionTask(base_task.Task):
     metrics = []
     metric_names = ['cls_loss', 'box_loss', 'giou_loss']
     for name in metric_names:
-      metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
       self.coco_metric = coco_evaluator.COCOEvaluator(
@@ -273,13 +273,13 @@ class DetectionTask(base_task.Task):
       scaled_loss = loss
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 

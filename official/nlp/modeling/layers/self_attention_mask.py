@@ -14,7 +14,7 @@
 
 """Keras layer that creates a self-attention mask."""
 from typing import Optional
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def get_mask(inputs: tf.Tensor,
@@ -45,8 +45,8 @@ def get_mask(inputs: tf.Tensor,
   return tf.broadcast_to(to_mask, [batch_size, from_seq_length, to_seq_length])
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class SelfAttentionMask(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class SelfAttentionMask(tf_keras.layers.Layer):
   """Create 3D attention mask from a 2D tensor mask.
 
     inputs[0]: from_tensor: 2D or 3D Tensor of shape

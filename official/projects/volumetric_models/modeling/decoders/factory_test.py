@@ -15,7 +15,7 @@
 """Tests for factory functions."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from official.projects.volumetric_models.configs import decoders as decoders_cfg

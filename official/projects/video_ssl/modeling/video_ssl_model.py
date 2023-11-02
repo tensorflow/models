@@ -17,17 +17,17 @@ from typing import Mapping, Optional
 
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.video_ssl.configs import video_ssl as video_ssl_cfg
 from official.vision.modeling import backbones
 from official.vision.modeling import factory_3d as model_factory
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-class VideoSSLModel(tf.keras.Model):
+class VideoSSLModel(tf_keras.Model):
   """A video ssl model class builder."""
 
   def __init__(self,
@@ -38,7 +38,7 @@ class VideoSSLModel(tf.keras.Model):
                hidden_norm_args,
                projection_dim,
                input_specs: Optional[Mapping[str,
-                                             tf.keras.layers.InputSpec]] = None,
+                                             tf_keras.layers.InputSpec]] = None,
                dropout_rate: float = 0.0,
                aggregate_endpoints: bool = False,
                kernel_initializer='random_uniform',
@@ -54,14 +54,14 @@ class VideoSSLModel(tf.keras.Model):
       hidden_layer_num: `int` number of hidden layers in MLP.
       hidden_norm_args: `dict` for batchnorm arguments in MLP.
       projection_dim: `int` number of output dimension for MLP.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
       dropout_rate: `float` rate for dropout regularization.
       aggregate_endpoints: `bool` aggregate all end ponits or only use the
         final end point.
       kernel_initializer: kernel initializer for the dense layer.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object. Default to
+      kernel_regularizer: tf_keras.regularizers.Regularizer object. Default to
         None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object. Default to
+      bias_regularizer: tf_keras.regularizers.Regularizer object. Default to
         None.
       **kwargs: keyword arguments to be passed.
     """
@@ -93,19 +93,19 @@ class VideoSSLModel(tf.keras.Model):
     self._backbone = backbone
 
     inputs = {
-        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
     endpoints = backbone(inputs['image'])
 
     if aggregate_endpoints:
       pooled_feats = []
       for endpoint in endpoints.values():
-        x_pool = tf.keras.layers.GlobalAveragePooling3D()(endpoint)
+        x_pool = tf_keras.layers.GlobalAveragePooling3D()(endpoint)
         pooled_feats.append(x_pool)
       x = tf.concat(pooled_feats, axis=1)
     else:
       x = endpoints[max(endpoints.keys())]
-      x = tf.keras.layers.GlobalAveragePooling3D()(x)
+      x = tf_keras.layers.GlobalAveragePooling3D()(x)
 
     # L2 Normalize feature after backbone
     if normalize_feature:
@@ -113,19 +113,19 @@ class VideoSSLModel(tf.keras.Model):
 
     # MLP hidden layers
     for _ in range(hidden_layer_num):
-      x = tf.keras.layers.Dense(hidden_dim)(x)
+      x = tf_keras.layers.Dense(hidden_dim)(x)
       if self._config_dict['use_sync_bn']:
-        x = tf.keras.layers.experimental.SyncBatchNormalization(
+        x = tf_keras.layers.experimental.SyncBatchNormalization(
             momentum=self._config_dict['norm_momentum'],
             epsilon=self._config_dict['norm_epsilon'])(x)
       else:
-        x = tf.keras.layers.BatchNormalization(
+        x = tf_keras.layers.BatchNormalization(
             momentum=self._config_dict['norm_momentum'],
             epsilon=self._config_dict['norm_epsilon'])(x)
       x = tf_utils.get_activation(self._config_dict['activation'])(x)
 
     # Projection head
-    x = tf.keras.layers.Dense(projection_dim)(x)
+    x = tf_keras.layers.Dense(projection_dim)(x)
 
     super().__init__(inputs=inputs, outputs=x, **kwargs)
 
@@ -148,10 +148,10 @@ class VideoSSLModel(tf.keras.Model):
 
 @model_factory.register_model_builder('video_ssl_model')
 def build_video_ssl_pretrain_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: video_ssl_cfg.VideoSSLModel,
     num_classes: int,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None):
   """Builds the video classification model."""
   del num_classes
   input_specs_dict = {'image': input_specs}

@@ -18,11 +18,11 @@ For MoE routing, we need to separate a set of tokens to sets of tokens.
 Later on, different sets of tokens can potentially go to different experts.
 """
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class TokenImportanceWithMovingAvg(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class TokenImportanceWithMovingAvg(tf_keras.layers.Layer):
   """Routing based on per-token importance value."""
 
   def __init__(self,
@@ -39,7 +39,7 @@ class TokenImportanceWithMovingAvg(tf.keras.layers.Layer):
     self._importance_embedding = self.add_weight(
         name="importance_embed",
         shape=(self._vocab_size),
-        initializer=tf.keras.initializers.Constant(self._init_importance),
+        initializer=tf_keras.initializers.Constant(self._init_importance),
         trainable=False)
 
   def get_config(self):
@@ -70,8 +70,8 @@ class TokenImportanceWithMovingAvg(tf.keras.layers.Layer):
     return tf.gather(self._importance_embedding, inputs)
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class SelectTopK(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class SelectTopK(tf_keras.layers.Layer):
   """Select top-k + random-k tokens according to importance."""
 
   def __init__(self,

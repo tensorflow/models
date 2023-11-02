@@ -16,7 +16,7 @@
 
 from typing import Mapping
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.const_cl.modeling.heads import transformer_decoder
 from official.vision.modeling.layers import roi_aligner
@@ -29,7 +29,7 @@ def _get_shape(x):
   return [dynamic[i] if s is None else s for i, s in enumerate(static)]
 
 
-class InstanceReconstructor(tf.keras.layers.Layer):
+class InstanceReconstructor(tf_keras.layers.Layer):
   """The SSL head for reconstructing contextualized instance representations."""
 
   def __init__(self,
@@ -90,14 +90,14 @@ class InstanceReconstructor(tf.keras.layers.Layer):
 
     if self._use_positional_embedding:
       self._spatial_mlp = [
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               4, use_bias=True, activation='relu', name='spatial_mlp_l1'),
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               8, use_bias=True, name='spatial_mlp_l2')]
       self._temporal_mlp = [
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               4, use_bias=True, activation='relu', name='temporal_mlp_l1'),
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               8, use_bias=True, name='temporal_mlp_l2')]
 
     self._attention_decoder = transformer_decoder.TransformerDecoder(
@@ -109,7 +109,7 @@ class InstanceReconstructor(tf.keras.layers.Layer):
         dropout_rate=dropout_rate,
         layer_norm_epsilon=layer_norm_epsilon)
 
-    self._projection_layer = tf.keras.layers.Dense(num_output_channels)
+    self._projection_layer = tf_keras.layers.Dense(num_output_channels)
 
   def _get_memory_embeddings(self, inputs: tf.Tensor) -> tf.Tensor:
     """Uniformly samples frames to construct memory embeddings."""

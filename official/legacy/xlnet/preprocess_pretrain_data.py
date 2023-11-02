@@ -614,7 +614,7 @@ def _convert_example(example, use_bfloat16):
   """Cast int64 into int32 and float32 to bfloat16 if use_bfloat16."""
   for key in list(example.keys()):
     val = example[key]
-    if tf.keras.backend.is_sparse(val):
+    if tf_keras.backend.is_sparse(val):
       val = tf.sparse.to_dense(val)
     if val.dtype == tf.int64:
       val = tf.cast(val, tf.int32)

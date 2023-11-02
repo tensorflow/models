@@ -28,7 +28,7 @@ E-ELAN is proposed in YOLOv7 paper:
     arXiv:2207.02696
 """
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.yolo.modeling.layers import nn_blocks
@@ -38,8 +38,8 @@ from official.vision.modeling.backbones import factory
 # Required block functions for YOLOv7 backbone familes.
 _BLOCK_FNS = {
     'convbn': nn_blocks.ConvBN,
-    'maxpool2d': tf.keras.layers.MaxPooling2D,
-    'concat': tf.keras.layers.Concatenate,
+    'maxpool2d': tf_keras.layers.MaxPooling2D,
+    'concat': tf_keras.layers.Concatenate,
 }
 
 # Names for key arguments needed by each block function.
@@ -247,13 +247,13 @@ BACKBONES = {
 }
 
 
-class YoloV7(tf.keras.Model):
+class YoloV7(tf_keras.Model):
   """YOLOv7 backbone architecture."""
 
   def __init__(
       self,
       model_id='yolov7',
-      input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+      input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
       use_sync_bn=False,
       norm_momentum=0.99,
       norm_epsilon=0.001,
@@ -267,17 +267,17 @@ class YoloV7(tf.keras.Model):
 
     Args:
       model_id: a `str` represents the model variants.
-      input_specs: a `tf.keras.layers.InputSpec` of the input tensor.
+      input_specs: a `tf_keras.layers.InputSpec` of the input tensor.
       use_sync_bn: if set to `True`, use synchronized batch normalization.
       norm_momentum: a `float` of normalization momentum for the moving average.
       norm_epsilon: a small `float` added to variance to avoid dividing by zero.
       activation: a `str` name of the activation function.
       kernel_initializer: a `str` for kernel initializer of convolutional
         layers.
-      kernel_regularizer: a `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: a `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       bias_initializer: a `str` for bias initializer of convolutional layers.
-      bias_regularizer: a `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: a `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       **kwargs: Additional keyword arguments to be passed.
     """
@@ -296,7 +296,7 @@ class YoloV7(tf.keras.Model):
     self._bias_initializer = bias_initializer
     self._bias_regularizer = bias_regularizer
 
-    inputs = tf.keras.layers.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.layers.Input(shape=input_specs.shape[1:])
 
     block_specs = BACKBONES[model_id.lower()]
     outputs = []
@@ -363,11 +363,11 @@ class YoloV7(tf.keras.Model):
 
 @factory.register_backbone_builder('yolov7')
 def build_yolov7(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None,
-) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None,
+) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds YOLOv7."""
 
   assert backbone_config.type == 'yolov7', (

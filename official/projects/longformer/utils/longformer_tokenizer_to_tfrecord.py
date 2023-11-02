@@ -17,7 +17,7 @@ import collections
 import os
 
 import datasets
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import transformers
 
 pretrained_lm = "allenai/longformer-base-4096"

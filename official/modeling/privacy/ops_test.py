@@ -16,7 +16,7 @@
 
 from unittest import mock
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling.privacy import ops
 

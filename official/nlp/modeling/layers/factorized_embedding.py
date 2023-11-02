@@ -15,13 +15,13 @@
 """A factorized embedding layer."""
 # pylint: disable=g-classes-have-attributes
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import on_device_embedding
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
+@tf_keras.utils.register_keras_serializable(package='Text')
 class FactorizedEmbedding(on_device_embedding.OnDeviceEmbedding):
   """A factorized embeddings layer for supporting larger embeddings.
 
@@ -63,7 +63,7 @@ class FactorizedEmbedding(on_device_embedding.OnDeviceEmbedding):
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
-    self._embedding_projection = tf.keras.layers.EinsumDense(
+    self._embedding_projection = tf_keras.layers.EinsumDense(
         '...x,xy->...y',
         output_shape=self._output_dim,
         bias_axes=None,

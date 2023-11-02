@@ -16,7 +16,7 @@
 import random
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import augment
 from official.vision.ops import box_ops as bbox_ops

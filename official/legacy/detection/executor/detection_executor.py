@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.detection.executor import distributed_executor as executor
 from official.vision.utils.object_detection import visualization_utils
 
@@ -63,11 +63,11 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
     logging.info('Filter trainable variables from %d to %d',
                  len(model.trainable_variables), len(trainable_variables))
     update_state_fn = lambda labels, outputs: None
-    if isinstance(metric, tf.keras.metrics.Metric):
+    if isinstance(metric, tf_keras.metrics.Metric):
       update_state_fn = metric.update_state
     else:
       logging.error('Detection: train metric is not an instance of '
-                    'tf.keras.metrics.Metric.')
+                    'tf_keras.metrics.Metric.')
 
     def _replicated_step(inputs):
       """Replicated training step."""
@@ -151,7 +151,7 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
         break
 
     metric_result = metric.result()
-    if isinstance(metric, tf.keras.metrics.Metric):
+    if isinstance(metric, tf_keras.metrics.Metric):
       metric_result = tf.nest.map_structure(lambda x: x.numpy().astype(float),
                                             metric_result)
     logging.info('Step: [%d] Validation metric = %s', current_training_step,

@@ -15,13 +15,13 @@
 """BERT cls-token classifier."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class BertClassifier(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class BertClassifier(tf_keras.Model):
   """Classifier model based on a BERT-style transformer-based encoder.
 
   This is an implementation of the network structure surrounding a transformer
@@ -79,7 +79,7 @@ class BertClassifier(tf.keras.Model):
         cls_inputs = outputs[1]
       else:
         cls_inputs = outputs['pooled_output']
-      cls_inputs = tf.keras.layers.Dropout(rate=dropout_rate)(cls_inputs)
+      cls_inputs = tf_keras.layers.Dropout(rate=dropout_rate)(cls_inputs)
     else:
       outputs = network(inputs)
       if isinstance(outputs, list):

@@ -15,7 +15,7 @@
 """Contains definitions of mask sampler."""
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import spatial_transform_ops
 
@@ -100,8 +100,8 @@ def _sample_and_crop_foreground_masks(candidate_rois: tf.Tensor,
   return foreground_rois, foreground_classes, cropped_foreground_masks
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MaskSampler(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MaskSampler(tf_keras.layers.Layer):
   """Samples and creates mask training targets."""
 
   def __init__(self, mask_target_size: int, num_sampled_masks: int, **kwargs):

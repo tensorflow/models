@@ -17,7 +17,7 @@
 import dataclasses
 from typing import Mapping, Optional, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import config_definitions as cfg

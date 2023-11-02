@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import talking_heads_attention
 
@@ -36,8 +36,8 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
         value_dim=value_dim,
         output_shape=output_shape)
     # Create a 3-dimensional input (the first dimension is implicit).
-    query = tf.keras.Input(shape=(40, 80))
-    value = tf.keras.Input(shape=(20, 80))
+    query = tf_keras.Input(shape=(40, 80))
+    value = tf_keras.Input(shape=(20, 80))
     output = test_layer(query=query, value=value)
     self.assertEqual(output.shape.as_list(), [None] + output_dims)
 
@@ -46,7 +46,7 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     test_layer = talking_heads_attention.TalkingHeadsAttention(
         num_heads=12, key_dim=64)
     # Create a 3-dimensional input (the first dimension is implicit).
-    query = tf.keras.Input(shape=(40, 80))
+    query = tf_keras.Input(shape=(40, 80))
     output = test_layer(query=query, value=query)
     self.assertEqual(output.shape.as_list(), [None, 40, 80])
 
@@ -55,7 +55,7 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     test_layer = talking_heads_attention.TalkingHeadsAttention(
         num_heads=12, key_dim=64)
     # Create a 3-dimensional input (the first dimension is implicit).
-    query = tf.keras.Input(shape=(40, 80))
+    query = tf_keras.Input(shape=(40, 80))
     output, coef = test_layer(query=query, value=query,
                               return_attention_scores=True)
     self.assertEqual(output.shape.as_list(), [None, 40, 80])
@@ -68,13 +68,13 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
         num_heads=12, key_dim=2, use_bias=use_bias)
     # Create a 3-dimensional input (the first dimension is implicit).
     batch_size = 3
-    query = tf.keras.Input(shape=(4, 8))
-    value = tf.keras.Input(shape=(2, 8))
-    mask_tensor = tf.keras.Input(shape=(4, 2))
+    query = tf_keras.Input(shape=(4, 8))
+    value = tf_keras.Input(shape=(2, 8))
+    mask_tensor = tf_keras.Input(shape=(4, 2))
     output = test_layer(query=query, value=value, attention_mask=mask_tensor)
 
     # Create a model containing the test layer.
-    model = tf.keras.Model([query, value, mask_tensor], output)
+    model = tf_keras.Model([query, value, mask_tensor], output)
 
     # Generate data for the input (non-mask) tensors.
     from_data = 10 * np.random.random_sample((batch_size, 4, 8))
@@ -94,10 +94,10 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotAllClose(masked_output_data, unmasked_output_data)
 
     # Tests the layer with three inputs: Q, K, V.
-    key = tf.keras.Input(shape=(2, 8))
+    key = tf_keras.Input(shape=(2, 8))
     output = test_layer(
         query=query, value=value, key=key, attention_mask=mask_tensor)
-    model = tf.keras.Model([query, value, key, mask_tensor], output)
+    model = tf_keras.Model([query, value, key, mask_tensor], output)
 
     masked_output_data = model.predict([from_data, to_data, to_data, mask_data])
     unmasked_output_data = model.predict(
@@ -118,9 +118,9 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     test_layer = talking_heads_attention.TalkingHeadsAttention(
         num_heads=12,
         key_dim=64,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02))
     # Create a 3-dimensional input (the first dimension is implicit).
-    query = tf.keras.Input(shape=(40, 80))
+    query = tf_keras.Input(shape=(40, 80))
     output = test_layer(query=query, value=query)
     self.assertEqual(output.shape.as_list(), [None, 40, 80])
 

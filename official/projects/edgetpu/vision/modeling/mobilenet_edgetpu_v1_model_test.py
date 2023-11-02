@@ -16,7 +16,7 @@
 
 import os
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.image_classification import preprocessing
 from official.projects.edgetpu.vision.modeling import common_modules
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model
@@ -47,13 +47,13 @@ class MobilenetEdgeTPUBlocksTest(tf.test.TestCase):
   def setUp(self):
     super(tf.test.TestCase, self).setUp()
     # Ensure no model duplicates
-    tf.keras.backend.clear_session()
+    tf_keras.backend.clear_session()
 
   def test_bottleneck_block(self):
     """Test for creating a model with bottleneck block arguments."""
     images = tf.zeros((4, 224, 224, 3), dtype=tf.float32)
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     blocks = [
         mobilenet_edgetpu_v1_model_blocks.BlockConfig.from_args(
@@ -121,7 +121,7 @@ class MobilenetEdgeTPUBlocksTest(tf.test.TestCase):
     """Test for creating a model with fused bottleneck block arguments."""
     images = tf.zeros((4, 224, 224, 3), dtype=tf.float32)
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     blocks = [
         mobilenet_edgetpu_v1_model_blocks.BlockConfig.from_args(
@@ -160,7 +160,7 @@ class MobilenetEdgeTPUBlocksTest(tf.test.TestCase):
     """Test for variables in blocks to be included in `model.variables`."""
     images = tf.zeros((4, 224, 224, 3), dtype=tf.float32)
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     blocks = [
         mobilenet_edgetpu_v1_model_blocks.BlockConfig.from_args(
@@ -195,7 +195,7 @@ class MobilenetEdgeTPUBuildTest(tf.test.TestCase):
   def setUp(self):
     super(tf.test.TestCase, self).setUp()
     # Ensure no model duplicates
-    tf.keras.backend.clear_session()
+    tf_keras.backend.clear_session()
 
   def test_create_mobilenet_edgetpu(self):
     model = mobilenet_edgetpu_v1_model.MobilenetEdgeTPU()
@@ -207,7 +207,7 @@ class MobilenetEdgeTPUPredictTest(tf.test.TestCase):
   def setUp(self):
     super(tf.test.TestCase, self).setUp()
     # Ensure no model duplicates
-    tf.keras.backend.clear_session()
+    tf_keras.backend.clear_session()
 
   def _copy_saved_model_to_local(self, model_ckpt):
     # Copy saved model to local first for speed

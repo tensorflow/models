@@ -16,7 +16,7 @@
 
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import relative_attention
@@ -51,8 +51,8 @@ def _cache_memory(current_state, previous_state, memory_length, reuse_length=0):
   return tf.stop_gradient(new_mem)
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class TransformerXLBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class TransformerXLBlock(tf_keras.layers.Layer):
   """Transformer XL block.
 
   This implements a Transformer XL block from "Transformer-XL: Attentive
@@ -151,32 +151,32 @@ class TransformerXLBlock(tf.keras.layers.Layer):
         use_bias=False,
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="rel_attn")
-    self._attention_dropout = tf.keras.layers.Dropout(
+    self._attention_dropout = tf_keras.layers.Dropout(
         rate=self._attention_dropout_rate)
-    self._attention_layer_norm = tf.keras.layers.LayerNormalization(
+    self._attention_layer_norm = tf_keras.layers.LayerNormalization(
         name="self_attention_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon,
         dtype=tf.float32)
-    self._inner_dense = tf.keras.layers.EinsumDense(
+    self._inner_dense = tf_keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._inner_size),
         bias_axes="d",
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         name="inner")
 
-    self._inner_activation_layer = tf.keras.layers.Activation(
+    self._inner_activation_layer = tf_keras.layers.Activation(
         self._inner_activation)
-    self._inner_dropout_layer = tf.keras.layers.Dropout(
+    self._inner_dropout_layer = tf_keras.layers.Dropout(
         rate=self._inner_dropout)
-    self._output_dense = tf.keras.layers.EinsumDense(
+    self._output_dense = tf_keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
         name="output",
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer))
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
-    self._output_layer_norm = tf.keras.layers.LayerNormalization(
+    self._output_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
+    self._output_layer_norm = tf_keras.layers.LayerNormalization(
         name="output_layer_norm",
         axis=-1,
         epsilon=self._norm_epsilon)
@@ -319,7 +319,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
     return attention_output
 
 
-class TransformerXL(tf.keras.layers.Layer):
+class TransformerXL(tf_keras.layers.Layer):
   """Transformer XL.
 
   This layer combines multiple Transformer XL blocks from "Transformer-XL:
@@ -428,7 +428,7 @@ class TransformerXL(tf.keras.layers.Layer):
               kernel_initializer="variance_scaling",
               name="layer_%d" % i))
 
-    self.output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self.output_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
 
   def get_config(self):
     config = {

@@ -16,7 +16,7 @@
 import dataclasses
 
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
@@ -76,7 +76,7 @@ def get_encoder(bert_config: TeamsEncoderConfig,
       hidden_size=bert_config.hidden_size,
       embedding_width=bert_config.embedding_size,
       max_seq_length=bert_config.max_position_embeddings,
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       dropout_rate=bert_config.dropout_rate,
   )
@@ -87,7 +87,7 @@ def get_encoder(bert_config: TeamsEncoderConfig,
           bert_config.hidden_activation),
       dropout_rate=bert_config.dropout_rate,
       attention_dropout_rate=bert_config.attention_dropout_rate,
-      kernel_initializer=tf.keras.initializers.TruncatedNormal(
+      kernel_initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
   )
   if embedding_network is None:
@@ -101,7 +101,7 @@ def get_encoder(bert_config: TeamsEncoderConfig,
       hidden_cfg=hidden_cfg,
       num_hidden_instances=bert_config.num_layers,
       pooled_output_dim=bert_config.hidden_size,
-      pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+      pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       dict_outputs=True)
 

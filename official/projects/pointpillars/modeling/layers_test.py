@@ -15,7 +15,7 @@
 """Tests for backbones."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.modeling import layers
 
@@ -32,7 +32,7 @@ class ConvBlockTest(parameterized.TestCase, tf.test.TestCase):
                     use_transpose_conv):
     kernel_size = 3
     n, h, w, _ = input_shape
-    inputs = tf.keras.Input(shape=input_shape[1:], batch_size=n)
+    inputs = tf_keras.Input(shape=input_shape[1:], batch_size=n)
     block = layers.ConvBlock(filters, kernel_size, strides, use_transpose_conv)
     outputs = block(inputs)
 

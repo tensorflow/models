@@ -16,7 +16,7 @@
 
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.centernet.modeling.layers import cn_nn_blocks
@@ -48,14 +48,14 @@ HOURGLASS_SPECS = {
 }
 
 
-class Hourglass(tf.keras.Model):
+class Hourglass(tf_keras.Model):
   """CenterNet Hourglass backbone."""
 
   def __init__(
       self,
       model_id: int,
       input_channel_dims: int,
-      input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+      input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
       num_hourglasses: int = 1,
       initial_downsample: bool = True,
       activation: str = 'relu',
@@ -63,8 +63,8 @@ class Hourglass(tf.keras.Model):
       norm_momentum=0.1,
       norm_epsilon=1e-5,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initialize Hourglass backbone.
 
@@ -72,7 +72,7 @@ class Hourglass(tf.keras.Model):
       model_id: An `int` of the scale of Hourglass backbone model.
       input_channel_dims: `int`, number of filters used to downsample the
         input image.
-      input_specs: A `tf.keras.layers.InputSpec` of specs of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of specs of the input tensor.
       num_hourglasses: `int``, number of hourglass blocks in backbone. For
         example, hourglass-104 has two hourglass-52 modules.
       initial_downsample: `bool`, whether or not to downsample the input.
@@ -81,9 +81,9 @@ class Hourglass(tf.keras.Model):
       norm_momentum: `float`, momentum for the batch normalization layers.
       norm_epsilon: `float`, epsilon for the batch normalization layers.
       kernel_initializer: A `str` for kernel initializer of conv layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       **kwargs: Additional keyword arguments to be passed.
     """
@@ -104,7 +104,7 @@ class Hourglass(tf.keras.Model):
     self._channel_dims_per_stage = [item * self._input_channel_dims
                                     for item in specs['channel_dims_per_stage']]
 
-    inputs = tf.keras.layers.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.layers.Input(shape=input_specs.shape[1:])
 
     inp_filters = self._channel_dims_per_stage[0]
 
@@ -203,8 +203,8 @@ class Hourglass(tf.keras.Model):
             norm_epsilon=self._norm_epsilon
         )(x_hg)
 
-        x_downsampled = tf.keras.layers.Add()([inter_hg_conv1, inter_hg_conv2])
-        x_downsampled = tf.keras.layers.ReLU()(x_downsampled)
+        x_downsampled = tf_keras.layers.Add()([inter_hg_conv1, inter_hg_conv2])
+        x_downsampled = tf_keras.layers.ReLU()(x_downsampled)
 
         x_downsampled = nn_blocks.ResidualBlock(
             filters=inp_filters,
@@ -250,11 +250,11 @@ class Hourglass(tf.keras.Model):
 
 @factory.register_backbone_builder('hourglass')
 def build_hourglass(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-    ) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+    ) -> tf_keras.Model:
   """Builds Hourglass backbone from a configuration."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

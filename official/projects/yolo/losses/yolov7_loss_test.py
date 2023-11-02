@@ -17,7 +17,7 @@
 from absl import logging
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.losses import yolov7_loss
 from official.projects.yolo.ops import box_ops

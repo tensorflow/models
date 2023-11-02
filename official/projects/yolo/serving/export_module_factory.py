@@ -16,7 +16,7 @@
 
 from typing import Any, Callable, Dict, List, Optional, Text, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
 from official.core import export_base
@@ -37,7 +37,7 @@ class ExportModule(export_base.ExportModule):
 
   def __init__(self,
                params: cfg.ExperimentConfig,
-               model: tf.keras.Model,
+               model: tf_keras.Model,
                input_signature: Union[tf.TensorSpec, Dict[str, tf.TensorSpec]],
                preprocessor: Optional[Callable[..., Any]] = None,
                inference_step: Optional[Callable[..., Any]] = None,
@@ -47,7 +47,7 @@ class ExportModule(export_base.ExportModule):
 
     Args:
       params: A dataclass for parameters to the module.
-      model: A tf.keras.Model instance to be exported.
+      model: A tf_keras.Model instance to be exported.
       input_signature: tf.TensorSpec, e.g. tf.TensorSpec(shape=[None, 224, 224,
         3], dtype=tf.uint8)
       preprocessor: An optional callable to preprocess the inputs.
@@ -112,7 +112,7 @@ def create_classification_export_module(
   """Creates classification export module."""
   input_signature = export_utils.get_image_input_signatures(
       input_type, batch_size, input_image_size, num_channels, input_name)
-  input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
+  input_specs = tf_keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
 
   model = factory.build_classification_model(
@@ -162,7 +162,7 @@ def create_yolo_export_module(
   """Creates YOLO export module."""
   input_signature = export_utils.get_image_input_signatures(
       input_type, batch_size, input_image_size, num_channels, input_name)
-  input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
+  input_specs = tf_keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
   if isinstance(params.task, yolo.YoloTask):
     model, _ = yolo_factory.build_yolo(

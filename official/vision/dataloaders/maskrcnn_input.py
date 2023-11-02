@@ -17,7 +17,7 @@
 from typing import Optional
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.configs import common
 from official.vision.dataloaders import parser

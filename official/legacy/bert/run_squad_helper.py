@@ -20,7 +20,7 @@ import os
 
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.bert import bert_models
 from official.legacy.bert import common_flags
 from official.legacy.bert import input_pipeline
@@ -97,9 +97,9 @@ FLAGS = flags.FLAGS
 
 def squad_loss_fn(start_positions, end_positions, start_logits, end_logits):
   """Returns sparse categorical crossentropy for start/end logits."""
-  start_loss = tf.keras.losses.sparse_categorical_crossentropy(
+  start_loss = tf_keras.losses.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
-  end_loss = tf.keras.losses.sparse_categorical_crossentropy(
+  end_loss = tf_keras.losses.sparse_categorical_crossentropy(
       end_positions, end_logits, from_logits=True)
 
   total_loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
@@ -160,7 +160,7 @@ def get_squad_model_to_predict(strategy, bert_config, checkpoint_path,
   """Gets a squad model to make predictions."""
   with strategy.scope():
     # Prediction always uses float32, even if training uses mixed precision.
-    tf.keras.mixed_precision.set_global_policy('float32')
+    tf_keras.mixed_precision.set_global_policy('float32')
     squad_model, _ = bert_models.squad_model(
         bert_config,
         input_meta_data['max_seq_length'],
@@ -464,7 +464,7 @@ def export_squad(model_export_path, input_meta_data, bert_config):
   if not model_export_path:
     raise ValueError('Export path is not specified: %s' % model_export_path)
   # Export uses float32 for now, even if training uses mixed precision.
-  tf.keras.mixed_precision.set_global_policy('float32')
+  tf_keras.mixed_precision.set_global_policy('float32')
   squad_model, _ = bert_models.squad_model(bert_config,
                                            input_meta_data['max_seq_length'])
   model_saving_utils.export_bert_model(

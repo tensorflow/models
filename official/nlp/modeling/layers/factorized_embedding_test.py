@@ -15,7 +15,7 @@
 """Tests for FactorizedEmbedding layer."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import factorized_embedding
 
@@ -32,7 +32,7 @@ class FactorizedEmbeddingTest(tf.test.TestCase):
         output_dim=output_dim)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # The output should be the same as the input, save that it has an extra
@@ -51,11 +51,11 @@ class FactorizedEmbeddingTest(tf.test.TestCase):
         output_dim=output_dim)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # Create a model from the test layer.
-    model = tf.keras.Model(input_tensor, output_tensor)
+    model = tf_keras.Model(input_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.

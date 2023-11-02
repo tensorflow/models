@@ -14,7 +14,7 @@
 
 """Tests for target_gather.py."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import target_gather
 

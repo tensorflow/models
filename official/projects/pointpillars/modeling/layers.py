@@ -16,14 +16,14 @@
 
 from typing import Any, Mapping, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.projects.pointpillars.utils import utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ConvBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ConvBlock(tf_keras.layers.Layer):
   """A conv2d followed by a norm then an activation."""
 
   def __init__(
@@ -32,13 +32,13 @@ class ConvBlock(tf.keras.layers.Layer):
       kernel_size: int,
       strides: int,
       use_transpose_conv: bool = False,
-      kernel_initializer: Optional[tf.keras.initializers.Initializer] = tf.keras
+      kernel_initializer: Optional[tf_keras.initializers.Initializer] = tf.keras
       .initializers.VarianceScaling(),
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       use_bias: bool = False,
-      bias_initializer: Optional[tf.keras.initializers.Initializer] = tf.keras
+      bias_initializer: Optional[tf_keras.initializers.Initializer] = tf.keras
       .initializers.Zeros(),
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       use_sync_bn: bool = True,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
@@ -90,9 +90,9 @@ class ConvBlock(tf.keras.layers.Layer):
     """Creates variables for the block."""
     # Config conv
     if self._use_transpose_conv:
-      conv_op = tf.keras.layers.Conv2DTranspose
+      conv_op = tf_keras.layers.Conv2DTranspose
     else:
-      conv_op = tf.keras.layers.Conv2D
+      conv_op = tf_keras.layers.Conv2D
     conv_kwargs = {
         'filters': self._filters,
         'kernel_size': self._kernel_size,
@@ -108,9 +108,9 @@ class ConvBlock(tf.keras.layers.Layer):
 
     # Config norm
     if self._use_sync_bn:
-      bn_op = tf.keras.layers.experimental.SyncBatchNormalization
+      bn_op = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      bn_op = tf.keras.layers.BatchNormalization
+      bn_op = tf_keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': -1,
         'momentum': self._norm_momentum,
@@ -147,5 +147,5 @@ class ConvBlock(tf.keras.layers.Layer):
     return config
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf.keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
     return cls(**config)

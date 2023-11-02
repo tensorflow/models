@@ -17,7 +17,7 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -39,11 +39,11 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, input_size, model_id,
                             endpoint_filter_scale, output_stride):
     """Test creation of ResNet models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     network = resnet_deeplab.DilatedResNet(model_id=model_id,
                                            output_stride=output_stride)
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     print(endpoints)
     self.assertAllEqual([
@@ -69,7 +69,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     endpoint_filter_scale = 4
     output_stride = 8
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     network = resnet_deeplab.DilatedResNet(
         model_id=model_id,
@@ -79,7 +79,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         replace_stem_max_pool=replace_stem_max_pool,
         se_ratio=se_ratio,
         init_stochastic_depth_rate=init_stochastic_depth_rate)
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     print(endpoints)
     self.assertAllEqual([
@@ -99,7 +99,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test for sync bn on TPU and GPU devices."""
     inputs = np.random.rand(64, 128, 128, 3)
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
       network = resnet_deeplab.DilatedResNet(
@@ -109,13 +109,13 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, input_dim])
     network = resnet_deeplab.DilatedResNet(
         model_id=50, output_stride=8, input_specs=input_specs)
 
-    inputs = tf.keras.Input(shape=(128, 128, input_dim), batch_size=1)
+    inputs = tf_keras.Input(shape=(128, 128, input_dim), batch_size=1)
     _ = network(inputs)
 
   def test_serialize_deserialize(self):

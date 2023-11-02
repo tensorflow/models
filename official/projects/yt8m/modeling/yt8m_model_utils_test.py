@@ -14,7 +14,7 @@
 
 """Tests for YT8M modeling utilities."""
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yt8m.modeling import yt8m_model_utils
 

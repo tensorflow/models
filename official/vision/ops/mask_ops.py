@@ -21,7 +21,7 @@ from typing import List, Tuple
 
 import cv2
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.ops import spatial_transform_ops
 
 

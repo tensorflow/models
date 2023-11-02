@@ -19,7 +19,7 @@ import shutil
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import gaussian_process
 
@@ -205,9 +205,9 @@ class GaussianProcessTest(tf.test.TestCase, parameterized.TestCase):
     input_data = np.random.random((1, 2))
     rfgp_model = gaussian_process.RandomFeatureGaussianProcess(units=1)
 
-    inputs = tf.keras.Input((2,), batch_size=1)
+    inputs = tf_keras.Input((2,), batch_size=1)
     outputs = rfgp_model(inputs)
-    model = tf.keras.Model(inputs, outputs)
+    model = tf_keras.Model(inputs, outputs)
     gp_output, gp_covmat = model.predict(input_data)
 
     # Save and then load the model.
@@ -215,7 +215,7 @@ class GaussianProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.addCleanup(shutil.rmtree, temp_dir)
     saved_model_dir = os.path.join(temp_dir, 'rfgp_model')
     model.save(saved_model_dir)
-    new_model = tf.keras.models.load_model(saved_model_dir)
+    new_model = tf_keras.models.load_model(saved_model_dir)
 
     gp_output_new, gp_covmat_new = new_model.predict(input_data)
     self.assertAllClose(gp_output, gp_output_new, atol=1e-4)

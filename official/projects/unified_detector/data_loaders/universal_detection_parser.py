@@ -19,7 +19,7 @@ import functools
 from typing import Any, Tuple
 
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.unified_detector.data_loaders import autoaugment
 from official.projects.unified_detector.data_loaders import tf_example_decoder

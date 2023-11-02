@@ -14,7 +14,7 @@
 
 """Video ssl pretrain task definition."""
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=unused-import
 from official.core import input_reader
@@ -39,7 +39,7 @@ class VideoSSLPretrainTask(video_classification.VideoClassificationTask):
         for d1, d2 in zip(self.task_config.train_data.feature_shape,
                           self.task_config.validation_data.feature_shape)
     ]
-    input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
+    input_specs = tf_keras.layers.InputSpec(shape=[None] + common_input_shape)
     logging.info('Build model input %r', common_input_shape)
 
     model = factory_3d.build_model(
@@ -104,9 +104,9 @@ class VideoSSLPretrainTask(video_classification.VideoClassificationTask):
   def build_metrics(self, training=True):
     """Gets streaming metrics for training/validation."""
     metrics = [
-        tf.keras.metrics.Mean(name='contrast_acc'),
-        tf.keras.metrics.Mean(name='contrast_entropy'),
-        tf.keras.metrics.Mean(name='reg_loss')
+        tf_keras.metrics.Mean(name='contrast_acc'),
+        tf_keras.metrics.Mean(name='contrast_entropy'),
+        tf_keras.metrics.Mean(name='reg_loss')
     ]
     return metrics
 
@@ -151,14 +151,14 @@ class VideoSSLPretrainTask(video_classification.VideoClassificationTask):
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(
-          optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+          optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 

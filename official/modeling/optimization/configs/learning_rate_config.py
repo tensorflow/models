@@ -119,7 +119,7 @@ class CosineLrConfig(base_config.Config):
   """Configuration for Cosine learning rate decay.
 
   This class is a containers for the cosine learning rate decay configs,
-  tf.keras.experimental.CosineDecay.
+  tf_keras.experimental.CosineDecay.
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to CosineDecay.

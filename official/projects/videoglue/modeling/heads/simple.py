@@ -16,16 +16,16 @@
 
 from typing import Any, Mapping, Optional, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.modeling import tf_utils
 from official.vision.modeling.backbones import vit
 
 
-class AddTemporalPositionEmbs(tf.keras.layers.Layer):
+class AddTemporalPositionEmbs(tf_keras.layers.Layer):
   """Adds learned temporal positional embeddings to the video features."""
 
   def __init__(self,
-               posemb_init: Optional[tf.keras.initializers.Initializer] = None,
+               posemb_init: Optional[tf_keras.initializers.Initializer] = None,
                **kwargs):
     """Constructs Postional Embedding module.
 
@@ -51,7 +51,7 @@ class AddTemporalPositionEmbs(tf.keras.layers.Layer):
     return inputs
 
 
-class MLP(tf.keras.layers.Layer):
+class MLP(tf_keras.layers.Layer):
   """Constructs the Multi-Layer Perceptron head."""
 
   def __init__(
@@ -64,8 +64,8 @@ class MLP(tf.keras.layers.Layer):
       norm_epsilon: float = 1e-5,
       activation: Optional[str] = None,
       normalize_inputs: bool = False,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Multi-Layer Perceptron initialization.
 
@@ -78,8 +78,8 @@ class MLP(tf.keras.layers.Layer):
       norm_epsilon: the batch norm epsilon.
       activation: the activation function.
       normalize_inputs: whether to normalize inputs.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object.
-      bias_regularizer: tf.keras.regularizers.Regularizer object.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object.
+      bias_regularizer: tf_keras.regularizers.Regularizer object.
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -99,26 +99,26 @@ class MLP(tf.keras.layers.Layer):
     # MLP hidden layers
     for _ in range(num_hidden_layers):
       self._layers.append(
-          tf.keras.layers.Dense(
+          tf_keras.layers.Dense(
               num_hidden_channels,
               use_bias=False,
               kernel_regularizer=kernel_regularizer,
               bias_regularizer=bias_regularizer))
       if use_sync_bn:
         self._layers.append(
-            tf.keras.layers.experimental.SyncBatchNormalization(
+            tf_keras.layers.experimental.SyncBatchNormalization(
                 momentum=norm_momentum,
                 epsilon=norm_epsilon))
       else:
         self._layers.append(
-            tf.keras.layers.BatchNormalization(
+            tf_keras.layers.BatchNormalization(
                 momentum=norm_momentum,
                 epsilon=norm_epsilon))
       if activation is not None:
         self._layers.append(tf_utils.get_activation(activation))
 
     # Projection head
-    self._layers.append(tf.keras.layers.Dense(num_output_channels))
+    self._layers.append(tf_keras.layers.Dense(num_output_channels))
 
   def call(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
     """Forward calls with N-D inputs tensor."""
@@ -126,7 +126,7 @@ class MLP(tf.keras.layers.Layer):
       inputs = tf.nn.l2_normalize(inputs, axis=-1)
 
     for layer in self._layers:
-      if isinstance(layer, tf.keras.layers.Layer):
+      if isinstance(layer, tf_keras.layers.Layer):
         inputs = layer(inputs, training=training)
       else:  # activation
         inputs = layer(inputs)
@@ -154,7 +154,7 @@ class MLP(tf.keras.layers.Layer):
     return cls(**config)
 
 
-class AttentionPoolerClassificationHead(tf.keras.layers.Layer):
+class AttentionPoolerClassificationHead(tf_keras.layers.Layer):
   """Head layer for attention pooling classification network.
 
   Applies pooling attention, dropout, and classifier projection. Expects input
@@ -170,8 +170,8 @@ class AttentionPoolerClassificationHead(tf.keras.layers.Layer):
       dropout_rate: float = 0.,
       kernel_initializer: str = 'HeNormal',
       kernel_regularizer: Optional[
-          tf.keras.regularizers.Regularizer] = tf.keras.regularizers.L2(1.5e-5),
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+          tf_keras.regularizers.Regularizer] = tf_keras.regularizers.L2(1.5e-5),
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       add_temporal_pos_embed: bool = False,
       **kwargs):
     """Implementation for video model classifier head.
@@ -201,17 +201,17 @@ class AttentionPoolerClassificationHead(tf.keras.layers.Layer):
     self._add_temporal_pos_embed = add_temporal_pos_embed
     if self._add_temporal_pos_embed:
       self._pos_embed = AddTemporalPositionEmbs(
-          posemb_init=tf.keras.initializers.RandomNormal(stddev=0.02),
+          posemb_init=tf_keras.initializers.RandomNormal(stddev=0.02),
           name='posembed_final_learnt',
       )
 
-    self._pooler_attention_layer_norm = tf.keras.layers.LayerNormalization(
+    self._pooler_attention_layer_norm = tf_keras.layers.LayerNormalization(
         name='pooler_attention_layer_norm',
         axis=-1,
         epsilon=1e-6,
         dtype=tf.float32)
 
-    self._pooler_attention_layer = tf.keras.layers.MultiHeadAttention(
+    self._pooler_attention_layer = tf_keras.layers.MultiHeadAttention(
         num_heads=num_heads,
         key_dim=(hidden_size // num_heads),
         value_dim=None,
@@ -220,8 +220,8 @@ class AttentionPoolerClassificationHead(tf.keras.layers.Layer):
         kernel_initializer='glorot_uniform',
         name='pooler_attention')
 
-    self._dropout = tf.keras.layers.Dropout(dropout_rate)
-    self._classifier = tf.keras.layers.Dense(
+    self._dropout = tf_keras.layers.Dropout(dropout_rate)
+    self._classifier = tf_keras.layers.Dense(
         num_classes,
         kernel_initializer=kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,

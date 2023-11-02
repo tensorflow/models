@@ -16,7 +16,7 @@
 import os
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.data import question_answering_dataloader
 

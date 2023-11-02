@@ -14,7 +14,7 @@
 
 """Tests for iou metric."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.evaluation import iou
 

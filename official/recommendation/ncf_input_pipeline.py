@@ -17,7 +17,7 @@
 import functools
 
 # pylint: disable=g-bad-import-order
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 # pylint: enable=g-bad-import-order
 
 from official.recommendation import constants as rconst

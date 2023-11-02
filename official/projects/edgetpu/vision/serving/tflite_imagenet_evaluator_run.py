@@ -21,7 +21,7 @@ tflite_imagenet_evaluator_run --tflite_model_path=/PATH/TO/MODEL.tflite
 from typing import Sequence
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.projects.edgetpu.vision.serving import tflite_imagenet_evaluator

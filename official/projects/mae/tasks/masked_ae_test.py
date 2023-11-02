@@ -15,7 +15,7 @@
 """Tests for masked_ae."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 from official.modeling import optimization

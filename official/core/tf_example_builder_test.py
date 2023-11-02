@@ -19,7 +19,7 @@ a unit test.
 """
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import tf_example_builder
 
 

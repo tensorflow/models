@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -32,12 +32,12 @@ class YoloV7BackboneTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_network_creation(self, model_id):
     """Tests declaration of YOLOv7 backbone variants."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     network = yolov7.YoloV7(model_id)
     self.assertEqual(network.get_config()['model_id'], model_id)
 
-    inputs = tf.keras.Input(shape=(*_INPUT_SIZE, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(*_INPUT_SIZE, 3), batch_size=1)
     outputs = network(inputs)
 
     for level, level_output in outputs.items():
@@ -57,7 +57,7 @@ class YoloV7BackboneTest(parameterized.TestCase, tf.test.TestCase):
     """Test for sync bn on TPU and GPU devices."""
     inputs = np.random.rand(1, *_INPUT_SIZE, 3)
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
       network = yolov7.YoloV7(model_id='yolov7')

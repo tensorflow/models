@@ -15,11 +15,11 @@
 """Yolo models."""
 
 from typing import Mapping, Union, Any, Dict
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.yolo.modeling.layers import nn_blocks
 
 
-class Yolo(tf.keras.Model):
+class Yolo(tf_keras.Model):
   """The YOLO model class."""
 
   def __init__(self,
@@ -31,8 +31,8 @@ class Yolo(tf.keras.Model):
     """Detection initialization function.
 
     Args:
-      backbone: `tf.keras.Model` a backbone network.
-      decoder: `tf.keras.Model` a decoder network.
+      backbone: `tf_keras.Model` a backbone network.
+      decoder: `tf_keras.Model` a decoder network.
       head: `RetinaNetHead`, the RetinaNet head.
       detection_generator: the detection generator.
       **kwargs: keyword arguments to be passed.
@@ -93,7 +93,7 @@ class Yolo(tf.keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:

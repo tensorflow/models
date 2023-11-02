@@ -15,7 +15,7 @@
 """Tests for dbof."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.projects.yt8m.modeling.backbones import dbof
@@ -45,7 +45,7 @@ class DbofTest(parameterized.TestCase, tf.test.TestCase):
         context_gate_cluster_bottleneck_size=context_gate_cluster_bottleneck_size,
     )
     backbone = dbof.Dbof(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, None, 32]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, None, 32]),
         params=model_cfg,
     )
 

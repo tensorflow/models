@@ -17,13 +17,13 @@
 
 import math
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import masked_softmax
 
 
-class VotingAttention(tf.keras.layers.Layer):
+class VotingAttention(tf_keras.layers.Layer):
   """Voting Attention layer.
 
   Args:
@@ -52,12 +52,12 @@ class VotingAttention(tf.keras.layers.Layer):
     super().__init__(**kwargs)
     self._num_heads = num_heads
     self._head_size = head_size
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
+    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
+    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
+    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
+    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
 
   def build(self, unused_input_shapes):
     common_kwargs = dict(
@@ -66,7 +66,7 @@ class VotingAttention(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._query_dense = tf.keras.layers.EinsumDense(
+    self._query_dense = tf_keras.layers.EinsumDense(
         "BAE,ENH->BANH",
         output_shape=(None, self._num_heads, self._head_size),
         bias_axes="NH",
@@ -74,7 +74,7 @@ class VotingAttention(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    self._key_dense = tf.keras.layers.EinsumDense(
+    self._key_dense = tf_keras.layers.EinsumDense(
         "BAE,ENH->BANH",
         output_shape=(None, self._num_heads, self._head_size),
         bias_axes="NH",
@@ -103,7 +103,7 @@ class VotingAttention(tf.keras.layers.Layer):
     return tf.nn.softmax(doc_attention_probs + infadder)
 
 
-class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
+class MultiChannelAttention(tf_keras.layers.MultiHeadAttention):
   """Multi-channel Attention layer.
 
   Introduced in, [Generating Representative Headlines for News Stories

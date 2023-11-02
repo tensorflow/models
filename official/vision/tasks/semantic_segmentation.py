@@ -16,7 +16,7 @@
 from typing import Any, List, Mapping, Optional, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -38,7 +38,7 @@ class SemanticSegmentationTask(base_task.Task):
 
   def build_model(self):
     """Builds segmentation model."""
-    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+    input_specs = tf_keras.layers.InputSpec(shape=[None] +
                                             self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
@@ -46,7 +46,7 @@ class SemanticSegmentationTask(base_task.Task):
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
     l2_regularizer = (
-        tf.keras.regularizers.l2(l2_weight_decay /
+        tf_keras.regularizers.l2(l2_weight_decay /
                                  2.0) if l2_weight_decay else None)
 
     model = factory.build_segmentation_model(
@@ -54,11 +54,11 @@ class SemanticSegmentationTask(base_task.Task):
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
     # Builds the model
-    dummy_inputs = tf.keras.Input(self.task_config.model.input_size)
+    dummy_inputs = tf_keras.Input(self.task_config.model.input_size)
     _ = model(dummy_inputs, training=False)
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -204,7 +204,7 @@ class SemanticSegmentationTask(base_task.Task):
               dtype=tf.float32))
       if self.task_config.model.get('mask_scoring_head'):
         metrics.append(
-            tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
+            tf_keras.metrics.MeanSquaredError(name='mask_scores_mse'))
 
     if not training:
       self.iou_metric = segmentation_metrics.PerClassIoU(
@@ -218,14 +218,14 @@ class SemanticSegmentationTask(base_task.Task):
         # Masks scores metric can only be computed if labels are scaled to match
         # preticted mask scores.
         metrics.append(
-            tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
+            tf_keras.metrics.MeanSquaredError(name='mask_scores_mse'))
 
     return metrics
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
@@ -264,14 +264,14 @@ class SemanticSegmentationTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -284,7 +284,7 @@ class SemanticSegmentationTask(base_task.Task):
 
   def validation_step(self,
                       inputs: Tuple[Any, Any],
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
     """Validatation step.
 
@@ -332,7 +332,7 @@ class SemanticSegmentationTask(base_task.Task):
 
     return logs
 
-  def inference_step(self, inputs: tf.Tensor, model: tf.keras.Model):
+  def inference_step(self, inputs: tf.Tensor, model: tf_keras.Model):
     """Performs the forward step."""
     return model(inputs, training=False)
 

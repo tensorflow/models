@@ -17,7 +17,7 @@
 from typing import Sequence
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 from official.nlp.modeling.networks import fnet
@@ -27,7 +27,7 @@ class FNetTest(parameterized.TestCase, tf.test.TestCase):
 
   def tearDown(self):
     super(FNetTest, self).tearDown()
-    tf.keras.mixed_precision.set_global_policy("float32")
+    tf_keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.named_parameters(
       ("fnet", layers.MixingMechanism.FOURIER, ()),
@@ -53,9 +53,9 @@ class FNetTest(parameterized.TestCase, tf.test.TestCase):
         attention_layers=attention_layers)
 
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     dict_outputs = test_network(
         dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))
@@ -64,7 +64,7 @@ class FNetTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertIsInstance(test_network.transformer_layers, list)
     self.assertLen(test_network.transformer_layers, 3)
-    self.assertIsInstance(test_network.pooler_layer, tf.keras.layers.Dense)
+    self.assertIsInstance(test_network.pooler_layer, tf_keras.layers.Dense)
 
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
@@ -86,9 +86,9 @@ class FNetTest(parameterized.TestCase, tf.test.TestCase):
         num_layers=3)
 
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     test_network.build(
         dict(input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids))

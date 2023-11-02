@@ -30,7 +30,7 @@ object should not have more than a single bounding box.
 import copy
 from typing import Any, Optional, TypedDict
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class DetectionResult(TypedDict):

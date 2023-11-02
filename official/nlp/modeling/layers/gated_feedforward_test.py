@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import gated_feedforward
 
@@ -25,7 +25,7 @@ class GatedFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(GatedFeedforwardTest, self).tearDown()
-    tf.keras.mixed_precision.set_global_policy("float32")
+    tf_keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.parameters(
       (True, 1, "after_residual", "float32"),
@@ -38,7 +38,7 @@ class GatedFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
       (False, 1, "before_residual", "mixed_float16"),
   )
   def test_layer_creation(self, use_gate, num_blocks, dropout_position, dtype):
-    tf.keras.mixed_precision.set_global_policy(dtype)
+    tf_keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
         inner_dim=128,
         inner_activation="relu",
@@ -53,7 +53,7 @@ class GatedFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 64
     width = 128
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
@@ -70,7 +70,7 @@ class GatedFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_layer_invocation(self, use_gate, num_blocks, dropout_position,
                             dtype):
-    tf.keras.mixed_precision.set_global_policy(dtype)
+    tf_keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
         inner_dim=16,
         inner_activation="relu",
@@ -85,11 +85,11 @@ class GatedFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 16
     width = 32
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
 
     # Create a model from the test layer.
-    model = tf.keras.Model(data_tensor, output_tensor)
+    model = tf_keras.Model(data_tensor, output_tensor)
 
     # Invoke the model on test data.
     batch_size = 6

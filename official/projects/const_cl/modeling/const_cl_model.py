@@ -15,7 +15,7 @@
 """Builds ConST-CL SSL models."""
 from typing import Mapping, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.const_cl.configs import const_cl as const_cl_cfg
 from official.projects.const_cl.modeling.heads import instance_reconstructor
@@ -24,16 +24,16 @@ from official.projects.const_cl.modeling.heads import simple
 from official.vision.modeling import backbones
 from official.vision.modeling import factory_3d as model_factory
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-class ConstCLModel(tf.keras.Model):
+class ConstCLModel(tf_keras.Model):
   """A ConST-CL SSL model class builder."""
 
   def __init__(
       self,
       backbone,
-      input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      input_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
       # global_head
       num_hidden_layers: int = 3,
       num_hidden_channels: int = 1024,
@@ -62,7 +62,7 @@ class ConstCLModel(tf.keras.Model):
 
     Args:
       backbone: a 3d backbone network.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
       num_hidden_layers: the number of hidden layers in the MLP.
       num_hidden_channels: the number of hidden nodes in the MLP.
       num_output_channels: the number of final output nodes in the MLP.
@@ -122,12 +122,12 @@ class ConstCLModel(tf.keras.Model):
     self._backbone = backbone
 
     inputs = {
-        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
     endpoints = backbone(inputs['image'])
 
     res5 = endpoints['5']
-    res5 = tf.keras.layers.GlobalAveragePooling3D()(res5)
+    res5 = tf_keras.layers.GlobalAveragePooling3D()(res5)
     res5_1 = endpoints['5_1']
 
     global_embeddings = simple.MLP(
@@ -186,10 +186,10 @@ class ConstCLModel(tf.keras.Model):
 
 @model_factory.register_model_builder('const_cl_model')
 def build_const_cl_pretrain_model(
-    input_specs_dict: Mapping[str, tf.keras.layers.InputSpec],
+    input_specs_dict: Mapping[str, tf_keras.layers.InputSpec],
     model_config: const_cl_cfg.ConstCLModel,
     num_classes: int,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
 ) -> ConstCLModel:
   """Builds the ConST-CL video ssl model."""
   del num_classes

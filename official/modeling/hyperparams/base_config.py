@@ -22,7 +22,7 @@ import typing
 from typing import Any, List, Mapping, Optional, Type, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import yaml
 
 from official.modeling.hyperparams import params_dict

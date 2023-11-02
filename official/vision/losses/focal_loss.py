@@ -14,10 +14,10 @@
 
 """Losses used for detection models."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class FocalLoss(tf.keras.losses.Loss):
+class FocalLoss(tf_keras.losses.Loss):
   """Implements a Focal loss for classification problems.
 
   Reference:
@@ -27,14 +27,14 @@ class FocalLoss(tf.keras.losses.Loss):
   def __init__(self,
                alpha,
                gamma,
-               reduction=tf.keras.losses.Reduction.AUTO,
+               reduction=tf_keras.losses.Reduction.AUTO,
                name=None):
     """Initializes `FocalLoss`.
 
     Args:
       alpha: The `alpha` weight factor for binary class imbalance.
       gamma: The `gamma` focusing parameter to re-weight loss.
-      reduction: (Optional) Type of `tf.keras.losses.Reduction` to apply to
+      reduction: (Optional) Type of `tf_keras.losses.Reduction` to apply to
         loss. Default value is `AUTO`. `AUTO` indicates that the reduction
         option will be determined by the usage context. For almost all cases
         this defaults to `SUM_OVER_BATCH_SIZE`. When used with

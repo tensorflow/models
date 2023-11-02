@@ -14,7 +14,7 @@
 
 """Mask R-CNN variant with support for deep mask heads."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as deep_mask_head_rcnn_config
@@ -33,9 +33,9 @@ from official.vision.tasks import maskrcnn
 
 
 # Taken from modeling/factory.py
-def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
+def build_maskrcnn(input_specs: tf_keras.layers.InputSpec,
                    model_config: deep_mask_head_rcnn_config.DeepMaskHeadRCNN,
-                   l2_regularizer: tf.keras.regularizers.Regularizer = None):  # pytype: disable=annotation-type-mismatch  # typed-keras
+                   l2_regularizer: tf_keras.regularizers.Regularizer = None):  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
@@ -182,14 +182,14 @@ class DeepMaskHeadRCNNTask(maskrcnn.MaskRCNNTask):
   def build_model(self):
     """Builds Mask R-CNN model."""
 
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
+    l2_regularizer = (tf_keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     model = build_maskrcnn(
@@ -201,8 +201,8 @@ class DeepMaskHeadRCNNTask(maskrcnn.MaskRCNNTask):
       model.backbone.trainable = False
 
     # Builds the model through warm-up call.
-    dummy_images = tf.keras.Input(self.task_config.model.input_size)
-    dummy_image_shape = tf.keras.layers.Input([2])
+    dummy_images = tf_keras.Input(self.task_config.model.input_size)
+    dummy_image_shape = tf_keras.layers.Input([2])
     _ = model(dummy_images, image_shape=dummy_image_shape, training=False)
 
     return model

@@ -17,7 +17,7 @@ from typing import Any, Mapping, Optional
 
 # Import libraries
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -25,8 +25,8 @@ from official.vision.modeling.decoders import factory
 from official.vision.ops import spatial_transform_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class FPN(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class FPN(tf_keras.Model):
   """Creates a Feature Pyramid Network (FPN).
 
   This implements the paper:
@@ -50,8 +50,8 @@ class FPN(tf.keras.Model):
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a Feature Pyramid Network (FPN).
 
@@ -72,9 +72,9 @@ class FPN(tf.keras.Model):
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: A `str` name of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     self._config_dict = {
@@ -94,16 +94,16 @@ class FPN(tf.keras.Model):
         'bias_regularizer': bias_regularizer,
     }
     conv2d = (
-        tf.keras.layers.SeparableConv2D
+        tf_keras.layers.SeparableConv2D
         if use_separable_conv
-        else tf.keras.layers.Conv2D
+        else tf_keras.layers.Conv2D
     )
-    norm = tf.keras.layers.BatchNormalization
+    norm = tf_keras.layers.BatchNormalization
     activation_fn = tf_utils.get_activation(activation, use_keras_layer=True)
 
     # Build input feature pyramid.
     bn_axis = (
-        -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
+        -1 if tf_keras.backend.image_data_format() == 'channels_last' else 1
     )
 
     # Get input feature pyramid from backbone.
@@ -133,12 +133,12 @@ class FPN(tf.keras.Model):
 
       if fusion_type == 'sum':
         if use_keras_layer:
-          feats[str(level)] = tf.keras.layers.Add()([feat_a, feat_b])
+          feats[str(level)] = tf_keras.layers.Add()([feat_a, feat_b])
         else:
           feats[str(level)] = feat_a + feat_b
       elif fusion_type == 'concat':
         if use_keras_layer:
-          feats[str(level)] = tf.keras.layers.Concatenate(axis=-1)(
+          feats[str(level)] = tf_keras.layers.Concatenate(axis=-1)(
               [feat_a, feat_b])
         else:
           feats[str(level)] = tf.concat([feat_a, feat_b], axis=-1)
@@ -202,7 +202,7 @@ class FPN(tf.keras.Model):
 
     inputs = {}
     for level, spec in input_specs.items():
-      inputs[level] = tf.keras.Input(shape=spec[1:])
+      inputs[level] = tf_keras.Input(shape=spec[1:])
     return inputs
 
   def get_config(self) -> Mapping[str, Any]:
@@ -222,19 +222,19 @@ class FPN(tf.keras.Model):
 def build_fpn_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+) -> tf_keras.Model:
   """Builds FPN decoder from a config.
 
   Args:
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A OneOfConfig. Model config.
-    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+    l2_regularizer: A `tf_keras.regularizers.Regularizer` instance. Default to
       None.
 
   Returns:
-    A `tf.keras.Model` instance of the FPN decoder.
+    A `tf_keras.Model` instance of the FPN decoder.
 
   Raises:
     ValueError: If the model_config.decoder.type is not `fpn`.

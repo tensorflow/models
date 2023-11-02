@@ -15,7 +15,7 @@
 """Keras dropout layer that is aware of `RecomputeContext`."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.bigbird import recompute_grad as recompute_grad_lib
 from official.projects.bigbird import stateless_dropout as stateless_dropout_lib
@@ -57,8 +57,8 @@ def smart_cond(pred, true_fn=None, false_fn=None, name=None):
 
 
 # See https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dropout.
-class RecomputingDropout(tf.keras.layers.Layer):
-  """`tf.keras.layers.Dropout` that supports `recompute_grad`."""
+class RecomputingDropout(tf_keras.layers.Layer):
+  """`tf_keras.layers.Dropout` that supports `recompute_grad`."""
 
   def __init__(self,
                rate,
@@ -78,7 +78,7 @@ class RecomputingDropout(tf.keras.layers.Layer):
       seed: A Python integer to use as random seed.
       force_recomputation: If `True`, then raises an error if called outside a
         recompute context.
-      **kwargs: Keyword arguments for `tf.keras.layers.Layer`.
+      **kwargs: Keyword arguments for `tf_keras.layers.Layer`.
     """
 
     super(RecomputingDropout, self).__init__(**kwargs)
@@ -121,7 +121,7 @@ class RecomputingDropout(tf.keras.layers.Layer):
         a recompute context.
     """
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
 
     def dropped_inputs():
       """Randomly drops elements of `inputs` when `training=True`."""

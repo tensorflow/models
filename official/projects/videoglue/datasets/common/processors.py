@@ -18,7 +18,7 @@ from typing import Any, MutableMapping, Optional, Tuple
 
 from dmvr import processors
 import simclr.data_util as simclr_data
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 sample_sequence = processors.sample_sequence
 sample_linsapce_sequence = processors.sample_linspace_sequence

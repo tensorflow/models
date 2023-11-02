@@ -16,13 +16,13 @@
 
 import collections
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 from official.projects.perceiver.modeling.layers import utils
 
 
-class Decoder(tf.keras.layers.Layer):
+class Decoder(tf_keras.layers.Layer):
   """Perceiver Decoder layer.
 
   Uses cross attention decoder layer.
@@ -66,9 +66,9 @@ class Decoder(tf.keras.layers.Layer):
       num_heads:
         Number of attention heads for the `TransformerEncoderBlock`.
       name:
-        Sets the `tf.keras.layers.Layer` name.
+        Sets the `tf_keras.layers.Layer` name.
       **kwargs:
-        Any keyword arguments to pass through to `tf.keras.layers.Layer`.
+        Any keyword arguments to pass through to `tf_keras.layers.Layer`.
     """
     super().__init__(name=name, **kwargs)
 

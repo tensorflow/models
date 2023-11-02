@@ -17,7 +17,7 @@
 # Import libraries
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.transformer.utils import tokenizer
 
@@ -110,7 +110,7 @@ def translate_file(model,
       if distribution_strategy:
         for j in range(batch_size - len(lines)):
           lines.append([tokenizer.EOS_ID])
-      batch = tf.keras.preprocessing.sequence.pad_sequences(
+      batch = tf_keras.preprocessing.sequence.pad_sequences(
           lines,
           maxlen=params["decode_max_length"],
           dtype="int32",

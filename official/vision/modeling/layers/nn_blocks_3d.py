@@ -14,14 +14,14 @@
 
 """Contains common building blocks for 3D networks."""
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.vision.modeling.layers import nn_layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class SelfGating(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class SelfGating(tf_keras.layers.Layer):
   """Feature gating as used in S3D-G.
 
   This implements the S3D-G network from:
@@ -42,14 +42,14 @@ class SelfGating(tf.keras.layers.Layer):
     self._filters = filters
 
   def build(self, input_shape):
-    self._spatial_temporal_average = tf.keras.layers.GlobalAveragePooling3D()
+    self._spatial_temporal_average = tf_keras.layers.GlobalAveragePooling3D()
 
     # No BN and activation after conv.
-    self._transformer_w = tf.keras.layers.Conv3D(
+    self._transformer_w = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=[1, 1, 1],
         use_bias=True,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(
             mean=0.0, stddev=0.01))
 
     super(SelfGating, self).build(input_shape)
@@ -67,8 +67,8 @@ class SelfGating(tf.keras.layers.Layer):
     return tf.math.multiply(x, inputs)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class BottleneckBlock3D(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class BottleneckBlock3D(tf_keras.layers.Layer):
   """Creates a 3D bottleneck block."""
 
   def __init__(self,
@@ -104,9 +104,9 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
       use_self_gating: A `bool` of whether to apply self-gating module or not.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2d.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
       activation: A `str` name of the activation function.
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
@@ -130,22 +130,22 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf_keras.layers.BatchNormalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
     self._activation_fn = tf_utils.get_activation(activation)
 
   def build(self, input_shape):
-    self._shortcut_maxpool = tf.keras.layers.MaxPool3D(
+    self._shortcut_maxpool = tf_keras.layers.MaxPool3D(
         pool_size=[1, 1, 1],
         strides=[
             self._temporal_strides, self._spatial_strides, self._spatial_strides
         ])
 
-    self._shortcut_conv = tf.keras.layers.Conv3D(
+    self._shortcut_conv = tf_keras.layers.Conv3D(
         filters=4 * self._filters,
         kernel_size=1,
         strides=[
@@ -161,7 +161,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         synchronized=self._use_sync_bn)
 
-    self._temporal_conv = tf.keras.layers.Conv3D(
+    self._temporal_conv = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=[self._temporal_kernel_size, 1, 1],
         strides=[self._temporal_strides, 1, 1],
@@ -176,7 +176,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         synchronized=self._use_sync_bn)
 
-    self._spatial_conv = tf.keras.layers.Conv3D(
+    self._spatial_conv = tf_keras.layers.Conv3D(
         filters=self._filters,
         kernel_size=[1, 3, 3],
         strides=[1, self._spatial_strides, self._spatial_strides],
@@ -191,7 +191,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         epsilon=self._norm_epsilon,
         synchronized=self._use_sync_bn)
 
-    self._expand_conv = tf.keras.layers.Conv3D(
+    self._expand_conv = tf_keras.layers.Conv3D(
         filters=4 * self._filters,
         kernel_size=[1, 1, 1],
         strides=[1, 1, 1],

@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import activations
 from official.nlp.modeling import layers
@@ -27,7 +27,7 @@ from official.nlp.modeling.networks import encoder_scaffold
 # at any point, the list passed to the config object will be filled with a
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
-@tf.keras.utils.register_keras_serializable(package="TestOnly")
+@tf_keras.utils.register_keras_serializable(package="TestOnly")
 class ValidatedTransformerLayer(layers.Transformer):
 
   def __init__(self, call_list, call_class=None, **kwargs):
@@ -42,7 +42,7 @@ class ValidatedTransformerLayer(layers.Transformer):
   def get_config(self):
     config = super(ValidatedTransformerLayer, self).get_config()
     config["call_list"] = self.list
-    config["call_class"] = tf.keras.utils.get_registered_name(self.call_class)
+    config["call_class"] = tf_keras.utils.get_registered_name(self.call_class)
     return config
 
 
@@ -51,7 +51,7 @@ class ValidatedTransformerLayer(layers.Transformer):
 # object will be filled with a
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
-@tf.keras.utils.register_keras_serializable(package="TestOnly")
+@tf_keras.utils.register_keras_serializable(package="TestOnly")
 class ValidatedMaskLayer(layers.SelfAttentionMask):
 
   def __init__(self, call_list, call_class=None, **kwargs):
@@ -66,12 +66,12 @@ class ValidatedMaskLayer(layers.SelfAttentionMask):
   def get_config(self):
     config = super(ValidatedMaskLayer, self).get_config()
     config["call_list"] = self.list
-    config["call_class"] = tf.keras.utils.get_registered_name(self.call_class)
+    config["call_class"] = tf_keras.utils.get_registered_name(self.call_class)
     return config
 
 
-@tf.keras.utils.register_keras_serializable(package="TestLayerOnly")
-class TestLayer(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="TestLayerOnly")
+class TestLayer(tf_keras.layers.Layer):
   pass
 
 
@@ -79,7 +79,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(EncoderScaffoldLayerClassTest, self).tearDown()
-    tf.keras.mixed_precision.set_global_policy("float32")
+    tf_keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.named_parameters(
       dict(testcase_name="only_final_output", return_all_layer_outputs=False),
@@ -94,7 +94,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "hidden_size": hidden_size,
         "seq_length": sequence_length,
         "max_seq_length": sequence_length,
-        "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        "initializer": tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
     }
 
@@ -111,7 +111,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "call_list":
             call_list
     }
@@ -124,7 +124,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=num_hidden_instances,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cls=ValidatedTransformerLayer,
         hidden_cfg=hidden_cfg,
@@ -134,9 +134,9 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         layer_norm_before_pooling=True,
         return_all_layer_outputs=return_all_layer_outputs)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     output_data, pooled = test_network([word_ids, mask, type_ids])
 
     if return_all_layer_outputs:
@@ -147,7 +147,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
       data = output_data
     self.assertIsInstance(test_network.hidden_layers, list)
     self.assertLen(test_network.hidden_layers, num_hidden_instances)
-    self.assertIsInstance(test_network.pooler_layer, tf.keras.layers.Dense)
+    self.assertIsInstance(test_network.pooler_layer, tf_keras.layers.Dense)
 
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
@@ -166,7 +166,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(hasattr(test_network, "_output_layer_norm"))
 
   def test_network_creation_with_float16_dtype(self):
-    tf.keras.mixed_precision.set_global_policy("mixed_float16")
+    tf_keras.mixed_precision.set_global_policy("mixed_float16")
     hidden_size = 32
     sequence_length = 21
     embedding_cfg = {
@@ -175,7 +175,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "hidden_size": hidden_size,
         "seq_length": sequence_length,
         "max_seq_length": sequence_length,
-        "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        "initializer": tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
     }
     hidden_cfg = {
@@ -190,20 +190,20 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
     }
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     data, pooled = test_network([word_ids, mask, type_ids])
 
     expected_data_shape = [None, sequence_length, hidden_size]
@@ -227,7 +227,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "hidden_size": hidden_size,
         "seq_length": sequence_length,
         "max_seq_length": sequence_length,
-        "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        "initializer": tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
     }
     hidden_cfg = {
@@ -242,26 +242,26 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
     }
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg,
         dict_outputs=True)
 
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     outputs = test_network([word_ids, mask, type_ids])
 
     # Create a model based off of this network:
-    model = tf.keras.Model([word_ids, mask, type_ids], outputs)
+    model = tf_keras.Model([word_ids, mask, type_ids], outputs)
 
     # Invoke the model. We can't validate the output data here (the model is too
     # complex) but this will catch structural runtime errors.
@@ -282,7 +282,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "hidden_size": hidden_size,
         "seq_length": sequence_length,
         "max_seq_length": sequence_length * 2,
-        "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        "initializer": tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
     }
     hidden_cfg = {
@@ -297,18 +297,18 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
     }
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg)
     outputs = test_network([word_ids, mask, type_ids])
-    model = tf.keras.Model([word_ids, mask, type_ids], outputs)
+    model = tf_keras.Model([word_ids, mask, type_ids], outputs)
     _ = model.predict([word_id_data, mask_data, type_id_data])
 
   def test_serialize_deserialize(self):
@@ -321,7 +321,7 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "hidden_size": hidden_size,
         "seq_length": sequence_length,
         "max_seq_length": sequence_length,
-        "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        "initializer": tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
     }
     hidden_cfg = {
@@ -336,13 +336,13 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
     }
     # Create a small EncoderScaffold for testing.
     network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg)
@@ -358,20 +358,20 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(network.get_config(), new_network.get_config())
 
 
-class Embeddings(tf.keras.Model):
+class Embeddings(tf_keras.Model):
 
   def __init__(self, vocab_size, hidden_size):
     super().__init__()
     self.inputs = [
-        tf.keras.layers.Input(
+        tf_keras.layers.Input(
             shape=(None,), dtype=tf.int32, name="input_word_ids"),
-        tf.keras.layers.Input(shape=(None,), dtype=tf.int32, name="input_mask")
+        tf_keras.layers.Input(shape=(None,), dtype=tf.int32, name="input_mask")
     ]
     self.attention_mask = layers.SelfAttentionMask()
     self.embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=hidden_size,
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
         name="word_embeddings")
 
   def call(self, inputs):
@@ -404,25 +404,25 @@ class EncoderScaffoldEmbeddingNetworkTest(tf.test.TestCase):
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
     }
 
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cls=network)
 
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     data, pooled = test_network([word_ids, mask])
 
     # Create a model based off of this network:
-    model = tf.keras.Model([word_ids, mask], [data, pooled])
+    model = tf_keras.Model([word_ids, mask], [data, pooled])
 
     # Invoke the model. We can't validate the output data here (the model is too
     # complex) but this will catch structural runtime errors.
@@ -441,18 +441,18 @@ class EncoderScaffoldEmbeddingNetworkTest(tf.test.TestCase):
     # will have 2 inputs (mask and word_ids) instead of 3, and won't use
     # positional embeddings.
 
-    word_ids = tf.keras.layers.Input(
+    word_ids = tf_keras.layers.Input(
         shape=(sequence_length,), dtype=tf.int32, name="input_word_ids")
-    mask = tf.keras.layers.Input(
+    mask = tf_keras.layers.Input(
         shape=(sequence_length,), dtype=tf.int32, name="input_mask")
     embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=hidden_size,
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
         name="word_embeddings")
     word_embeddings = embedding_layer(word_ids)
     attention_mask = layers.SelfAttentionMask()([word_embeddings, mask])
-    network = tf.keras.Model([word_ids, mask],
+    network = tf_keras.Model([word_ids, mask],
                              [word_embeddings, attention_mask])
 
     hidden_cfg = {
@@ -467,14 +467,14 @@ class EncoderScaffoldEmbeddingNetworkTest(tf.test.TestCase):
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
     }
 
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cls=network,
@@ -491,14 +491,14 @@ class EncoderScaffoldEmbeddingNetworkTest(tf.test.TestCase):
     self.assertAllEqual(test_network.get_config(), new_network.get_config())
 
     # Create a model based off of the old and new networks:
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     data, pooled = new_network([word_ids, mask])
-    new_model = tf.keras.Model([word_ids, mask], [data, pooled])
+    new_model = tf_keras.Model([word_ids, mask], [data, pooled])
 
     data, pooled = test_network([word_ids, mask])
-    model = tf.keras.Model([word_ids, mask], [data, pooled])
+    model = tf_keras.Model([word_ids, mask], [data, pooled])
 
     # Copy the weights between models.
     new_model.set_weights(model.get_weights())
@@ -535,7 +535,7 @@ class EncoderScaffoldHiddenInstanceTest(
         "hidden_size": hidden_size,
         "seq_length": sequence_length,
         "max_seq_length": sequence_length,
-        "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        "initializer": tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
     }
 
@@ -552,7 +552,7 @@ class EncoderScaffoldHiddenInstanceTest(
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "call_list":
             call_list
     }
@@ -569,20 +569,20 @@ class EncoderScaffoldHiddenInstanceTest(
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cls=xformer,
         mask_cls=xmask,
         embedding_cfg=embedding_cfg)
 
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     data, pooled = test_network([word_ids, mask, type_ids])
 
     # Create a model based off of this network:
-    model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
+    model = tf_keras.Model([word_ids, mask, type_ids], [data, pooled])
 
     # Invoke the model. We can't validate the output data here (the model is too
     # complex) but this will catch structural runtime errors.
@@ -619,7 +619,7 @@ class EncoderScaffoldHiddenInstanceTest(
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "call_list":
             call_list
     }
@@ -635,7 +635,7 @@ class EncoderScaffoldHiddenInstanceTest(
     test_network_a = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cls=xformer,
         mask_cls=xmask,
@@ -644,7 +644,7 @@ class EncoderScaffoldHiddenInstanceTest(
     test_network_b = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         mask_cls=xmask,
         embedding_cls=test_network_a.embedding_network,
@@ -656,25 +656,25 @@ class EncoderScaffoldHiddenInstanceTest(
     test_network_c = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=2,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         mask_cls=xmask,
         embedding_cls=test_network_a.embedding_network,
         hidden_cls=hidden_layers)
 
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     # Create model based off of network a:
     data_a, pooled_a = test_network_a([word_ids, mask])
-    model_a = tf.keras.Model([word_ids, mask], [data_a, pooled_a])
+    model_a = tf_keras.Model([word_ids, mask], [data_a, pooled_a])
     # Create model based off of network b:
     data_b, pooled_b = test_network_b([word_ids, mask])
-    model_b = tf.keras.Model([word_ids, mask], [data_b, pooled_b])
+    model_b = tf_keras.Model([word_ids, mask], [data_b, pooled_b])
     # Create model based off of network b:
     data_c, pooled_c = test_network_c([word_ids, mask])
-    model_c = tf.keras.Model([word_ids, mask], [data_c, pooled_c])
+    model_c = tf_keras.Model([word_ids, mask], [data_c, pooled_c])
 
     batch_size = 3
     word_id_data = np.random.randint(
@@ -704,7 +704,7 @@ class EncoderScaffoldHiddenInstanceTest(
         "hidden_size": hidden_size,
         "seq_length": sequence_length,
         "max_seq_length": sequence_length,
-        "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        "initializer": tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
     }
 
@@ -721,7 +721,7 @@ class EncoderScaffoldHiddenInstanceTest(
         "attention_dropout_rate":
             0.1,
         "kernel_initializer":
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
         "call_list":
             call_list,
         "call_class":
@@ -734,7 +734,7 @@ class EncoderScaffoldHiddenInstanceTest(
     kwargs = dict(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
-        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooler_layer_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=0.02),
         embedding_cfg=embedding_cfg)
 
@@ -762,15 +762,15 @@ class EncoderScaffoldHiddenInstanceTest(
     self.assertAllEqual(test_network.get_config(), new_network.get_config())
 
     # Create a model based off of the old and new networks:
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     data, pooled = new_network([word_ids, mask, type_ids])
-    new_model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
+    new_model = tf_keras.Model([word_ids, mask, type_ids], [data, pooled])
 
     data, pooled = test_network([word_ids, mask, type_ids])
-    model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
+    model = tf_keras.Model([word_ids, mask, type_ids], [data, pooled])
 
     # Copy the weights between models.
     new_model.set_weights(model.get_weights())

@@ -29,7 +29,7 @@ import collections
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import box_ops
 
@@ -323,7 +323,7 @@ def _get_instance_class_ids(
   return tf.where(result == 0, -1, result)
 
 
-class PanopticQualityV2(tf.keras.metrics.Metric):
+class PanopticQualityV2(tf_keras.metrics.Metric):
   """Panoptic quality metrics with vectorized implementation.
 
   This implementation is supported on TPU.

@@ -15,7 +15,7 @@
 """Tests for masked LM loss."""
 import numpy as np
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
@@ -39,9 +39,9 @@ class ClassificationLossTest(tf.test.TestCase):
         hidden_size=hidden_size,
         num_attention_heads=4,
     )
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
     _ = xformer_stack([word_ids, mask, type_ids])
 
     # Create a maskedLM from the transformer stack.
@@ -49,11 +49,11 @@ class ClassificationLossTest(tf.test.TestCase):
         embedding_table=xformer_stack.get_embedding_table(), output=output)
 
     # Create a model from the masked LM layer.
-    lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
-    masked_lm_positions = tf.keras.Input(
+    lm_input_tensor = tf_keras.Input(shape=(sequence_length, hidden_size))
+    masked_lm_positions = tf_keras.Input(
         shape=(num_predictions,), dtype=tf.int32)
     output = test_layer(lm_input_tensor, masked_positions=masked_lm_positions)
-    return tf.keras.Model([lm_input_tensor, masked_lm_positions], output)
+    return tf_keras.Model([lm_input_tensor, masked_lm_positions], output)
 
   def test_loss_3d_input(self):
     """Test overall loss with a 3-dimensional input, from a masked LM."""

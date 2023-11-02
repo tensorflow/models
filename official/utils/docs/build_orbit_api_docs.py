@@ -25,7 +25,7 @@ from absl import logging
 
 import orbit
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
@@ -57,8 +57,8 @@ def hide_module_model_and_layer_methods():
     complex layers.
   """
   module_contents = list(tf.Module.__dict__.items())
-  model_contents = list(tf.keras.Model.__dict__.items())
-  layer_contents = list(tf.keras.layers.Layer.__dict__.items())
+  model_contents = list(tf_keras.Model.__dict__.items())
+  layer_contents = list(tf_keras.layers.Layer.__dict__.items())
 
   for name, obj in module_contents + layer_contents + model_contents:
     if name == '__init__':

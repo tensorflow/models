@@ -17,21 +17,21 @@
 import math
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
-Initializer = tf.keras.initializers.Initializer
+Initializer = tf_keras.initializers.Initializer
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class PositionEmbedding(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class PositionEmbedding(tf_keras.layers.Layer):
   """Creates a positional embedding.
 
   Example:
   ```python
   position_embedding = PositionEmbedding(max_length=100)
-  inputs = tf.keras.Input((100, 32), dtype=tf.float32)
+  inputs = tf_keras.Input((100, 32), dtype=tf.float32)
   outputs = position_embedding(inputs)
   ```
 
@@ -59,13 +59,13 @@ class PositionEmbedding(tf.keras.layers.Layer):
           "`max_length` must be an Integer, not `None`."
       )
     self._max_length = max_length
-    self._initializer = tf.keras.initializers.get(initializer)
+    self._initializer = tf_keras.initializers.get(initializer)
     self._seq_axis = seq_axis
 
   def get_config(self):
     config = {
         "max_length": self._max_length,
-        "initializer": tf.keras.initializers.serialize(self._initializer),
+        "initializer": tf_keras.initializers.serialize(self._initializer),
         "seq_axis": self._seq_axis,
     }
     base_config = super(PositionEmbedding, self).get_config()
@@ -94,8 +94,8 @@ class PositionEmbedding(tf.keras.layers.Layer):
     return tf.broadcast_to(position_embeddings, input_shape)
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class RelativePositionEmbedding(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class RelativePositionEmbedding(tf_keras.layers.Layer):
   """Creates a positional embedding.
 
   This layer calculates the position encoding as a mix of sine and cosine
@@ -227,8 +227,8 @@ def _relative_position_bucket(relative_position,
   return ret
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class RelativePositionBias(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class RelativePositionBias(tf_keras.layers.Layer):
   """Relative position embedding via per-head bias in T5 style.
 
   Reference implementation in MeshTF:
@@ -254,7 +254,7 @@ class RelativePositionBias(tf.keras.layers.Layer):
     if embeddings_initializer:
       self._embed_init = embeddings_initializer
     else:
-      self._embed_init = tf.keras.initializers.TruncatedNormal(stddev=1.0)
+      self._embed_init = tf_keras.initializers.TruncatedNormal(stddev=1.0)
     with tf.name_scope(self.name):
       self._relative_attention_bias = self.add_weight(
           "rel_embedding",
@@ -274,7 +274,7 @@ class RelativePositionBias(tf.keras.layers.Layer):
         "bidirectional":
             self.bidirectional,
         "embeddings_initializer":
-            tf.keras.initializers.serialize(self._embed_init),
+            tf_keras.initializers.serialize(self._embed_init),
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

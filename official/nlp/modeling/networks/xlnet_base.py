@@ -16,7 +16,7 @@
 
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
@@ -366,7 +366,7 @@ def _compute_positional_encoding(
   return relative_position_encoding
 
 
-class RelativePositionEncoding(tf.keras.layers.Layer):
+class RelativePositionEncoding(tf_keras.layers.Layer):
   """Creates a relative positional encoding.
 
   This layer creates a relative positional encoding as described in
@@ -412,8 +412,8 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
     return relative_position_encoding
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class XLNetBase(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class XLNetBase(tf_keras.layers.Layer):
   """Base XLNet model.
 
   Attributes:
@@ -511,9 +511,9 @@ class XLNetBase(tf.keras.layers.Layer):
         initializer=tf_utils.clone_initializer(self._initializer),
         dtype=tf.float32,
         name="word_embedding")
-    self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
 
-    self.embedding_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self.embedding_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
     self.position_encoding = RelativePositionEncoding(self._hidden_size)
 
     self._transformer_xl = transformer_xl.TransformerXL(

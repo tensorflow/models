@@ -17,7 +17,7 @@
 from typing import Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -140,9 +140,9 @@ class YoloV7Task(base_task.Task):
     l2_weight_decay = self.task_config.weight_decay / 2.0
 
     input_size = model_base_cfg.input_size.copy()
-    input_specs = tf.keras.layers.InputSpec(shape=[None] + input_size)
+    input_specs = tf_keras.layers.InputSpec(shape=[None] + input_size)
     l2_regularizer = (
-        tf.keras.regularizers.l2(l2_weight_decay) if l2_weight_decay else None)
+        tf_keras.regularizers.l2(l2_weight_decay) if l2_weight_decay else None)
     model = factory.build_yolov7(input_specs, model_base_cfg, l2_regularizer)
     model.build(input_specs.shape)
     model.summary(print_fn=logging.info)
@@ -301,7 +301,7 @@ class YoloV7Task(base_task.Task):
       scaled_loss = loss
 
       # Scale the loss for numerical stability
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     # Compute the gradient
@@ -309,7 +309,7 @@ class YoloV7Task(base_task.Task):
     gradients = tape.gradient(scaled_loss, train_vars)
 
     # Get unscaled loss if we are using the loss scale optimizer on fp16
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       gradients = optimizer.get_unscaled_gradients(gradients)
 
     # Apply gradients to the model
@@ -406,7 +406,7 @@ class YoloV7Task(base_task.Task):
     res = self.coco_metric.result()
     return res
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
 
     if not self.task_config.init_checkpoint:

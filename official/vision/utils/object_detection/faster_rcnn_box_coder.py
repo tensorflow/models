@@ -27,7 +27,7 @@ Faster RCNN box coder follows the coding schema described below:
   See http://arxiv.org/abs/1506.01497 for details.
 """
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.utils.object_detection import box_coder
 from official.vision.utils.object_detection import box_list

@@ -24,7 +24,7 @@ import re
 import unicodedata
 
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import sentencepiece as spm
 

@@ -24,7 +24,7 @@ from typing import Text
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.bert import bert_models
 from official.legacy.bert import configs
 
@@ -45,7 +45,7 @@ flags.DEFINE_enum("model_type", "encoder", ["encoder", "squad"],
                   "What kind of BERT model to export.")
 
 
-def create_bert_model(bert_config: configs.BertConfig) -> tf.keras.Model:
+def create_bert_model(bert_config: configs.BertConfig) -> tf_keras.Model:
   """Creates a BERT keras core model from BERT configuration.
 
   Args:
@@ -55,11 +55,11 @@ def create_bert_model(bert_config: configs.BertConfig) -> tf.keras.Model:
     A keras model.
   """
   # Adds input layers just as placeholders.
-  input_word_ids = tf.keras.layers.Input(
+  input_word_ids = tf_keras.layers.Input(
       shape=(None,), dtype=tf.int32, name="input_word_ids")
-  input_mask = tf.keras.layers.Input(
+  input_mask = tf_keras.layers.Input(
       shape=(None,), dtype=tf.int32, name="input_mask")
-  input_type_ids = tf.keras.layers.Input(
+  input_type_ids = tf_keras.layers.Input(
       shape=(None,), dtype=tf.int32, name="input_type_ids")
   transformer_encoder = bert_models.get_transformer_encoder(
       bert_config, sequence_length=None)
@@ -67,7 +67,7 @@ def create_bert_model(bert_config: configs.BertConfig) -> tf.keras.Model:
       [input_word_ids, input_mask, input_type_ids])
   # To keep consistent with legacy hub modules, the outputs are
   # "pooled_output" and "sequence_output".
-  return tf.keras.Model(
+  return tf_keras.Model(
       inputs=[input_word_ids, input_mask, input_type_ids],
       outputs=[pooled_output, sequence_output]), transformer_encoder
 
@@ -77,7 +77,7 @@ def export_bert_tfhub(bert_config: configs.BertConfig,
                       hub_destination: Text,
                       vocab_file: Text,
                       do_lower_case: bool = None):
-  """Restores a tf.keras.Model and saves for TF-Hub."""
+  """Restores a tf_keras.Model and saves for TF-Hub."""
   # If do_lower_case is not explicit, default to checking whether "uncased" is
   # in the vocab file name
   if do_lower_case is None:
@@ -99,7 +99,7 @@ def export_bert_squad_tfhub(bert_config: configs.BertConfig,
                             hub_destination: Text,
                             vocab_file: Text,
                             do_lower_case: bool = None):
-  """Restores a tf.keras.Model for BERT with SQuAD and saves for TF-Hub."""
+  """Restores a tf_keras.Model for BERT with SQuAD and saves for TF-Hub."""
   # If do_lower_case is not explicit, default to checking whether "uncased" is
   # in the vocab file name
   if do_lower_case is None:

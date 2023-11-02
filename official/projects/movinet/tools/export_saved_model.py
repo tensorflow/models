@@ -54,7 +54,7 @@ from typing import Optional, Tuple
 
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.movinet.modeling import movinet
 from official.projects.movinet.modeling import movinet_model
@@ -120,7 +120,7 @@ FLAGS = flags.FLAGS
 
 
 def export_saved_model(
-    model: tf.keras.Model,
+    model: tf_keras.Model,
     input_shape: Tuple[int, int, int, int, int],
     export_path: str = '/tmp/movinet/',
     causal: bool = False,
@@ -131,7 +131,7 @@ def export_saved_model(
   """Exports a MoViNet model to a saved model.
 
   Args:
-    model: the tf.keras.Model to export.
+    model: the tf_keras.Model to export.
     input_shape: The 5D spatiotemporal input shape of size [batch_size,
       num_frames, image_height, image_width, num_channels]. Set the field or a
       shape position in the field to None for dynamic input.
@@ -195,11 +195,11 @@ def export_saved_model(
     else:
       signatures = predict_fn
 
-    tf.keras.models.save_model(
+    tf_keras.models.save_model(
         model, export_path, signatures=signatures)
   else:
     _ = model(tf.ones(input_shape_concrete))
-    tf.keras.models.save_model(model, export_path)
+    tf_keras.models.save_model(model, export_path)
 
 
 def build_and_export_saved_model(
@@ -252,7 +252,7 @@ def build_and_export_saved_model(
       exactly match those of the model.
   """
 
-  input_specs = tf.keras.layers.InputSpec(shape=input_shape)
+  input_specs = tf_keras.layers.InputSpec(shape=input_shape)
 
   # Override swish activation implementation to remove custom gradients
   if activation == 'swish':

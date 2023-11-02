@@ -19,7 +19,7 @@ import functools
 from typing import Any, Mapping, Optional, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.maxvit.modeling import common_ops as ops
 from official.projects.maxvit.modeling import layers
@@ -72,7 +72,7 @@ MAXVIT_SPECS = {
 }
 
 
-class MaxViTBlock(tf.keras.layers.Layer):
+class MaxViTBlock(tf_keras.layers.Layer):
   """MaxViT block = MBConv + Block-Attention + FFN + Grid-Attention + FFN."""
 
   def __init__(
@@ -147,14 +147,14 @@ class MaxViTBlock(tf.keras.layers.Layer):
     else:
       self._shortcut_proj = None
 
-    self._block_attn_layer_norm = tf.keras.layers.LayerNormalization(
+    self._block_attn_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1,
         epsilon=self._ln_epsilon,
         dtype=self._ln_dtype,
         name='attn_layer_norm',
     )
 
-    self._grid_attn_layer_norm = tf.keras.layers.LayerNormalization(
+    self._grid_attn_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1,
         epsilon=self._ln_epsilon,
         dtype=self._ln_dtype,
@@ -185,14 +185,14 @@ class MaxViTBlock(tf.keras.layers.Layer):
         name='attention_1',
     )
 
-    self._block_ffn_layer_norm = tf.keras.layers.LayerNormalization(
+    self._block_ffn_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1,
         epsilon=self._ln_epsilon,
         dtype=self._ln_dtype,
         name='ffn_layer_norm',
     )
 
-    self._grid_ffn_layer_norm = tf.keras.layers.LayerNormalization(
+    self._grid_ffn_layer_norm = tf_keras.layers.LayerNormalization(
         axis=-1,
         epsilon=self._ln_epsilon,
         dtype=self._ln_dtype,
@@ -414,7 +414,7 @@ class MaxViTBlock(tf.keras.layers.Layer):
     shortcut = output
     output = self.block_attn_branch(output, training, attn_mask)
     if self._dropout:
-      output = tf.keras.layers.Dropout(
+      output = tf_keras.layers.Dropout(
           self._dropout, name='after_block_attn_drop'
       )(output, training=training)
     output = ops.residual_add(output, shortcut, self._survival_prob, training)
@@ -422,7 +422,7 @@ class MaxViTBlock(tf.keras.layers.Layer):
     shortcut = output
     output = self.block_ffn_branch(output, training)
     if self._dropout:
-      output = tf.keras.layers.Dropout(
+      output = tf_keras.layers.Dropout(
           self._dropout, name='after_block_ffn_drop_1'
       )(output, training=training)
     output = ops.residual_add(output, shortcut, self._survival_prob, training)
@@ -431,7 +431,7 @@ class MaxViTBlock(tf.keras.layers.Layer):
     shortcut = output
     output = self.grid_attn_branch(output, training, attn_mask)
     if self._dropout:
-      output = tf.keras.layers.Dropout(
+      output = tf_keras.layers.Dropout(
           self._dropout, name='after_grid_attn_drop'
       )(output, training=training)
     output = ops.residual_add(output, shortcut, self._survival_prob, training)
@@ -439,7 +439,7 @@ class MaxViTBlock(tf.keras.layers.Layer):
     shortcut = output
     output = self.grid_ffn_branch(output, training)
     if self._dropout:
-      output = tf.keras.layers.Dropout(
+      output = tf_keras.layers.Dropout(
           self._dropout, name='after_grid_ffn_drop'
       )(output, training=training)
     output = ops.residual_add(output, shortcut, self._survival_prob, training)
@@ -447,7 +447,7 @@ class MaxViTBlock(tf.keras.layers.Layer):
     return output
 
 
-class MaxViT(tf.keras.Model):
+class MaxViT(tf_keras.Model):
   """MaxViT's backbone that outputs the pre-global-pooled features."""
 
   def __init__(
@@ -571,17 +571,17 @@ class MaxViT(tf.keras.Model):
   def build(self, input_shape: tf.TensorShape) -> None:
     if self._norm_type == 'layer_norm':
       bn_class = functools.partial(
-          tf.keras.layers.LayerNormalization, epsilon=self._ln_epsilon
+          tf_keras.layers.LayerNormalization, epsilon=self._ln_epsilon
       )
     elif self._norm_type == 'batch_norm':
       bn_class = functools.partial(
-          tf.keras.layers.BatchNormalization,
+          tf_keras.layers.BatchNormalization,
           momentum=self._bn_momentum,
           epsilon=self._bn_epsilon,
       )
     elif self._norm_type == 'sync_batch_norm':
       bn_class = functools.partial(
-          tf.keras.layers.BatchNormalization,
+          tf_keras.layers.BatchNormalization,
           momentum=self._bn_momentum,
           epsilon=self._bn_epsilon,
           synchronized=True,
@@ -597,7 +597,7 @@ class MaxViT(tf.keras.Model):
     # Stem
     stem_layers = []
     for i, _ in enumerate(self._stem_hsize):
-      conv_layer = tf.keras.layers.Conv2D(
+      conv_layer = tf_keras.layers.Conv2D(
           filters=self._stem_hsize[i],
           kernel_size=self._kernel_size,
           strides=2 if i == 0 else 1,
@@ -612,11 +612,11 @@ class MaxViT(tf.keras.Model):
       if i < len(self._stem_hsize) - 1:
         stem_layers.append(bn_class(name='norm_{}'.format(i)))
         stem_layers.append(
-            tf.keras.layers.Activation(
+            tf_keras.layers.Activation(
                 ops.get_act_fn(self._activation), name=f'act_{i}'
             )
         )
-    self._stem = tf.keras.Sequential(layers=stem_layers, name='stem')
+    self._stem = tf_keras.Sequential(layers=stem_layers, name='stem')
 
     # Backbone
     self._blocks = []
@@ -731,10 +731,10 @@ class MaxViT(tf.keras.Model):
         bid += 1
 
     if self._representation_size and self._representation_size > 0:
-      self._dense = tf.keras.layers.Dense(
+      self._dense = tf_keras.layers.Dense(
           self._representation_size, name='pre_logits')
       if self._add_gap_layer_norm:
-        self._final_layer_norm = tf.keras.layers.LayerNormalization(
+        self._final_layer_norm = tf_keras.layers.LayerNormalization(
             epsilon=self._ln_epsilon, name='final_layer_norm')
 
   def _add_absolute_position_encoding(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -811,7 +811,7 @@ class MaxViT(tf.keras.Model):
 
     if self._representation_size and self._representation_size > 0:
       # Backbone's output is [batch_size, height, weight, channel_size].
-      output = tf.keras.layers.GlobalAveragePooling2D()(output)
+      output = tf_keras.layers.GlobalAveragePooling2D()(output)
       # Maybe add a layer_norm after global average pooling.
       if self._add_gap_layer_norm:
         output = self._final_layer_norm(output)
@@ -928,6 +928,6 @@ def build_maxvit(
       norm_activation_config=norm_activation_config,
   )
   # Build the backbone to get a proper `output_specs`.
-  dummy_inputs = tf.keras.Input(input_specs.shape[1:])
+  dummy_inputs = tf_keras.Input(input_specs.shape[1:])
   _ = maxvit(dummy_inputs, training=False)
   return maxvit

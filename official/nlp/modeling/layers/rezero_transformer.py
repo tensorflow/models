@@ -18,15 +18,15 @@ from typing import Optional
 
 from absl import logging
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import util
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
+@tf_keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
-class ReZeroTransformer(tf.keras.layers.Layer):
+class ReZeroTransformer(tf_keras.layers.Layer):
   """Transformer layer with ReZero.
 
   This layer implements the Transformer from "Attention Is All You Need".
@@ -93,12 +93,12 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._attention_dropout_rate = attention_dropout_rate
     self._dropout_rate = dropout_rate
     self._output_range = output_range
-    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf.keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
-    self._kernel_constraint = tf.keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf.keras.constraints.get(bias_constraint)
+    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
+    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
+    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
+    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
     self._use_layer_norm = use_layer_norm
     self._share_rezero = share_rezero
 
@@ -138,7 +138,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._attention_layer = tf.keras.layers.MultiHeadAttention(
+    self._attention_layer = tf_keras.layers.MultiHeadAttention(
         num_heads=self._num_heads,
         key_dim=self._attention_head_size,
         dropout=self._attention_dropout_rate,
@@ -146,17 +146,17 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._attention_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
     if self._use_layer_norm:
       # Use float32 in layernorm for numeric stability.
       # It is probably safe in mixed_float16, but we haven't validated this yet.
       self._attention_layer_norm = (
-          tf.keras.layers.LayerNormalization(
+          tf_keras.layers.LayerNormalization(
               name="self_attention_layer_norm",
               axis=-1,
               epsilon=1e-12,
               dtype=tf.float32))
-    self._intermediate_dense = tf.keras.layers.EinsumDense(
+    self._intermediate_dense = tf_keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._inner_dim),
         bias_axes="d",
@@ -164,15 +164,15 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    policy = tf.keras.mixed_precision.global_policy()
+    policy = tf_keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.
       # TODO(b/154538392): Investigate this.
       policy = tf.float32
-    self._inner_activation_layer = tf.keras.layers.Activation(
+    self._inner_activation_layer = tf_keras.layers.Activation(
         self._inner_activation, dtype=policy)
-    self._output_dense = tf.keras.layers.EinsumDense(
+    self._output_dense = tf_keras.layers.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, hidden_size),
         bias_axes="d",
@@ -180,15 +180,15 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         **common_kwargs)
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._output_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
     if self._use_layer_norm:
       # Use float32 in layernorm for numeric stability.
-      self._output_layer_norm = tf.keras.layers.LayerNormalization(
+      self._output_layer_norm = tf_keras.layers.LayerNormalization(
           name="output_layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
 
     self._rezero_a = self.add_weight(
         name="rezero_alpha",
-        initializer=tf.keras.initializers.Zeros(),
+        initializer=tf_keras.initializers.Zeros(),
         trainable=True,
         dtype=tf.float32)
 
@@ -197,7 +197,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     else:
       self._rezero_a_ffn = self.add_weight(
           name="rezero_alpha_ffn",
-          initializer=tf.keras.initializers.Zeros(),
+          initializer=tf_keras.initializers.Zeros(),
           trainable=True,
           dtype=tf.float32)
 
@@ -222,19 +222,19 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         "share_rezero":
             self._share_rezero,
         "kernel_initializer":
-            tf.keras.initializers.serialize(self._kernel_initializer),
+            tf_keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
-            tf.keras.initializers.serialize(self._bias_initializer),
+            tf_keras.initializers.serialize(self._bias_initializer),
         "kernel_regularizer":
-            tf.keras.regularizers.serialize(self._kernel_regularizer),
+            tf_keras.regularizers.serialize(self._kernel_regularizer),
         "bias_regularizer":
-            tf.keras.regularizers.serialize(self._bias_regularizer),
+            tf_keras.regularizers.serialize(self._bias_regularizer),
         "activity_regularizer":
-            tf.keras.regularizers.serialize(self._activity_regularizer),
+            tf_keras.regularizers.serialize(self._activity_regularizer),
         "kernel_constraint":
-            tf.keras.constraints.serialize(self._kernel_constraint),
+            tf_keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
-            tf.keras.constraints.serialize(self._bias_constraint),
+            tf_keras.constraints.serialize(self._bias_constraint),
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

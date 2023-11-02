@@ -16,7 +16,7 @@
 
 import inspect
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def create_global_step() -> tf.Variable:

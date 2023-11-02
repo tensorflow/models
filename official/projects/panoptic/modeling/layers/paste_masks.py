@@ -16,10 +16,10 @@
 
 from typing import List
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class BilinearGridSampler(tf.keras.layers.Layer):
+class BilinearGridSampler(tf_keras.layers.Layer):
   """Bilinear Grid Sampling layer."""
 
   def __init__(self, align_corners: bool = False, **kwargs):
@@ -127,7 +127,7 @@ class BilinearGridSampler(tf.keras.layers.Layer):
     return cls(**config)
 
 
-class PasteMasks(tf.keras.layers.Layer):
+class PasteMasks(tf_keras.layers.Layer):
   """Layer to paste instance masks."""
 
   def __init__(self, output_size: List[int],

@@ -17,7 +17,7 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling import backbones
 from official.vision.modeling import video_classification_model
@@ -33,13 +33,13 @@ class VideoClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
                                      spatial_size, activation,
                                      aggregate_endpoints):
     """Test for creation of a ResNet3D-50 classifier."""
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, temporal_size, spatial_size, spatial_size, 3])
     temporal_strides = [1, 1, 1, 1]
     temporal_kernel_sizes = [(3, 3, 3), (3, 1, 3, 1), (3, 1, 3, 1, 3, 1),
                              (1, 3, 1)]
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = backbones.ResNet3D(
         model_id=model_id,

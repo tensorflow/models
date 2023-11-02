@@ -16,7 +16,7 @@
 
 from typing import Any, Dict, List, Tuple
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.utils import utils
 from official.vision.dataloaders import parser

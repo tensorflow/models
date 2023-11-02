@@ -43,7 +43,7 @@ from typing import Union, Mapping, Optional
 
 # Import libraries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import registry
 from official.modeling import hyperparams
@@ -58,7 +58,7 @@ def register_decoder_builder(key: str):
   This decorator supports registration of decoder builder as follows:
 
   ```
-  class MyDecoder(tf.keras.Model):
+  class MyDecoder(tf_keras.Model):
     pass
 
   @register_decoder_builder('mydecoder')
@@ -83,7 +83,7 @@ def register_decoder_builder(key: str):
 def build_identity(
     input_specs: Optional[Mapping[str, tf.TensorShape]] = None,
     model_config: Optional[hyperparams.Config] = None,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None) -> None:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None) -> None:
   del input_specs, model_config, l2_regularizer  # Unused by identity decoder.
   return None
 
@@ -91,15 +91,15 @@ def build_identity(
 def build_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None,
-    **kwargs) -> Union[None, tf.keras.Model, tf.keras.layers.Layer]:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None,
+    **kwargs) -> Union[None, tf_keras.Model, tf_keras.layers.Layer]:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds decoder from a config.
 
   Args:
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A `OneOfConfig` of model config.
-    l2_regularizer: A `tf.keras.regularizers.Regularizer` object. Default to
+    l2_regularizer: A `tf_keras.regularizers.Regularizer` object. Default to
       None.
     **kwargs: Additional keyword args to be passed to decoder builder.
 

@@ -17,7 +17,7 @@
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.common import registry_imports  # pylint: disable=unused-import
 from official.projects.centernet.configs import backbones
@@ -58,7 +58,7 @@ def _create_centernet_model(model_id: int = 52,
   model_config = task_config.model
 
   backbone = factory.build_backbone(
-      input_specs=tf.keras.layers.InputSpec(shape=[1, 512, 512, 3]),
+      input_specs=tf_keras.layers.InputSpec(shape=[1, 512, 512, 3]),
       backbone_config=model_config.backbone,
       norm_activation_config=model_config.norm_activation)
 

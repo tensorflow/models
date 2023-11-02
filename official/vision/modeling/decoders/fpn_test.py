@@ -16,7 +16,7 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.backbones import mobilenet
 from official.vision.modeling.backbones import resnet
@@ -34,9 +34,9 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, input_size, min_level, max_level,
                             use_separable_conv, use_keras_layer, fusion_type):
     """Test creation of FPN."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
 
     backbone = resnet.ResNet(model_id=50)
     network = fpn.FPN(
@@ -66,9 +66,9 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
                                            max_level, use_separable_conv,
                                            use_keras_layer):
     """Test creation of FPN with mobilenet backbone."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
 
     backbone = mobilenet.MobileNet(model_id='MobileNetV2')
     network = fpn.FPN(

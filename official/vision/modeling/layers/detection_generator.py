@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple
 # Import libraries
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import edgetpu
 from official.vision.ops import box_ops
@@ -897,8 +897,8 @@ def _generate_detections_tflite(
   return dummy_post_processing(boxes, scores, anchors)[::-1]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class DetectionGenerator(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class DetectionGenerator(tf_keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
   def __init__(
@@ -1109,8 +1109,8 @@ class DetectionGenerator(tf.keras.layers.Layer):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MultilevelDetectionGenerator(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MultilevelDetectionGenerator(tf_keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
   def __init__(

@@ -16,7 +16,7 @@
 
 import os
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import yaml
 
 from official.modeling.hyperparams import params_dict

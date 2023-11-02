@@ -18,7 +18,7 @@ import os
 
 from absl import flags
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.distribute import combinations

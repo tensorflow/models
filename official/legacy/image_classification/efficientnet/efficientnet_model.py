@@ -27,7 +27,7 @@ import math
 from typing import Any, Dict, Optional, Text, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.image_classification import preprocessing
 from official.legacy.image_classification.efficientnet import common_modules
 from official.modeling import tf_utils
@@ -163,7 +163,7 @@ def conv2d_block(inputs: tf.Tensor,
   batch_norm = common_modules.get_batch_norm(config.batch_norm)
   bn_momentum = config.bn_momentum
   bn_epsilon = config.bn_epsilon
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   weight_decay = config.weight_decay
 
   name = name or ''
@@ -175,15 +175,15 @@ def conv2d_block(inputs: tf.Tensor,
       'use_bias': use_bias,
       'padding': 'same',
       'name': name + '_conv2d',
-      'kernel_regularizer': tf.keras.regularizers.l2(weight_decay),
-      'bias_regularizer': tf.keras.regularizers.l2(weight_decay),
+      'kernel_regularizer': tf_keras.regularizers.l2(weight_decay),
+      'bias_regularizer': tf_keras.regularizers.l2(weight_decay),
   }
 
   if depthwise:
-    conv2d = tf.keras.layers.DepthwiseConv2D
+    conv2d = tf_keras.layers.DepthwiseConv2D
     init_kwargs.update({'depthwise_initializer': CONV_KERNEL_INITIALIZER})
   else:
-    conv2d = tf.keras.layers.Conv2D
+    conv2d = tf_keras.layers.Conv2D
     init_kwargs.update({
         'filters': conv_filters,
         'kernel_initializer': CONV_KERNEL_INITIALIZER
@@ -201,7 +201,7 @@ def conv2d_block(inputs: tf.Tensor,
             x)
 
   if activation is not None:
-    x = tf.keras.layers.Activation(activation, name=name + '_activation')(x)
+    x = tf_keras.layers.Activation(activation, name=name + '_activation')(x)
   return x
 
 
@@ -223,7 +223,7 @@ def mb_conv_block(inputs: tf.Tensor,
   use_se = config.use_se
   activation = tf_utils.get_activation(config.activation)
   drop_connect_rate = config.drop_connect_rate
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   use_depthwise = block.conv_type != 'no_depthwise'
   prefix = prefix or ''
 
@@ -276,8 +276,8 @@ def mb_conv_block(inputs: tf.Tensor,
     else:
       se_shape = (1, 1, filters)
 
-    se = tf.keras.layers.GlobalAveragePooling2D(name=prefix + 'se_squeeze')(x)
-    se = tf.keras.layers.Reshape(se_shape, name=prefix + 'se_reshape')(se)
+    se = tf_keras.layers.GlobalAveragePooling2D(name=prefix + 'se_squeeze')(x)
+    se = tf_keras.layers.Reshape(se_shape, name=prefix + 'se_reshape')(se)
 
     se = conv2d_block(
         se,
@@ -295,7 +295,7 @@ def mb_conv_block(inputs: tf.Tensor,
         use_batch_norm=False,
         activation='sigmoid',
         name=prefix + 'se_expand')
-    x = tf.keras.layers.multiply([x, se], name=prefix + 'se_excite')
+    x = tf_keras.layers.multiply([x, se], name=prefix + 'se_excite')
 
   # Output phase
   x = conv2d_block(
@@ -303,7 +303,7 @@ def mb_conv_block(inputs: tf.Tensor,
 
   # Add identity so that quantization-aware training can insert quantization
   # ops correctly.
-  x = tf.keras.layers.Activation(
+  x = tf_keras.layers.Activation(
       tf_utils.get_activation('identity'), name=prefix + 'id')(
           x)
 
@@ -314,19 +314,19 @@ def mb_conv_block(inputs: tf.Tensor,
       # The only difference between dropout and dropconnect in TF is scaling by
       # drop_connect_rate during training. See:
       # https://github.com/keras-team/keras/pull/9898#issuecomment-380577612
-      x = tf.keras.layers.Dropout(
+      x = tf_keras.layers.Dropout(
           drop_connect_rate, noise_shape=(None, 1, 1, 1), name=prefix + 'drop')(
               x)
 
-    x = tf.keras.layers.add([x, inputs], name=prefix + 'add')
+    x = tf_keras.layers.add([x, inputs], name=prefix + 'add')
 
   return x
 
 
-def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
+def efficientnet(image_input: tf_keras.layers.Input, config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
   """Creates an EfficientNet graph given the model parameters.
 
-  This function is wrapped by the `EfficientNet` class to make a tf.keras.Model.
+  This function is wrapped by the `EfficientNet` class to make a tf_keras.Model.
 
   Args:
     image_input: the input batch of images
@@ -345,14 +345,14 @@ def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):  # py
   num_classes = config.num_classes
   input_channels = config.input_channels
   rescale_input = config.rescale_input
-  data_format = tf.keras.backend.image_data_format()
+  data_format = tf_keras.backend.image_data_format()
   dtype = config.dtype
   weight_decay = config.weight_decay
 
   x = image_input
   if data_format == 'channels_first':
     # Happens on GPU/TPU if available.
-    x = tf.keras.layers.Permute((3, 1, 2))(x)
+    x = tf_keras.layers.Permute((3, 1, 2))(x)
   if rescale_input:
     x = preprocessing.normalize_images(
         x, num_channels=input_channels, dtype=dtype, data_format=data_format)
@@ -405,22 +405,22 @@ def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):  # py
       name='top')
 
   # Build classifier
-  x = tf.keras.layers.GlobalAveragePooling2D(name='top_pool')(x)
+  x = tf_keras.layers.GlobalAveragePooling2D(name='top_pool')(x)
   if dropout_rate and dropout_rate > 0:
-    x = tf.keras.layers.Dropout(dropout_rate, name='top_dropout')(x)
-  x = tf.keras.layers.Dense(
+    x = tf_keras.layers.Dropout(dropout_rate, name='top_dropout')(x)
+  x = tf_keras.layers.Dense(
       num_classes,
       kernel_initializer=DENSE_KERNEL_INITIALIZER,
-      kernel_regularizer=tf.keras.regularizers.l2(weight_decay),
-      bias_regularizer=tf.keras.regularizers.l2(weight_decay),
+      kernel_regularizer=tf_keras.regularizers.l2(weight_decay),
+      bias_regularizer=tf_keras.regularizers.l2(weight_decay),
       name='logits')(
           x)
-  x = tf.keras.layers.Activation('softmax', name='probs')(x)
+  x = tf_keras.layers.Activation('softmax', name='probs')(x)
 
   return x
 
 
-class EfficientNet(tf.keras.Model):
+class EfficientNet(tf_keras.Model):
   """Wrapper class for an EfficientNet Keras model.
 
   Contains helper methods to build, manage, and save metadata about the model.
@@ -443,7 +443,7 @@ class EfficientNet(tf.keras.Model):
     input_channels = self.config.input_channels
     model_name = self.config.model_name
     input_shape = (None, None, input_channels)  # Should handle any size image
-    image_input = tf.keras.layers.Input(shape=input_shape)
+    image_input = tf_keras.layers.Input(shape=input_shape)
 
     output = efficientnet(image_input, self.config)
 

@@ -15,11 +15,11 @@
 """Functions and classes related to optimization (weight updates)."""
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.nlp import optimization
 
 
-class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
+class WarmUp(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Applys a warmup schedule on a given learning rate decay schedule."""
 
   def __init__(self,
@@ -69,7 +69,7 @@ def create_optimizer(init_lr,
                      weight_decay_rate=0.0):
   """Creates an optimizer with learning rate schedule."""
   # Implements linear decay of the learning rate.
-  learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
+  learning_rate_fn = tf_keras.optimizers.schedules.PolynomialDecay(
       initial_learning_rate=init_lr,
       decay_steps=num_train_steps - num_warmup_steps,
       end_learning_rate=init_lr * min_lr_ratio)
@@ -92,7 +92,7 @@ def create_optimizer(init_lr,
         include_in_weight_decay=["r_s_bias", "r_r_bias", "r_w_bias"])
   else:
     logging.info("Using Adam with adam_epsilon=%.9f", (adam_epsilon))
-    optimizer = tf.keras.optimizers.legacy.Adam(
+    optimizer = tf_keras.optimizers.legacy.Adam(
         learning_rate=learning_rate_fn, epsilon=adam_epsilon)
 
   return optimizer, learning_rate_fn

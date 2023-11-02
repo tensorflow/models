@@ -14,7 +14,7 @@
 
 """Input pipelines."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def decode_record(record, name_to_features):

@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from typing import Optional, Text
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.detection.dataloader import factory
 from official.legacy.detection.dataloader import mode_keys as ModeKeys
 from official.modeling.hyperparams import params_dict

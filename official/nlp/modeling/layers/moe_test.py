@@ -15,7 +15,7 @@
 """Tests for moe.py."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import moe
 
@@ -55,7 +55,7 @@ class MoeTest(tf.test.TestCase):
 
   def tearDown(self):
     super().tearDown()
-    tf.keras.mixed_precision.set_global_policy('float32')
+    tf_keras.mixed_precision.set_global_policy('float32')
 
   def test_router_z_loss_dtype(self):
     x = tf.constant([[[10.0, 5.0]]], dtype=tf.float32)
@@ -71,7 +71,7 @@ class MoeTest(tf.test.TestCase):
     self.assertAllClose(expected, y, atol=1e-7)
 
   def test_experts_choose_masked_router_dtype_shape(self):
-    tf.keras.mixed_precision.set_global_policy('mixed_bfloat16')
+    tf_keras.mixed_precision.set_global_policy('mixed_bfloat16')
     num_groups = 2
     tokens_per_group = 3
     hidden_dim = tokens_per_group
@@ -87,8 +87,8 @@ class MoeTest(tf.test.TestCase):
         num_experts=num_experts,
         jitter_noise=0.1,
         use_bias=True,
-        kernel_initializer=tf.keras.initializers.get('identity'),
-        bias_initializer=tf.keras.initializers.get('ones'))
+        kernel_initializer=tf_keras.initializers.get('identity'),
+        bias_initializer=tf_keras.initializers.get('ones'))
     router_mask = router(x, expert_capacity=expert_capacity, training=False)
 
     self.assertDTypeEqual(router_mask.dispatch_mask, tf.bfloat16)
@@ -141,9 +141,9 @@ class MoeTest(tf.test.TestCase):
     layer = moe.FeedForward(
         d_ff=config['d_ff'],
         output_dropout=config['output_dropout'],
-        activation=tf.keras.activations.relu,
-        kernel_initializer=tf.keras.initializers.get('ones'),
-        bias_initializer=tf.keras.initializers.get('ones'))
+        activation=tf_keras.activations.relu,
+        kernel_initializer=tf_keras.initializers.get('ones'),
+        bias_initializer=tf_keras.initializers.get('ones'))
     inputs = make_input_ones(1, 2, 3)
     outputs = layer(inputs, training=False)
     manual_outputs = tf.constant([[[129.0, 129.0, 129.0], [129.0, 129.0,
@@ -171,9 +171,9 @@ class MoeTest(tf.test.TestCase):
         num_experts=1,
         d_ff=config['expert_d_ff'],
         output_dropout=config['expert_dropout_rate'],
-        activation=tf.keras.activations.relu,
-        kernel_initializer=tf.keras.initializers.get('ones'),
-        bias_initializer=tf.keras.initializers.get('ones'))
+        activation=tf_keras.activations.relu,
+        kernel_initializer=tf_keras.initializers.get('ones'),
+        bias_initializer=tf_keras.initializers.get('ones'))
     inputs = make_experts_input_ones(1, 1, 2, 3)
     outputs = layer(inputs, training=False)
     manual_outputs = tf.constant([[[[133.0, 133.0, 133.0],

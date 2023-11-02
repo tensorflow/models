@@ -15,7 +15,7 @@
 """Video classification input and model functions for serving/inference."""
 from typing import Mapping, Dict, Text
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.dataloaders import video_input
 from official.vision.serving import export_base

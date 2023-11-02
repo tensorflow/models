@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.ops import nms
 from official.legacy.detection.utils import box_utils
@@ -170,7 +170,7 @@ def multilevel_propose_rois(rpn_boxes,
     return selected_rois, selected_roi_scores
 
 
-class ROIGenerator(tf.keras.layers.Layer):
+class ROIGenerator(tf_keras.layers.Layer):
   """Proposes RoIs for the second stage processing."""
 
   def __init__(self, params):

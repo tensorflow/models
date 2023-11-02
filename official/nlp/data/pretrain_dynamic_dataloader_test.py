@@ -19,7 +19,7 @@ from absl import logging
 from absl.testing import parameterized
 import numpy as np
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations

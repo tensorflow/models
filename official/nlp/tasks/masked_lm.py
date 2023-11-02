@@ -15,7 +15,7 @@
 """Masked language task."""
 
 import dataclasses
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -68,7 +68,7 @@ class MaskedLMTask(base_task.Task):
     ] if config.cls_heads else []
     return models.BertPretrainerV2(
         mlm_activation=tf_utils.get_activation(config.mlm_activation),
-        mlm_initializer=tf.keras.initializers.TruncatedNormal(
+        mlm_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=config.mlm_initializer_range),
         encoder_network=encoder_network,
         classification_heads=cls_heads)
@@ -80,7 +80,7 @@ class MaskedLMTask(base_task.Task):
                    aux_losses=None) -> tf.Tensor:
     with tf.name_scope('MaskedLMTask/losses'):
       metrics = dict([(metric.name, metric) for metric in metrics])
-      lm_prediction_losses = tf.keras.losses.sparse_categorical_crossentropy(
+      lm_prediction_losses = tf_keras.losses.sparse_categorical_crossentropy(
           labels['masked_lm_ids'],
           tf.cast(model_outputs['mlm_logits'], tf.float32),
           from_logits=True)
@@ -95,7 +95,7 @@ class MaskedLMTask(base_task.Task):
         sentence_outputs = tf.cast(
             model_outputs['next_sentence'], dtype=tf.float32)
         sentence_loss = tf.reduce_mean(
-            tf.keras.losses.sparse_categorical_crossentropy(
+            tf_keras.losses.sparse_categorical_crossentropy(
                 sentence_labels, sentence_outputs, from_logits=True))
         metrics['next_sentence_loss'].update_state(sentence_loss)
         total_loss = mlm_loss + sentence_loss
@@ -133,15 +133,15 @@ class MaskedLMTask(base_task.Task):
   def build_metrics(self, training=None):
     del training
     metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
-        tf.keras.metrics.Mean(name='lm_example_loss')
+        tf_keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
+        tf_keras.metrics.Mean(name='lm_example_loss')
     ]
     # TODO(hongkuny): rethink how to manage metrics creation with heads.
     if self.task_config.train_data.use_next_sentence_label:
       metrics.append(
-          tf.keras.metrics.SparseCategoricalAccuracy(
+          tf_keras.metrics.SparseCategoricalAccuracy(
               name='next_sentence_accuracy'))
-      metrics.append(tf.keras.metrics.Mean(name='next_sentence_loss'))
+      metrics.append(tf_keras.metrics.Mean(name='next_sentence_loss'))
     return metrics
 
   def process_metrics(self, metrics, labels, model_outputs):
@@ -155,8 +155,8 @@ class MaskedLMTask(base_task.Task):
         metrics['next_sentence_accuracy'].update_state(
             labels['next_sentence_labels'], model_outputs['next_sentence'])
 
-  def train_step(self, inputs, model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer, metrics):
+  def train_step(self, inputs, model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer, metrics):
     """Does forward and backward.
 
     Args:
@@ -189,7 +189,7 @@ class MaskedLMTask(base_task.Task):
     self.process_metrics(metrics, inputs, outputs)
     return {self.loss: loss}
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics):
     """Validatation step.
 
     Args:

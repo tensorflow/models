@@ -14,7 +14,7 @@
 
 """Tests for the customized Mish activation."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import activations
 

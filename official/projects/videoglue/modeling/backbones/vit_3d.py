@@ -17,7 +17,7 @@
 from typing import Any, Optional, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.videoglue.configs import backbones_3d as cfg
 from official.vision.modeling.backbones import factory
@@ -25,14 +25,14 @@ from official.vision.modeling.backbones import vit
 
 Encoder = vit.Encoder
 TokenLayer = vit.TokenLayer
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-class AddSeparablePositionEmbs(tf.keras.layers.Layer):
+class AddSeparablePositionEmbs(tf_keras.layers.Layer):
   """Adds (optionally learned) positional embeddings to the inputs."""
 
   def __init__(self,
-               posemb_init: Optional[tf.keras.initializers.Initializer] = None,
+               posemb_init: Optional[tf_keras.initializers.Initializer] = None,
                posemb_origin_shape: Optional[Tuple[int, int]] = None,
                posemb_target_shape: Optional[Tuple[int, int]] = None,
                **kwargs):
@@ -69,12 +69,12 @@ class AddSeparablePositionEmbs(tf.keras.layers.Layer):
         'pos_embedding_time',
         (1, nt, nc),
         dtype=tf.float32,
-        initializer=tf.keras.initializers.TruncatedNormal(0.02))
+        initializer=tf_keras.initializers.TruncatedNormal(0.02))
     self._pos_embedding_space = self.add_weight(
         'pos_embedding_space',
         (1, nl, nc),
         dtype=tf.float32,
-        initializer=tf.keras.initializers.TruncatedNormal(0.02))
+        initializer=tf_keras.initializers.TruncatedNormal(0.02))
 
   def _interpolate(self, pos_embedding: tf.Tensor,
                    from_shape: Tuple[int, int],
@@ -111,7 +111,7 @@ class AddSeparablePositionEmbs(tf.keras.layers.Layer):
     return inputs + pos_embedding_time + pos_embedding_space
 
 
-class VisionTransformer3D(tf.keras.Model):
+class VisionTransformer3D(tf_keras.Model):
   """Class to build VisionTransformer-3D family model.
 
   The Vision Transformer architecture with the modification on the first
@@ -135,7 +135,7 @@ class VisionTransformer3D(tf.keras.Model):
       hidden_size: int = 768,
       representation_size: int = 0,
       pooler: str = 'token',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       original_init: bool = True,
       pos_embed_shape: Optional[
           Union[Tuple[int, int], Tuple[int, int, int]]] = None):
@@ -184,7 +184,7 @@ class VisionTransformer3D(tf.keras.Model):
     nh = self._input_specs.shape[2] // self._spatial_patch_size
     nw = self._input_specs.shape[3] // self._spatial_patch_size
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
     add_pos_embed = True
     if self._variant == 'native':
       x = self._tokenize(inputs)
@@ -225,7 +225,7 @@ class VisionTransformer3D(tf.keras.Model):
       raise ValueError(f'unrecognized pooler type: {pooler}')
 
     if representation_size:
-      x = tf.keras.layers.Dense(
+      x = tf_keras.layers.Dense(
           representation_size,
           kernel_regularizer=kernel_regularizer,
           name='pre_logits',
@@ -247,7 +247,7 @@ class VisionTransformer3D(tf.keras.Model):
 
   def _tokenize(self, inputs: tf.Tensor):
     """The first layer to tokenize and project the input tensor."""
-    x = tf.keras.layers.Conv3D(
+    x = tf_keras.layers.Conv3D(
         filters=self._hidden_size,
         kernel_size=self._patch_size,
         strides=self._patch_size,
@@ -255,14 +255,14 @@ class VisionTransformer3D(tf.keras.Model):
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=('lecun_normal'
                             if self._original_init else 'he_uniform'))(inputs)
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       time_axis, rows_axis, cols_axis = (1, 2, 3)
     else:
       time_axis, rows_axis, cols_axis = (2, 3, 4)
       # The reshape below assumes the data_format is 'channels_last,' so
       # transpose to that. Once the data is flattened by the reshape, the
       # data_format is irrelevant, so no need to update
-      # tf.keras.backend.image_data_format.
+      # tf_keras.backend.image_data_format.
       x = tf.transpose(x, perm=[0, 2, 3, 4, 1])
 
     nt = self._input_specs.shape[time_axis] // self._temporal_patch_size
@@ -281,7 +281,7 @@ class VisionTransformer3D(tf.keras.Model):
     mean = tf.constant((0.45, 0.45, 0.45), dtype=inputs.dtype)
     std = tf.constant((0.225, 0.225, 0.225), dtype=inputs.dtype)
     inputs = (inputs - mean) / std
-    x = tf.keras.layers.Conv3D(
+    x = tf_keras.layers.Conv3D(
         filters=self._hidden_size,
         kernel_size=self._patch_size,
         strides=self._patch_size,
@@ -289,14 +289,14 @@ class VisionTransformer3D(tf.keras.Model):
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=('lecun_normal'
                             if self._original_init else 'he_uniform'))(inputs)
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       time_axis, rows_axis, cols_axis = (1, 2, 3)
     else:
       time_axis, rows_axis, cols_axis = (2, 3, 4)
       # The reshape below assumes the data_format is 'channels_last,' so
       # transpose to that. Once the data is flattened by the reshape, the
       # data_format is irrelevant, so no need to update
-      # tf.keras.backend.image_data_format.
+      # tf_keras.backend.image_data_format.
       x = tf.transpose(x, perm=[0, 2, 3, 4, 1])
 
     nc = x.shape[-1]
@@ -316,10 +316,10 @@ class VisionTransformer3D(tf.keras.Model):
 
 @factory.register_backbone_builder('vit_3d')
 def build_vit_3d(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: cfg.Backbone3D,
     norm_activation_config: Any,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None):
   """Builds ViT-3D model.
 
   Args:

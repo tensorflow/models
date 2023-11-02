@@ -15,7 +15,7 @@
 """Tests for official.nlp.configs.encoders."""
 import os
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.nlp.configs import encoders

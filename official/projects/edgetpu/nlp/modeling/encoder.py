@@ -14,15 +14,15 @@
 
 """MobileBERT text encoder network."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp import modeling
 from official.nlp.modeling import layers
 from official.projects.edgetpu.nlp.modeling import edgetpu_layers
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class MobileBERTEncoder(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class MobileBERTEncoder(tf_keras.Model):
   """A Keras functional API implementation for MobileBERT encoder."""
 
   def __init__(self,
@@ -91,7 +91,7 @@ class MobileBERTEncoder(tf.keras.Model):
       **kwargs: Other keyworded and arguments.
     """
     self._self_setattr_tracking = False
-    initializer = tf.keras.initializers.TruncatedNormal(
+    initializer = tf_keras.initializers.TruncatedNormal(
         stddev=initializer_range)
 
     # layer instantiation
@@ -132,11 +132,11 @@ class MobileBERTEncoder(tf.keras.Model):
       self._transformer_layers.append(transformer)
 
     # input tensor
-    input_ids = tf.keras.layers.Input(
+    input_ids = tf_keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_word_ids')
-    type_ids = tf.keras.layers.Input(
+    type_ids = tf_keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_type_ids')
-    input_mask = tf.keras.layers.Input(
+    input_mask = tf_keras.layers.Input(
         shape=(None,), dtype=input_mask_dtype, name='input_mask')
     self.inputs = [input_ids, input_mask, type_ids]
 
@@ -161,7 +161,7 @@ class MobileBERTEncoder(tf.keras.Model):
     first_token = tf.squeeze(prev_output[:, 0:1, :], axis=1)
 
     if classifier_activation:
-      self._pooler_layer = tf.keras.layers.EinsumDense(
+      self._pooler_layer = tf_keras.layers.EinsumDense(
           'ab,bc->ac',
           output_shape=hidden_size,
           activation=tf.tanh,

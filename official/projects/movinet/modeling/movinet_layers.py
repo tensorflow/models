@@ -19,7 +19,7 @@ Reference: https://arxiv.org/pdf/2103.11511.pdf
 
 from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.vision.modeling.layers import nn_layers
@@ -65,8 +65,8 @@ def normalize_tuple(value: Union[int, Tuple[int, ...]], size: int, name: str):
     return value_tuple
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class Squeeze3D(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class Squeeze3D(tf_keras.layers.Layer):
   """Squeeze3D layer to remove singular dimensions."""
 
   def call(self, inputs):
@@ -74,8 +74,8 @@ class Squeeze3D(tf.keras.layers.Layer):
     return tf.squeeze(inputs, axis=(1, 2, 3))
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MobileConv2D(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MobileConv2D(tf_keras.layers.Layer):
   """Conv2D layer with extra options to support mobile devices.
 
   Reshapes 5D video tensor inputs to 4D, allowing Conv2D to run across
@@ -95,11 +95,11 @@ class MobileConv2D(tf.keras.layers.Layer):
       use_bias: bool = True,
       kernel_initializer: str = 'glorot_uniform',
       bias_initializer: str = 'zeros',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      activity_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      kernel_constraint: Optional[tf.keras.constraints.Constraint] = None,
-      bias_constraint: Optional[tf.keras.constraints.Constraint] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      activity_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_constraint: Optional[tf_keras.constraints.Constraint] = None,
+      bias_constraint: Optional[tf_keras.constraints.Constraint] = None,
       use_depthwise: bool = False,
       use_temporal: bool = False,
       use_buffered_input: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
@@ -108,7 +108,7 @@ class MobileConv2D(tf.keras.layers.Layer):
       **kwargs):  # pylint: disable=g-doc-args
     """Initializes mobile conv2d.
 
-    For the majority of arguments, see tf.keras.layers.Conv2D.
+    For the majority of arguments, see tf_keras.layers.Conv2D.
 
     Args:
       use_depthwise: if True, use DepthwiseConv2D instead of Conv2D
@@ -255,8 +255,8 @@ class MobileConv2D(tf.keras.layers.Layer):
     return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ConvBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ConvBlock(tf_keras.layers.Layer):
   """A Conv followed by optional BatchNorm and Activation."""
 
   def __init__(
@@ -267,12 +267,12 @@ class ConvBlock(tf.keras.layers.Layer):
       depthwise: bool = False,
       causal: bool = False,
       use_bias: bool = False,
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] =
+      tf_keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_batch_norm: bool = True,
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.BatchNormalization,
+      batch_norm_layer: tf_keras.layers.Layer =
+      tf_keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -475,8 +475,8 @@ class ConvBlock(tf.keras.layers.Layer):
     return x
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class StreamBuffer(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class StreamBuffer(tf_keras.layers.Layer):
   """Stream buffer wrapper which caches activations of previous frames."""
 
   def __init__(self,
@@ -550,7 +550,7 @@ class StreamBuffer(tf.keras.layers.Layer):
     return full_inputs, states
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
+@tf_keras.utils.register_keras_serializable(package='Vision')
 class StreamConvBlock(ConvBlock):
   """ConvBlock with StreamBuffer."""
 
@@ -562,12 +562,12 @@ class StreamConvBlock(ConvBlock):
       depthwise: bool = False,
       causal: bool = False,
       use_bias: bool = False,
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_batch_norm: bool = True,
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.BatchNormalization,
+      batch_norm_layer: tf_keras.layers.Layer =
+      tf_keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -684,8 +684,8 @@ class StreamConvBlock(ConvBlock):
     return x, states
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class StreamSqueezeExcitation(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class StreamSqueezeExcitation(tf_keras.layers.Layer):
   """Squeeze and excitation layer with causal mode.
 
   Reference: https://arxiv.org/pdf/1709.01507.pdf
@@ -699,8 +699,8 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
       gating_activation: nn_layers.Activation = 'sigmoid',
       causal: bool = False,
       conv_type: str = '3d',
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_positional_encoding: bool = False,
       state_prefix: Optional[str] = None,  # pytype: disable=annotation-type-mismatch  # typed-keras
@@ -837,8 +837,8 @@ class StreamSqueezeExcitation(tf.keras.layers.Layer):
     return x * inputs, states
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MobileBottleneck(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MobileBottleneck(tf_keras.layers.Layer):
   """A depthwise inverted bottleneck block.
 
   Uses dependency injection to allow flexible definition of different layers
@@ -846,11 +846,11 @@ class MobileBottleneck(tf.keras.layers.Layer):
   """
 
   def __init__(self,
-               expansion_layer: tf.keras.layers.Layer,
-               feature_layer: tf.keras.layers.Layer,
-               projection_layer: tf.keras.layers.Layer,
-               attention_layer: Optional[tf.keras.layers.Layer] = None,
-               skip_layer: Optional[tf.keras.layers.Layer] = None,
+               expansion_layer: tf_keras.layers.Layer,
+               feature_layer: tf_keras.layers.Layer,
+               projection_layer: tf_keras.layers.Layer,
+               attention_layer: Optional[tf_keras.layers.Layer] = None,
+               skip_layer: Optional[tf_keras.layers.Layer] = None,
                stochastic_depth_drop_rate: Optional[float] = None,
                **kwargs):
     """Implementation for mobile bottleneck.
@@ -872,7 +872,7 @@ class MobileBottleneck(tf.keras.layers.Layer):
     self._attention_layer = attention_layer
     self._skip_layer = skip_layer
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
-    self._identity = tf.keras.layers.Activation(tf.identity)
+    self._identity = tf_keras.layers.Activation(tf.identity)
     self._rezero = nn_layers.Scale(initializer='zeros', name='rezero')
 
     if stochastic_depth_drop_rate:
@@ -930,8 +930,8 @@ class MobileBottleneck(tf.keras.layers.Layer):
     return x + skip, states
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class SkipBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class SkipBlock(tf_keras.layers.Layer):
   """Skip block for bottleneck blocks."""
 
   def __init__(
@@ -939,11 +939,11 @@ class SkipBlock(tf.keras.layers.Layer):
       out_filters: int,
       downsample: bool = False,
       conv_type: str = '3d',
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.BatchNormalization,
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] =
+      tf_keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
+      batch_norm_layer: tf_keras.layers.Layer =
+      tf_keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,  # pytype: disable=annotation-type-mismatch  # typed-keras
       use_sync_bn: bool = False,
@@ -993,13 +993,13 @@ class SkipBlock(tf.keras.layers.Layer):
 
     if downsample:
       if self._conv_type == '2plus1d':
-        self._pool = tf.keras.layers.AveragePooling2D(
+        self._pool = tf_keras.layers.AveragePooling2D(
             pool_size=(3, 3),
             strides=(2, 2),
             padding='same',
             name='skip_pool')
       else:
-        self._pool = tf.keras.layers.AveragePooling3D(
+        self._pool = tf_keras.layers.AveragePooling3D(
             pool_size=(1, 3, 3),
             strides=(1, 2, 2),
             padding='same',
@@ -1039,8 +1039,8 @@ class SkipBlock(tf.keras.layers.Layer):
     return self._projection(x)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MovinetBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MovinetBlock(tf_keras.layers.Layer):
   """A basic block for MoViNets.
 
   Applies a mobile inverted bottleneck with pointwise expansion, 3D depthwise
@@ -1061,11 +1061,11 @@ class MovinetBlock(tf.keras.layers.Layer):
       conv_type: str = '3d',
       se_type: str = '3d',
       use_positional_encoding: bool = False,
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.BatchNormalization,
+      batch_norm_layer: tf_keras.layers.Layer =
+      tf_keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -1255,8 +1255,8 @@ class MovinetBlock(tf.keras.layers.Layer):
     return self._mobile_bottleneck(inputs, states=states)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class Stem(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class Stem(tf_keras.layers.Layer):
   """Stem layer for video networks.
 
   Applies an initial convolution block operation.
@@ -1270,11 +1270,11 @@ class Stem(tf.keras.layers.Layer):
       causal: bool = False,
       conv_type: str = '3d',
       activation: nn_layers.Activation = 'swish',
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.BatchNormalization,
+      batch_norm_layer: tf_keras.layers.Layer =
+      tf_keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -1371,8 +1371,8 @@ class Stem(tf.keras.layers.Layer):
     return self._stem(inputs, states=states)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class Head(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class Head(tf_keras.layers.Layer):
   """Head layer for video networks.
 
   Applies pointwise projection and global pooling.
@@ -1383,11 +1383,11 @@ class Head(tf.keras.layers.Layer):
       project_filters: int,
       conv_type: str = '3d',
       activation: nn_layers.Activation = 'swish',
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = tf.keras
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
-      batch_norm_layer: tf.keras.layers.Layer =
-      tf.keras.layers.BatchNormalization,
+      batch_norm_layer: tf_keras.layers.Layer =
+      tf_keras.layers.BatchNormalization,
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -1490,8 +1490,8 @@ class Head(tf.keras.layers.Layer):
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class ClassifierHead(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class ClassifierHead(tf_keras.layers.Layer):
   """Head layer for video networks.
 
   Applies dense projection, dropout, and classifier projection. Expects input
@@ -1507,9 +1507,9 @@ class ClassifierHead(tf.keras.layers.Layer):
       activation: nn_layers.Activation = 'swish',
       output_activation: Optional[nn_layers.Activation] = None,
       max_pool_predictions: bool = False,
-      kernel_initializer: tf.keras.initializers.Initializer = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] =
-      tf.keras.regularizers.L2(KERNEL_WEIGHT_DECAY),  # pytype: disable=annotation-type-mismatch  # typed-keras
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] =
+      tf_keras.regularizers.L2(KERNEL_WEIGHT_DECAY),  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     """Implementation for video model classifier head.
 
@@ -1542,7 +1542,7 @@ class ClassifierHead(tf.keras.layers.Layer):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
 
-    self._dropout = tf.keras.layers.Dropout(dropout_rate)
+    self._dropout = tf_keras.layers.Dropout(dropout_rate)
     self._head = ConvBlock(
         filters=head_filters,
         kernel_size=1,
@@ -1556,7 +1556,7 @@ class ClassifierHead(tf.keras.layers.Layer):
     self._classifier = ConvBlock(
         filters=num_classes,
         kernel_size=1,
-        kernel_initializer=tf.keras.initializers.random_normal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.random_normal(stddev=0.01),
         kernel_regularizer=None,
         use_bias=True,
         use_batch_norm=False,
@@ -1566,7 +1566,7 @@ class ClassifierHead(tf.keras.layers.Layer):
     self._squeeze = Squeeze3D()
 
     output_activation = output_activation if output_activation else 'linear'
-    self._cast = tf.keras.layers.Activation(
+    self._cast = tf_keras.layers.Activation(
         output_activation, dtype='float32', name='cast')
 
   def get_config(self):

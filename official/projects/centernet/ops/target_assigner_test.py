@@ -15,7 +15,7 @@
 """Tests for targets generations of centernet."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.ops import target_assigner
 from official.vision.ops import preprocess_ops

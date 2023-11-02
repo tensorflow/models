@@ -22,11 +22,11 @@ https://arxiv.org/abs/1912.05027
 import math
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.detection.modeling.architecture import nn_blocks
 from official.modeling import tf_utils
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 FILTER_SIZE_MAP = {
     1: 32,
@@ -111,11 +111,11 @@ def build_block_specs(block_specs=None):
   return [BlockSpec(*b) for b in block_specs]
 
 
-class SpineNet(tf.keras.Model):
+class SpineNet(tf_keras.Model):
   """Class to build SpineNet models."""
 
   def __init__(self,
-               input_specs=tf.keras.layers.InputSpec(shape=[None, 640, 640, 3]),
+               input_specs=tf_keras.layers.InputSpec(shape=[None, 640, 640, 3]),
                min_level=3,
                max_level=7,
                block_specs=None,
@@ -161,13 +161,13 @@ class SpineNet(tf.keras.Model):
     else:
       self._norm = layers.BatchNormalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
 
     # Build SpineNet.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
 
     net = self._build_stem(inputs=inputs)
     net = self._build_scale_permuted_network(
@@ -453,7 +453,7 @@ class SpineNetBuilder(object):
 
   def __init__(self,
                model_id,
-               input_specs=tf.keras.layers.InputSpec(shape=[None, 640, 640, 3]),
+               input_specs=tf_keras.layers.InputSpec(shape=[None, 640, 640, 3]),
                min_level=3,
                max_level=7,
                block_specs=None,

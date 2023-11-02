@@ -17,7 +17,7 @@
 import functools
 from typing import Any, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -28,7 +28,7 @@ from official.vision.configs import common
 from official.vision.modeling.backbones import factory
 
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 class Dbof(layers.Layer):
@@ -49,13 +49,13 @@ class Dbof(layers.Layer):
       ),
       params: yt8m_cfg.DbofModel = yt8m_cfg.DbofModel(),
       norm_activation: common.NormActivation = common.NormActivation(),
-      l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """YT8M initialization function.
 
     Args:
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
         [batch_size x num_frames x num_features].
       params: model configuration parameters.
       norm_activation: Model normalization and activation configs.
@@ -162,12 +162,12 @@ class Dbof(layers.Layer):
 
 @factory.register_backbone_builder("dbof")
 def build_dbof(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
     **kwargs,
-) -> tf.keras.Model:
+) -> tf_keras.Model:
   """Builds a dbof backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
@@ -182,5 +182,5 @@ def build_dbof(
   )
 
   # Warmup calls to build model variables.
-  dbof(tf.keras.Input(input_specs.shape[1:]))
+  dbof(tf_keras.Input(input_specs.shape[1:]))
   return dbof

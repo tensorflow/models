@@ -15,7 +15,7 @@
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import mobile_bert_layers
 from official.nlp.modeling.networks import mobile_bert_encoder
@@ -60,7 +60,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
         output_embed_size=32,
         max_sequence_length=32,
         normalization_type='layer_norm',
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01),
+        initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01),
         dropout_rate=0.5)
     layer_config = layer.get_config()
     new_layer = mobile_bert_layers.MobileBertEmbedding.from_config(layer_config)
@@ -120,7 +120,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
         key_query_shared_bottleneck=False,
         num_feedforward_networks=2,
         normalization_type='layer_norm',
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01),
+        initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01),
         name='block')
     layer_config = layer.get_config()
     new_layer = mobile_bert_layers.MobileBertTransformer.from_config(
@@ -163,8 +163,8 @@ class MobileBertMaskedLMTest(tf.test.TestCase):
         embedding_width=embedding_width)
 
     # Make sure that the output tensor of the masked LM is the right shape.
-    lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
-    masked_positions = tf.keras.Input(shape=(num_predictions,), dtype=tf.int32)
+    lm_input_tensor = tf_keras.Input(shape=(sequence_length, hidden_size))
+    masked_positions = tf_keras.Input(shape=(num_predictions,), dtype=tf.int32)
     output = test_layer(lm_input_tensor, masked_positions=masked_positions)
 
     expected_output_shape = [None, num_predictions, vocab_size]
@@ -196,14 +196,14 @@ class MobileBertMaskedLMTest(tf.test.TestCase):
         output='logits')
 
     # Create a model from the masked LM layer.
-    lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
-    masked_positions = tf.keras.Input(shape=(num_predictions,), dtype=tf.int32)
+    lm_input_tensor = tf_keras.Input(shape=(sequence_length, hidden_size))
+    masked_positions = tf_keras.Input(shape=(num_predictions,), dtype=tf.int32)
     output = test_layer(lm_input_tensor, masked_positions)
     logit_output = logit_layer(lm_input_tensor, masked_positions)
-    logit_output = tf.keras.layers.Activation(tf.nn.log_softmax)(logit_output)
+    logit_output = tf_keras.layers.Activation(tf.nn.log_softmax)(logit_output)
     logit_layer.set_weights(test_layer.get_weights())
-    model = tf.keras.Model([lm_input_tensor, masked_positions], output)
-    logits_model = tf.keras.Model(([lm_input_tensor, masked_positions]),
+    model = tf_keras.Model([lm_input_tensor, masked_positions], output)
+    logits_model = tf_keras.Model(([lm_input_tensor, masked_positions]),
                                   logit_output)
 
     # Invoke the masked LM on some fake data to make sure there are no runtime
@@ -236,10 +236,10 @@ class MobileBertMaskedLMTest(tf.test.TestCase):
         embedding_width=embedding_width)
 
     # Create a model from the masked LM layer.
-    lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
-    masked_positions = tf.keras.Input(shape=(num_predictions,), dtype=tf.int32)
+    lm_input_tensor = tf_keras.Input(shape=(sequence_length, hidden_size))
+    masked_positions = tf_keras.Input(shape=(num_predictions,), dtype=tf.int32)
     output = test_layer(lm_input_tensor, masked_positions)
-    model = tf.keras.Model([lm_input_tensor, masked_positions], output)
+    model = tf_keras.Model([lm_input_tensor, masked_positions], output)
 
     # Invoke the masked LM on some fake data to make sure there are no runtime
     # errors in the code.
@@ -263,8 +263,8 @@ class MobileBertMaskedLMTest(tf.test.TestCase):
         ValueError, 'hidden size 8 cannot be smaller than embedding width 16.'):
       test_layer = self.create_layer(
           vocab_size=8, hidden_size=8, embedding_width=16)
-      lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
-      masked_positions = tf.keras.Input(
+      lm_input_tensor = tf_keras.Input(shape=(sequence_length, hidden_size))
+      masked_positions = tf_keras.Input(
           shape=(num_predictions,), dtype=tf.int32)
       _ = test_layer(lm_input_tensor, masked_positions)
 

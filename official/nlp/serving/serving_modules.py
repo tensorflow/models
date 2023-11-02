@@ -17,7 +17,7 @@
 import dataclasses
 from typing import Dict, List, Optional, Text
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_text as tf_text
 
 from official.core import export_base
@@ -65,7 +65,7 @@ class SentencePrediction(export_base.ExportModule):
     # ...or load preprocessing from a SavedModel at this location.
     preprocessing_hub_module_url: str = ""
 
-  def __init__(self, params, model: tf.keras.Model, inference_step=None):
+  def __init__(self, params, model: tf_keras.Model, inference_step=None):
     super().__init__(params, model, inference_step)
     if params.use_v2_feature_names:
       self.input_word_ids_field = "input_word_ids"
@@ -188,7 +188,7 @@ class SentencePrediction(export_base.ExportModule):
 class MaskedLM(export_base.ExportModule):
   """The export module for the Bert Pretrain (MaskedLM) task."""
 
-  def __init__(self, params, model: tf.keras.Model, inference_step=None):
+  def __init__(self, params, model: tf_keras.Model, inference_step=None):
     super().__init__(params, model, inference_step)
     if params.use_v2_feature_names:
       self.input_word_ids_field = "input_word_ids"
@@ -269,7 +269,7 @@ class QuestionAnswering(export_base.ExportModule):
     parse_sequence_length: Optional[int] = None
     use_v2_feature_names: bool = True
 
-  def __init__(self, params, model: tf.keras.Model, inference_step=None):
+  def __init__(self, params, model: tf_keras.Model, inference_step=None):
     super().__init__(params, model, inference_step)
     if params.use_v2_feature_names:
       self.input_word_ids_field = "input_word_ids"
@@ -344,7 +344,7 @@ class Tagging(export_base.ExportModule):
     use_v2_feature_names: bool = True
     output_encoder_outputs: bool = False
 
-  def __init__(self, params, model: tf.keras.Model, inference_step=None):
+  def __init__(self, params, model: tf_keras.Model, inference_step=None):
     super().__init__(params, model, inference_step)
     if params.use_v2_feature_names:
       self.input_word_ids_field = "input_word_ids"
@@ -420,7 +420,7 @@ class Translation(export_base.ExportModule):
     # Needs to be specified if padded_decode is True/on TPUs.
     batch_size: Optional[int] = None
 
-  def __init__(self, params, model: tf.keras.Model, inference_step=None):
+  def __init__(self, params, model: tf_keras.Model, inference_step=None):
     super().__init__(params, model, inference_step)
     self._sp_tokenizer = tf_text.SentencepieceTokenizer(
         model=tf.io.gfile.GFile(params.sentencepiece_model_path, "rb").read(),

@@ -15,7 +15,7 @@
 """COCO data loader for DETR."""
 
 from typing import Tuple
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.dataloaders import parser
 

@@ -21,13 +21,13 @@ Reference:
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MultiKernelGroupConvBlock(tf_keras.layers.Layer):
   """A multi-kernel grouped convolution block.
 
   This block is used in the segmentation neck introduced in MOSAIC.
@@ -45,7 +45,7 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
       batchnorm_epsilon: float = 0.001,
       activation: str = 'relu',
       kernel_initializer: str = 'GlorotUniform',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       use_depthwise_convolution: bool = True,
       **kwargs):
     """Initializes a Multi-kernel Grouped Convolution Block.
@@ -90,11 +90,11 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
     # helps quantization where conv+bn+activation are fused into a single op.
     self._activation_fn = tf_utils.get_activation(activation)
     if self._use_sync_bn:
-      self._bn_op = tf.keras.layers.experimental.SyncBatchNormalization
+      self._bn_op = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._bn_op = tf.keras.layers.BatchNormalization
+      self._bn_op = tf_keras.layers.BatchNormalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
       self._group_split_axis = -1
     else:
@@ -110,7 +110,7 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
     self._conv_branches = []
     if self._use_depthwise_convolution:
       for i, conv_kernel_size in enumerate(self._kernel_sizes):
-        depthwise_conv = tf.keras.layers.DepthwiseConv2D(
+        depthwise_conv = tf_keras.layers.DepthwiseConv2D(
             kernel_size=(conv_kernel_size, conv_kernel_size),
             depth_multiplier=1,
             padding='same',
@@ -123,7 +123,7 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
             momentum=self._batchnorm_momentum,
             epsilon=self._batchnorm_epsilon)
         activation_depthwise = self._activation_fn
-        feature_conv = tf.keras.layers.Conv2D(
+        feature_conv = tf_keras.layers.Conv2D(
             filters=self._output_filter_depths[i],
             kernel_size=(1, 1),
             padding='same',
@@ -136,8 +136,8 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
             momentum=self._batchnorm_momentum,
             epsilon=self._batchnorm_epsilon)
         # Use list manually as current QAT API does not support sequential model
-        # within a tf.keras.Sequential block, e.g. conv_branch =
-        # tf.keras.Sequential([depthwise_conv, feature_conv, batchnorm_op,])
+        # within a tf_keras.Sequential block, e.g. conv_branch =
+        # tf_keras.Sequential([depthwise_conv, feature_conv, batchnorm_op,])
         conv_branch = [
             depthwise_conv,
             batchnorm_op_depthwise,
@@ -148,7 +148,7 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
         self._conv_branches.append(conv_branch)
     else:
       for i, conv_kernel_size in enumerate(self._kernel_sizes):
-        norm_conv = tf.keras.layers.Conv2D(
+        norm_conv = tf_keras.layers.Conv2D(
             filters=self._output_filter_depths[i],
             kernel_size=(conv_kernel_size, conv_kernel_size),
             padding='same',
@@ -162,7 +162,7 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
             epsilon=self._batchnorm_epsilon)
         conv_branch = [norm_conv, batchnorm_op]
         self._conv_branches.append(conv_branch)
-    self._concat_groups = tf.keras.layers.Concatenate(
+    self._concat_groups = tf_keras.layers.Concatenate(
         axis=self._group_split_axis)
 
   def call(self,
@@ -177,7 +177,7 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
       conv_branch = self._conv_branches[i]
       # Apply layers sequentially and manually.
       for layer in conv_branch:
-        if isinstance(layer, tf.keras.layers.Layer):
+        if isinstance(layer, tf_keras.layers.Layer):
           x = layer(x, training=training)
         else:
           x = layer(x)
@@ -207,8 +207,8 @@ class MultiKernelGroupConvBlock(tf.keras.layers.Layer):
     return base_config
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MosaicEncoderBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MosaicEncoderBlock(tf_keras.layers.Layer):
   """Implements the encoder module/block of MOSAIC model.
 
   Spatial Pyramid Pooling and Multi-kernel Conv layer
@@ -230,7 +230,7 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
       activation: str = 'relu',
       dropout_rate: float = 0.1,
       kernel_initializer: str = 'glorot_uniform',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
       use_depthwise_convolution: bool = True,
       **kwargs):
@@ -286,18 +286,18 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
     self._activation_fn = tf_utils.get_activation(activation)
 
     if self._use_sync_bn:
-      self._bn_op = tf.keras.layers.experimental.SyncBatchNormalization
+      self._bn_op = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._bn_op = tf.keras.layers.BatchNormalization
+      self._bn_op = tf_keras.layers.BatchNormalization
 
     self._dropout_rate = dropout_rate
     if dropout_rate:
-      self._encoder_end_dropout_layer = tf.keras.layers.Dropout(
+      self._encoder_end_dropout_layer = tf_keras.layers.Dropout(
           rate=dropout_rate)
     else:
       self._encoder_end_dropout_layer = None
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
       self._channel_axis = -1
     else:
@@ -329,7 +329,7 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
     input_shape = (
         input_shape[self._encoder_input_level]
         if isinstance(input_shape, dict) else input_shape)
-    self._data_format = tf.keras.backend.image_data_format()
+    self._data_format = tf_keras.backend.image_data_format()
     if self._data_format == 'channels_last':
       height = input_shape[1]
       width = input_shape[2]
@@ -342,9 +342,9 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
 
     for pyramid_pool_bin_num in self._pyramid_pool_bin_nums:
       if pyramid_pool_bin_num == 1:
-        global_pool = tf.keras.layers.GlobalAveragePooling2D(
+        global_pool = tf_keras.layers.GlobalAveragePooling2D(
             data_format=self._data_format, keepdims=True)
-        global_projection = tf.keras.layers.Conv2D(
+        global_projection = tf_keras.layers.Conv2D(
             filters=max(self._branch_filter_depths),
             kernel_size=(1, 1),
             padding='same',
@@ -356,7 +356,7 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
             axis=self._bn_axis,
             momentum=self._batchnorm_momentum,
             epsilon=self._batchnorm_epsilon)
-        # Use list manually instead of tf.keras.Sequential([])
+        # Use list manually instead of tf_keras.Sequential([])
         self._global_pool_branch = [
             global_pool,
             global_projection,
@@ -373,7 +373,7 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
             height, pyramid_pool_bin_num)
         pool_width, stride_width = self._get_bin_pool_kernel_and_stride(
             width, pyramid_pool_bin_num)
-        bin_pool_level = tf.keras.layers.AveragePooling2D(
+        bin_pool_level = tf_keras.layers.AveragePooling2D(
             pool_size=(pool_height, pool_width),
             strides=(stride_height, stride_width),
             padding='valid',
@@ -397,9 +397,9 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
     # enlarge the projection #channels to the sum of the filter depths of
     # branches.
     self._output_channels = sum(self._branch_filter_depths)
-    # Use list manually instead of tf.keras.Sequential([]).
+    # Use list manually instead of tf_keras.Sequential([]).
     self._encoder_projection = [
-        tf.keras.layers.Conv2D(
+        tf_keras.layers.Conv2D(
             filters=self._output_channels,
             kernel_size=(1, 1),
             padding='same',
@@ -413,19 +413,19 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
             epsilon=self._batchnorm_epsilon),
     ]
     # Use the TF2 default feature alignment rule for bilinear resizing.
-    self._upsample = tf.keras.layers.Resizing(
+    self._upsample = tf_keras.layers.Resizing(
         height,
         width,
         interpolation=self._interpolation,
         crop_to_aspect_ratio=False)
-    self._concat_layer = tf.keras.layers.Concatenate(axis=self._channel_axis)
+    self._concat_layer = tf_keras.layers.Concatenate(axis=self._channel_axis)
 
   def call(self,
            inputs: Union[tf.Tensor, Dict[str, tf.Tensor]],
            training: Optional[bool] = None) -> tf.Tensor:
     """Calls this MOSAIC encoder block with the given input."""
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
     input_from_backbone_output = (
         inputs[self._encoder_input_level]
         if isinstance(inputs, dict) else inputs)
@@ -476,8 +476,8 @@ class MosaicEncoderBlock(tf.keras.layers.Layer):
     return base_config
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class DecoderSumMergeBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class DecoderSumMergeBlock(tf_keras.layers.Layer):
   """Implements the decoder feature sum merge block of MOSAIC model.
 
   This block is used in the decoder of segmentation head introduced in MOSAIC.
@@ -494,7 +494,7 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
       batchnorm_epsilon: float = 0.001,
       activation: str = 'relu',
       kernel_initializer: str = 'GlorotUniform',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
       **kwargs):
     """Initialize a sum-merge block for one decoder stage.
@@ -538,17 +538,17 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
     # helps quantization where conv+bn+activation are fused into a single op.
     self._activation_fn = tf_utils.get_activation(activation)
     if self._use_sync_bn:
-      self._bn_op = tf.keras.layers.experimental.SyncBatchNormalization
+      self._bn_op = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._bn_op = tf.keras.layers.BatchNormalization
+      self._bn_op = tf_keras.layers.BatchNormalization
 
     self._bn_axis = (
         -1
-        if tf.keras.backend.image_data_format() == 'channels_last' else 1)
+        if tf_keras.backend.image_data_format() == 'channels_last' else 1)
     self._channel_axis = (
         -1
-        if tf.keras.backend.image_data_format() == 'channels_last' else 1)
-    self._add_layer = tf.keras.layers.Add()
+        if tf_keras.backend.image_data_format() == 'channels_last' else 1)
+    self._add_layer = tf_keras.layers.Add()
 
   def build(
       self,
@@ -561,7 +561,7 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
     high_res_channels = high_res_input_shape[self._channel_axis]
 
     if low_res_channels != self._decoder_projected_depth:
-      low_res_feature_conv = tf.keras.layers.Conv2D(
+      low_res_feature_conv = tf_keras.layers.Conv2D(
           filters=self._decoder_projected_depth,
           kernel_size=(1, 1),
           padding='same',
@@ -578,7 +578,7 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
           batchnorm_op,
       ])
     if high_res_channels != self._decoder_projected_depth:
-      high_res_feature_conv = tf.keras.layers.Conv2D(
+      high_res_feature_conv = tf_keras.layers.Conv2D(
           filters=self._decoder_projected_depth,
           kernel_size=(1, 1),
           padding='same',
@@ -595,7 +595,7 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
           batchnorm_op_high,
       ])
     # Resize feature maps.
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       low_res_height = low_res_input_shape[1]
       low_res_width = low_res_input_shape[2]
       high_res_height = high_res_input_shape[1]
@@ -609,14 +609,14 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
       self._output_size = (high_res_height, high_res_width)
     if (low_res_height != self._output_size[0] or
         low_res_width != self._output_size[1]):
-      self._upsample_low_res = tf.keras.layers.Resizing(
+      self._upsample_low_res = tf_keras.layers.Resizing(
           self._output_size[0],
           self._output_size[1],
           interpolation=self._interpolation,
           crop_to_aspect_ratio=False)
     if (high_res_height != self._output_size[0] or
         high_res_width != self._output_size[1]):
-      self._upsample_high_res = tf.keras.layers.Resizing(
+      self._upsample_high_res = tf_keras.layers.Resizing(
           self._output_size[0],
           self._output_size[1],
           interpolation=self._interpolation,
@@ -639,7 +639,7 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
       A tensor representing the sum-merged decoder feature map.
     """
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
     x_low_res = inputs[0]
     x_high_res = inputs[1]
     if self._low_res_branch:
@@ -675,8 +675,8 @@ class DecoderSumMergeBlock(tf.keras.layers.Layer):
     return base_config
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class DecoderConcatMergeBlock(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class DecoderConcatMergeBlock(tf_keras.layers.Layer):
   """Implements the decoder feature concat merge block of MOSAIC model.
 
   This block is used in the decoder of segmentation head introduced in MOSAIC.
@@ -694,7 +694,7 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
       batchnorm_epsilon: float = 0.001,
       activation: str = 'relu',
       kernel_initializer: str = 'GlorotUniform',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
       **kwargs):
     """Initializes a concat-merge block for one decoder stage.
@@ -739,11 +739,11 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
     # helps quantization where conv+bn+activation are fused into a single op.
     self._activation_fn = tf_utils.get_activation(activation)
     if self._use_sync_bn:
-      self._bn_op = tf.keras.layers.experimental.SyncBatchNormalization
+      self._bn_op = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._bn_op = tf.keras.layers.BatchNormalization
+      self._bn_op = tf_keras.layers.BatchNormalization
 
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
       self._channel_axis = -1
     else:
@@ -758,7 +758,7 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
     low_res_input_shape = input_shape[0]
     high_res_input_shape = input_shape[1]
     # Set up resizing feature maps before concat.
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       low_res_height = low_res_input_shape[1]
       low_res_width = low_res_input_shape[2]
       high_res_height = high_res_input_shape[1]
@@ -772,21 +772,21 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
       self._output_size = (high_res_height, high_res_width)
     if (low_res_height != self._output_size[0] or
         low_res_width != self._output_size[1]):
-      self._upsample_low_res = tf.keras.layers.Resizing(
+      self._upsample_low_res = tf_keras.layers.Resizing(
           self._output_size[0],
           self._output_size[1],
           interpolation=self._interpolation,
           crop_to_aspect_ratio=False)
     if (high_res_height != self._output_size[0] or
         high_res_width != self._output_size[1]):
-      self._upsample_high_res = tf.keras.layers.Resizing(
+      self._upsample_high_res = tf_keras.layers.Resizing(
           self._output_size[0],
           self._output_size[1],
           interpolation=self._interpolation,
           crop_to_aspect_ratio=False)
     # Set up a 3-layer separable convolution blocks, i.e.
     # 1x1->BN->RELU + Depthwise->BN->RELU + 1x1->BN->RELU.
-    initial_feature_conv = tf.keras.layers.Conv2D(
+    initial_feature_conv = tf_keras.layers.Conv2D(
         filters=self._decoder_internal_depth,
         kernel_size=(1, 1),
         padding='same',
@@ -799,7 +799,7 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
         momentum=self._batchnorm_momentum,
         epsilon=self._batchnorm_epsilon)
     activation1 = self._activation_fn
-    depthwise_conv = tf.keras.layers.DepthwiseConv2D(
+    depthwise_conv = tf_keras.layers.DepthwiseConv2D(
         kernel_size=(3, 3),
         depth_multiplier=1,
         padding='same',
@@ -811,7 +811,7 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
         momentum=self._batchnorm_momentum,
         epsilon=self._batchnorm_epsilon)
     activation2 = self._activation_fn
-    project_feature_conv = tf.keras.layers.Conv2D(
+    project_feature_conv = tf_keras.layers.Conv2D(
         filters=self._decoder_projected_depth,
         kernel_size=(1, 1),
         padding='same',
@@ -835,7 +835,7 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
         batchnorm_op3,
         activation3,
         ]
-    self._concat_layer = tf.keras.layers.Concatenate(axis=self._channel_axis)
+    self._concat_layer = tf_keras.layers.Concatenate(axis=self._channel_axis)
 
   def call(self,
            inputs: Tuple[tf.Tensor, tf.Tensor],
@@ -860,7 +860,7 @@ class DecoderConcatMergeBlock(tf.keras.layers.Layer):
     decoder_feature_list = [low_res_input, high_res_input]
     x = self._concat_layer(decoder_feature_list)
     for layer in self._feature_fusion_block:
-      if isinstance(layer, tf.keras.layers.Layer):
+      if isinstance(layer, tf_keras.layers.Layer):
         x = layer(x, training=training)
       else:
         x = layer(x)

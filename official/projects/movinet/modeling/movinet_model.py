@@ -19,7 +19,7 @@ Reference: https://arxiv.org/pdf/2103.11511.pdf
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.movinet.configs import movinet as cfg
 from official.projects.movinet.modeling import movinet_layers
@@ -27,20 +27,20 @@ from official.vision.modeling import backbones
 from official.vision.modeling import factory_3d as model_factory
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MovinetClassifier(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MovinetClassifier(tf_keras.Model):
   """A video classification class builder."""
 
   def __init__(
       self,
-      backbone: tf.keras.Model,
+      backbone: tf_keras.Model,
       num_classes: int,
-      input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      input_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
       activation: str = 'swish',
       dropout_rate: float = 0.0,
       kernel_initializer: str = 'HeNormal',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       output_states: bool = False,
       **kwargs):
     """Movinet initialization function.
@@ -62,7 +62,7 @@ class MovinetClassifier(tf.keras.Model):
     """
     if not input_specs:
       input_specs = {
-          'image': tf.keras.layers.InputSpec(shape=[None, None, None, None, 3])
+          'image': tf_keras.layers.InputSpec(shape=[None, None, None, None, 3])
       }
 
     self._num_classes = num_classes
@@ -90,9 +90,9 @@ class MovinetClassifier(tf.keras.Model):
 
   def _build_backbone(
       self,
-      backbone: tf.keras.Model,
-      input_specs: Mapping[str, tf.keras.layers.InputSpec],
-      state_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      backbone: tf_keras.Model,
+      input_specs: Mapping[str, tf_keras.layers.InputSpec],
+      state_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
   ) -> Tuple[Mapping[str, Any], Any, Any]:
     """Builds the backbone network and gets states and endpoints.
 
@@ -110,10 +110,10 @@ class MovinetClassifier(tf.keras.Model):
     state_specs = state_specs if state_specs is not None else {}
 
     states = {
-        name: tf.keras.Input(shape=spec.shape[1:], dtype=spec.dtype, name=name)
+        name: tf_keras.Input(shape=spec.shape[1:], dtype=spec.dtype, name=name)
         for name, spec in state_specs.items()
     }
-    image = tf.keras.Input(shape=input_specs['image'].shape[1:], name='image')
+    image = tf_keras.Input(shape=input_specs['image'].shape[1:], name='image')
     inputs = {**states, 'image': image}
 
     if backbone.use_external_states:
@@ -148,10 +148,10 @@ class MovinetClassifier(tf.keras.Model):
 
   def _build_network(
       self,
-      backbone: tf.keras.Model,
-      input_specs: Mapping[str, tf.keras.layers.InputSpec],
-      state_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
-  ) -> Tuple[Mapping[str, tf.keras.Input], Union[Tuple[Mapping[  # pytype: disable=invalid-annotation  # typed-keras
+      backbone: tf_keras.Model,
+      input_specs: Mapping[str, tf_keras.layers.InputSpec],
+      state_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
+  ) -> Tuple[Mapping[str, tf_keras.Input], Union[Tuple[Mapping[  # pytype: disable=invalid-annotation  # typed-keras
       str, tf.Tensor], Mapping[str, tf.Tensor]], Mapping[str, tf.Tensor]]]:
     """Builds the model network.
 
@@ -185,7 +185,7 @@ class MovinetClassifier(tf.keras.Model):
     return inputs, outputs
 
   def initial_state_specs(
-      self, input_shape: Sequence[int]) -> Dict[str, tf.keras.layers.InputSpec]:
+      self, input_shape: Sequence[int]) -> Dict[str, tf_keras.layers.InputSpec]:
     return self._backbone.initial_state_specs(input_shape=input_shape)
 
   @tf.function
@@ -199,7 +199,7 @@ class MovinetClassifier(tf.keras.Model):
     return dict(backbone=self.backbone)
 
   @property
-  def backbone(self) -> tf.keras.Model:
+  def backbone(self) -> tf_keras.Model:
     """Returns the backbone of the model."""
     return self._backbone
 
@@ -221,21 +221,21 @@ class MovinetClassifier(tf.keras.Model):
   def from_config(cls, config, custom_objects=None):
     # Each InputSpec may need to be deserialized
     # This handles the case where we want to load a saved_model loaded with
-    # `tf.keras.models.load_model`
+    # `tf_keras.models.load_model`
     if config['input_specs']:
       for name in config['input_specs']:
         if isinstance(config['input_specs'][name], dict):
-          config['input_specs'][name] = tf.keras.layers.deserialize(
+          config['input_specs'][name] = tf_keras.layers.deserialize(
               config['input_specs'][name])
     return cls(**config)
 
 
 @model_factory.register_model_builder('movinet')
 def build_movinet_model(
-    input_specs: Mapping[str, tf.keras.layers.InputSpec],
+    input_specs: Mapping[str, tf_keras.layers.InputSpec],
     model_config: cfg.MovinetModel,
     num_classes: int,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None):
   """Builds movinet model."""
   logging.info('Building movinet model with num classes: %s', num_classes)
   if l2_regularizer is not None:

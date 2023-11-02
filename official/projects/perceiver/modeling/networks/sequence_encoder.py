@@ -16,12 +16,12 @@
 
 from typing import Optional, Dict
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 
 
-class SequenceEncoder(tf.keras.layers.Layer):
+class SequenceEncoder(tf_keras.layers.Layer):
   """Perceiver encoder for sequences.
 
   Assumes positional learned encoding for latent inputs and embeddings. Creates
@@ -33,7 +33,7 @@ class SequenceEncoder(tf.keras.layers.Layer):
   """
 
   def __init__(self,
-               encoder: tf.keras.layers.Layer,
+               encoder: tf_keras.layers.Layer,
                d_model: int,
                d_latents: int,
                z_index_dim: int,
@@ -70,15 +70,15 @@ class SequenceEncoder(tf.keras.layers.Layer):
       embedding_width:
         Embedding dimension of the embedding table.
       embedding_initializer_stddev:
-        `stddev` of `tf.keras.initializers.TruncatedNormal` used for the
+        `stddev` of `tf_keras.initializers.TruncatedNormal` used for the
         embedding table kernel initializer.
       input_position_encoding_intializer_stddev:
-        `stddev` of `tf.keras.initializers.TruncatedNormal` used for the
+        `stddev` of `tf_keras.initializers.TruncatedNormal` used for the
         learned position embedding table kernel initializer.
       name:
-        Sets the `tf.keras.layers.Layer` name.
+        Sets the `tf_keras.layers.Layer` name.
       **kwargs:
-        Any keyword arguments to pass through to `tf.keras.layers.Layer`.
+        Any keyword arguments to pass through to `tf_keras.layers.Layer`.
     """
     super().__init__(**kwargs, name=name)
 
@@ -96,28 +96,28 @@ class SequenceEncoder(tf.keras.layers.Layer):
     self._embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=self._embedding_width,
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=embedding_initializer_stddev),
         name='word_embeddings')
 
     # Construct the input positional encoding layer.
     self._input_pos_encoding = layers.PositionEmbedding(
         max_length=max_seq_len,
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=input_position_encoding_intializer_stddev),
         name='input_pos_encoding')
 
     # Construct the latent array initial state.
     self._z_pos_enc = layers.PositionEmbedding(
         max_length=z_index_dim,
-        initializer=tf.keras.initializers.TruncatedNormal(
+        initializer=tf_keras.initializers.TruncatedNormal(
             stddev=z_pos_enc_init_scale),
         name='z_pos_enc')
 
     self.inputs = dict(
-        input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-        input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-        input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
+        input_word_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
+        input_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
+        input_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32))
 
   def get_embedding_table(self) -> tf.Variable:
     """Get embedding table."""

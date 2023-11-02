@@ -15,7 +15,7 @@
 """Tests for official.nlp.data.create_pretraining_data."""
 import random
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.data import create_pretraining_data as cpd
 

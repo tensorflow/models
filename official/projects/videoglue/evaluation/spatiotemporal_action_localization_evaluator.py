@@ -17,7 +17,7 @@ from typing import Mapping
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from object_detection.utils import object_detection_evaluation
 

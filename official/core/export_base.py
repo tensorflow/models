@@ -20,7 +20,7 @@ import time
 from typing import Any, Callable, Dict, Mapping, List, Optional, Text, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 MAX_DIRECTORY_CREATION_ATTEMPTS = 10
 
@@ -30,7 +30,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
 
   def __init__(self,
                params,
-               model: Union[tf.Module, tf.keras.Model],
+               model: Union[tf.Module, tf_keras.Model],
                inference_step: Optional[Callable[..., Any]] = None,
                *,
                preprocessor: Optional[Callable[..., Any]] = None,
@@ -68,7 +68,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
     if inference_step is not None:
       self.inference_step = functools.partial(inference_step, model=self.model)
     else:
-      if issubclass(type(model), tf.keras.Model):
+      if issubclass(type(model), tf_keras.Model):
         # Default to self.model.call instead of self.model.__call__ to avoid
         # keras tracing logic designed for training.
         # Since most of Model Garden's call doesn't not have training kwargs

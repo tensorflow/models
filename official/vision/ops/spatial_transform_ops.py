@@ -17,7 +17,7 @@
 from typing import Dict, Tuple
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops.box_ops import bbox2mask
 
@@ -541,7 +541,7 @@ def nearest_upsampling(data: tf.Tensor,
       data.
   """
   if use_keras_layer:
-    return tf.keras.layers.UpSampling2D(size=(scale, scale),
+    return tf_keras.layers.UpSampling2D(size=(scale, scale),
                                         interpolation='nearest')(data)
   with tf.name_scope('nearest_upsampling'):
     bs, _, _, c = data.get_shape().as_list()

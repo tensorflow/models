@@ -18,12 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
 
-class ResidualBlock(tf.keras.layers.Layer):
+class ResidualBlock(tf_keras.layers.Layer):
   """A residual block."""
 
   def __init__(self,
@@ -50,9 +50,9 @@ class ResidualBlock(tf.keras.layers.Layer):
         for the first block of a block group, which may change the number of
         filters and the resolution.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
@@ -75,10 +75,10 @@ class ResidualBlock(tf.keras.layers.Layer):
     self._bias_regularizer = bias_regularizer
 
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -86,7 +86,7 @@ class ResidualBlock(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     if self._use_projection:
-      self._shortcut = tf.keras.layers.Conv2D(
+      self._shortcut = tf_keras.layers.Conv2D(
           filters=self._filters,
           kernel_size=1,
           strides=self._strides,
@@ -99,7 +99,7 @@ class ResidualBlock(tf.keras.layers.Layer):
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
 
-    self._conv1 = tf.keras.layers.Conv2D(
+    self._conv1 = tf_keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
@@ -113,7 +113,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
-    self._conv2 = tf.keras.layers.Conv2D(
+    self._conv2 = tf_keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=3,
         strides=1,
@@ -162,7 +162,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     return self._activation_fn(x + shortcut)
 
 
-class BottleneckBlock(tf.keras.layers.Layer):
+class BottleneckBlock(tf_keras.layers.Layer):
   """A standard bottleneck block."""
 
   def __init__(self,
@@ -189,9 +189,9 @@ class BottleneckBlock(tf.keras.layers.Layer):
         for the first block of a block group, which may change the number of
         filters and the resolution.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
@@ -213,10 +213,10 @@ class BottleneckBlock(tf.keras.layers.Layer):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf.keras.layers.BatchNormalization
-    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -224,7 +224,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     if self._use_projection:
-      self._shortcut = tf.keras.layers.Conv2D(
+      self._shortcut = tf_keras.layers.Conv2D(
           filters=self._filters * 4,
           kernel_size=1,
           strides=self._strides,
@@ -237,7 +237,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
 
-    self._conv1 = tf.keras.layers.Conv2D(
+    self._conv1 = tf_keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=1,
         strides=1,
@@ -250,7 +250,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
-    self._conv2 = tf.keras.layers.Conv2D(
+    self._conv2 = tf_keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
@@ -264,7 +264,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
-    self._conv3 = tf.keras.layers.Conv2D(
+    self._conv3 = tf_keras.layers.Conv2D(
         filters=self._filters * 4,
         kernel_size=1,
         strides=1,

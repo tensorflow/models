@@ -24,14 +24,14 @@ defined layers used in baseline MobileBERT.
 import string
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 
 _CHR_IDX = string.ascii_lowercase
 
 
-# This function is directly copied from the tf.keras.layers.MultiHeadAttention
+# This function is directly copied from the tf_keras.layers.MultiHeadAttention
 # implementation.
 def _build_attention_equation(rank, attn_axes):
   """Builds einsum equations for the attention computation.
@@ -81,8 +81,8 @@ def _build_attention_equation(rank, attn_axes):
   return dot_product_equation, combine_equation, attn_scores_rank
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class EdgeTPUSoftmax(tf.keras.layers.Softmax):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class EdgeTPUSoftmax(tf_keras.layers.Softmax):
   """EdgeTPU/Quantization friendly implementation for the SoftMax.
 
   When export quant model, use -120 mask value.
@@ -111,12 +111,12 @@ class EdgeTPUSoftmax(tf.keras.layers.Softmax):
         return tf.exp(inputs - tf.reduce_logsumexp(
             inputs, axis=self.axis, keepdims=True))
       else:
-        return tf.keras.backend.softmax(inputs, axis=self.axis[0])
-    return tf.keras.backend.softmax(inputs, axis=self.axis)
+        return tf_keras.backend.softmax(inputs, axis=self.axis[0])
+    return tf_keras.backend.softmax(inputs, axis=self.axis)
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class EdgeTPUMultiHeadAttention(tf.keras.layers.MultiHeadAttention):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class EdgeTPUMultiHeadAttention(tf_keras.layers.MultiHeadAttention):
   """Quantization friendly implementation for the MultiHeadAttention."""
 
   def _build_attention(self, rank):
@@ -139,7 +139,7 @@ class EdgeTPUMultiHeadAttention(tf.keras.layers.MultiHeadAttention):
     norm_axes = tuple(
         range(attn_scores_rank - len(self._attention_axes), attn_scores_rank))
     self._softmax = EdgeTPUSoftmax(axis=norm_axes)
-    self._dropout_layer = tf.keras.layers.Dropout(rate=self._dropout)
+    self._dropout_layer = tf_keras.layers.Dropout(rate=self._dropout)
 
 
 class EdgetpuMobileBertTransformer(layers.MobileBertTransformer):

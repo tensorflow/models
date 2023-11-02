@@ -21,7 +21,7 @@ from typing import Text, Optional
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.edgetpu.vision.modeling import common_modules
 
@@ -71,7 +71,7 @@ def build_batch_norm(is_training_bn: bool,
   if is_training_bn:
     batch_norm_class = common_modules.get_batch_norm(strategy)
   else:
-    batch_norm_class = tf.keras.layers.BatchNormalization
+    batch_norm_class = tf_keras.layers.BatchNormalization
 
   bn_layer = batch_norm_class(
       axis=axis,
@@ -141,12 +141,12 @@ def get_conv_op(conv_type):
   kernel_size = int(conv_type.split('_')[-1])
   if conv_type.startswith('sep'):
     conv_op = functools.partial(
-        tf.keras.layers.SeparableConv2D,
+        tf_keras.layers.SeparableConv2D,
         depth_multiplier=1,
         kernel_size=(kernel_size, kernel_size))
   elif conv_type.startswith('conv'):
     conv_op = functools.partial(
-        tf.keras.layers.Conv2D, kernel_size=(kernel_size, kernel_size))
+        tf_keras.layers.Conv2D, kernel_size=(kernel_size, kernel_size))
   else:
     raise ValueError('Unknown conv type: {}'.format(conv_type))
   return conv_op
@@ -218,7 +218,7 @@ def resize(feat,
   return tf.cast(feat, dtype)
 
 
-class ResampleFeatureMap(tf.keras.layers.Layer):
+class ResampleFeatureMap(tf_keras.layers.Layer):
   """Resamples feature map for downsampling or upsampling."""
 
   def __init__(self,
@@ -248,14 +248,14 @@ class ResampleFeatureMap(tf.keras.layers.Layer):
     height_stride_size = int((height - 1) // target_height + 1)
     width_stride_size = int((width - 1) // target_width + 1)
     if self.pooling_type == 'max':
-      return tf.keras.layers.MaxPooling2D(
+      return tf_keras.layers.MaxPooling2D(
           pool_size=[height_stride_size + 1, width_stride_size + 1],
           strides=[height_stride_size, width_stride_size],
           padding='SAME',
           data_format=self.data_format)(
               inputs)
     if self.pooling_type == 'avg':
-      return tf.keras.layers.AveragePooling2D(
+      return tf_keras.layers.AveragePooling2D(
           pool_size=[height_stride_size + 1, width_stride_size + 1],
           strides=[height_stride_size, width_stride_size],
           padding='SAME',
@@ -278,7 +278,7 @@ class ResampleFeatureMap(tf.keras.layers.Layer):
 
   def build(self, feat_shape):
     num_channels = self.target_num_channels or feat_shape[-1]
-    self.conv2d = tf.keras.layers.Conv2D(
+    self.conv2d = tf_keras.layers.Conv2D(
         num_channels, (1, 1),
         padding='same',
         data_format=self.data_format,
@@ -321,7 +321,7 @@ class ResampleFeatureMap(tf.keras.layers.Layer):
     return feat
 
 
-class FNode(tf.keras.layers.Layer):
+class FNode(tf_keras.layers.Layer):
   """A Keras Layer implementing BiFPN Node."""
 
   def __init__(self,
@@ -460,7 +460,7 @@ class FNode(tf.keras.layers.Layer):
     return feats + [new_node]
 
 
-class OpAfterCombine(tf.keras.layers.Layer):
+class OpAfterCombine(tf_keras.layers.Layer):
   """Operation after combining input features during feature fusiong."""
 
   def __init__(self,
@@ -501,7 +501,7 @@ class OpAfterCombine(tf.keras.layers.Layer):
     return new_node
 
 
-class FPNCells(tf.keras.layers.Layer):
+class FPNCells(tf_keras.layers.Layer):
   """FPN cells."""
 
   def __init__(self,
@@ -565,7 +565,7 @@ class FPNCells(tf.keras.layers.Layer):
     return feats
 
 
-class FPNCell(tf.keras.layers.Layer):
+class FPNCell(tf_keras.layers.Layer):
   """A single FPN cell."""
 
   def __init__(self,
@@ -619,7 +619,7 @@ class FPNCell(tf.keras.layers.Layer):
     return _call(feats)
 
 
-class SegClassNet(tf.keras.layers.Layer):
+class SegClassNet(tf_keras.layers.Layer):
   """Segmentation class prediction network."""
 
   def __init__(self,
@@ -703,7 +703,7 @@ class SegClassNet(tf.keras.layers.Layer):
             padding='same',
             activation=act_type,
             name='fullres_conv_%d' % i)
-        self.fullres_conv_transpose[str(i)] = tf.keras.layers.Conv2DTranspose(
+        self.fullres_conv_transpose[str(i)] = tf_keras.layers.Conv2DTranspose(
             filters=num_filters,
             data_format=data_format,
             kernel_size=3,
@@ -727,7 +727,7 @@ class SegClassNet(tf.keras.layers.Layer):
     if self.fullres_output:
       for i in reversed(range(self.min_level)):
         if self.fullres_skip_connections:
-          net = tf.keras.layers.Concatenate()([net, backbone_feats[i + 1]])
+          net = tf_keras.layers.Concatenate()([net, backbone_feats[i + 1]])
         net = self.fullres_conv[str(i)](net)
         net = self.fullres_conv_transpose[str(i)](net)
 

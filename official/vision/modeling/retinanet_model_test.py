@@ -17,7 +17,7 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -155,7 +155,7 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_forward(self, strategy, image_size, training, has_att_heads,
                    output_intermediate_features, soft_nms_sigma):
     """Test for creation of a R50-FPN RetinaNet."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     num_classes = 3
     min_level = 3
     max_level = 7

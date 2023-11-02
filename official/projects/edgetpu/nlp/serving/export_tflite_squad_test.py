@@ -14,7 +14,7 @@
 
 """Tests for export_tflite_squad."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import models
 from official.projects.edgetpu.nlp.configs import params
@@ -32,7 +32,7 @@ class ExportTfliteSquadTest(tf.test.TestCase):
     encoder_network = pretrainer_model.encoder_network
     self.span_labeler = models.BertSpanLabeler(
         network=encoder_network,
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01))
+        initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01))
 
   def test_model_input_output(self):
     test_model = export_tflite_squad.build_model_for_serving(self.span_labeler)

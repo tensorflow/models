@@ -14,7 +14,7 @@
 
 """Yolo Anchor labler."""
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.ops import box_ops
 from official.projects.yolo.ops import loss_utils

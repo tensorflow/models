@@ -23,7 +23,7 @@ from typing import Deque, List, NamedTuple, Optional, Sequence
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class RecomputeContext(

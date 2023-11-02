@@ -14,7 +14,7 @@
 
 """Tests for TEAMS pre trainer network."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import activations
 from official.nlp.modeling.networks import encoder_scaffold
@@ -34,7 +34,7 @@ class TeamsPretrainerTest(tf.test.TestCase):
         'hidden_size': hidden_size,
         'embedding_width': hidden_size,
         'max_seq_length': sequence_length,
-        'initializer': tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        'initializer': tf_keras.initializers.TruncatedNormal(stddev=0.02),
         'dropout_rate': 0.1,
     }
     embedding_inst = packed_sequence_embedding.PackedSequenceEmbedding(
@@ -51,7 +51,7 @@ class TeamsPretrainerTest(tf.test.TestCase):
         'attention_dropout_rate':
             0.1,
         'kernel_initializer':
-            tf.keras.initializers.TruncatedNormal(stddev=0.02),
+            tf_keras.initializers.TruncatedNormal(stddev=0.02),
     }
     return encoder_scaffold.EncoderScaffold(
         num_hidden_instances=2,
@@ -79,12 +79,12 @@ class TeamsPretrainerTest(tf.test.TestCase):
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     num_token_predictions = 2
     sequence_length = 128
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    lm_positions = tf.keras.Input(
+    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    lm_positions = tf_keras.Input(
         shape=(num_token_predictions,), dtype=tf.int32)
-    lm_ids = tf.keras.Input(shape=(num_token_predictions,), dtype=tf.int32)
+    lm_ids = tf_keras.Input(shape=(num_token_predictions,), dtype=tf.int32)
     inputs = {
         'input_word_ids': word_ids,
         'input_mask': mask,

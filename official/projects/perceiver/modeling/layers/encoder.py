@@ -14,13 +14,13 @@
 
 """Perceiver encode processor."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 from official.projects.perceiver.modeling.layers import utils
 
 
-class Encoder(tf.keras.layers.Layer):
+class Encoder(tf_keras.layers.Layer):
   """Perceiver Encoder and Processor(s) layer.
 
   This layer implements the Perceiver Encoder and Processor stack from
@@ -84,17 +84,17 @@ class Encoder(tf.keras.layers.Layer):
       dropout_attn_prob:
         Dropout probability for within the attention layer.
       att_init_scale:
-        Scale for the `tf.keras.initializers.VarianceScaling` used in attention
+        Scale for the `tf_keras.initializers.VarianceScaling` used in attention
         kernel.
       dense_init_scale:
-        Scale for the `tf.keras.initializers.VarianceScaling` used in MLP
+        Scale for the `tf_keras.initializers.VarianceScaling` used in MLP
         kernel.
       norm_epsilon:
         Epsilon value to initialize normalization layers.
       name:
-        Sets the `tf.keras.layers.Layer` name.
+        Sets the `tf_keras.layers.Layer` name.
       **kwargs:
-        Any keyword arguments to pass through to `tf.keras.layers.Layer`.
+        Any keyword arguments to pass through to `tf_keras.layers.Layer`.
     """
     super().__init__(name=name, **kwargs)
 

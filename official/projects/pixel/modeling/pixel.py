@@ -14,11 +14,11 @@
 
 """Pixel models."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.backbones import vit
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
 class ViTEncoder(vit.Encoder):
@@ -41,7 +41,7 @@ class ViTEncoder(vit.Encoder):
     return x
 
 
-class VisionTransformer(tf.keras.layers.Layer):
+class VisionTransformer(tf_keras.layers.Layer):
   """ViT backbone."""
 
   def __init__(
@@ -70,7 +70,7 @@ class VisionTransformer(tf.keras.layers.Layer):
     self.init_stochastic_depth_rate = init_stochastic_depth_rate
 
   def build(self, input_shape):
-    self.patch_to_embed = tf.keras.layers.Conv2D(
+    self.patch_to_embed = tf_keras.layers.Conv2D(
         filters=self.filters,
         kernel_size=(self.patch_h, self.patch_w),
         strides=(self.patch_h, self.patch_w),
@@ -125,15 +125,15 @@ class VisionTransformer(tf.keras.layers.Layer):
     return self.encoder((patch_embeds, attention_mask))
 
 
-class PixelClassifier(tf.keras.layers.Layer):
+class PixelClassifier(tf_keras.layers.Layer):
   """Pixel classifier for finetuning. Uses the cls token."""
 
   def __init__(self, encoder, num_classes, **kwargs):
     super().__init__(**kwargs)
     self.encoder = encoder
-    self.linear = tf.keras.layers.Dense(
+    self.linear = tf_keras.layers.Dense(
         num_classes,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01),
     )
 
   def call(self, inputs):
@@ -141,7 +141,7 @@ class PixelClassifier(tf.keras.layers.Layer):
     return self.linear(encoded[:, 0])
 
 
-class PixelLinearClassifier(tf.keras.layers.Layer):
+class PixelLinearClassifier(tf_keras.layers.Layer):
   """Pixel classifier for finetuning.
 
   This is a layer with additional layer norm and linear layer in the
@@ -152,24 +152,24 @@ class PixelLinearClassifier(tf.keras.layers.Layer):
     super().__init__(**kwargs)
     self.encoder = encoder
     self.num_filters = num_filters
-    self.linear_clas = tf.keras.layers.Dense(
+    self.linear_clas = tf_keras.layers.Dense(
         num_classes,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01),
     )
 
-    self.norm = tf.keras.layers.LayerNormalization(
+    self.norm = tf_keras.layers.LayerNormalization(
         name='classification_layer_norm',
         axis=-1,
         epsilon=1e-6,
         dtype=tf.float32,
     )
 
-    self.linear_trans = tf.keras.layers.Dense(
+    self.linear_trans = tf_keras.layers.Dense(
         num_filters,
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01),
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01),
     )
-    self.activation = tf.keras.layers.Activation('gelu')
-    self.dropout = tf.keras.layers.Dropout(0.1)
+    self.activation = tf_keras.layers.Activation('gelu')
+    self.dropout = tf_keras.layers.Dropout(0.1)
 
   def call(self, inputs, training=False):
     attention_mask = inputs.get('attention_mask')

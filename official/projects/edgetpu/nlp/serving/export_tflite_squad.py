@@ -31,7 +31,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import flags as tfm_flags
 from official.nlp.data import data_loader_factory
@@ -58,9 +58,9 @@ flags.DEFINE_string('model_checkpoint', None,
                     'with random weights if path is None.')
 
 
-def build_model_for_serving(model: tf.keras.Model,
+def build_model_for_serving(model: tf_keras.Model,
                             sequence_length: int = 384,
-                            batch_size: int = 1) -> tf.keras.Model:
+                            batch_size: int = 1) -> tf_keras.Model:
   """Builds MLPerf evaluation compatible models.
 
   To run the model on device, the model input/output datatype and node names
@@ -73,27 +73,27 @@ def build_model_for_serving(model: tf.keras.Model,
   Returns:
     Keras model with new input/output nodes.
   """
-  word_ids = tf.keras.Input(shape=(sequence_length,),
+  word_ids = tf_keras.Input(shape=(sequence_length,),
                             batch_size=batch_size,
                             dtype=tf.int32,
                             name='input_word_ids')
-  mask = tf.keras.Input(shape=(sequence_length,),
+  mask = tf_keras.Input(shape=(sequence_length,),
                         batch_size=batch_size,
                         dtype=tf.int32, name='input_mask')
-  type_ids = tf.keras.Input(shape=(sequence_length,),
+  type_ids = tf_keras.Input(shape=(sequence_length,),
                             batch_size=batch_size,
                             dtype=tf.int32, name='input_type_ids')
   model_output = model([word_ids, type_ids, mask])
 
   # Use identity layers wrapped in lambdas to explicitly name the output
   # tensors.
-  start_logits = tf.keras.layers.Lambda(
+  start_logits = tf_keras.layers.Lambda(
       tf.identity, name='start_positions')(
           model_output[0])
-  end_logits = tf.keras.layers.Lambda(
+  end_logits = tf_keras.layers.Lambda(
       tf.identity, name='end_positions')(
           model_output[1])
-  model = tf.keras.Model(
+  model = tf_keras.Model(
       inputs=[word_ids, type_ids, mask],
       outputs=[start_logits, end_logits])
 
@@ -127,7 +127,7 @@ def main(argv: Sequence[str]) -> None:
   encoder_network = pretrainer_model.encoder_network
   model = models.BertSpanLabeler(
       network=encoder_network,
-      initializer=tf.keras.initializers.TruncatedNormal(stddev=0.01))
+      initializer=tf_keras.initializers.TruncatedNormal(stddev=0.01))
 
   # Load model weights.
   if FLAGS.model_checkpoint is not None:

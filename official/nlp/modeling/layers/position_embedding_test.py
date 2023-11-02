@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import position_embedding
 
@@ -29,7 +29,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     test_layer = position_embedding.PositionEmbedding(
         max_length=sequence_length)
     width = 30
-    input_tensor = tf.keras.Input(shape=(sequence_length, width))
+    input_tensor = tf_keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(input_tensor)
 
     # When using static positional embedding shapes, the output is expected
@@ -45,7 +45,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     test_layer = position_embedding.PositionEmbedding(
         max_length=sequence_length, seq_axis=2)
     width = 30
-    input_tensor = tf.keras.Input(shape=(width, sequence_length, width))
+    input_tensor = tf_keras.Input(shape=(width, sequence_length, width))
     output_tensor = test_layer(input_tensor)
 
     # When using static positional embedding shapes, the output is expected
@@ -61,7 +61,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     test_layer = position_embedding.PositionEmbedding(
         max_length=sequence_length, dtype="float16")
     width = 30
-    input_tensor = tf.keras.Input(shape=(sequence_length, width))
+    input_tensor = tf_keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(input_tensor)
 
     # When using static positional embedding shapes, the output is expected
@@ -77,7 +77,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
         max_length=max_sequence_length)
     # Create a 3-dimensional input (the first dimension is implicit).
     width = 30
-    input_tensor = tf.keras.Input(shape=(None, width))
+    input_tensor = tf_keras.Input(shape=(None, width))
     output_tensor = test_layer(input_tensor)
 
     # When using dynamic positional embedding shapes, the output is expected
@@ -92,7 +92,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
         max_length=max_sequence_length, seq_axis=2)
     # Create a 3-dimensional input (the first dimension is implicit).
     width = 30
-    input_tensor = tf.keras.Input(shape=(None, None, width))
+    input_tensor = tf_keras.Input(shape=(None, None, width))
     output_tensor = test_layer(input_tensor)
 
     # When using dynamic positional embedding shapes, the output is expected
@@ -107,10 +107,10 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
         max_length=max_sequence_length)
     # Create a 3-dimensional input (the first dimension is implicit).
     width = 30
-    input_tensor = tf.keras.Input(shape=(None, width))
+    input_tensor = tf_keras.Input(shape=(None, width))
     output_tensor = test_layer(input_tensor)
 
-    model = tf.keras.Model(input_tensor, output_tensor)
+    model = tf_keras.Model(input_tensor, output_tensor)
 
     # Create input data that is shorter than max_sequence_length, which should
     # trigger a down-slice.

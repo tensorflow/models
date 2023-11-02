@@ -15,7 +15,7 @@
 """Tests for yolov7 heads."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.modeling.backbones import yolov7 as backbone
 from official.projects.yolo.modeling.decoders import yolov7 as decoder
@@ -31,13 +31,13 @@ class YoloV7DetectionHeadTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_network_creation(self, model_id):
     """Tests declaration of YOLOv7 detection head."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone_network = backbone.YoloV7(model_id)
     decoder_network = decoder.YoloV7(backbone_network.output_specs, model_id)
     head_network = head.YoloV7DetectionHead()
 
-    inputs = tf.keras.Input(shape=(*_INPUT_SIZE, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(*_INPUT_SIZE, 3), batch_size=1)
     outputs = head_network(decoder_network(backbone_network(inputs)))
 
     for level, level_output in outputs.items():

@@ -15,7 +15,7 @@
 
 from absl import logging
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.s3d.modeling import net_utils
 
@@ -52,7 +52,7 @@ class Tf2NetUtilsTest(parameterized.TestCase, tf.test.TestCase):
 
     name = 'ParameterizedConv'
 
-    inputs = tf.keras.Input(
+    inputs = tf_keras.Input(
         shape=(temporal_size, spatial_size, spatial_size, channels),
         batch_size=batch_size)
     parameterized_conv_layer = net_utils.ParameterizedConvLayer(

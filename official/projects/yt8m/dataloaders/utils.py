@@ -16,7 +16,7 @@
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.dataloaders import tfexample_utils
 
 

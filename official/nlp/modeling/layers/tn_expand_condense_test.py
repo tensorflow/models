@@ -18,7 +18,7 @@ import os
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.nlp.modeling.layers.tn_expand_condense import TNExpandCondense
 
 
@@ -31,19 +31,19 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
     self.labels = np.concatenate((np.ones((50, 1)), np.zeros((50, 1))), axis=0)
 
   def _build_model(self, data, proj_multiple=2):
-    model = tf.keras.models.Sequential()
+    model = tf_keras.models.Sequential()
     model.add(
         TNExpandCondense(
             proj_multiplier=proj_multiple,
             use_bias=True,
             activation='relu',
             input_shape=(data.shape[-1],)))
-    model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+    model.add(tf_keras.layers.Dense(1, activation='sigmoid'))
     return model
 
   @parameterized.parameters((768, 6), (1024, 2))
   def test_train(self, input_dim, proj_multiple):
-    tf.keras.utils.set_random_seed(0)
+    tf_keras.utils.set_random_seed(0)
     data = np.random.randint(10, size=(100, input_dim))
     model = self._build_model(data, proj_multiple)
 
@@ -60,7 +60,7 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters((768, 6), (1024, 2))
   def test_weights_change(self, input_dim, proj_multiple):
-    tf.keras.utils.set_random_seed(0)
+    tf_keras.utils.set_random_seed(0)
     data = np.random.randint(10, size=(100, input_dim))
     model = self._build_model(data, proj_multiple)
     model.compile(
@@ -90,7 +90,7 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
   def test_expandcondense_num_parameters(self, input_dim, proj_multiple):
     data = np.random.randint(10, size=(100, input_dim))
     proj_size = proj_multiple * data.shape[-1]
-    model = tf.keras.models.Sequential()
+    model = tf_keras.models.Sequential()
     model.add(
         TNExpandCondense(
             proj_multiplier=proj_multiple,
@@ -150,7 +150,7 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
 
     save_path = os.path.join(self.get_temp_dir(), 'test_model')
     model.save(save_path)
-    loaded_model = tf.keras.models.load_model(save_path)
+    loaded_model = tf_keras.models.load_model(save_path)
 
     # Compare model predictions and loaded_model predictions
     self.assertAllEqual(model.predict(data), loaded_model.predict(data))

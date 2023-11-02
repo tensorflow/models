@@ -17,7 +17,7 @@
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from deeplab2 import config_pb2
 from deeplab2.model.decoder import max_deeplab as max_deeplab_head
@@ -49,7 +49,7 @@ def universal_detection_loss_weights(
 
 
 @gin.configurable
-class LayerNorm(tf.keras.layers.LayerNormalization):
+class LayerNorm(tf_keras.layers.LayerNormalization):
   """A wrapper to allow passing the `training` argument.
 
   The normalization layers in the MaX-DeepLab implementation are passed with
@@ -79,13 +79,13 @@ def get_max_deep_lab_backbone(num_slots: int = 128):
 
 
 @gin.configurable
-class UniversalDetector(tf.keras.layers.Layer):
+class UniversalDetector(tf_keras.layers.Layer):
   """Univeral Detector."""
   loss_items = ("loss_pq", "loss_inst_dist", "loss_para", "loss_mask_id",
                 "loss_segmentation_word")
 
   def __init__(self,
-               backbone_fn: tf.keras.layers.Layer = get_max_deep_lab_backbone,
+               backbone_fn: tf_keras.layers.Layer = get_max_deep_lab_backbone,
                mask_threshold: float = 0.4,
                class_threshold: float = 0.5,
                filter_area: float = 32,
@@ -480,7 +480,7 @@ def _get_decoder_head(
     }),
     num_classes=3,
     aux_sem_intermediate=256,
-    norm_fn=tf.keras.layers.BatchNormalization,
+    norm_fn=tf_keras.layers.BatchNormalization,
 ) -> max_deeplab_head.MaXDeepLab:
   """Get the MaX-DeepLab prediction head.
 
@@ -519,7 +519,7 @@ def _get_decoder_head(
                                      configs.max_deeplab, 0, norm_fn)
 
 
-class PseudoLayer(tf.keras.layers.Layer):
+class PseudoLayer(tf_keras.layers.Layer):
   """Pseudo layer for ablation study.
 
   The `call()` function has the same argument signature as a transformer
@@ -536,9 +536,9 @@ class PseudoLayer(tf.keras.layers.Layer):
     super().__init__(name="extra_fc")
     self._extra_fc = extra_fc
     if extra_fc:
-      self._layer = tf.keras.Sequential([
-          tf.keras.layers.Dense(256, activation="relu"),
-          tf.keras.layers.LayerNormalization(),
+      self._layer = tf_keras.Sequential([
+          tf_keras.layers.Dense(256, activation="relu"),
+          tf_keras.layers.LayerNormalization(),
       ])
 
   def call(self,
@@ -555,18 +555,18 @@ class PseudoLayer(tf.keras.layers.Layer):
 @gin.configurable()
 def _get_embed_head(
     dimension=256,
-    norm_fn=tf.keras.layers.BatchNormalization
-) -> Tuple[tf.keras.Sequential, tf.keras.Sequential]:
+    norm_fn=tf_keras.layers.BatchNormalization
+) -> Tuple[tf_keras.Sequential, tf_keras.Sequential]:
   """Projection layers to get instance & grouping features."""
-  instance_head = tf.keras.Sequential([
-      tf.keras.layers.Dense(dimension, use_bias=False),
+  instance_head = tf_keras.Sequential([
+      tf_keras.layers.Dense(dimension, use_bias=False),
       norm_fn(),
-      tf.keras.layers.ReLU(),
+      tf_keras.layers.ReLU(),
   ])
-  grouping_head = tf.keras.Sequential([
-      tf.keras.layers.Dense(dimension, use_bias=False),
+  grouping_head = tf_keras.Sequential([
+      tf_keras.layers.Dense(dimension, use_bias=False),
       norm_fn(),
-      tf.keras.layers.ReLU(),
+      tf_keras.layers.ReLU(),
   ])
   return instance_head, grouping_head
 
@@ -575,7 +575,7 @@ def _get_embed_head(
 def _get_para_head(
     dimension=128,
     num_layer=3,
-    extra_fc=False) -> Tuple[tf.keras.layers.Layer, tf.keras.layers.Layer]:
+    extra_fc=False) -> Tuple[tf_keras.layers.Layer, tf_keras.layers.Layer]:
   """Get the additional para head.
 
   Args:
@@ -602,7 +602,7 @@ def _get_para_head(
         })
   else:
     encoder = PseudoLayer(extra_fc)
-  dense = tf.keras.layers.Dense(dimension)
+  dense = tf_keras.layers.Dense(dimension)
   return encoder, dense
 
 
@@ -815,11 +815,11 @@ def _paragraph_grouping_loss(
 
   # step 3:
   # compute loss
-  loss_fn = tf.keras.losses.BinaryCrossentropy(
+  loss_fn = tf_keras.losses.BinaryCrossentropy(
       from_logits=True,
       label_smoothing=0,
       axis=-1,
-      reduction=tf.keras.losses.Reduction.NONE,
+      reduction=tf_keras.losses.Reduction.NONE,
       name="para_dist")
   affinity = tf.reshape(affinity, (-1, 1))  # (b*n*n, 1)
   gt_affinity = tf.reshape(gt_affinity, (-1, 1))  # (b*n*n, 1)

@@ -35,7 +35,7 @@ from six.moves import urllib  # pylint: disable=redefined-builtin
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core

@@ -15,7 +15,7 @@
 """Common library to export a SavedModel from the export module."""
 from typing import Dict, List, Optional, Union, Any
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import export_base
 

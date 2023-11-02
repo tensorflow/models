@@ -15,7 +15,7 @@
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.simclr.heads import simclr_head
 
@@ -33,7 +33,7 @@ class ProjectionHeadTest(tf.test.TestCase, parameterized.TestCase):
         proj_output_dim=proj_output_dim)
 
     input_dim = 64
-    x = tf.keras.Input(shape=(input_dim,))
+    x = tf_keras.Input(shape=(input_dim,))
     proj_head_output, proj_finetune_output = test_layer(x)
 
     proj_head_output_dim = input_dim
@@ -90,7 +90,7 @@ class ClassificationHeadTest(tf.test.TestCase, parameterized.TestCase):
     test_layer = simclr_head.ClassificationHead(num_classes=num_classes)
 
     input_dim = 64
-    x = tf.keras.Input(shape=(input_dim,))
+    x = tf_keras.Input(shape=(input_dim,))
     out_x = test_layer(x)
 
     self.assertAllEqual(out_x.shape.as_list(),

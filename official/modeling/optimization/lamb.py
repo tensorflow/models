@@ -21,13 +21,13 @@ import re
 from typing import Optional, Union, Callable, List
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 FloatTensorLike = Union[tf.Tensor, float, np.float16, np.float32]
 
 
-@tf.keras.utils.register_keras_serializable(package="Addons")
-class LAMB(tf.keras.optimizers.legacy.Optimizer):
+@tf_keras.utils.register_keras_serializable(package="Addons")
+class LAMB(tf_keras.optimizers.legacy.Optimizer):
   """Optimizer that implements the Layer-wise Adaptive Moments (LAMB).
 
   See paper [Large Batch Optimization for Deep Learning: Training BERT
@@ -50,7 +50,7 @@ class LAMB(tf.keras.optimizers.legacy.Optimizer):
 
     Args:
         learning_rate: A `Tensor` or a floating point value. or a schedule that
-          is a `tf.keras.optimizers.schedules.LearningRateSchedule` The learning
+          is a `tf_keras.optimizers.schedules.LearningRateSchedule` The learning
           rate.
         beta_1: A `float` value or a constant `float` tensor. The exponential
           decay rate for the 1st moment estimates.

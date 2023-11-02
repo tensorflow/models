@@ -15,7 +15,7 @@
 """Tests for factory.py."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=unused-import
 from official.projects.volumetric_models.configs import semantic_segmentation_3d as exp_cfg
@@ -30,19 +30,19 @@ class SegmentationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
                             ((64, 64, 64), None, False))
   def test_unet3d_builder(self, input_size, weight_decay, use_bn):
     num_classes = 3
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], input_size[2], 3])
     model_config = exp_cfg.SemanticSegmentationModel3D(num_classes=num_classes)
     model_config.head.use_batch_normalization = use_bn
     l2_regularizer = (
-        tf.keras.regularizers.l2(weight_decay) if weight_decay else None)
+        tf_keras.regularizers.l2(weight_decay) if weight_decay else None)
     model = factory.build_segmentation_model_3d(
         input_specs=input_specs,
         model_config=model_config,
         l2_regularizer=l2_regularizer)
     self.assertIsInstance(
-        model, tf.keras.Model,
-        'Output should be a tf.keras.Model instance but got %s' % type(model))
+        model, tf_keras.Model,
+        'Output should be a tf_keras.Model instance but got %s' % type(model))
 
 
 if __name__ == '__main__':

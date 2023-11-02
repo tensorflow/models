@@ -16,7 +16,7 @@
 
 from typing import Mapping
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.compiler.tf2xla.python import xla  # pylint: disable=g-direct-tensorflow-import
 from official.projects.video_ssl.losses import losses as video_ssl_losses

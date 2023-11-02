@@ -16,7 +16,7 @@
 
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _large_compatible_negative(tensor_type):

@@ -14,7 +14,7 @@
 
 """Tests for Model Helper functions."""
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf, tf_keras  # pylint: disable=g-bad-import-order
 
 from official.utils.misc import model_helpers
 

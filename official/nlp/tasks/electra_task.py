@@ -15,7 +15,7 @@
 """ELECTRA pretraining task (Joint Masked LM and Replaced Token Detection)."""
 
 import dataclasses
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -74,7 +74,7 @@ def _build_pretrainer(
       num_token_predictions=config.num_masked_tokens,
       mlm_activation=tf_utils.get_activation(
           generator_encoder_cfg.hidden_activation),
-      mlm_initializer=tf.keras.initializers.TruncatedNormal(
+      mlm_initializer=tf_keras.initializers.TruncatedNormal(
           stddev=generator_encoder_cfg.initializer_range),
       classification_heads=[
           layers.ClassificationHead(**cfg.as_dict()) for cfg in config.cls_heads
@@ -97,7 +97,7 @@ class ElectraPretrainTask(base_task.Task):
     metrics = dict([(metric.name, metric) for metric in metrics])
 
     # generator lm and (optional) nsp loss.
-    lm_prediction_losses = tf.keras.losses.sparse_categorical_crossentropy(
+    lm_prediction_losses = tf_keras.losses.sparse_categorical_crossentropy(
         labels['masked_lm_ids'],
         tf.cast(model_outputs['lm_outputs'], tf.float32),
         from_logits=True)
@@ -110,7 +110,7 @@ class ElectraPretrainTask(base_task.Task):
       sentence_labels = labels['next_sentence_labels']
       sentence_outputs = tf.cast(
           model_outputs['sentence_outputs'], dtype=tf.float32)
-      sentence_loss = tf.keras.losses.sparse_categorical_crossentropy(
+      sentence_loss = tf_keras.losses.sparse_categorical_crossentropy(
           sentence_labels, sentence_outputs, from_logits=True)
       metrics['next_sentence_loss'].update_state(sentence_loss)
       total_loss = mlm_loss + sentence_loss
@@ -164,19 +164,19 @@ class ElectraPretrainTask(base_task.Task):
   def build_metrics(self, training=None):
     del training
     metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
-        tf.keras.metrics.Mean(name='lm_example_loss'),
-        tf.keras.metrics.SparseCategoricalAccuracy(
+        tf_keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
+        tf_keras.metrics.Mean(name='lm_example_loss'),
+        tf_keras.metrics.SparseCategoricalAccuracy(
             name='discriminator_accuracy'),
     ]
     if self.task_config.train_data.use_next_sentence_label:
       metrics.append(
-          tf.keras.metrics.SparseCategoricalAccuracy(
+          tf_keras.metrics.SparseCategoricalAccuracy(
               name='next_sentence_accuracy'))
-      metrics.append(tf.keras.metrics.Mean(name='next_sentence_loss'))
+      metrics.append(tf_keras.metrics.Mean(name='next_sentence_loss'))
 
-    metrics.append(tf.keras.metrics.Mean(name='discriminator_loss'))
-    metrics.append(tf.keras.metrics.Mean(name='total_loss'))
+    metrics.append(tf_keras.metrics.Mean(name='discriminator_loss'))
+    metrics.append(tf_keras.metrics.Mean(name='total_loss'))
 
     return metrics
 
@@ -197,8 +197,8 @@ class ElectraPretrainTask(base_task.Task):
           model_outputs['disc_label'], discrim_full_logits,
           labels['input_mask'])
 
-  def train_step(self, inputs, model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer, metrics):
+  def train_step(self, inputs, model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer, metrics):
     """Does forward and backward.
 
     Args:
@@ -227,7 +227,7 @@ class ElectraPretrainTask(base_task.Task):
     self.process_metrics(metrics, inputs, outputs)
     return {self.loss: loss}
 
-  def validation_step(self, inputs, model: tf.keras.Model, metrics):
+  def validation_step(self, inputs, model: tf_keras.Model, metrics):
     """Validatation step.
 
     Args:

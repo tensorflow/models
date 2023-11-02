@@ -23,7 +23,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import sentencepiece as spm
 from official.legacy.xlnet import classifier_utils

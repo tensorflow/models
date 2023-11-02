@@ -17,7 +17,7 @@
 from typing import Any, Callable, Mapping, Optional, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
 from official.core import input_reader

@@ -14,7 +14,7 @@
 
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.s3d.modeling import inception_utils
 
@@ -30,7 +30,7 @@ class InceptionUtilsTest(parameterized.TestCase, tf.test.TestCase):
     num_frames = 64
     height, width = 224, 224
 
-    inputs = tf.keras.layers.Input(
+    inputs = tf_keras.layers.Input(
         shape=(num_frames, height, width, 3), batch_size=batch_size)
 
     outputs, output_endpoints = inception_utils.inception_v1_stem_cells(
@@ -64,7 +64,7 @@ class InceptionUtilsTest(parameterized.TestCase, tf.test.TestCase):
     channels = 128
     height, width = 28, 28
 
-    inputs = tf.keras.layers.Input(
+    inputs = tf_keras.layers.Input(
         shape=(num_frames, height, width, channels), batch_size=batch_size)
 
     inception_v1_cell_layer = inception_utils.InceptionV1CellLayer(

@@ -29,7 +29,7 @@
 """Tests for SpineNet."""
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.backbones import spinenet_mobile
 
@@ -47,9 +47,9 @@ class SpineNetMobileTest(parameterized.TestCase, tf.test.TestCase):
     min_level = 3
     max_level = 7
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size, input_size, 3])
     model = spinenet_mobile.SpineNetMobile(
         input_specs=input_specs,
@@ -62,7 +62,7 @@ class SpineNetMobileTest(parameterized.TestCase, tf.test.TestCase):
         init_stochastic_depth_rate=0.2,
     )
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = model(inputs)
 
     for l in range(min_level, max_level + 1):

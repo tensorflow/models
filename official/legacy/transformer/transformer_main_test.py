@@ -21,7 +21,7 @@ import unittest
 
 from absl import flags
 from absl.testing import flagsaver
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tensorflow.python.eager import context  # pylint: disable=ungrouped-imports
 from official.legacy.transformer import misc
 from official.legacy.transformer import transformer_main

@@ -33,7 +33,7 @@ Some other notes:
   * Tensors are always provided as (flat) [N, 4] tensors.
 """
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class BoxList(object):

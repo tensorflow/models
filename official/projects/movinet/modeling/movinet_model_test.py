@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.movinet.modeling import movinet
 from official.projects.movinet.modeling import movinet_model
@@ -29,9 +29,9 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
     """Test for creation of a Movinet classifier."""
     temporal_size = 16
     spatial_size = 224
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, temporal_size, spatial_size, spatial_size, 3])
     backbone = movinet.Movinet(model_id='a0', input_specs=input_specs)
 
@@ -48,7 +48,7 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_movinet_classifier_stream(self):
     """Test if the classifier can be run in streaming mode."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -75,7 +75,7 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_movinet_classifier_stream_pos_enc(self):
     """Test if the classifier can be run in streaming mode with pos encoding."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -103,7 +103,7 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_movinet_classifier_stream_pos_enc_2plus1d(self):
     """Test if the model can run in streaming mode with pos encoding, (2+1)D."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -132,7 +132,7 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_movinet_classifier_mobile(self):
     """Test if the model can run with mobile parameters."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = movinet.Movinet(
         model_id='a0',
@@ -184,8 +184,8 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
     model.build([1, 5, 172, 172, 3])
     model.compile(metrics=['acc'])
 
-    tf.keras.models.save_model(model, '/tmp/movinet/')
-    loaded_model = tf.keras.models.load_model('/tmp/movinet/')
+    tf_keras.models.save_model(model, '/tmp/movinet/')
+    loaded_model = tf_keras.models.load_model('/tmp/movinet/')
 
     output = loaded_model(dict(image=tf.ones([1, 1, 1, 1, 3])))
 
@@ -202,7 +202,7 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_movinet_models(self, model_id, expected_params_millions):
     """Test creation of MoViNet family models with states."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     model = movinet_model.MovinetClassifier(
         backbone=movinet.Movinet(
@@ -216,7 +216,7 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_movinet_a0_2plus1d(self):
     """Test creation of MoViNet with 2plus1d configuration."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     model_2plus1d = movinet_model.MovinetClassifier(
         backbone=movinet.Movinet(

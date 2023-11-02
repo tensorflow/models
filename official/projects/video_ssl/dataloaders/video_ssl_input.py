@@ -17,7 +17,7 @@
 from typing import Dict, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.video_ssl.configs import video_ssl as exp_cfg
 from official.projects.video_ssl.ops import video_ssl_preprocess_ops
 from official.vision.dataloaders import video_input

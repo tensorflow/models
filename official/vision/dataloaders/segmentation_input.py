@@ -14,7 +14,7 @@
 
 """Data parser and processing for segmentation datasets."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.vision.configs import semantic_segmentation as config_lib
 from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser

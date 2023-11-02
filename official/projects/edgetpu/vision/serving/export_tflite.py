@@ -35,7 +35,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.edgetpu.vision.modeling import common_modules
 from official.projects.edgetpu.vision.serving import export_util
@@ -53,7 +53,7 @@ flags.DEFINE_enum(
 flags.DEFINE_bool(
     'export_keras_model', False,
     'Export SavedModel format: if False, export TF SavedModel with'
-    'tf.saved_model API; if True, export Keras SavedModel with tf.keras.Model'
+    'tf.saved_model API; if True, export Keras SavedModel with tf_keras.Model'
     'API.')
 flags.DEFINE_string('output_dir', None, 'Directory to output exported files.')
 flags.DEFINE_integer(
@@ -146,15 +146,15 @@ def run_export():
           'chose an output layer.', export_config.output_layer)
       return
     output_layer = model.get_layer(export_config.output_layer)
-    model = tf.keras.Model(model.input, output_layer.output)
+    model = tf_keras.Model(model.input, output_layer.output)
 
   batch_size = 1 if FLAGS.fix_batch_size else None
 
-  model_input = tf.keras.Input(
+  model_input = tf_keras.Input(
       shape=(export_config.image_size, export_config.image_size, 3),
       batch_size=batch_size)
   model_output = export_util.finalize_serving(model(model_input), export_config)
-  model_for_inference = tf.keras.Model(model_input, model_output)
+  model_for_inference = tf_keras.Model(model_input, model_output)
 
   # Convert to tflite. Quantize if quantization parameters are specified.
   converter = tf.lite.TFLiteConverter.from_keras_model(model_for_inference)

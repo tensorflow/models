@@ -14,7 +14,7 @@
 
 """MultiHeadAttention layer optimized for EdgeTPU.
 
-Compared to tf.keras.layers.MultiHeadAttention, this layer performs query-key
+Compared to tf_keras.layers.MultiHeadAttention, this layer performs query-key
 multiplication instead of key-query multiplication to remove an unnecessary
 transpose.
 """
@@ -23,7 +23,7 @@ import string
 from typing import Optional, Tuple
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 _CHR_IDX = string.ascii_lowercase
 
@@ -83,7 +83,7 @@ def _build_attention_equation(
   return dot_product_equation, combine_equation, attn_scores_rank
 
 
-class OptimizedMultiHeadAttention(tf.keras.layers.MultiHeadAttention):
+class OptimizedMultiHeadAttention(tf_keras.layers.MultiHeadAttention):
   """MultiHeadAttention with query-key multiplication.
 
   Currently, this layer only works for self-attention but not for
@@ -112,8 +112,8 @@ class OptimizedMultiHeadAttention(tf.keras.layers.MultiHeadAttention):
         rank, attn_axes=self._attention_axes)
     norm_axes = tuple(
         range(attn_scores_rank - len(self._attention_axes), attn_scores_rank))
-    self._softmax = tf.keras.layers.Softmax(axis=norm_axes)
-    self._dropout_layer = tf.keras.layers.Dropout(rate=self._dropout)
+    self._softmax = tf_keras.layers.Softmax(axis=norm_axes)
+    self._dropout_layer = tf_keras.layers.Dropout(rate=self._dropout)
 
   def _compute_attention(
       self,

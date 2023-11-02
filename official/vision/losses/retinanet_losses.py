@@ -15,7 +15,7 @@
 """Losses used for detection models."""
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def focal_loss(logits, targets, alpha, gamma):
@@ -53,7 +53,7 @@ def focal_loss(logits, targets, alpha, gamma):
   return weighted_loss
 
 
-class FocalLoss(tf.keras.losses.Loss):
+class FocalLoss(tf_keras.losses.Loss):
   """Implements a Focal loss for classification problems.
 
   Reference:
@@ -64,7 +64,7 @@ class FocalLoss(tf.keras.losses.Loss):
                alpha,
                gamma,
                num_classes,
-               reduction=tf.keras.losses.Reduction.AUTO,
+               reduction=tf_keras.losses.Reduction.AUTO,
                name=None):
     """Initializes `FocalLoss`.
 
@@ -72,7 +72,7 @@ class FocalLoss(tf.keras.losses.Loss):
       alpha: The `alpha` weight factor for binary class imbalance.
       gamma: The `gamma` focusing parameter to re-weight loss.
       num_classes: Number of foreground classes.
-      reduction: (Optional) Type of `tf.keras.losses.Reduction` to apply to
+      reduction: (Optional) Type of `tf_keras.losses.Reduction` to apply to
         loss. Default value is `AUTO`. `AUTO` indicates that the reduction
         option will be determined by the usage context. For almost all cases
         this defaults to `SUM_OVER_BATCH_SIZE`. When used with
@@ -134,19 +134,19 @@ class FocalLoss(tf.keras.losses.Loss):
     return dict(list(base_config.items()) + list(config.items()))
 
 
-class RetinanetBoxLoss(tf.keras.losses.Loss):
+class RetinanetBoxLoss(tf_keras.losses.Loss):
   """RetinaNet box Huber loss."""
 
   def __init__(self,
                delta,
-               reduction=tf.keras.losses.Reduction.AUTO,
+               reduction=tf_keras.losses.Reduction.AUTO,
                name=None):
     """Initializes `RetinanetBoxLoss`.
 
     Args:
       delta: A float, the point where the Huber loss function changes from a
         quadratic to linear.
-      reduction: (Optional) Type of `tf.keras.losses.Reduction` to apply to
+      reduction: (Optional) Type of `tf_keras.losses.Reduction` to apply to
         loss. Default value is `AUTO`. `AUTO` indicates that the reduction
         option will be determined by the usage context. For almost all cases
         this defaults to `SUM_OVER_BATCH_SIZE`. When used with
@@ -157,8 +157,8 @@ class RetinanetBoxLoss(tf.keras.losses.Loss):
             more details.
       name: Optional name for the op. Defaults to 'retinanet_class_loss'.
     """
-    self._huber_loss = tf.keras.losses.Huber(
-        delta=delta, reduction=tf.keras.losses.Reduction.NONE)
+    self._huber_loss = tf_keras.losses.Huber(
+        delta=delta, reduction=tf_keras.losses.Reduction.NONE)
     self._delta = delta
     super(RetinanetBoxLoss, self).__init__(reduction=reduction, name=name)
 

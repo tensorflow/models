@@ -14,13 +14,13 @@
 
 """Yolo initializer ops."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def pytorch_kernel_initializer(kernel_initializer):
   """Prepare kernel weights initializer to match PyTorch implementation."""
   if kernel_initializer == 'VarianceScaling':
-    return tf.keras.initializers.VarianceScaling(
+    return tf_keras.initializers.VarianceScaling(
         scale=1 / 3, mode='fan_in', distribution='uniform'
     )
   return kernel_initializer

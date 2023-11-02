@@ -16,7 +16,7 @@
 
 from typing import Dict, Optional, Text, Callable, Any, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import export_base
 
@@ -26,7 +26,7 @@ class ExportModule(export_base.ExportModule):
 
   def __init__(self,
                params,
-               model: tf.keras.Model,
+               model: tf_keras.Model,
                input_signature: Union[tf.TensorSpec, Dict[str, tf.TensorSpec]],
                preprocessor: Optional[Callable[..., Any]] = None,
                inference_step: Optional[Callable[..., Any]] = None,
@@ -35,7 +35,7 @@ class ExportModule(export_base.ExportModule):
 
     Args:
       params: A dataclass for parameters to the module.
-      model: A tf.keras.Model instance to be exported.
+      model: A tf_keras.Model instance to be exported.
       input_signature: tf.TensorSpec, e.g.
         tf.TensorSpec(shape=[None, 224, 224, 3], dtype=tf.uint8)
       preprocessor: An optional callable to preprocess the inputs.

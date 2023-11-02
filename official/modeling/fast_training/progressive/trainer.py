@@ -27,7 +27,7 @@ from typing import Any, Optional
 from absl import logging
 import gin
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import base_task
 from official.core import base_trainer as trainer_lib
 from official.core import config_definitions
@@ -116,8 +116,8 @@ class ProgressiveTrainer(trainer_lib.Trainer):
         global_step=self.global_step,
         **self._task.cur_checkpoint_items)
 
-    self._train_loss = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
-    self._validation_loss = tf.keras.metrics.Mean(
+    self._train_loss = tf_keras.metrics.Mean('training_loss', dtype=tf.float32)
+    self._validation_loss = tf_keras.metrics.Mean(
         'validation_loss', dtype=tf.float32)
     self._train_metrics = self.task.build_metrics(
         training=True) + self.model.metrics

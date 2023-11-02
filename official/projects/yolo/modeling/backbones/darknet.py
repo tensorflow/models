@@ -37,7 +37,7 @@ Darknets are used mainly for object detection in:
 
 import collections
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.projects.yolo.modeling.layers import nn_blocks
@@ -104,7 +104,7 @@ class LayerBuilder:
   def __init__(self):
     self._layer_dict = {
         'ConvBN': (nn_blocks.ConvBN, self.conv_bn_config_todict),
-        'MaxPool': (tf.keras.layers.MaxPool2D, self.maxpool_config_todict)
+        'MaxPool': (tf_keras.layers.MaxPool2D, self.maxpool_config_todict)
     }
 
   def conv_bn_config_todict(self, config, kwargs):
@@ -372,13 +372,13 @@ BACKBONES = {
 }
 
 
-class Darknet(tf.keras.Model):
+class Darknet(tf_keras.Model):
   """The Darknet backbone architecture."""
 
   def __init__(
       self,
       model_id='darknet53',
-      input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+      input_specs=tf_keras.layers.InputSpec(shape=[None, None, None, 3]),
       min_level=None,
       max_level=5,
       width_scale=1.0,
@@ -435,7 +435,7 @@ class Darknet(tf.keras.Model):
         'name': None
     }
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
     output = self._build_struct(layer_specs, inputs)
     super().__init__(
         inputs=inputs, outputs=output, name=self._model_name, **kwargs
@@ -571,7 +571,7 @@ class Darknet(tf.keras.Model):
     return x, x_route
 
   def _tiny_stack(self, inputs, config, name):
-    x = tf.keras.layers.MaxPool2D(
+    x = tf_keras.layers.MaxPool2D(
         pool_size=2,
         strides=config.strides,
         padding='same',
@@ -676,11 +676,11 @@ class Darknet(tf.keras.Model):
 
 @factory.register_backbone_builder('darknet')
 def build_darknet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None
-) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None
+) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds darknet."""
 
   backbone_config = backbone_config.get()

@@ -18,7 +18,7 @@ import os
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
@@ -83,7 +83,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
         functools.partial(task.build_inputs, config.train_data))
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer = tf_keras.optimizers.SGD(learning_rate=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     model.save(os.path.join(self.get_temp_dir(), "saved_model"))
     return task.validation_step(next(iterator), model, metrics=metrics)
@@ -120,7 +120,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer = tf_keras.optimizers.SGD(learning_rate=0.1)
     task.initialize(model)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
@@ -144,14 +144,14 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     model = task.build_model()
     metrics = task.build_metrics()
     if num_classes == 1:
-      self.assertIsInstance(metrics[0], tf.keras.metrics.MeanSquaredError)
+      self.assertIsInstance(metrics[0], tf_keras.metrics.MeanSquaredError)
     else:
       self.assertIsInstance(metrics[0],
-                            tf.keras.metrics.SparseCategoricalAccuracy)
+                            tf_keras.metrics.SparseCategoricalAccuracy)
 
     dataset = task.build_inputs(config.train_data)
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer = tf_keras.optimizers.SGD(learning_rate=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
 
     logs = task.validation_step(next(iterator), model, metrics=metrics)
@@ -219,7 +219,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
             bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1)))
     encoder_inputs_dict = {x.name: x for x in encoder.inputs}
     encoder_output_dict = encoder(encoder_inputs_dict)
-    core_model = tf.keras.Model(
+    core_model = tf_keras.Model(
         inputs=encoder_inputs_dict, outputs=encoder_output_dict)
     hub_destination = os.path.join(self.get_temp_dir(), "hub")
     core_model.save(hub_destination, include_optimizer=False, save_format="tf")

@@ -18,7 +18,7 @@ import os
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -187,7 +187,7 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         anchor_boxes = None
       num_anchors_per_location = len(aspect_ratios) * num_scales
 
-      input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, 3])
+      input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, 3])
       backbone = resnet.ResNet(model_id=50, input_specs=input_specs)
       decoder = fpn.FPN(
           min_level=min_level,
@@ -292,7 +292,7 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       (True,),
   )
   def test_serialize_deserialize(self, include_mask):
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, 3])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, 3])
     backbone = resnet.ResNet(model_id=50, input_specs=input_specs)
     decoder = fpn.FPN(
         min_level=3, max_level=7, input_specs=backbone.output_specs)
@@ -344,7 +344,7 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
       (True,),
   )
   def test_checkpoint(self, include_mask):
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, 3])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, 3])
     backbone = resnet.ResNet(model_id=50, input_specs=input_specs)
     decoder = fpn.FPN(
         min_level=3, max_level=7, input_specs=backbone.output_specs)

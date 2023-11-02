@@ -15,7 +15,7 @@
 """Tests for utils.py."""
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.edgetpu.nlp.configs import params
 from official.projects.edgetpu.nlp.modeling import model_builder

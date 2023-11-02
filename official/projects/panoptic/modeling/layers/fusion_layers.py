@@ -15,7 +15,7 @@
 """Contains feature fusion blocks for panoptic segmentation models."""
 from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
@@ -25,7 +25,7 @@ States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
 
 
-class PanopticDeepLabFusion(tf.keras.layers.Layer):
+class PanopticDeepLabFusion(tf_keras.layers.Layer):
   """Creates a Panoptic DeepLab feature Fusion layer.
 
   This implements the feature fusion introduced in the paper:
@@ -44,8 +44,8 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
       **kwargs):
     """Initializes panoptic FPN feature fusion layer.
@@ -63,9 +63,9 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
       interpolation: A `str` interpolation method for upsampling. Defaults to
         `bilinear`.
       **kwargs: Additional keyword arguments to be passed.
@@ -89,23 +89,23 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
         'bias_regularizer': bias_regularizer,
         'interpolation': interpolation
     }
-    if tf.keras.backend.image_data_format() == 'channels_last':
+    if tf_keras.backend.image_data_format() == 'channels_last':
       self._channel_axis = -1
     else:
       self._channel_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
   def build(self, input_shape: List[tf.TensorShape]):
-    conv_op = tf.keras.layers.Conv2D
+    conv_op = tf_keras.layers.Conv2D
     conv_kwargs = {
         'padding': 'same',
         'use_bias': True,
         'kernel_initializer': tf.initializers.VarianceScaling(),
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
     }
-    bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
+    bn_op = (tf_keras.layers.experimental.SyncBatchNormalization
              if self._config_dict['use_sync_bn']
-             else tf.keras.layers.BatchNormalization)
+             else tf_keras.layers.BatchNormalization)
     bn_kwargs = {
         'axis': self._channel_axis,
         'momentum': self._config_dict['norm_momentum'],
@@ -123,9 +123,9 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
               kernel_size=1,
               **conv_kwargs))
       if self._config_dict['use_depthwise_convolution']:
-        depthwise_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
-        fusion_conv = tf.keras.Sequential([
-            tf.keras.layers.DepthwiseConv2D(
+        depthwise_initializer = tf_keras.initializers.RandomNormal(stddev=0.01)
+        fusion_conv = tf_keras.Sequential([
+            tf_keras.layers.DepthwiseConv2D(
                 kernel_size=5,
                 padding='same',
                 use_bias=True,
@@ -148,7 +148,7 @@ class PanopticDeepLabFusion(tf.keras.layers.Layer):
 
   def call(self, inputs, training=None):
     if training is None:
-      training = tf.keras.backend.learning_phase()
+      training = tf_keras.backend.learning_phase()
 
     backbone_output = inputs[0]
     decoder_output = inputs[1][str(self._config_dict['level'])]

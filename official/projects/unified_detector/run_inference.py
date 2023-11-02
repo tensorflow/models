@@ -25,7 +25,7 @@ from absl import logging
 import cv2
 import gin
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tqdm
 
 from official.projects.unified_detector import external_configurables  # pylint: disable=unused-import
@@ -81,7 +81,7 @@ def _preprocess(raw_image: np.ndarray) -> Union[np.ndarray, float]:
   return tf.expand_dims(img_tensor, 0).numpy(), float(ratio)
 
 
-def load_model() -> tf.keras.layers.Layer:
+def load_model() -> tf_keras.layers.Layer:
   gin.parse_config_file(_GIN_FILE.value)
   model = universal_detector.UniversalDetector()
   ckpt = tf.train.Checkpoint(model=model)
@@ -91,7 +91,7 @@ def load_model() -> tf.keras.layers.Layer:
   return model
 
 
-def inference(img_file: str, model: tf.keras.layers.Layer) -> Dict[str, Any]:
+def inference(img_file: str, model: tf_keras.layers.Layer) -> Dict[str, Any]:
   """Inference step."""
   img = cv2.cvtColor(cv2.imread(img_file), cv2.COLOR_BGR2RGB)
   img_ndarray, ratio = _preprocess(img)

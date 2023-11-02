@@ -16,7 +16,7 @@
 
 from typing import Any, Callable, Dict, Optional
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.modeling.backbones import factory
@@ -48,8 +48,8 @@ REVNET_SPECS = {
 }
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class RevNet(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class RevNet(tf_keras.Model):
   """Creates a Reversible ResNet (RevNet) family model.
 
   This implements:
@@ -62,26 +62,26 @@ class RevNet(tf.keras.Model):
   def __init__(
       self,
       model_id: int,
-      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+      input_specs: tf_keras.layers.InputSpec = tf_keras.layers.InputSpec(
           shape=[None, None, None, 3]),
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a RevNet model.
 
     Args:
       model_id: An `int` of depth/id of ResNet backbone model.
-      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      input_specs: A `tf_keras.layers.InputSpec` of the input tensor.
       activation: A `str` name of the activation function.
       use_sync_bn: If True, use synchronized batch normalization.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
       kernel_initializer: A str for kernel initializer of convolutional layers.
-      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
       **kwargs: Additional keyword arguments to be passed.
     """
@@ -93,14 +93,14 @@ class RevNet(tf.keras.Model):
     self._norm_epsilon = norm_epsilon
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
-    self._norm = tf.keras.layers.BatchNormalization
+    self._norm = tf_keras.layers.BatchNormalization
 
-    axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
+    axis = -1 if tf_keras.backend.image_data_format() == 'channels_last' else 1
 
     # Build RevNet.
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf_keras.Input(shape=input_specs.shape[1:])
 
-    x = tf.keras.layers.Conv2D(
+    x = tf_keras.layers.Conv2D(
         filters=REVNET_SPECS[model_id][0][1],
         kernel_size=7, strides=2, use_bias=False, padding='same',
         kernel_initializer=self._kernel_initializer,
@@ -111,7 +111,7 @@ class RevNet(tf.keras.Model):
         epsilon=norm_epsilon,
         synchronized=use_sync_bn)(x)
     x = tf_utils.get_activation(activation)(x)
-    x = tf.keras.layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
+    x = tf_keras.layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
     endpoints = {}
     for i, spec in enumerate(REVNET_SPECS[model_id]):
@@ -144,7 +144,7 @@ class RevNet(tf.keras.Model):
                    inputs: tf.Tensor,
                    filters: int,
                    strides: int,
-                   inner_block_fn: Callable[..., tf.keras.layers.Layer],
+                   inner_block_fn: Callable[..., tf_keras.layers.Layer],
                    block_repeats: int,
                    batch_norm_first: bool,
                    name: str = 'revblock_group') -> tf.Tensor:
@@ -201,7 +201,7 @@ class RevNet(tf.keras.Model):
   @classmethod
   def from_config(cls,
                   config: Dict[str, Any],
-                  custom_objects: Optional[Any] = None) -> tf.keras.Model:
+                  custom_objects: Optional[Any] = None) -> tf_keras.Model:
     return cls(**config)
 
   @property
@@ -212,10 +212,10 @@ class RevNet(tf.keras.Model):
 
 @factory.register_backbone_builder('revnet')
 def build_revnet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds RevNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

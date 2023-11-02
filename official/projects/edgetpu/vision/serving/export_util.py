@@ -17,7 +17,7 @@
 import dataclasses
 from typing import List, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 from official.core import exp_factory

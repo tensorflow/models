@@ -15,7 +15,7 @@
 """Perceiver modeling utils."""
 
 import functools
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def make_cross_attention_mask(query_mask, kv_mask):
@@ -55,7 +55,7 @@ def build_cross_attention_block_args(
   `inner_activation` is set to gelu.
 
   `kernel_initializer` and `attention_initializer` are both
-  `tf.keras.initializers.VarianceScaling`.
+  `tf_keras.initializers.VarianceScaling`.
 
   Args:
     input_shape:
@@ -165,7 +165,7 @@ def build_self_attention_block_args(
   `inner_activation` is set to gelu.
 
   `kernel_initializer` and `attention_initializer` are both
-  `tf.keras.initializers.VarianceScaling`.
+  `tf_keras.initializers.VarianceScaling`.
 
   Args:
     input_shape:
@@ -238,12 +238,12 @@ def _build_transformer_encoder_block_args(
   `inner_activation` is set to gelu.
 
   `kernel_initializer` and `attention_initializer` are both
-  `tf.keras.initializers.VarianceScaling`.
+  `tf_keras.initializers.VarianceScaling`.
 
   Args:
     input_shape:
       input shape(s). Usually passed through `build` method in
-      `tf.keras.layers.Layer`.
+      `tf_keras.layers.Layer`.
     widening_factor:
       Multiplier used to widen on the inner layer of the MLP step within a
       transformer attention block.
@@ -254,10 +254,10 @@ def _build_transformer_encoder_block_args(
     num_heads:
       Number of attention heads.
     att_init_scale:
-      Scale for the `tf.keras.initializers.VarianceScaling` used in attention
+      Scale for the `tf_keras.initializers.VarianceScaling` used in attention
       kernel.
     dense_init_scale:
-      Scale for the `tf.keras.initializers.VarianceScaling` used in MLP kernel.
+      Scale for the `tf_keras.initializers.VarianceScaling` used in MLP kernel.
     use_query_residual:
       Toggle to execute residual connection after attention.
     norm_epsilon:
@@ -323,11 +323,11 @@ def _build_transformer_encoder_block_args(
       "inner_dim":
           output_last_dim * widening_factor,
       "inner_activation":
-          functools.partial(tf.keras.activations.gelu, approximate=True),
+          functools.partial(tf_keras.activations.gelu, approximate=True),
       "kernel_initializer":
-          tf.keras.initializers.VarianceScaling(scale=dense_init_scale),
+          tf_keras.initializers.VarianceScaling(scale=dense_init_scale),
       "attention_initializer":
-          tf.keras.initializers.VarianceScaling(scale=att_init_scale),
+          tf_keras.initializers.VarianceScaling(scale=att_init_scale),
       "norm_first":
           True,
       "norm_epsilon":

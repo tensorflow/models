@@ -14,7 +14,7 @@
 
 """Tests that masked LM models are deterministic when determinism is enabled."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
@@ -54,7 +54,7 @@ class MLMTaskTest(tf.test.TestCase):
                                   config.model.encoder.get().vocab_size)
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
 
     # Run training
     for _ in range(num_steps):
@@ -87,9 +87,9 @@ class MLMTaskTest(tf.test.TestCase):
             seq_length=128,
             global_batch_size=1))
 
-    tf.keras.utils.set_random_seed(1)
+    tf_keras.utils.set_random_seed(1)
     logs1, validation_logs1, weights1 = self._build_and_run_model(config)
-    tf.keras.utils.set_random_seed(1)
+    tf_keras.utils.set_random_seed(1)
     logs2, validation_logs2, weights2 = self._build_and_run_model(config)
 
     self.assertEqual(logs1["loss"], logs2["loss"])

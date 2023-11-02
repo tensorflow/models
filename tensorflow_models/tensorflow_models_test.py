@@ -14,7 +14,7 @@
 
 """Tests for tensorflow_models imports."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_models as tfm
 
 

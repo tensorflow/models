@@ -16,20 +16,20 @@
 from typing import Any, Mapping, List, Optional, Union, Sequence
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import anchor
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class RetinaNetModel(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class RetinaNetModel(tf_keras.Model):
   """The RetinaNet model class."""
 
   def __init__(self,
-               backbone: tf.keras.Model,
-               decoder: tf.keras.Model,
-               head: tf.keras.layers.Layer,
-               detection_generator: tf.keras.layers.Layer,
+               backbone: tf_keras.Model,
+               decoder: tf_keras.Model,
+               head: tf_keras.layers.Layer,
+               detection_generator: tf_keras.layers.Layer,
                min_level: Optional[int] = None,
                max_level: Optional[int] = None,
                num_scales: Optional[int] = None,
@@ -39,8 +39,8 @@ class RetinaNetModel(tf.keras.Model):
     """Detection initialization function.
 
     Args:
-      backbone: `tf.keras.Model` a backbone network.
-      decoder: `tf.keras.Model` a decoder network.
+      backbone: `tf_keras.Model` a backbone network.
+      decoder: `tf_keras.Model` a decoder network.
       head: `RetinaNetHead`, the RetinaNet head.
       detection_generator: the detection generator.
       min_level: Minimum level in output feature maps.
@@ -207,7 +207,7 @@ class RetinaNetModel(tf.keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:
@@ -216,19 +216,19 @@ class RetinaNetModel(tf.keras.Model):
     return items
 
   @property
-  def backbone(self) -> tf.keras.Model:
+  def backbone(self) -> tf_keras.Model:
     return self._backbone
 
   @property
-  def decoder(self) -> tf.keras.Model:
+  def decoder(self) -> tf_keras.Model:
     return self._decoder
 
   @property
-  def head(self) -> tf.keras.layers.Layer:
+  def head(self) -> tf_keras.layers.Layer:
     return self._head
 
   @property
-  def detection_generator(self) -> tf.keras.layers.Layer:
+  def detection_generator(self) -> tf_keras.layers.Layer:
     return self._detection_generator
 
   def get_config(self) -> Mapping[str, Any]:

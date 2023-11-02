@@ -16,7 +16,7 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.backbones import efficientnet
 
@@ -26,11 +26,11 @@ class EfficientNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(32, 224)
   def test_network_creation(self, input_size):
     """Test creation of EfficientNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     network = efficientnet.EfficientNet(model_id='b0')
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
     self.assertAllEqual([1, input_size / 2**2, input_size / 2**2, 24],
@@ -50,24 +50,24 @@ class EfficientNetTest(parameterized.TestCase, tf.test.TestCase):
         'b3': 10783528,
         'b6': 40960136,
     }
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     input_size = 32
     network = efficientnet.EfficientNet(model_id=model_id, se_ratio=0.25)
     self.assertEqual(network.count_params(), efficientnet_params[model_id])
 
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     _ = network(inputs)
 
   @parameterized.parameters(1, 3)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, input_dim])
     network = efficientnet.EfficientNet(model_id='b0', input_specs=input_specs)
 
-    inputs = tf.keras.Input(shape=(128, 128, input_dim), batch_size=1)
+    inputs = tf_keras.Input(shape=(128, 128, input_dim), batch_size=1)
     _ = network(inputs)
 
   def test_serialize_deserialize(self):
