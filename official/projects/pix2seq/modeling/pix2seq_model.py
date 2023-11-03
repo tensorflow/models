@@ -240,6 +240,7 @@ class Pix2Seq(tf_keras.Model):
       temperature=1.0,
       top_k=0,
       top_p=0.4,
+      eos_token: int | None = None,
       **kwargs
   ):
     super().__init__(**kwargs)
@@ -280,6 +281,7 @@ class Pix2Seq(tf_keras.Model):
     self._temperature = temperature
     self._top_k = top_k
     self._top_p = top_p
+    self._eos_token = eos_token
 
   @property
   def backbone(self) -> tf_keras.Model:
@@ -304,6 +306,7 @@ class Pix2Seq(tf_keras.Model):
         "temperature": self._temperature,
         "top_k": self._top_k,
         "top_p": self._top_p,
+        "eos_token": self._eos_token,
         "num_heads": self._num_heads,
     }
 
@@ -369,9 +372,34 @@ class Pix2Seq(tf_keras.Model):
           temperature=self._temperature,
           top_k=self._top_k,
           top_p=self._top_p,
+          eos_token=self._eos_token,
       )
 
     return [tokens, logits]
+
+
+def _create_cond_fn(seq_len: int, eos_token: int | None, prompt_len: int):
+  """Returns a loop condition for decoder.
+
+  Args:
+    seq_len: the maximum sequence length.
+    eos_token: if not None, enable early termination based on end-of-sequence
+      token.
+    prompt_len: the length of prompt sequence.
+  """
+
+  def cond(step, caches, tokens, logits):
+    del caches
+    del logits
+    within_seq_len = (seq_len > prompt_len) & (step < seq_len - 1)
+    if eos_token is None:
+      return within_seq_len
+    else:
+      tokens = tokens[prompt_len:step]
+      reached_eos = tf.reduce_all(tf.reduce_any(tokens == eos_token, axis=0))
+      return within_seq_len & tf.logical_not(reached_eos)
+
+  return cond
 
 
 class Pix2SeqTransformer(tf_keras.layers.Layer):
@@ -521,6 +549,7 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       top_k=0,
       top_p=0.4,
       sampling_callback=None,
+      eos_token: int | None = None,
   ):
     """Autoregressive (without teacher-forcing) prediction.
 
@@ -542,6 +571,10 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       sampling_callback: a callbak `function` that take `next_logits`, and
         return `next_token`. This is used when users need a specific logic for
         sampling. Default to `None` with standard free-form sampling.
+      eos_token: if not None, stop inference early based on this end-of-sequence
+        (EOS) token. This won't change sequence length. However, for each
+        sequence, the tokens and logit values after the EOS token will have
+        undefined behavior based on implementation detail.
 
     Returns:
       sampled tokens with shape of (bsz, max_seq_len-prompt_len).
@@ -627,15 +660,6 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       logits = tf.tensor_scatter_nd_update(logits, [[next_step]], [next_logits])
       return (next_step, caches, tokens, logits)
 
-    def cond(step, caches, tokens, logits):
-      del caches
-      del tokens
-      del logits
-      return tf.logical_and(
-          tf.greater(seq_len, prompt_len),
-          tf.less(step, seq_len - 1)
-      )
-
     caches_var = tf.zeros(
         [seq_len-1, self._num_decoder_layers, bsz, self._hidden_size])
     tokens_var = tf.zeros([seq_len, bsz], dtype=tf.int64)
@@ -649,11 +673,12 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     step, caches_var, tokens_var, logits_var = loop_body(
         step, caches_var, tokens_var, logits_var, is_prompt=True
     )
-
     _, _, tokens_var, logits_var = tf.while_loop(
-        cond=cond,
+        cond=_create_cond_fn(
+            seq_len=seq_len, eos_token=eos_token, prompt_len=prompt_len
+        ),
         body=loop_body,
-        loop_vars=[step, caches_var, tokens_var, logits_var]
+        loop_vars=[step, caches_var, tokens_var, logits_var],
     )
 
     sampled_tokens = tf.transpose(tokens_var[prompt_len:], [1, 0])

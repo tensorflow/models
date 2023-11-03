@@ -73,6 +73,7 @@ class Pix2SeqTask(base_task.Task):
         temperature=config.temperature,
         top_p=config.top_p,
         top_k=config.top_k,
+        eos_token=config.eos_token,
     )
     return model
 
