@@ -143,7 +143,7 @@ class XLNetPretrainDataConfig(cfg.DataConfig):
 
   Attributes:
     input_path: See base class.
-    global_batch_size: See base calss.
+    global_batch_size: See base class.
     is_training: See base class.
     seq_length: The length of each sequence.
     max_predictions_per_seq: The number of predictions per sequence.
