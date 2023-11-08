@@ -492,7 +492,7 @@ def _improve_answer_span(doc_tokens, input_start, input_end, tokenizer,
   #
   # However, this is not always possible. Consider the following:
   #
-  #   Question: What country is the top exporter of electornics?
+  #   Question: What country is the top exporter of electronics?
   #   Context: The Japanese electronics industry is the lagest in the world.
   #   Answer: Japan
   #
