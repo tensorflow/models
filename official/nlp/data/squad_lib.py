@@ -815,7 +815,7 @@ def get_final_text(pred_text, orig_text, do_lower_case, verbose=False):
   # What we really want to return is "Steve Smith".
   #
   # Therefore, we have to apply a semi-complicated alignment heruistic between
-  # `pred_text` and `orig_text` to get a character-to-charcter alignment. This
+  # `pred_text` and `orig_text` to get a character-to-character alignment. This
   # can fail in certain cases in which case we just return `orig_text`.
 
   def _strip_spaces(text):
