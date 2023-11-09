@@ -321,6 +321,7 @@ class Controller:
     _log(f" eval | step: {current_step: 6d} | {steps_msg}")
 
     start = time.time()
+    assert isinstance(self.evaluator, runner.AbstractEvaluator)
     with self.eval_summary_manager.summary_writer().as_default():
       steps_tensor = tf.convert_to_tensor(steps, dtype=tf.int32)
       eval_output = self.evaluator.evaluate(steps_tensor)
@@ -428,6 +429,7 @@ class Controller:
     self._require("checkpoint_manager", for_method="evaluate_continuously")
 
     output = None
+    assert isinstance(self.checkpoint_manager, tf.train.CheckpointManager)
     for checkpoint_path in tf.train.checkpoints_iterator(
         self.checkpoint_manager.directory,
         timeout=timeout,
@@ -451,6 +453,7 @@ class Controller:
     """
     self._require("checkpoint_manager", for_method="restore_checkpoint")
 
+    assert isinstance(self.checkpoint_manager, tf.train.CheckpointManager)
     with self.strategy.scope():
       # Checkpoint restoring should be inside scope (b/139450638).
       if checkpoint_path is not None:
@@ -508,6 +511,7 @@ class Controller:
       if self.summary_interval:
         # Create a predicate to determine when summaries should be written.
         should_record = lambda: (self.global_step % self.summary_interval == 0)
+      assert isinstance(self.trainer, runner.AbstractTrainer)
       with tf.summary.record_if(should_record):
         num_steps_tensor = tf.convert_to_tensor(num_steps, dtype=tf.int32)
         train_output = self.trainer.train(num_steps_tensor)
