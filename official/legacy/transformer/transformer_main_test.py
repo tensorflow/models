@@ -17,7 +17,7 @@
 import os
 import re
 import sys
-import googletest
+import unittest
 
 from absl import flags
 from absl.testing import flagsaver
@@ -100,20 +100,20 @@ class TransformerTaskTest(tf.test.TestCase):
     t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
-  @googletest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_1_gpu_with_dist_strat(self):
     FLAGS.distribution_strategy = 'one_device'
     t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
-  @googletest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_fp16(self):
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.dtype = 'fp16'
     t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
-  @googletest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_2_gpu(self):
     if context.num_gpus() < 2:
       self.skipTest(
@@ -125,7 +125,7 @@ class TransformerTaskTest(tf.test.TestCase):
     t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
-  @googletest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_2_gpu_fp16(self):
     if context.num_gpus() < 2:
       self.skipTest(
@@ -171,7 +171,7 @@ class TransformerTaskTest(tf.test.TestCase):
     t = transformer_main.TransformerTask(FLAGS)
     t.predict()
 
-  @googletest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_predict_fp16(self):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
