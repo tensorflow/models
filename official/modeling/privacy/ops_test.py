@@ -14,7 +14,7 @@
 
 """Tests for ops."""
 
-from unittest import mock
+from googletest import mock
 
 import tensorflow as tf, tf_keras
 

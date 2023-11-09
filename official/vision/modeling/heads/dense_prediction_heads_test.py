@@ -14,7 +14,7 @@
 
 """Tests for dense_prediction_heads.py."""
 
-import unittest
+import googletest
 
 # Import libraries
 
@@ -151,7 +151,7 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
       self.assertLen(retinanet_head._att_convs['depth'], 1)
       self.assertEqual(retinanet_head._att_convs['depth'][0].filters, 128)
 
-  @unittest.expectedFailure
+  @googletest.expectedFailure
   def test_forward_shared_prediction_tower_with_share_classification_heads(
       self):
     share_classification_heads = True

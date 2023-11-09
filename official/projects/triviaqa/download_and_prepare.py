@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Downloads and prepares TriviaQA dataset."""
-from unittest import mock
+from googletest import mock
 
 from absl import app
 from absl import flags

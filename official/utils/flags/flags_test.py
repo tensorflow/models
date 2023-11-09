@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import googletest
 
 from absl import flags
 import tensorflow as tf, tf_keras
@@ -39,7 +39,7 @@ def define_flags():
   flags_core.define_benchmark()
 
 
-class BaseTester(unittest.TestCase):
+class BaseTester(googletest.TestCase):
 
   @classmethod
   def setUpClass(cls):
@@ -159,4 +159,4 @@ class BaseTester(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  unittest.main()
+  googletest.main()

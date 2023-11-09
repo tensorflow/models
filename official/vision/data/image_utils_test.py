@@ -14,7 +14,7 @@
 
 """Tests for image_utils."""
 import imghdr
-from unittest import mock
+from googletest import mock
 from absl.testing import parameterized
 import tensorflow as tf, tf_keras
 

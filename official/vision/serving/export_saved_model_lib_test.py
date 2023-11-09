@@ -15,7 +15,7 @@
 """Tests for official.core.export_saved_model_lib."""
 
 import os
-from unittest import mock
+from googletest import mock
 
 import tensorflow as tf, tf_keras
 
