@@ -338,3 +338,37 @@ class AdafactorConfig(BaseOptimizerConfig):
   epsilon2: float = 1e-3
   weight_decay: Optional[float] = None
   include_in_weight_decay: Optional[str] = None
+
+
+@dataclasses.dataclass
+class AdafactorKerasConfig(BaseOptimizerConfig):
+  """Configuration for AdafactorKeras optimizer.
+
+  The attributes for this class matches the arguments of the Adafactor
+  implementation provided by keras.
+
+  Attributes:
+          learning_rate: Initial value for the learning rate: either a floating
+            point value, or a
+            `tf_keras.optimizers.schedules.LearningRateSchedule` instance.
+            Defaults to 0.001.
+        beta_2_decay: float, defaults to -0.8. The decay rate of `beta_2`.
+        epsilon_1: float, defaults to 1e-30. A small offset to keep denominator
+          away from 0.
+        epsilon_2: float, defaults to 1e-3. A small offset to avoid learning
+          rate becoming too small by time.
+        clip_threshold: float, defaults to 1.0. Clipping threshold. This is a
+          part of Adafactor algorithm, independent from `clipnorm`, `clipvalue`
+          and `global_clipnorm`.
+        relative_step: bool, defaults to True. If `learning_rate` is a constant
+          and `relative_step=True`, learning rate will be adjusted based on
+          current iterations. This is a default learning rate decay in
+          Adafactor.
+  """
+  name: str = "Adafactor"
+  learning_rate: float = 0.001
+  beta_2_decay: float = -0.8
+  epsilon_1: float = 1e-30
+  epsilon_2: float = 1e-3
+  clip_threshold: float = 1.0
+  relative_step: bool = True
