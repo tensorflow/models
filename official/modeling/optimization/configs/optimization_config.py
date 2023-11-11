@@ -42,6 +42,8 @@ class OptimizerConfig(oneof.OneOfConfig):
     lars: lars optimizer.
     adagrad: adagrad optimizer.
     slide: slide optimizer.
+    adafactor: adafactor optimizer.
+    adafactor_keras: adafactor optimizer.
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = dataclasses.field(default_factory=opt_cfg.SGDConfig)
@@ -79,6 +81,9 @@ class OptimizerConfig(oneof.OneOfConfig):
   )
   adafactor: opt_cfg.AdafactorConfig = dataclasses.field(
       default_factory=opt_cfg.AdafactorConfig
+  )
+  adafactor_keras: opt_cfg.AdafactorKerasConfig = dataclasses.field(
+      default_factory=opt_cfg.AdafactorKerasConfig
   )
 
 

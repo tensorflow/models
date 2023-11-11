@@ -37,6 +37,7 @@ SHARED_OPTIMIZERS = {
     'lars': lars.LARS,
     'slide': slide_optimizer.SLIDE,
     'adafactor': adafactor_optimizer.Adafactor,
+    'adafactor_keras': tf_keras.optimizers.Adafactor,
 }
 
 LEGACY_OPTIMIZERS_CLS = {
