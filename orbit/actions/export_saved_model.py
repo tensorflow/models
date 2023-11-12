@@ -22,6 +22,16 @@ from typing import Callable, Optional
 import tensorflow as tf, tf_keras
 
 
+_GS_PREFIX = r'gs://'  # Google Cloud Storage Prefix
+
+
+def safe_normpath(path: str) -> str:
+  """Normalize path safely to get around gfile.glob limitations."""
+  if path.startswith(_GS_PREFIX):
+    return _GS_PREFIX + os.path.normpath(path[len(_GS_PREFIX):])
+  return os.path.normpath(path)
+
+
 def _id_key(filename):
   _, id_num = filename.rsplit('-', maxsplit=1)
   return int(id_num)
@@ -84,7 +94,7 @@ class ExportFileManager:
         {base_name}-{id}. Then the file manager will manage
         {base_name}-{id}/{subdirectory} files.
     """
-    self._base_name = os.path.normpath(base_name)
+    self._base_name = safe_normpath(base_name)
     self._max_to_keep = max_to_keep
     self._next_id_fn = next_id_fn or _CounterIdFn(self._base_name)
     self._subdirectory = subdirectory or ''
@@ -100,7 +110,7 @@ class ExportFileManager:
     """
     files = _find_managed_files(self._base_name)
     return [
-        os.path.normpath(os.path.join(f, self._subdirectory)) for f in files
+        safe_normpath(os.path.join(f, self._subdirectory)) for f in files
     ]
 
   def clean_up(self):
@@ -119,7 +129,7 @@ class ExportFileManager:
   def next_name(self) -> str:
     """Returns a new file name based on `base_name` and `next_id_fn()`."""
     base_path = f'{self._base_name}-{self._next_id_fn()}'
-    return os.path.normpath(os.path.join(base_path, self._subdirectory))
+    return safe_normpath(os.path.join(base_path, self._subdirectory))
 
 
 class ExportSavedModel:
