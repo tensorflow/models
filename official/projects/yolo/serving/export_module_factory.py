@@ -23,11 +23,11 @@ from official.core import export_base
 from official.projects.yolo.configs import darknet_classification
 from official.projects.yolo.configs import yolo
 from official.projects.yolo.configs import yolov7
+from official.projects.yolo.dataloaders import classification_input
 from official.projects.yolo.modeling import factory as yolo_factory
 from official.projects.yolo.modeling.backbones import darknet  # pylint: disable=unused-import
 from official.projects.yolo.modeling.decoders import yolo_decoder  # pylint: disable=unused-import
 from official.projects.yolo.serving import model_fn as yolo_model_fn
-from official.vision.dataloaders import classification_input
 from official.vision.modeling import factory
 from official.vision.serving import export_utils
 
