@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Classification decoder and parser."""
+from typing import List
+
 import tensorflow as tf, tf_keras
 from official.vision.dataloaders import classification_input
 from official.vision.ops import preprocess_ops
@@ -88,5 +90,21 @@ class Parser(classification_input.Parser):
 
     # Convert image to self._dtype.
     image = tf.image.convert_image_dtype(image, self._dtype)
+    image = image / 255.0
+    return image
+
+  @classmethod
+  def inference_fn(
+      cls, image: tf.Tensor, input_image_size: List[int], num_channels: int = 3
+  ) -> tf.Tensor:
+    """Builds image model inputs for serving."""
+
+    image = tf.cast(image, dtype=tf.float32)
+    image = preprocess_ops.center_crop_image(image)
+    image = tf.image.resize(
+        image, input_image_size, method=tf.image.ResizeMethod.BILINEAR
+    )
+
+    image.set_shape(input_image_size + [num_channels])
     image = image / 255.0
     return image
