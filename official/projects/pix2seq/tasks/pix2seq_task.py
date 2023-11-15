@@ -89,9 +89,12 @@ class Pix2SeqTask(base_task.Task):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
 
     if self._task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      ckpt = tf.train.Checkpoint(model=model)
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
+      logging.info(
+          'Finished loading pretrained checkpoint from %s', ckpt_dir_or_file
+      )
     elif self._task_config.init_checkpoint_modules == 'backbone':
       if self.task_config.model.backbone.type == 'uvit':
         model.backbone.load_checkpoint(ckpt_filepath=ckpt_dir_or_file)
@@ -99,10 +102,15 @@ class Pix2SeqTask(base_task.Task):
         ckpt = tf.train.Checkpoint(backbone=model.backbone)
         status = ckpt.restore(ckpt_dir_or_file)
         status.expect_partial().assert_existing_objects_matched()
-
-    logging.info(
-        'Finished loading pretrained checkpoint from %s', ckpt_dir_or_file
-    )
+      logging.info(
+          'Finished loading pretrained backbone from %s', ckpt_dir_or_file
+      )
+    else:
+      raise ValueError(
+          f'Failed to load {ckpt_dir_or_file}. Unsupported '
+          'init_checkpoint_modules: '
+          f'{self._task_config.init_checkpoint_modules}'
+      )
 
   def build_inputs(
       self, params, input_context: Optional[tf.distribute.InputContext] = None
