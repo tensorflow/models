@@ -13,7 +13,6 @@ distributed by Google. The dataset is made available by third parties. Please
 review the terms and conditions made available by the third parties before using
 the data.
 
-
 ## Training
 To train the model on MS-COCO, try the following command:
 
@@ -24,9 +23,6 @@ python3 train.py \
   --model_dir=$MODEL_DIR \
   --config_file=./configs/experiments/coco_pix2seq_r50_gpu.yaml
 ```
-
-
-
 
 ## Evaluation
 To evaluate the model on MS-COCO, try the following command:
@@ -52,3 +48,13 @@ python3 train.py \
   year={2021}
 }
 ```
+
+## Contributors
+
+<!--- go/keep-sorted start -->
+* Gunho Park ([Github @gunho1123](https://github.com/gunho1123))
+* Jiageng Zhang ([Github @Zarjagen](https://github.com/Zarjagen))
+* Shicheng Xu ([Github @lightxu](https://github.com/lightxu))
+* Tyler Scott ([Github @tylersco](https://github.com/tylersco))
+* Yu Lou ([Github @LouYu2015](https://github.com/LouYu2015))
+<!--- go/keep-sorted end -->
