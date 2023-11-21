@@ -136,9 +136,20 @@ def export_inference_graph(
           type(params.task)))
 
   if add_tpu_function_alias:
+    if input_type == 'image_tensor':
+      inference_func = export_module.inference_from_image_tensors
+    elif input_type == 'image_bytes':
+      inference_func = export_module.inference_from_image_bytes
+    elif input_type == 'tf_example':
+      inference_func = export_module.inference_from_tf_example
+    else:
+      raise ValueError(
+          'add_tpu_function_alias is only allowed for input_type of:'
+          ' image_tensor, image_bytes, tf_example.'
+      )
     save_options = tf.saved_model.SaveOptions(
         function_aliases={
-            'tpu_candidate': export_module.inference_from_image_tensors,
+            'tpu_candidate': inference_func,
         }
     )
 
