@@ -259,7 +259,7 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
           input_mask=input_mask[:self._reuse_length])
 
       # Creates permutation mask and target mask for the rest of tokens in
-      # current example, which are concatentation of two new segments.
+      # current example, which are concatenation of two new segments.
       perm_mask_1, target_mask_1, tokens_1, masked_1 = self._get_factorization(
           inputs[self._reuse_length:], input_mask[self._reuse_length:])
 
