@@ -165,7 +165,7 @@ flags.DEFINE_enum(
     "while ALBERT uses SentencePiece tokenizer.")
 
 flags.DEFINE_string(
-    "tfds_params", "", "Comma-separated list of TFDS parameter assigments for "
+    "tfds_params", "", "Comma-separated list of TFDS parameter assignments for "
     "generic classfication data import (for more details "
     "see the TfdsProcessor class documentation).")
 
