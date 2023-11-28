@@ -4,7 +4,7 @@
 The TF-NLP library provides a collection of scripts for training and
 evaluating transformer-based models, on various tasks such as sentence
 classification, question answering, and translation. Additionally, we provide
-checkpoints of pretrained models which can be finetuned on downstream tasks.
+checkpoints of pre-trained models which can be finetuned on downstream tasks.
 
 ⚠️ Disclaimer: Checkpoints are based on training with publicly available datasets.
 Some datasets contain limitations, including non-commercial use limitations. Please review the terms and conditions made available by third parties before using
@@ -26,7 +26,7 @@ on how to train models with this codebase.
 By default, the experiment runs on GPUs. To run on TPUs, one should overwrite
 `runtime.distribution_strategy` and set the tpu address. See [RuntimeConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py) for details.
 
-In general, the experiments can run with the folloing command by setting the
+In general, the experiments can run with the following command by setting the
 corresponding `${TASK}`, `${TASK_CONFIG}`, `${MODEL_CONFIG}`.
 ```
 EXPERIMENT=???
