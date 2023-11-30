@@ -764,7 +764,6 @@ def _generate_detections_tflite_implements_signature(
   Returns:
     An `experimental_implements` signature string.
   """
-  scale_value = 1.0
 
   implements_signature = [
       'name: "%s"' % 'TFLite_Detection_PostProcess',
@@ -772,16 +771,18 @@ def _generate_detections_tflite_implements_signature(
       % config['max_detections'],
       'attr { key: "max_classes_per_detection" value { i: %d } }'
       % config['max_classes_per_detection'],
+      'attr { key: "detections_per_class" value { i: %d } }'
+      % config.get('detections_per_class', 5),
       'attr { key: "use_regular_nms" value { b: %s } }'
       % str(config['use_regular_nms']).lower(),
       'attr { key: "nms_score_threshold" value { f: %f } }'
       % config['nms_score_threshold'],
       'attr { key: "nms_iou_threshold" value { f: %f } }'
       % config['nms_iou_threshold'],
-      'attr { key: "y_scale" value { f: %f } }' % scale_value,
-      'attr { key: "x_scale" value { f: %f } }' % scale_value,
-      'attr { key: "h_scale" value { f: %f } }' % scale_value,
-      'attr { key: "w_scale" value { f: %f } }' % scale_value,
+      'attr { key: "y_scale" value { f: %f } }' % config.get('y_scale', 1.0),
+      'attr { key: "x_scale" value { f: %f } }' % config.get('x_scale', 1.0),
+      'attr { key: "h_scale" value { f: %f } }' % config.get('h_scale', 1.0),
+      'attr { key: "w_scale" value { f: %f } }' % config.get('w_scale', 1.0),
       'attr { key: "num_classes" value { i: %d } }' % config['num_classes'],
   ]
   implements_signature = ' '.join(implements_signature)
