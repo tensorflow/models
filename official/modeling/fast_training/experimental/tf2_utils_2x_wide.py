@@ -40,7 +40,7 @@ def expand_1_axis(w: np.ndarray,
 
   If `axis = 0`, the following expression will be satisfied:
   matmul(x, w) ==
-      matmul(expand_vector(x), expand_1_axis(w, epsilon=0.1, axis=0))
+      matmul(expand_vector(x), expand_1_axis(w, axis=0))
 
   If `axis = -1` and `epsilon = 0.0`, the following constraint will be satisfied:
   expand_vector(matmul(x, w)) ==
