@@ -109,8 +109,8 @@ def var_to_var(var_from: tf.Variable,
                epsilon: float):
   """Expands a variable to another variable.
 
-  Assume the shape of `var_from` is (a, b, ..., y, z), the shape of `var_to`
-  can be (a, ..., z * 2), (a * 2, ..., z * 2), (a * 2, ..., z)
+  Assuming the shape of `var_from` is (a, b, ..., y, z), then shape of `var_to`
+  must be one of (a, ..., z * 2), (a * 2, ..., z * 2), or (a * 2, ..., z).
 
   If the shape of `var_to` is (a, ..., 2 * z):
     For any x, tf.matmul(x, var_to) ~= expand_vector(tf.matmul(x, var_from)) / 2
@@ -131,21 +131,30 @@ def var_to_var(var_from: tf.Variable,
 
   if shape_from == shape_to:
     var_to.assign(var_from)
+    return
 
-  elif len(shape_from) == 1 and len(shape_to) == 1:
-    var_to.assign(expand_vector(var_from.numpy()))
+  var_from_np = var_from.numpy()
 
-  elif shape_from[0] * 2 == shape_to[0] and shape_from[-1] == shape_to[-1]:
-    var_to.assign(expand_1_axis(var_from.numpy(), epsilon=epsilon, axis=0))
+  if len(shape_from) == len(shape_to) == 1:
+    var_to.assign(expand_vector(var_from_np))
+    return
 
-  elif shape_from[0] == shape_to[0] and shape_from[-1] * 2 == shape_to[-1]:
-    var_to.assign(expand_1_axis(var_from.numpy(), epsilon=epsilon, axis=-1))
+  a_from, z_from = shape_from[0], shape_from[-1]
+  a_to, z_to = shape_to[0], shape_to[-1]
 
-  elif shape_from[0] * 2 == shape_to[0] and shape_from[-1] * 2 == shape_to[-1]:
-    var_to.assign(expand_2_axes(var_from.numpy(), epsilon=epsilon))
+  if a_to == 2 * a_from and z_to == z_from:
+    var_to.assign(expand_1_axis(var_from_np, epsilon=epsilon, axis=0))
+    return
 
-  else:
-    raise ValueError("Shape not supported, {}, {}".format(shape_from, shape_to))
+  if a_to == a_from and z_to == 2 * z_from:
+    var_to.assign(expand_1_axis(var_from_np, epsilon=epsilon, axis=-1))
+    return
+
+  if a_to == 2 * a_from and z_to == 2 * z_from:
+    var_to.assign(expand_2_axes(var_from_np, epsilon=epsilon))
+    return
+
+  raise ValueError("Shape not supported, {}, {}".format(shape_from, shape_to))
 
 
 def model_to_model_2x_wide(model_from: tf.Module,
