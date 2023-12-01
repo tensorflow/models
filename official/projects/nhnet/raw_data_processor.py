@@ -16,7 +16,7 @@
 
 import collections
 import json
-import multiprocessing
+import multiprocessing.pool
 import os
 import urllib.parse
 
