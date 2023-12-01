@@ -27,7 +27,7 @@ def _get_random(positions, random_fn):
   return positions.with_flat_values(flat_random)
 
 
-# For every position j in a row, sample a position preceeding j or
+# For every position j in a row, sample a position preceding j or
 # a position which is [0, j-1]
 def _random_int_up_to(maxval, random_fn):
   # Need to cast because the int kernel for uniform doesn't support bcast.
@@ -87,10 +87,10 @@ def get_sentence_order_labels(sentences,
       dtype.
     random_threshold: (optional) A float threshold between 0 and 1, used to
       determine whether to extract a random, out-of-batch sentence or a
-      suceeding sentence. Higher value favors succeeding sentence.
+      succeeding sentence. Higher value favors succeeding sentence.
     random_next_threshold: (optional) A float threshold between 0 and 1, used to
       determine whether to extract either a random, out-of-batch, or succeeding
-      sentence or a preceeding sentence. Higher value favors preceeding
+      sentence or a preceding sentence. Higher value favors preceding
       sentences.
     random_fn: (optional) An op used to generate random float values.
 
