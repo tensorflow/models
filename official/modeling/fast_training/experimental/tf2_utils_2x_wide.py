@@ -36,7 +36,7 @@ def expand_vector(v: np.ndarray) -> np.ndarray:
 def expand_1_axis(w: np.ndarray,
                   epsilon: float,
                   axis: int) -> np.ndarray:
-  """Expands either the first dimension or the last dimension of w.
+  """Expands either the first or last dimension of w.
 
   If `axis = 0`, the following constraint will be satisfied:
   matmul(x, w) ==
@@ -54,9 +54,12 @@ def expand_1_axis(w: np.ndarray,
   Returns:
     Expanded numpy array.
   """
-  assert axis in (0, -1), (
-      "Only support expanding the first or the last dimension. "
-      "Got: {}".format(axis))
+
+  if axis not in (0, -1):
+    raise ValueError(
+        "Only support expanding the first or the last dimension. "
+        "Got: {}".format(axis)
+    )
 
   rank = len(w.shape)
 
@@ -76,7 +79,7 @@ def expand_1_axis(w: np.ndarray,
 
 def expand_2_axes(w: np.ndarray,
                   epsilon: float) -> np.ndarray:
-  """Expands the first dimension and the last dimension of w.
+  """Expands the first and last dimension of w.
 
   The following constraint will be satisfied:
   expand_vector(matmul(x, w)) == matmul(expand_vector(x), expand_2_axes(w))
