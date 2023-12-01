@@ -16,7 +16,7 @@
 
 from absl import logging
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def expand_vector(v: np.ndarray) -> np.ndarray:
@@ -38,11 +38,11 @@ def expand_1_axis(w: np.ndarray,
                   axis: int) -> np.ndarray:
   """Expands either the first or last dimension of w.
 
-  If `axis = 0`, the following constraint will be satisfied:
+  If `axis = 0`, the following expression will be satisfied:
   matmul(x, w) ==
       matmul(expand_vector(x), expand_1_axis(w, epsilon=0.1, axis=0))
 
-  If `axis = -1`, the following constraint will be satisfied if `epsilon = 0.0`:
+  If `axis = -1` and `epsilon = 0.0`, the following constraint will be satisfied:
   expand_vector(matmul(x, w)) ==
       2 * matmul(x, expand_1_axis(w, epsilon=0.0, axis=-1))
 
@@ -68,7 +68,7 @@ def expand_1_axis(w: np.ndarray,
 
   sign_flip = np.array([1, -1])
   for _ in range(rank - 1):
-    sign_flip = np.expand_dims(sign_flip, axis=-1 if axis == 0 else 0)
+    sign_flip = np.expand_dims(sign_flip, axis=axis-1)
   sign_flip = np.tile(sign_flip,
                       [w.shape[0]] + [1] * (rank - 2) + [w.shape[-1]])
 
@@ -81,7 +81,7 @@ def expand_2_axes(w: np.ndarray,
                   epsilon: float) -> np.ndarray:
   """Expands the first and last dimension of w.
 
-  The following constraint will be satisfied:
+  This operation satisfies the following expression:
   expand_vector(matmul(x, w)) == matmul(expand_vector(x), expand_2_axes(w))
 
   Args:
@@ -182,8 +182,8 @@ def model_to_model_2x_wide(model_from: tf.Module,
   assert model_narrow([[1, 2, 3]]) == model_wide([[1, 1, 2, 2, 3, 3]])
   ```
 
-  We assume that `model_from` and `model_to` has the same architecture and only
-  widths of them differ.
+  We assume that `model_from` and `model_to` have the same architecture and differ
+  only in widths.
 
   Args:
     model_from: input model to expand.
