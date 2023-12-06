@@ -205,7 +205,7 @@ class TuplesDataset():
     """Creates epoch tuples with the hard-negative re-mining.
 
     Negative examples are selected from clusters different than the cluster
-    of the query image, as the clusters are ideally non-overlaping. For
+    of the query image, as the clusters are ideally non-overlapping. For
     every query image we choose  hard-negatives, that is, non-matching images
     with the most similar descriptor. Hard-negatives depend on the current
     CNN parameters. K-nearest neighbors from all non-matching images are
