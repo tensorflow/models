@@ -14,21 +14,21 @@
 
 """Class to subsample minibatches by balancing positives and negatives.
 
-Subsamples minibatches based on a pre-specified positive fraction in range
+Subsamples minibatches based on a pre-specified positive fraction in the range
 [0,1]. The class presumes there are many more negatives than positive examples:
 if the desired batch_size cannot be achieved with the pre-specified positive
 fraction, it fills the rest with negative examples. If this is not sufficient
 for obtaining the desired batch_size, it returns fewer examples.
 
-The main function to call is Subsample(self, indicator, labels). For convenience
-one can also call SubsampleWeights(self, weights, labels) which is defined in
+The main function to call is Subsample(self, indicator, labels). For convenience,
+one can also call SubsampleWeights(self, weights, labels), which is defined in
 the minibatch_sampler base class.
 
 When is_static is True, it implements a method that guarantees static shapes.
-It also ensures the length of output of the subsample is always batch_size, even
+It also ensures that the length of the output of the subsample is always batch_size, even
 when number of examples set to True in indicator is less than batch_size.
 
-This is originally implemented in TensorFlow Object Detection API.
+This is originally implemented in the TensorFlow Object Detection API.
 """
 
 import tensorflow as tf, tf_keras

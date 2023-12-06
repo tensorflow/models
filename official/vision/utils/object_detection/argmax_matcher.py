@@ -16,14 +16,14 @@
 """Argmax matcher implementation.
 
 This class takes a similarity matrix and matches columns to rows based on the
-maximum value per column. One can specify matched_thresholds and
+maximum value per column. One can specify matched_threshold and
 to prevent columns from matching to rows (generally resulting in a negative
-training example) and unmatched_theshold to ignore the match (generally
-resulting in neither a positive or negative training example).
+training example) and unmatched_threshold to ignore the match (generally
+resulting in neither a positive nor a negative training example).
 
 This matcher is used in Fast(er)-RCNN.
 
-Note: matchers are used in TargetAssigners. There is a create_target_assigner
+Note: Matchers are used in TargetAssigners. There is a create_target_assigner
 factory function for popular implementations.
 """
 import tensorflow as tf, tf_keras
@@ -33,12 +33,12 @@ from official.vision.utils.object_detection import shape_utils
 
 
 class ArgMaxMatcher(matcher.Matcher):
-  """Matcher based on highest value.
+  """Matcher based on the highest value.
 
   This class computes matches from a similarity matrix. Each column is matched
   to a single row.
 
-  To support object detection target assignment this class enables setting both
+  To support object detection target assignment, this class enables setting both
   matched_threshold (upper threshold) and unmatched_threshold (lower threshold)
   defining three categories of similarity which define whether examples are
   positive, negative, or ignored:
@@ -46,9 +46,9 @@ class ArgMaxMatcher(matcher.Matcher):
   (2) matched_threshold > similarity >= unmatched_threshold: Medium similarity.
           Depending on negatives_lower_than_unmatched, this is either
           Unmatched/Negative OR Ignore.
-  (3) unmatched_threshold > similarity: Lowest similarity. Depending on flag
+  (3) unmatched_threshold > similarity: Lowest similarity. Depending on the flag
           negatives_lower_than_unmatched, either Unmatched/Negative or Ignore.
-  For ignored matches this class sets the values in the Match object to -2.
+  For ignored matches, this class sets the values in the Match object to -2.
   """
 
   def __init__(self,
