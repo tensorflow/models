@@ -34,7 +34,7 @@ class AttentionModel(tf.keras.Model):
 
   Uses two [kernel_size x kernel_size] convolutions and softplus as activation
   to compute an attention map with the same resolution as the featuremap.
-  Features l2-normalized and aggregated using attention probabilites as weights.
+  Features l2-normalized and aggregated using attention probabilities as weights.
   The features (targets) to be aggregated can be the input featuremap, or a
   different one with the same resolution.
   """
