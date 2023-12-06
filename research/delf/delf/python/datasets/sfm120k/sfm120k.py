@@ -30,7 +30,7 @@ from delf.python.datasets import utils
 def id2filename(image_id, prefix):
   """Creates a training image path out of its id name.
 
-  Used for the image mapping in the Sfm120k datset.
+  Used for the image mapping in the Sfm120k dataset.
 
   Args:
     image_id: String, image id.
