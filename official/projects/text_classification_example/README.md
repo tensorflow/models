@@ -44,7 +44,7 @@ class ClassificationDataLoader(data_loader.DataLoader):
   ...
 ```
 
-Overall, loader will translate the tf.Example to approiate format for model to
+Overall, loader will translate the tf.Example to appropriate format for model to
 consume. Then in Task.build_inputs, link the dataset like
 
 ```python
@@ -88,7 +88,7 @@ task_config = classification_example.ClassificationExampleConfig()
 task = classification_example.ClassificationExampleTask(task_config)
 ```
 
-TIPs: You can also check the [unittest](https://github.com/tensorflow/models/blob/master/official/nlp/projects/example/classification_example_test.py)
+TIPs: You can also check the [unittest](https://github.com/tensorflow/models/blob/master/official/projects/text_classification_example/classification_example_test.py)
 for better understanding.
 
 ### Finetune
