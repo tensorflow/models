@@ -198,7 +198,7 @@ class TuplesDataset():
             self._num_negatives)
     fmt_str += '\tNumber of tuples processed in an epoch: {}\n'.format(
             self._num_queries)
-    fmt_str += '\tPool size for negative remining: {}\n'.format(self._pool_size)
+    fmt_str += '\tPool size for negative remaining: {}\n'.format(self._pool_size)
     return fmt_str
 
   def create_epoch_tuples(self, net):
