@@ -143,7 +143,18 @@ class RetinaNetHead(tf_keras.layers.Layer):
         'bias_initializer': tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if not self._config_dict['use_separable_conv']:
+    if self._config_dict['use_separable_conv']:
+      self._classifier_kwargs.update({
+          'depthwise_initializer': tf_keras.initializers.RandomNormal(
+              stddev=0.03
+          ),
+          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
+          'pointwise_initializer': tf_keras.initializers.RandomNormal(
+              stddev=0.03
+          ),
+          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
+      })
+    else:
       self._classifier_kwargs.update({
           'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
@@ -159,7 +170,18 @@ class RetinaNetHead(tf_keras.layers.Layer):
         'bias_initializer': tf.zeros_initializer(),
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if not self._config_dict['use_separable_conv']:
+    if self._config_dict['use_separable_conv']:
+      self._box_regressor_kwargs.update({
+          'depthwise_initializer': tf_keras.initializers.RandomNormal(
+              stddev=0.03
+          ),
+          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
+          'pointwise_initializer': tf_keras.initializers.RandomNormal(
+              stddev=0.03
+          ),
+          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
+      })
+    else:
       self._box_regressor_kwargs.update({
           'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
