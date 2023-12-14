@@ -495,7 +495,7 @@ class MaskRCNNModel(tf_keras.Model):
         detection_head=self.detection_head)
     if self.decoder is not None:
       items.update(decoder=self.decoder)
-    if self._include_mask:
+    if self._include_mask and self.mask_head is not None:
       items.update(mask_head=self.mask_head)
 
     return items
