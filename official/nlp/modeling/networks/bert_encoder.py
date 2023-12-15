@@ -79,6 +79,8 @@ class BertEncoderV2(tf_keras.layers.Layer):
       attention scores of all transformer layers. This will be a list of length
       `num_layers`, and each element will be in the shape [batch_size,
       num_attention_heads, seq_dim, seq_dim].
+    return_word_embeddings: If true, also return the input word embedding
+      sequence in the bert inference output.
   """
 
   def __init__(
@@ -101,6 +103,7 @@ class BertEncoderV2(tf_keras.layers.Layer):
       norm_first: bool = False,
       with_dense_inputs: bool = False,
       return_attention_scores: bool = False,
+      return_word_embeddings: bool = False,
       **kwargs):
     # Pops kwargs that are used in V1 implementation.
     if 'dict_outputs' in kwargs:
@@ -208,6 +211,7 @@ class BertEncoderV2(tf_keras.layers.Layer):
         'norm_first': norm_first,
         'with_dense_inputs': with_dense_inputs,
         'return_attention_scores': return_attention_scores,
+        'return_word_embeddings': return_word_embeddings,
     }
     if with_dense_inputs:
       self.inputs = dict(
@@ -278,6 +282,10 @@ class BertEncoderV2(tf_keras.layers.Layer):
         encoder_outputs=encoder_outputs)
     if self._config['return_attention_scores']:
       output['attention_scores'] = attention_outputs
+
+    if self._config['return_word_embeddings']:
+      output['word_embeddings'] = embeddings
+
     return output
 
   def get_embedding_table(self):
@@ -390,6 +398,8 @@ class BertEncoder(tf_keras.Model):
       attention scores of all transformer layers. This will be a list of length
       `num_layers`, and each element will be in the shape [batch_size,
       num_attention_heads, seq_dim, seq_dim].
+    return_word_embeddings: If true, also return the input word embedding
+      sequence in the bert inference output.
   """
 
   def __init__(
@@ -412,6 +422,7 @@ class BertEncoder(tf_keras.Model):
       dict_outputs=False,
       return_all_encoder_outputs=False,
       return_attention_scores: bool = False,
+      return_word_embeddings: bool = False,
       **kwargs):
     if 'sequence_length' in kwargs:
       kwargs.pop('sequence_length')
@@ -538,6 +549,9 @@ class BertEncoder(tf_keras.Model):
     if return_attention_scores:
       outputs['attention_scores'] = attention_outputs
 
+    if return_word_embeddings:
+      outputs['word_embeddings'] = embeddings
+
     if dict_outputs:
       super().__init__(
           inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
@@ -587,6 +601,7 @@ class BertEncoder(tf_keras.Model):
         'norm_first': norm_first,
         'dict_outputs': dict_outputs,
         'return_attention_scores': return_attention_scores,
+        'return_word_embeddings': return_word_embeddings,
     }
     # pylint: disable=protected-access
     self._setattr_tracking = False
