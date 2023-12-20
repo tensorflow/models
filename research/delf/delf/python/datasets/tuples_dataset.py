@@ -198,14 +198,14 @@ class TuplesDataset():
             self._num_negatives)
     fmt_str += '\tNumber of tuples processed in an epoch: {}\n'.format(
             self._num_queries)
-    fmt_str += '\tPool size for negative remining: {}\n'.format(self._pool_size)
+    fmt_str += '\tPool size for negative remaining: {}\n'.format(self._pool_size)
     return fmt_str
 
   def create_epoch_tuples(self, net):
     """Creates epoch tuples with the hard-negative re-mining.
 
     Negative examples are selected from clusters different than the cluster
-    of the query image, as the clusters are ideally non-overlaping. For
+    of the query image, as the clusters are ideally non-overlapping. For
     every query image we choose  hard-negatives, that is, non-matching images
     with the most similar descriptor. Hard-negatives depend on the current
     CNN parameters. K-nearest neighbors from all non-matching images are
