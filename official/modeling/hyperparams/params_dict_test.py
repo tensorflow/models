@@ -167,6 +167,7 @@ class ParamsDictTest(tf.test.TestCase):
             'a': 10
         }
     }, ['b == c'])
+    params.validate()
 
     # Raise error due to inconsistency
     with self.assertRaises(KeyError):
@@ -197,6 +198,10 @@ class ParamsDictTest(tf.test.TestCase):
           }
       }, ['a == None', 'c.a == 1'])
       params.validate()
+
+    # Valid restrictions with inequality.
+    params = params_dict.ParamsDict({'a': 1}, ['a >= 1'])
+    params.validate()
 
 
 class ParamsDictIOTest(tf.test.TestCase):
