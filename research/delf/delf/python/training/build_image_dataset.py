@@ -266,7 +266,7 @@ def _write_tfrecord(output_prefix, image_paths, file_ids, labels):
   if output_prefix == _TEST_SPLIT:
     labels = [None] * len(image_paths)
   if not len(image_paths) == len(file_ids) == len(labels):
-    raise ValueError('length of image_paths, file_ids, labels shoud be the' +
+    raise ValueError('length of image_paths, file_ids, labels should be the' +
                      ' same. But they are %d, %d, %d, respectively' %
                      (len(image_paths), len(file_ids), len(labels)))
 
