@@ -319,7 +319,7 @@ def _shuffle_by_columns(np_array, random_state):
 
 def _build_train_and_validation_splits(image_paths, file_ids, labels,
                                        validation_split_size, seed):
-  """Create TRAIN and VALIDATION splits containg all labels in equal proportion.
+  """Create TRAIN and VALIDATION splits containing all labels in equal proportion.
 
   Args:
     image_paths: list of paths to the image files in the train dataset.
