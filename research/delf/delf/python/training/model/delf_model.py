@@ -198,7 +198,7 @@ class Delf(tf.keras.Model):
 
     Args:
       images: Tensor containing the dataset on which to run the forward pass.
-      training: Indicator of wether the forward pass is running in training mode
+      training: Indicator of whether the forward pass is running in training mode
         or not.
 
     Returns:
