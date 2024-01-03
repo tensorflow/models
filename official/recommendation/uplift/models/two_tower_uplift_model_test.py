@@ -121,9 +121,9 @@ class TwoTowerUpliftModelTest(
 
     # Test model inference predictions.
     expected_predictions = {
-        keys.TwoTowerPredictionKeys.CONTROL: tf.zeros((10, 1)),
-        keys.TwoTowerPredictionKeys.TREATMENT: 3 * tf.ones((10, 1)),
-        keys.TwoTowerPredictionKeys.UPLIFT: 3 * tf.ones((10, 1)),
+        keys.TwoTowerOutputKeys.CONTROL_PREDICTIONS: tf.zeros((10, 1)),
+        keys.TwoTowerOutputKeys.TREATMENT_PREDICTIONS: 3 * tf.ones((10, 1)),
+        keys.TwoTowerOutputKeys.UPLIFT_PREDICTIONS: 3 * tf.ones((10, 1)),
     }
     self.assertAllClose(expected_predictions, model.predict(dataset))
 
@@ -132,31 +132,39 @@ class TwoTowerUpliftModelTest(
           "testcase_name": "identity",
           "inverse_link_fn": tf.identity,
           "expected_predictions": {
-              keys.TwoTowerPredictionKeys.CONTROL: (
+              keys.TwoTowerOutputKeys.CONTROL_PREDICTIONS: (
                   tf.ones((3, 1)) * -1.0
               ),  # 1 - 2 = -1
-              keys.TwoTowerPredictionKeys.TREATMENT: (
+              keys.TwoTowerOutputKeys.TREATMENT_PREDICTIONS: (
                   tf.ones((3, 1)) * 4.0
               ),  # 1 + 3 = 4
-              keys.TwoTowerPredictionKeys.UPLIFT: tf.ones((3, 1)) * 5.0,
+              keys.TwoTowerOutputKeys.UPLIFT_PREDICTIONS: tf.ones((3, 1)) * 5.0,
           },
       },
       {
           "testcase_name": "abs",
           "inverse_link_fn": tf.math.abs,
           "expected_predictions": {
-              keys.TwoTowerPredictionKeys.CONTROL: tf.ones((3, 1)) * 1.0,
-              keys.TwoTowerPredictionKeys.TREATMENT: tf.ones((3, 1)) * 4.0,
-              keys.TwoTowerPredictionKeys.UPLIFT: tf.ones((3, 1)) * 3.0,
+              keys.TwoTowerOutputKeys.CONTROL_PREDICTIONS: (
+                  tf.ones((3, 1)) * 1.0
+              ),
+              keys.TwoTowerOutputKeys.TREATMENT_PREDICTIONS: (
+                  tf.ones((3, 1)) * 4.0
+              ),
+              keys.TwoTowerOutputKeys.UPLIFT_PREDICTIONS: tf.ones((3, 1)) * 3.0,
           },
       },
       {
           "testcase_name": "relu",
           "inverse_link_fn": tf_keras.activations.relu,
           "expected_predictions": {
-              keys.TwoTowerPredictionKeys.CONTROL: tf.ones((3, 1)) * 0.0,
-              keys.TwoTowerPredictionKeys.TREATMENT: tf.ones((3, 1)) * 4.0,
-              keys.TwoTowerPredictionKeys.UPLIFT: tf.ones((3, 1)) * 4.0,
+              keys.TwoTowerOutputKeys.CONTROL_PREDICTIONS: (
+                  tf.ones((3, 1)) * 0.0
+              ),
+              keys.TwoTowerOutputKeys.TREATMENT_PREDICTIONS: (
+                  tf.ones((3, 1)) * 4.0
+              ),
+              keys.TwoTowerOutputKeys.UPLIFT_PREDICTIONS: tf.ones((3, 1)) * 4.0,
           },
       },
   )
