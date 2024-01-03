@@ -154,6 +154,62 @@ class ExportSavedModelTest(tf.test.TestCase):
     step_folder = os.path.join(directory.full_path, 'basename-1000')
     self.assertIn(subdirectory, tf.io.gfile.listdir(step_folder))
 
+  def test_export_file_manager_with_suffix_second_cleanup_succeeds(self):
+    directory = self.create_tempdir()
+    base_name = os.path.join(directory.full_path, 'basename')
+
+    id_num = 0
+
+    def next_id():
+      return id_num
+
+    subdirectory = 'sub'
+
+    manager = actions.ExportFileManager(
+        base_name, max_to_keep=2, next_id_fn=next_id, subdirectory=subdirectory
+    )
+    id_num = 30
+    directory.create_file(manager.next_name())
+    id_num = 200
+    directory.create_file(manager.next_name())
+    id_num = 1000
+    directory.create_file(manager.next_name())
+    manager.clean_up()  # Should delete file with lowest ID.
+    # Note that the base folder is intact, only the suffix folder is deleted.
+    self.assertEqual(
+        _id_sorted_file_base_names(directory.full_path),
+        ['basename-30', 'basename-200', 'basename-1000'],
+    )
+    # Verify that the suffix folder has been deleted from the lowest ID
+    # but not from the others.
+    self.assertEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-30'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-200'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-1000'))
+    )
+    # Add another ID, run clean_up again and verify that it worked.
+    id_num = 2000
+    directory.create_file(manager.next_name())
+    manager.clean_up()  # Should delete file with lowest ID.
+    # Verify that the suffix folder has been deleted from the two lowest ID
+    # directories but not from the others.
+    self.assertEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-30'))
+    )
+    self.assertEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-200'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-1000'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-2000'))
+    )
+
   def test_export_file_manager_managed_files(self):
     directory = self.create_tempdir()
     directory.create_file('basename-5')
