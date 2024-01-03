@@ -108,10 +108,13 @@ class ExportFileManager:
       `ExportFileManager` instance, sorted in increasing integer order of the
       IDs returned by `next_id_fn`.
     """
-    files = _find_managed_files(self._base_name)
-    return [
-        safe_normpath(os.path.join(f, self._subdirectory)) for f in files
-    ]
+    files = []
+    for file in _find_managed_files(self._base_name):
+      # Normalize path and maybe add subdirectory...
+      file = safe_normpath(os.path.join(file, self._subdirectory))
+      if tf.io.gfile.exists(file):
+        files.append(file)
+    return files
 
   def clean_up(self):
     """Cleans up old files matching `{base_name}-*`.
