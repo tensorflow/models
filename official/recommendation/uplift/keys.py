@@ -20,9 +20,11 @@ class StrEnum(str, enum.Enum):
   """An Enum represented by a string."""
 
 
-class TwoTowerPredictionKeys(StrEnum):
-  """Keys for prediction tensors."""
+class TwoTowerOutputKeys(StrEnum):
+  """Keys for training and inference output tensors."""
 
-  UPLIFT = "uplift_predictions"
-  CONTROL = "control_predictions"
-  TREATMENT = "treatment_predictions"
+  CONTROL_PREDICTIONS = "control_predictions"
+  TREATMENT_PREDICTIONS = "treatment_predictions"
+  UPLIFT_PREDICTIONS = "uplift_predictions"
+  IS_TREATMENT = "is_treatment"
+  TRUE_LOGITS = "true_logits"

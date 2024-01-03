@@ -96,9 +96,13 @@ class TwoTowerUpliftModel(tf_keras.Model):
     outputs = super().predict_step(data)
 
     return {
-        keys.TwoTowerPredictionKeys.CONTROL: outputs.control_predictions,
-        keys.TwoTowerPredictionKeys.TREATMENT: outputs.treatment_predictions,
-        keys.TwoTowerPredictionKeys.UPLIFT: outputs.uplift,
+        keys.TwoTowerOutputKeys.CONTROL_PREDICTIONS: (
+            outputs.control_predictions
+        ),
+        keys.TwoTowerOutputKeys.TREATMENT_PREDICTIONS: (
+            outputs.treatment_predictions
+        ),
+        keys.TwoTowerOutputKeys.UPLIFT_PREDICTIONS: outputs.uplift,
     }
 
   def get_config(self) -> Mapping[str, Any]:
