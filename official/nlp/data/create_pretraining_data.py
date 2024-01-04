@@ -19,6 +19,7 @@ import itertools
 import random
 
 # Import libraries
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -35,8 +36,26 @@ flags.DEFINE_string(
     "output_file", None,
     "Output TF example file (or comma-separated list of files).")
 
-flags.DEFINE_string("vocab_file", None,
-                    "The vocabulary file that the BERT model was trained on.")
+flags.DEFINE_enum(
+    "tokenization",
+    "WordPiece",
+    ["WordPiece", "SentencePiece"],
+    "Specifies the tokenizer implementation, i.e., whether to use WordPiece "
+    "or SentencePiece tokenizer. Canonical BERT uses WordPiece tokenizer, "
+    "while ALBERT uses SentencePiece tokenizer.",
+)
+
+flags.DEFINE_string(
+    "vocab_file",
+    None,
+    "For WordPiece tokenization, the vocabulary file of the tokenizer.",
+)
+
+flags.DEFINE_string(
+    "sp_model_file",
+    "",
+    "For SentencePiece tokenization, the path to the model of the tokenizer.",
+)
 
 flags.DEFINE_bool(
     "do_lower_case", True,
@@ -44,8 +63,10 @@ flags.DEFINE_bool(
     "models and False for cased models.")
 
 flags.DEFINE_bool(
-    "do_whole_word_mask", False,
-    "Whether to use whole word masking rather than per-WordPiece masking.")
+    "do_whole_word_mask",
+    False,
+    "Whether to use whole word masking rather than per-token masking.",
+)
 
 flags.DEFINE_integer(
     "max_ngram_size", None,
@@ -198,16 +219,19 @@ def create_float_feature(values):
   return feature
 
 
-def create_training_instances(input_files,
-                              tokenizer,
-                              max_seq_length,
-                              dupe_factor,
-                              short_seq_prob,
-                              masked_lm_prob,
-                              max_predictions_per_seq,
-                              rng,
-                              do_whole_word_mask=False,
-                              max_ngram_size=None):
+def create_training_instances(
+    input_files,
+    tokenizer,
+    processor_text_fn,
+    max_seq_length,
+    dupe_factor,
+    short_seq_prob,
+    masked_lm_prob,
+    max_predictions_per_seq,
+    rng,
+    do_whole_word_mask=False,
+    max_ngram_size=None,
+):
   """Create `TrainingInstance`s from raw text."""
   all_documents = [[]]
 
@@ -219,11 +243,8 @@ def create_training_instances(input_files,
   # that the "next sentence prediction" task doesn't span between documents.
   for input_file in input_files:
     with tf.io.gfile.GFile(input_file, "rb") as reader:
-      while True:
-        line = tokenization.convert_to_unicode(reader.readline())
-        if not line:
-          break
-        line = line.strip()
+      for line in reader:
+        line = processor_text_fn(line)
 
         # Empty lines are used as document delimiters
         if not line:
@@ -535,7 +556,7 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
   return output_ngrams
 
 
-def _wordpieces_to_grams(tokens):
+def _tokens_to_grams(tokens):
   """Reconstitue grams (words) from `tokens`.
 
   E.g.,
@@ -543,7 +564,8 @@ def _wordpieces_to_grams(tokens):
       grams: [          [1,2), [2,         4),  [4,5) , [5,       6)]
 
   Args:
-    tokens: list of wordpieces
+    tokens: list of tokens (word pieces or sentence pieces).
+
   Returns:
     List of _Grams representing spans of whole words
     (without "[CLS]" and "[SEP]").
@@ -570,7 +592,7 @@ def create_masked_lm_predictions(tokens, masked_lm_prob,
                                  max_ngram_size=None):
   """Creates the predictions for the masked LM objective."""
   if do_whole_word_mask:
-    grams = _wordpieces_to_grams(tokens)
+    grams = _tokens_to_grams(tokens)
   else:
     # Here we consider each token to be a word to allow for sub-word masking.
     if max_ngram_size:
@@ -633,9 +655,28 @@ def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
       trunc_tokens.pop()
 
 
+def get_processor_text_fn(is_sentence_piece, do_lower_case):
+  def processor_text_fn(text):
+    text = tokenization.convert_to_unicode(text)
+    if is_sentence_piece:
+      # Additional preprocessing specific to the SentencePiece tokenizer.
+      text = tokenization.preprocess_text(text, lower=do_lower_case)
+
+    return text.strip()
+
+  return processor_text_fn
+
+
 def main(_):
-  tokenizer = tokenization.FullTokenizer(
-      vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+  if FLAGS.tokenization == "WordPiece":
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case
+    )
+    processor_text_fn = get_processor_text_fn(False, FLAGS.do_lower_case)
+  else:
+    assert FLAGS.tokenization == "SentencePiece"
+    tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
+    processor_text_fn = get_processor_text_fn(True, FLAGS.do_lower_case)
 
   input_files = []
   for input_pattern in FLAGS.input_file.split(","):
@@ -647,9 +688,18 @@ def main(_):
 
   rng = random.Random(FLAGS.random_seed)
   instances = create_training_instances(
-      input_files, tokenizer, FLAGS.max_seq_length, FLAGS.dupe_factor,
-      FLAGS.short_seq_prob, FLAGS.masked_lm_prob, FLAGS.max_predictions_per_seq,
-      rng, FLAGS.do_whole_word_mask, FLAGS.max_ngram_size)
+      input_files,
+      tokenizer,
+      processor_text_fn,
+      FLAGS.max_seq_length,
+      FLAGS.dupe_factor,
+      FLAGS.short_seq_prob,
+      FLAGS.masked_lm_prob,
+      FLAGS.max_predictions_per_seq,
+      rng,
+      FLAGS.do_whole_word_mask,
+      FLAGS.max_ngram_size,
+  )
 
   output_files = FLAGS.output_file.split(",")
   logging.info("*** Writing to output files ***")
