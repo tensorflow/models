@@ -43,7 +43,7 @@ class CreatePretrainingDataTest(tf.test.TestCase):
         continue
       self.fail("invalid mask value: {}".format(output_token))
 
-  def test_wordpieces_to_grams(self):
+  def test_tokens_to_grams(self):
     tests = [
         (["That", "cone"], [(0, 1), (1, 2)]),
         (["That", "cone", "##s"], [(0, 1), (1, 3)]),
@@ -52,7 +52,7 @@ class CreatePretrainingDataTest(tf.test.TestCase):
         (["[CLS]", "Up", "##dog", "[SEP]", "Down"], [(1, 3), (4, 5)]),
     ]
     for inp, expected in tests:
-      output = cpd._wordpieces_to_grams(inp)
+      output = cpd._tokens_to_grams(inp)
       self.assertEqual(expected, output)
 
   def test_window(self):
@@ -81,8 +81,8 @@ class CreatePretrainingDataTest(tf.test.TestCase):
               rng=rng,
               do_whole_word_mask=False,
               max_ngram_size=None))
-      self.assertEqual(len(masked_positions), 3)
-      self.assertEqual(len(masked_labels), 3)
+      self.assertLen(masked_positions, 3)
+      self.assertLen(masked_labels, 3)
       self.assertTokens(tokens, output_tokens, masked_positions, masked_labels)
 
   def test_create_masked_lm_predictions_whole_word(self):
@@ -100,8 +100,8 @@ class CreatePretrainingDataTest(tf.test.TestCase):
               max_ngram_size=None))
       # since we can't get exactly three tokens without breaking a word we
       # only take two.
-      self.assertEqual(len(masked_positions), 2)
-      self.assertEqual(len(masked_labels), 2)
+      self.assertLen(masked_positions, 2)
+      self.assertLen(masked_labels, 2)
       self.assertTokens(tokens, output_tokens, masked_positions, masked_labels)
       # ensure that we took an entire word.
       self.assertIn(masked_labels, [["a", "##a"], ["b", "##b"], ["c", "##c"]])
@@ -119,8 +119,8 @@ class CreatePretrainingDataTest(tf.test.TestCase):
               rng=rng,
               do_whole_word_mask=True,
               max_ngram_size=3))
-      self.assertEqual(len(masked_positions), 76)
-      self.assertEqual(len(masked_labels), 76)
+      self.assertLen(masked_positions, 76)
+      self.assertLen(masked_labels, 76)
       self.assertTokens(tokens, output_tokens, masked_positions, masked_labels)
 
 
