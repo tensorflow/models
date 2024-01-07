@@ -5,7 +5,7 @@ from object_detection.utils import config_util
 from object_detection.utils import visualization_utils as viz_utils
 from object_detection.builders import model_builder
 import utils
-import cv2
+import cv2, glob
 
 #EfficientDet D0チェックポイントをダウンロード
 obj_det_path = '/worker/BboxSuggestion/research/object_detection'
@@ -48,38 +48,41 @@ detect_fn = get_model_detection_function(detection_model)
 
 category_index, label_map_dict = utils.load_labelmap(configs)
 
-image_dir = f'{obj_det_path}/test_images/'
-image_path = os.path.join(image_dir, 'image2.jpg')
-image_np = utils.load_image_into_numpy_array(image_path)
+image_dir = f'{obj_det_path}/test_images'
+
+for image_path in glob.glob(f'{image_dir}/*.jpg'):
+
+    image_np = utils.load_image_into_numpy_array(image_path)
 
 
-input_tensor = tf.convert_to_tensor(
-    np.expand_dims(image_np, 0), dtype=tf.float32)
-detections, predictions_dict, shapes = detect_fn(input_tensor)
+    input_tensor = tf.convert_to_tensor(
+        np.expand_dims(image_np, 0), dtype=tf.float32)
+    detections, predictions_dict, shapes = detect_fn(input_tensor)
 
-label_id_offset = 1
-image_np_with_detections = image_np.copy()
+    label_id_offset = 1
+    image_np_with_detections = image_np.copy()
 
-# Use keypoints if available in detections
-keypoints, keypoint_scores = None, None
-if 'detection_keypoints' in detections:
-  keypoints = detections['detection_keypoints'][0].numpy()
-  keypoint_scores = detections['detection_keypoint_scores'][0].numpy()
+    # Use keypoints if available in detections
+    keypoints, keypoint_scores = None, None
+    if 'detection_keypoints' in detections:
+        keypoints = detections['detection_keypoints'][0].numpy()
+        keypoint_scores = detections['detection_keypoint_scores'][0].numpy()
 
-viz_utils.visualize_boxes_and_labels_on_image_array(
-      image_np_with_detections,
-      detections['detection_boxes'][0].numpy(),
-      (detections['detection_classes'][0].numpy() + label_id_offset).astype(int),
-      detections['detection_scores'][0].numpy(),
-      category_index,
-      use_normalized_coordinates=True,
-      max_boxes_to_draw=200,
-      min_score_thresh=.30,
-      agnostic_mode=False,
-      keypoints=keypoints,
-      keypoint_scores=keypoint_scores,
-      keypoint_edges=utils.get_keypoint_tuples(configs['eval_config']))
+    viz_utils.visualize_boxes_and_labels_on_image_array(
+        image_np_with_detections,
+        detections['detection_boxes'][0].numpy(),
+        (detections['detection_classes'][0].numpy() + label_id_offset).astype(int),
+        detections['detection_scores'][0].numpy(),
+        category_index,
+        use_normalized_coordinates=True,
+        max_boxes_to_draw=200,
+        min_score_thresh=.30,
+        agnostic_mode=False,
+        keypoints=keypoints,
+        keypoint_scores=keypoint_scores,
+        keypoint_edges=utils.get_keypoint_tuples(configs['eval_config']))
 
-cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB, image_np_with_detections)
-cv2.imwrite("output.jpg", image_np_with_detections)
+    cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB, image_np_with_detections)
+    output_name = os.path.basename(image_path)
+    cv2.imwrite(output_name, image_np_with_detections)
 
