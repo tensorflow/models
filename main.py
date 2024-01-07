@@ -1,11 +1,6 @@
 import os
-import pathlib
-
-import matplotlib
 import matplotlib.pyplot as plt
 
-import io
-import scipy.misc
 import numpy as np
 
 
