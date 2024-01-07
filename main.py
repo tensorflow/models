@@ -1,8 +1,6 @@
 import os
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from object_detection.utils import label_map_util
 from object_detection.utils import config_util
 from object_detection.utils import visualization_utils as viz_utils
 from object_detection.builders import model_builder
@@ -17,13 +15,8 @@ pipeline_config = f'{obj_det_path}/test_data/efficientdet_d0_coco17_tpu-32/pipel
 model_dir = f'{obj_det_path}/test_data/efficientdet_d0_coco17_tpu-32/checkpoint'
 if not os.path.isfile(pipeline_config): assert False
 
-def replace(fpath, from_str, to_str):
-  with open(fpath) as f:
-    data_lines = f.read()
-  data_lines = data_lines.replace(from_str, to_str)
-  with open(fpath, mode="w") as f:
-    f.write(data_lines)
-replace(pipeline_config, "PATH_TO_BE_CONFIGURED/label_map.txt", f"{obj_det_path}/data/mscoco_label_map.pbtxt")
+# label_mapへのパス文字列を置換
+utils.replace(pipeline_config, "PATH_TO_BE_CONFIGURED/label_map.txt", f"{obj_det_path}/data/mscoco_label_map.pbtxt")
 
 # Load pipeline config and build a detection model
 configs = config_util.get_configs_from_pipeline_file(pipeline_config)
@@ -53,14 +46,7 @@ def get_model_detection_function(model):
 
 detect_fn = get_model_detection_function(detection_model)
 
-label_map_path = configs['eval_input_config'].label_map_path
-label_map = label_map_util.load_labelmap(label_map_path)
-categories = label_map_util.convert_label_map_to_categories(
-    label_map,
-    max_num_classes=label_map_util.get_max_label_map_index(label_map),
-    use_display_name=True)
-category_index = label_map_util.create_category_index(categories)
-label_map_dict = label_map_util.get_label_map_dict(label_map, use_display_name=True)
+category_index, label_map_dict = utils.load_labelmap(configs)
 
 image_dir = f'{obj_det_path}/test_images/'
 image_path = os.path.join(image_dir, 'image2.jpg')
@@ -93,10 +79,6 @@ viz_utils.visualize_boxes_and_labels_on_image_array(
       keypoints=keypoints,
       keypoint_scores=keypoint_scores,
       keypoint_edges=utils.get_keypoint_tuples(configs['eval_config']))
-
-plt.figure(figsize=(12,16))
-plt.imshow(image_np_with_detections)
-plt.show()
 
 cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB, image_np_with_detections)
 cv2.imwrite("output.jpg", image_np_with_detections)
