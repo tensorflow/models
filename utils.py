@@ -1,8 +1,15 @@
+import os
 import tensorflow as tf
 from PIL import Image, ImageDraw, ImageFont
 from six import BytesIO
 import numpy as np
 
+def download_ckpt():
+    os.system("rm /worker/BboxSuggestion/efficientdet_d0_coco17_tpu-32.tar.gz*")
+    os.system("rm -r /worker/BboxSuggestion/research/object_detection/test_data/*")
+    os.system("wget http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d0_coco17_tpu-32.tar.gz")
+    os.system("tar -xf efficientdet_d0_coco17_tpu-32.tar.gz")
+    os.system("mv  efficientdet_d0_coco17_tpu-32/ /worker/BboxSuggestion/research/object_detection/test_data/")
 
 def load_image_into_numpy_array(path):
   """Load an image from file into a numpy array.

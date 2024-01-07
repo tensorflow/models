@@ -1,11 +1,7 @@
 import os
 import matplotlib.pyplot as plt
-
 import numpy as np
-
-
 import tensorflow as tf
-
 from object_detection.utils import label_map_util
 from object_detection.utils import config_util
 from object_detection.utils import visualization_utils as viz_utils
@@ -13,15 +9,12 @@ from object_detection.builders import model_builder
 import utils
 import cv2
 
-os.system("rm /worker/BboxSuggestion/efficientdet_d0_coco17_tpu-32.tar.gz*")
-os.system("rm -r /worker/BboxSuggestion/research/object_detection/test_data/*")
-os.system("wget http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d0_coco17_tpu-32.tar.gz")
-os.system("tar -xf efficientdet_d0_coco17_tpu-32.tar.gz")
-os.system("mv  efficientdet_d0_coco17_tpu-32/ /worker/BboxSuggestion/research/object_detection/test_data/")
-
-pipeline_config = '/worker/BboxSuggestion/research/object_detection/test_data/efficientdet_d0_coco17_tpu-32/pipeline.config'
-model_dir = '/worker/BboxSuggestion/research/object_detection/test_data/efficientdet_d0_coco17_tpu-32/checkpoint'
-
+#EfficientDet D0チェックポイントをダウンロード
+obj_det_path = '/worker/BboxSuggestion/research/object_detection'
+if not os.path.isdir(obj_det_path):
+    utils.download_ckpt()
+pipeline_config = f'{obj_det_path}/test_data/efficientdet_d0_coco17_tpu-32/pipeline.config'
+model_dir = f'{obj_det_path}/test_data/efficientdet_d0_coco17_tpu-32/checkpoint'
 if not os.path.isfile(pipeline_config): assert False
 
 def replace(fpath, from_str, to_str):
@@ -30,7 +23,7 @@ def replace(fpath, from_str, to_str):
   data_lines = data_lines.replace(from_str, to_str)
   with open(fpath, mode="w") as f:
     f.write(data_lines)
-replace(pipeline_config, "PATH_TO_BE_CONFIGURED/label_map.txt", "/worker/BboxSuggestion/research/object_detection/data/mscoco_label_map.pbtxt")
+replace(pipeline_config, "PATH_TO_BE_CONFIGURED/label_map.txt", f"{obj_det_path}/data/mscoco_label_map.pbtxt")
 
 # Load pipeline config and build a detection model
 configs = config_util.get_configs_from_pipeline_file(pipeline_config)
@@ -69,17 +62,10 @@ categories = label_map_util.convert_label_map_to_categories(
 category_index = label_map_util.create_category_index(categories)
 label_map_dict = label_map_util.get_label_map_dict(label_map, use_display_name=True)
 
-image_dir = '/worker/BboxSuggestion/research/object_detection/test_images/'
+image_dir = f'{obj_det_path}/test_images/'
 image_path = os.path.join(image_dir, 'image2.jpg')
 image_np = utils.load_image_into_numpy_array(image_path)
 
-# Things to try:
-# Flip horizontally
-# image_np = np.fliplr(image_np).copy()
-
-# Convert image to grayscale
-# image_np = np.tile(
-#     np.mean(image_np, 2, keepdims=True), (1, 1, 3)).astype(np.uint8)
 
 input_tensor = tf.convert_to_tensor(
     np.expand_dims(image_np, 0), dtype=tf.float32)
