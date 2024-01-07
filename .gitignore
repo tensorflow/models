@@ -3,6 +3,7 @@ protos/
 test_data/
 *.tar.gz
 setup.py
+*.jpg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
