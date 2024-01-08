@@ -341,9 +341,13 @@ class Pix2Seq(tf_keras.Model):
       inputs: tf.Tensor,
       targets: Optional[tf.Tensor] = None,
       training: bool = None,
-      use_teacher_forcing_for_eval: bool = False
+      use_teacher_forcing_for_eval: bool = False,
+      use_input_as_backbone_features=False,
   ) -> List[Any]:
-    features = self._backbone(inputs)[self._backbone_endpoint_name]
+    if use_input_as_backbone_features:
+      features = inputs
+    else:
+      features = self._backbone(inputs)[self._backbone_endpoint_name]
     mask = tf.ones_like(features)
     batch_size, h, w, num_channels = get_shape(features)
     features = tf.reshape(features, [batch_size, h * w, num_channels])
