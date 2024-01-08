@@ -57,7 +57,7 @@ class MeanAveragePrecisionCalculator(object):
       ValueError: An error occurred when num_class is not a positive integer;
       or the top_n_array is not a list of positive integers.
     """
-    if not isinstance(num_class, int) or num_class <= 1:
+    if not isinstance(num_class, int) or num_class < 1:
       raise ValueError("num_class must be a positive integer.")
 
     self._ap_calculators = []  # member of AveragePrecisionCalculator
