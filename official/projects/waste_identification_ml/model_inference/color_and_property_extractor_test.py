@@ -112,6 +112,16 @@ class ColorAndPropertyExtractor(unittest.TestCase):
 
     self.assertEqual(result, 'red')
 
+  def test_generic_color(self):
+    test_colors = np.array(
+        [(255, 0, 0), (55, 118, 171), (73, 128, 41), (231, 112, 13)]
+    )
+    expected_colors = ['red', 'blue', 'green', 'orange']
+
+    result = color_and_property_extractor.get_generic_color_name(test_colors)
+
+    self.assertEqual(result, expected_colors)
+
 
 if __name__ == '__main__':
   unittest.main()
