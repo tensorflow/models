@@ -331,17 +331,14 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
 
   @parameterized.named_parameters(
-      ('plain', False, False, False),
-      ('plain_returnscore', False, True, False),
-      ('plain_with_relative_pe', False, False, True),
-      ('reuse_all', True, False, False),
-      ('reuse_all_returnscore', True, True, False),
-      ('reuse_all_with_relative_pe', True, False, True),
-      ('reuse_5', 5, False, False),
-      ('reuse_5_returnscore', 5, True, False),
-      ('reuse_5_with_relative_pe', 5, False, True),)
-  def test_layer_invocation_with_mask(self, reuse_attention,
-                                      return_attention_scores, use_relative_pe):
+      ('plain_returnscore', False, False),
+      ('plain_with_relative_pe', False, True),
+      ('reuse_all_returnscore', True, False),
+      ('reuse_all_with_relative_pe', True, True),
+      ('reuse_5_returnscore', 5, False),
+      ('reuse_5_with_relative_pe', 5, True),
+  )
+  def test_layer_invocation_with_mask(self, reuse_attention, use_relative_pe):
     test_layer = reuse_transformer.ReuseTransformer(
         num_attention_heads=10,
         inner_dim=2048,
@@ -354,7 +351,6 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
     data_tensor = tf_keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
     mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
-    return_scores_tensor = tf_keras.Input(shape=(1,))
     reuse_attention_scores = tf_keras.Input(
         shape=(10, sequence_length, sequence_length))
     output_tensor, _ = test_layer(
@@ -362,8 +358,13 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
 
     # Create a model from the test layer.
     model = tf_keras.Model(
-        ([data_tensor, mask_tensor, reuse_attention_scores],
-         return_scores_tensor), output_tensor)
+        [
+            data_tensor,
+            mask_tensor,
+            reuse_attention_scores,
+        ],
+        output_tensor,
+    )
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -376,8 +377,7 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         2, size=(batch_size, sequence_length, sequence_length))
     reuse_scores = np.random.rand(
         batch_size, 10, sequence_length, sequence_length)
-    _ = model.predict([input_data, mask_data, reuse_scores],
-                      return_attention_scores)
+    _ = model.predict([input_data, mask_data, reuse_scores])
 
   @parameterized.named_parameters(
       ('without_relative_pe_with_pe_max_seq_length_10', False, 10),
