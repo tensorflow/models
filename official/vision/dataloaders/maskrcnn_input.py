@@ -321,7 +321,7 @@ class Parser(parser.Parser):
       data: the decoded tensor dictionary from TfExampleDecoder.
 
     Returns:
-      A dictionary of {'images': image, 'labels': labels} where
+      A tuple of (image, labels) where
         image: image tensor that is preproessed to have normalized value and
           dimension [output_size[0], output_size[1], 3]
         labels: a dictionary of tensors used for training. The following
