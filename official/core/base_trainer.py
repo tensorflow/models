@@ -460,7 +460,7 @@ class Trainer(_AsyncTrainer):
           passthrough_logs.keys(),
       )
 
-    return passthrough_logs | logs
+    return {**passthrough_logs, **logs}
 
   def eval_end(self, aggregated_logs=None):
     """Processes evaluation results."""
