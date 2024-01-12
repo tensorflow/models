@@ -13,12 +13,15 @@
 # limitations under the License.
 
 """Tests for detection_generator.py."""
+from unittest import mock
+
 # Import libraries
 
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras
 
+from official.vision.configs import common
 from official.vision.modeling.layers import detection_generator
 from official.vision.ops import anchor
 
@@ -326,6 +329,107 @@ class MultilevelDetectionGeneratorTest(
                 anchor_boxes['2'][0, 0, 4:8]
             ]),
         ]))
+
+  def test_decode_multilevel_with_tflite_nms(self):
+    config = common.TFLitePostProcessingConfig().as_dict()
+    generator = detection_generator.MultilevelDetectionGenerator(
+        apply_nms=True,
+        nms_version='tflite',
+        box_coder_weights=[9, 8, 7, 6],
+        tflite_post_processing_config=config,
+    )
+    raw_scores = {
+        '4': tf.zeros(shape=[1, 8, 8, 3 * 2], dtype=tf.float32),
+        '5': tf.zeros(shape=[1, 4, 4, 3 * 2], dtype=tf.float32),
+    }
+    raw_boxes = {
+        '4': tf.zeros(shape=[1, 8, 8, 4 * 2], dtype=tf.float32),
+        '5': tf.zeros(shape=[1, 4, 4, 4 * 2], dtype=tf.float32),
+    }
+    anchor_boxes = {
+        '4': tf.zeros(shape=[1, 8, 8, 4 * 2], dtype=tf.float32),
+        '5': tf.zeros(shape=[1, 4, 4, 4 * 2], dtype=tf.float32),
+    }
+
+    expected_signature = (
+        'name: "TFLite_Detection_PostProcess" attr { key: "max_detections"'
+        ' value { i: 200 } } attr { key: "max_classes_per_detection" value { i:'
+        ' 5 } } attr { key: "detections_per_class" value { i: 5 } } attr { key:'
+        ' "use_regular_nms" value { b: false } } attr { key:'
+        ' "nms_score_threshold" value { f: 0.100000 } } attr { key:'
+        ' "nms_iou_threshold" value { f: 0.500000 } } attr { key: "y_scale"'
+        ' value { f: 9.000000 } } attr { key: "x_scale" value { f: 8.000000 } }'
+        ' attr { key: "h_scale" value { f: 7.000000 } } attr { key: "w_scale"'
+        ' value { f: 6.000000 } } attr { key: "num_classes" value { i: 3 } }'
+    )
+
+    with mock.patch.object(
+        tf, 'function', wraps=tf.function
+    ) as mock_tf_function:
+      test_output = generator(
+          raw_boxes=raw_boxes,
+          raw_scores=raw_scores,
+          anchor_boxes=anchor_boxes,
+          image_shape=tf.constant([], dtype=tf.int32),
+      )
+      mock_tf_function.assert_called_once_with(
+          experimental_implements=expected_signature
+      )
+
+    self.assertEqual(
+        test_output['num_detections'], tf.constant(0.0, dtype=tf.float32)
+    )
+    self.assertEqual(
+        test_output['detection_boxes'], tf.constant(0.0, dtype=tf.float32)
+    )
+    self.assertEqual(
+        test_output['detection_classes'], tf.constant(0.0, dtype=tf.float32)
+    )
+    self.assertEqual(
+        test_output['detection_scores'], tf.constant(0.0, dtype=tf.float32)
+    )
+
+  def test_decode_multilevel_tflite_nms_error_on_wrong_boxes_shape(self):
+    config = common.TFLitePostProcessingConfig().as_dict()
+    generator = detection_generator.MultilevelDetectionGenerator(
+        apply_nms=True,
+        nms_version='tflite',
+        tflite_post_processing_config=config,
+    )
+    raw_scores = {'4': tf.zeros(shape=[1, 4, 4, 3 * 2], dtype=tf.float32)}
+    raw_boxes = {'4': tf.zeros(shape=[1, 4, 4, 3], dtype=tf.float32)}
+    anchor_boxes = {'4': tf.zeros(shape=[1, 4, 4, 4 * 2], dtype=tf.float32)}
+    with self.assertRaisesRegex(
+        ValueError,
+        'The last dimension of predicted boxes should be divisible by 4.',
+    ):
+      generator(
+          raw_boxes=raw_boxes,
+          raw_scores=raw_scores,
+          anchor_boxes=anchor_boxes,
+          image_shape=tf.constant([], dtype=tf.int32),
+      )
+
+  def test_decode_multilevel_tflite_nms_error_on_wrong_scores_shape(self):
+    config = common.TFLitePostProcessingConfig().as_dict()
+    generator = detection_generator.MultilevelDetectionGenerator(
+        apply_nms=True,
+        nms_version='tflite',
+        tflite_post_processing_config=config,
+    )
+    raw_scores = {'4': tf.zeros(shape=[1, 4, 4, 7 * 3], dtype=tf.float32)}
+    raw_boxes = {'4': tf.zeros(shape=[1, 4, 4, 4 * 5], dtype=tf.float32)}
+    anchor_boxes = {'4': tf.zeros(shape=[1, 4, 4, 4 * 5], dtype=tf.float32)}
+    with self.assertRaisesRegex(
+        ValueError,
+        'The last dimension of predicted scores should be divisible by',
+    ):
+      generator(
+          raw_boxes=raw_boxes,
+          raw_scores=raw_scores,
+          anchor_boxes=anchor_boxes,
+          image_shape=tf.constant([], dtype=tf.int32),
+      )
 
   def test_serialize_deserialize(self):
     tflite_post_processing_config = {
