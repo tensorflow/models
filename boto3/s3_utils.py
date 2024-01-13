@@ -1,4 +1,4 @@
-import boto3
+import boto3, os
 
 class s3_utils:
     s3_resource = boto3.resource('s3')
@@ -63,6 +63,80 @@ class s3_utils:
         self.s3_clinet.delete_bucket(Bucket=self.bucket_name)
         assert not self.exist_bucket()
         print(f'Deleted {self.bucket_name}')
+    
+    # Upload a file to S3
+    def upload_file(self, file_name, dir=''):
+        if not self.exist_bucket():
+            print('Not exitst bucket')
+            assert False
+        if not self.exist_dir(dir):
+            self.mk_dir(dir)
+        self.s3_resource.Object(self.bucket_name, dir+file_name).upload_file(file_name)
+        assert self.check_uploaded_file(file_name, dir)
+        print(f'Uploaded {file_name} to {dir}')
+
+    
+    # Check uploaded file
+    def check_uploaded_file(self, file_name, dir=''):
+        if not self.exist_bucket():
+            print('Not exitst bucket')
+            assert False
+        bucket = self.s3_resource.Bucket(self.bucket_name)
+        if not dir.endswith('/'): dir += '/'
+        for obj in bucket.objects.filter(Prefix=dir + file_name):
+            return True
+        return False
+    
+    # Download a file from S3
+    def download_file(self, file_name, dir=''):
+        if not self.exist_bucket():
+            print('Not exitst bucket')
+            assert False
+        if not self.exist_dir(dir):
+            print('Not exitst dir')
+            assert False
+        self.s3_resource.Object(self.bucket_name, dir+file_name).download_file(file_name)
+        assert self.check_downloaded_file(file_name)
+        print(f'Downloaded {file_name} from {dir}')
+    
+    # Check downloaded file
+    def check_downloaded_file(self, file_name):
+        return os.path.isfile(file_name)
+    
+    # Delete a file on S3
+    def del_file(self, file_name, dir=''):
+        if not self.exist_bucket():
+            print('Not exitst bucket')
+            assert False
+        if not self.exist_dir(dir):
+            print('Not exitst dir')
+            assert False
+        self.s3_clinet.delete_object(Bucket=self.bucket_name, Key=dir+file_name)
+        assert not self.check_uploaded_file(file_name, dir)
+        print(f'Deleted {file_name} from {dir}')
+    
+    # Copy a file on S3
+    def copy_file(self, src_file_key, new_file_key):
+        if not self.exist_bucket():
+            print('Not exitst bucket')
+            assert False
+        self.s3_clinet.copy_object(Bucket=self.bucket_name, CopySource=self.bucket_name+'/'+src_file_key, Key=new_file_key)
+        new_file_name = new_file_key.split('/')[-1]
+        dir = '/'.join(new_file_key.split('/')[:-1])
+        assert self.check_uploaded_file(new_file_name, dir)
+        print(f'Copied {src_file_key} to {new_file_name} in {dir}')
+
+    # delete a file on S3
+    def del_file(self, file_name, dir=''):
+        if not self.exist_bucket():
+            print('Not exitst bucket')
+            assert False
+        if not self.exist_dir(dir):
+            print('Not exitst dir')
+            assert False
+        self.s3_clinet.delete_object(Bucket=self.bucket_name, Key=dir+file_name)
+        assert not self.check_uploaded_file(file_name, dir)
+        print(f'Deleted {file_name} from {dir}')
 
 # Test
 def test_s3_utils():
@@ -76,6 +150,28 @@ def test_s3_utils():
     s3.mk_dir(dir_name)
     assert s3.exist_dir(dir_name)
 
+    # Test for upload file
+    test_file_name = 'test.txt'
+    with open(test_file_name, 'w') as f:
+        f.write(test_file_name)
+    s3.upload_file(test_file_name, dir_name)
+    assert s3.check_uploaded_file(test_file_name, dir_name)
+
+    # Test for copy file
+    new_file_name2 = 'test2.txt'
+    s3.copy_file(dir_name + test_file_name, dir_name + new_file_name2)
+    assert s3.check_uploaded_file(new_file_name2, dir_name)
+
+    # Test for delete file
+    s3.del_file(test_file_name, dir_name)
+    assert not s3.check_uploaded_file(test_file_name, dir_name)
+
+
+    # Test for download file
+    if os.path.isfile(new_file_name2): os.remove(new_file_name2)
+    s3.download_file(new_file_name2, dir_name)
+    assert s3.check_downloaded_file(new_file_name2)
+
     # Test for delete directory
     s3.del_dir(dir_name)
     assert not s3.exist_dir(dir_name)
@@ -85,6 +181,8 @@ def test_s3_utils():
     assert not s3.exist_bucket()
 
     print('Success')
+    os.remove(test_file_name)
+    os.remove(new_file_name2)
     
 if __name__ == "__main__":
     test_s3_utils()
