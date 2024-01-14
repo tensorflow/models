@@ -38,7 +38,7 @@ To evaluate one image with internal step visualization,
 python run_test.py
 ```
 
-To evaluate all images in the test dataset,
+To evaluate all images in the test dataset, and see score for each images, 
 
 ```
 python run_test_all.py
