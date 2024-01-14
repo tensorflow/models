@@ -8,13 +8,16 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="7"
 
 import sys
-sys.path.append("/home/mjyun/01_ghpark/models")
 
 import tensorflow as tf
 import numpy as np
 
 from official.projects.rngdet.tasks import rngdet
 from official.core import exp_factory
+
+parser = argparse.ArgumentParser() 
+parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')  
+
 exp_config = exp_factory.get_exp_config('rngdet_cityscale')
 task_obj = rngdet.RNGDetTask(exp_config.task)
 model = task_obj.build_model()
@@ -105,7 +108,8 @@ def pixel_eval_metric(pred_mask,gt_mask):
 
     return calculate_scores(gt_points,pred_points)
 
-ckpt_dir_or_file = 'dir_for_ckpt'
+ckpt_dir_or_file = parser.parse_args().ckpt_dir[0] 
+
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
     backbone_history=model.backbone_history,
@@ -142,11 +146,6 @@ create_directory(f'./segmentation/tests/graph',delete=True)
 create_directory(f'./segmentation/tests/segmentation',delete=True)
 create_directory(f'./segmentation/tests/skeleton',delete=True)
 create_directory(f'./segmentation/tests/vis',delete=True)
-create_directory(f'./segmentation/tests/score',delete=True)
-create_directory(f'./segmentation/tests/json',delete=True)
-create_directory(f'./segmentation/tests/results/apls',delete=True)
-create_directory(f'./segmentation/tests/results/topo',delete=True)
-
 
 for i, tile_name in enumerate(tile_list):
     print('====================================================')
