@@ -149,7 +149,6 @@ create_directory(f'./segmentation/tests/vis',delete=True)
 
 for i, tile_name in enumerate(tile_list):
     print('====================================================')
-    print(tile_name)
     print(f'{i}/{len(tile_list)}: Start processing {tile_name}')
 
     #initialize an agent for current image 
