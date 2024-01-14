@@ -30,3 +30,16 @@ python create_cityscale_tf_record.py \
     --max_num_frame 10000 \
     --num_shards 32
 ```
+
+## Evaluation 
+To evaluate one image with internal step visualization,  
+
+```
+python run_test.py
+```
+
+To evaluate all images in the test dataset,
+
+```
+python run_test_all.py
+```
