@@ -174,8 +174,6 @@ class Parser(parser.Parser):
     sat_roi = tf.image.rot90(sat_roi, rot_index)
     gt_masks = tf.image.rot90(gt_masks, rot_index)
 
-
-
     #sat_roi = tf.cast(sat_roi, dtype=self._dtype)
     #historical_roi = tf.cast(historical_roi, dtype=self._dtype)
     images = {
