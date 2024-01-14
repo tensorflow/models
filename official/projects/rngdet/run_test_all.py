@@ -181,50 +181,6 @@ for i, tile_name in enumerate(tile_list):
 
         alignment_vertices = [[v[0]-agent_new.current_coord[0]+agent_new.crop_size//2, v[1]-agent_new.current_coord[1]+agent_new.crop_size//2] for v in agent_new.historical_vertices]
         pred_coords_ROI = agent_new.step(pred_probs,pred_coords,thr=logit_threshold)
-        
-        '''#visualize internel step result
-        if agent_new.step_counter%100==0:
-            if agent_new.step_counter%1000==0:
-                print(f'Iteration {agent_new.step_counter}...')
-                Image.fromarray(agent_new.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/tests/skeleton/{tile_name}_{agent_new.step_counter}.png')
-                # visualize current step's result
-            pred_binary = tf.math.sigmoid(pred_segment[0, :, :, 0]) * 255 
-            pred_keypoints = tf.math.sigmoid(pred_keypoint[0, :, :, 0]) * 255 
-            # vis
-            dst = Image.new('RGB',(roi_size*2+5,roi_size*2+5))
-
-            sat_ROI_tmp = sat_ROI[0]*255 
-            history_tmp = historical_ROI[0, :, :, 0]*255
-
-            sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8)) 
-            history = Image.fromarray(history_tmp.numpy().astype(np.uint8)) 
-            pred_binary = Image.fromarray(pred_binary.numpy().astype(np.uint8)) 
-            pred_keypoint = Image.fromarray(pred_keypoints.numpy().astype(np.uint8)) 
-
-            dst.paste(sat,(0,0)) #original image 
-            dst.paste(history,(0,roi_size))
-            dst.paste(pred_binary,(roi_size,0))
-            dst.paste(pred_keypoint,(roi_size,roi_size)) 
-            draw = ImageDraw.Draw(dst)
-
-            for ii in range(3): #ii=0, 1, 2
-                for kk in range(2): #kk= 0, 1
-                    delta_x = ii*roi_size
-                    delta_y = kk*roi_size
-                    if len(alignment_vertices): # from historical vertices
-                        for v in alignment_vertices:
-                            if v[0]>=0 and v[0]<agent_new.crop_size and v[1]>=0 and v[1]<agent_new.crop_size:
-                                v = [delta_x+(v[0]),delta_y+(v[1])]
-                                draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='cyan',outline='cyan')
-
-                    if pred_coords_ROI: #from predicted coordinates (agent_new step)
-                        for jj in range(len(pred_coords_ROI)):
-                            v = pred_coords_ROI[jj]
-                            v = [delta_x+(v[0]),delta_y+(v[1])]
-                            draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='pink',outline='pink')
-                    
-                    draw.ellipse([delta_x-1+roi_size//2,delta_y-1+roi_size//2,delta_x+1+roi_size//2,delta_y+1+roi_size//2],fill='orange')
-            dst.convert('RGB').save(f'./segmentation/tests/vis/{tile_name}_{agent_new.step_counter}.png') '''
 
         # stop action 
         if agent_new.finish_current_image:
