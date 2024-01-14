@@ -35,11 +35,11 @@ python create_cityscale_tf_record.py \
 To evaluate one image with internal step visualization,  
 
 ```
-python run_test.py
+python run_test.py -ckpt ./CKPT_DIR_NAME
 ```
 
 To evaluate all images in the test dataset, and see score for each images, 
 
 ```
-python run_test_all.py
+python run_test_all.py -ckpt ./CKPT_DIR_NAME
 ```
