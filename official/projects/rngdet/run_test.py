@@ -3,7 +3,6 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="4"
 
 import sys
-sys.path.append("/home/mjyun/01_ghpark/models")
 
 import tensorflow as tf
 import numpy as np
@@ -71,9 +70,8 @@ class Graph():
             self.edges[f'{v2.id}_{v1.id}'] = Edge(v2,v1,self.edge_num)
             self.edge_num += 1
 
-ckpt_dir_or_file = '/home/mjyun/01_ghpark/ckpt/06_test_please_final/'
-#ckpt_dir_or_file = '/home/mjyun/01_ghpark/test_06_100epoch_fix_rot/'
-#ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/test_05_100epoch_no_rot/'
+ckpt_dir_or_file = 'ckpt_dir'
+
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
     backbone_history=model.backbone_history,
@@ -86,6 +84,7 @@ ckpt = tf.train.Checkpoint(
     class_embed=model._class_embed,
     bbox_embed=model._bbox_embed,
     input_proj=model.input_proj)
+
 status = ckpt.restore(tf.train.latest_checkpoint(ckpt_dir_or_file))
 status.expect_partial().assert_existing_objects_matched()
 print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -98,7 +97,7 @@ from PIL import Image, ImageDraw
 from official.projects.rngdet.eval import agent
 
 pad_size = 128
-sat_image = np.array(Image.open(os.path.join('/home/mjyun/01_ghpark/models/official/projects/rngdet/data/dataset/20cities/region_9_sat.png')))
+sat_image = np.array(Image.open(os.path.join('./models/official/projects/rngdet/data/dataset/20cities/region_9_sat.png')))
 
 print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
 sat_image = tf.cast(sat_image, tf.float32)
@@ -134,7 +133,7 @@ while 1:
     if agent.step_counter%100==0:
         if agent.step_counter%500==0:
             print(f'Iteration {agent.step_counter}...')
-            Image.fromarray(agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/segment_please_final/skeleton_result_{agent.step_counter}.png')
+            Image.fromarray(agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/skeleton_result_{agent.step_counter}.png')
             # visualize current step's result
         pred_binary = tf.math.sigmoid(pred_segment[0, :, :, 0]) * 255 #output['pred_masks'] -> pred_segment
         pred_keypoints = tf.math.sigmoid(pred_keypoint[0, :, :, 0]) * 255 #output['pred_masks'] -> pred_keypoint
@@ -172,7 +171,7 @@ while 1:
                         draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='pink',outline='pink')
                 
                 draw.ellipse([delta_x-1+roi_size//2,delta_y-1+roi_size//2,delta_x+1+roi_size//2,delta_y+1+roi_size//2],fill='orange')
-        dst.convert('RGB').save(f'./segmentation/segment_please_final/vis_result_{agent.step_counter}.png') 
+        dst.convert('RGB').save(f'./segmentation/vis_result_{agent.step_counter}.png') 
         #exit()
     
     if agent.finish_current_image:
@@ -180,7 +179,7 @@ while 1:
         #save historical map
         Image.fromarray(
             agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)
-            ).convert('RGB').save(f'./segmentation/segment_please_final/0_result.png')
+            ).convert('RGB').save(f'./segmentation/9_result.png')
        
         break
     # stop action
