@@ -143,9 +143,7 @@ with open('./data/dataset/data_split.json','r') as jf:
 time_start = time.time()
 
 create_directory(f'./segmentation/tests/graph',delete=True)
-create_directory(f'./segmentation/tests/segmentation',delete=True)
 create_directory(f'./segmentation/tests/skeleton',delete=True)
-create_directory(f'./segmentation/tests/vis',delete=True)
 
 for i, tile_name in enumerate(tile_list):
     print('====================================================')
