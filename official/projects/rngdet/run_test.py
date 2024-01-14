@@ -3,9 +3,11 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="4"
 
 import sys
+sys.path.append("/home/mjyun/01_ghpark/models")
 
 import tensorflow as tf
 import numpy as np
+import argparse 
 
 from official.projects.rngdet.tasks import rngdet
 from official.core import exp_factory
@@ -13,6 +15,9 @@ exp_config = exp_factory.get_exp_config('rngdet_cityscale')
 task_obj = rngdet.RNGDetTask(exp_config.task)
 model = task_obj.build_model()
 #task_obj.initialize(model)
+
+parser = argparse.ArgumentParser() 
+parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')  
 
 class Vertex():
     def __init__(self,v,id):
@@ -70,7 +75,7 @@ class Graph():
             self.edges[f'{v2.id}_{v1.id}'] = Edge(v2,v1,self.edge_num)
             self.edge_num += 1
 
-ckpt_dir_or_file = 'ckpt_dir'
+ckpt_dir_or_file = parser.parse_args().ckpt_dir[0] 
 
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
@@ -84,7 +89,6 @@ ckpt = tf.train.Checkpoint(
     class_embed=model._class_embed,
     bbox_embed=model._bbox_embed,
     input_proj=model.input_proj)
-
 status = ckpt.restore(tf.train.latest_checkpoint(ckpt_dir_or_file))
 status.expect_partial().assert_existing_objects_matched()
 print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -97,7 +101,7 @@ from PIL import Image, ImageDraw
 from official.projects.rngdet.eval import agent
 
 pad_size = 128
-sat_image = np.array(Image.open(os.path.join('./models/official/projects/rngdet/data/dataset/20cities/region_9_sat.png')))
+sat_image = np.array(Image.open(os.path.join('./data/dataset/20cities/region_9_sat.png')))
 
 print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
 sat_image = tf.cast(sat_image, tf.float32)
@@ -143,28 +147,28 @@ while 1:
         sat_ROI_tmp = sat_ROI[0]*255 
         history_tmp = historical_ROI[0, :, :, 0]*255
 
-        sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8)) #input
-        history = Image.fromarray(history_tmp.numpy().astype(np.uint8)) #input
-        pred_binary = Image.fromarray(pred_binary.numpy().astype(np.uint8)) #output
-        pred_keypoint = Image.fromarray(pred_keypoints.numpy().astype(np.uint8)) #output
+        sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8))  
+        history = Image.fromarray(history_tmp.numpy().astype(np.uint8))  
+        pred_binary = Image.fromarray(pred_binary.numpy().astype(np.uint8))  
+        pred_keypoint = Image.fromarray(pred_keypoints.numpy().astype(np.uint8))  
 
-        dst.paste(sat,(0,0)) #original image 
+        dst.paste(sat,(0,0))  
         dst.paste(history,(0,roi_size))
         dst.paste(pred_binary,(roi_size,0))
         dst.paste(pred_keypoint,(roi_size,roi_size)) 
         draw = ImageDraw.Draw(dst)
 
-        for ii in range(3): #ii=0, 1, 2
-            for kk in range(2): #kk= 0, 1
+        for ii in range(3):  
+            for kk in range(2):  
                 delta_x = ii*roi_size
                 delta_y = kk*roi_size
-                if len(alignment_vertices): # from historical vertices
+                if len(alignment_vertices):  
                     for v in alignment_vertices:
                         if v[0]>=0 and v[0]<agent.crop_size and v[1]>=0 and v[1]<agent.crop_size:
                             v = [delta_x+(v[0]),delta_y+(v[1])]
                             draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='cyan',outline='cyan')
 
-                if pred_coords_ROI: #from predicted coordinates (agent step)
+                if pred_coords_ROI: 
                     for jj in range(len(pred_coords_ROI)):
                         v = pred_coords_ROI[jj]
                         v = [delta_x+(v[0]),delta_y+(v[1])]
