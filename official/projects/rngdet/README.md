@@ -37,7 +37,7 @@ To edit training options of RNGDet, you can edit following commands in do_train.
 CUDA_VISIBLE_DEVICES=4 python3 train.py \
   --mode=train \
   --experiment=rngdet_cityscale  \
-  --model_dir=./CKPT_DIR \
+  --model_dir=./CKPT_DIR_NAME \
   --config_file=./configs/experiments/cityscale_rngdet_r50_gpu.yaml \
 ```
 
