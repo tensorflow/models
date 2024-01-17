@@ -25,9 +25,7 @@ from typing import Any, List
 import tensorflow as tf
 
 from official.modeling import tf_utils
-#from official.projects.rngdet.modeling import transformer
 from official.projects.pix2seq.modeling import transformer
-from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
 from typing import Any, Mapping, List, Union
@@ -94,8 +92,6 @@ def position_embedding_sine(attention_mask,
   pos_col = tf.reshape(pos_col, final_shape)
   output = tf.concat([pos_row, pos_col], -1)
 
-  # (gunho) type cast
-  #embeddings = tf.cast(output, tf.float32)
   embeddings = output
   return embeddings
 
@@ -134,9 +130,6 @@ class RNGDet(tf.keras.Model):
     self._transformer = transformer
 
     self._input_proj = input_proj
-    """self._build_detection_decoder()
-
-  def _build_detection_decoder(self):"""
     
     self._query_embeddings = self.add_weight(
         "detr/query_embeddings",
@@ -152,14 +145,6 @@ class RNGDet(tf.keras.Model):
         1, 1,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
         name="detr/keypoint_dense")
-    """self._segment_head = tf.keras.layers.Dense(
-        1,
-        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
-        name="detr/segment_dense")
-    self._keypoint_head = tf.keras.layers.Dense(
-        1,
-        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
-        name="detr/keypoint_dense")"""
     self._class_embed = tf.keras.layers.Dense(
         self._num_classes,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
@@ -179,7 +164,6 @@ class RNGDet(tf.keras.Model):
             2, kernel_initializer=tf.keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_2")])
-    #self._sigmoid = tf.keras.layers.Activation("sigmoid")
     self._tanh = tf.keras.layers.Activation("tanh")
 
   @property
@@ -285,7 +269,6 @@ class RNGDet(tf.keras.Model):
 
     proj_in = tf.concat([features[self._backbone_endpoint_name],
                          history_outs], -1)
-    # (gunho) stem_ln?
     inputs = tf.reshape(
         self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
     mask = tf.reshape(mask, [batch_size, -1])
@@ -301,15 +284,6 @@ class RNGDet(tf.keras.Model):
         "mask": mask,
     }, training=training)
     
-    """out_list = []
-    for decoded in decoded_list:
-      decoded = tf.stack(decoded)
-      output_class = self._class_embed(decoded)
-      box_out = decoded
-      box_out = self._bbox_embed(box_out)
-      output_coord = self._tanh(box_out)
-      out = {"cls_outputs": output_class, "box_outputs": output_coord}
-      out_list.append(out)"""
     output_class = self._class_embed(decoded)
     box_out = decoded
     box_out = self._bbox_embed(box_out)

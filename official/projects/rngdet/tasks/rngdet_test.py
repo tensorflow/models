@@ -19,8 +19,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import os
 
-#from official.projects.rngdet import optimization
-from official.modeling import optimization #(mj)
 from official.projects.rngdet.configs import rngdet as rngdet_cfg
 from official.projects.rngdet.tasks import rngdet
 from official.vision.configs import backbones

@@ -24,14 +24,12 @@ from official.core import task_factory
 from official.projects.rngdet.configs import rngdet as rngdet_cfg
 from official.projects.rngdet.dataloaders import rngdet_input
 from official.projects.rngdet.modeling import rngdet
-from official.projects.rngdet.modeling import fpn
 from official.projects.detr.ops import matchers
 from official.vision.dataloaders import input_reader_factory
 from official.vision.evaluation import coco_evaluator
 from official.vision.modeling import backbones
 from official.vision.modeling import decoders
 from official.vision.ops import box_ops
-from official.vision.losses import focal_loss
 
 @task_factory.register_task_cls(rngdet_cfg.RngdetTask)
 class RNGDetTask(base_task.Task):
@@ -65,14 +63,6 @@ class RNGDetTask(base_task.Task):
     keypoint_fpn = decoders.factory.build_decoder(
         input_specs=backbone.output_specs,
         model_config=self._task_config.model)
-
-    """segment_fpn = fpn.build_fpn_decoder(
-        input_specs=backbone.output_specs,
-        model_config=self._task_config.model)
-    
-    keypoint_fpn = fpn.build_fpn_decoder(
-        input_specs=backbone.output_specs,
-        model_config=self._task_config.model)"""
     
     transformer = rngdet.DETRTransformer(
         hidden_size=self._task_config.model.hidden_size,
@@ -129,7 +119,6 @@ class RNGDetTask(base_task.Task):
                    params,
                    input_context: Optional[tf.distribute.InputContext] = None):
     """Build input dataset."""
-    input_size = self.task_config.model.input_size
 
     decoder = rngdet_input.Decoder()
 
@@ -152,7 +141,7 @@ class RNGDetTask(base_task.Task):
     # Approximate classification cost with 1 - prob[target class].
     # The 1 is a constant that doesn't change the matching, it can be ommitted.
     # background: 0
-    # (gunho) background : 1
+    # (gunho) background : 1 in RNGDet
     background = 1
     cls_cost = self._task_config.losses.lambda_cls * tf.gather(
         -tf.nn.softmax(cls_outputs), cls_targets, batch_dims=1, axis=-1)
@@ -162,13 +151,11 @@ class RNGDetTask(base_task.Task):
         tf.expand_dims(box_outputs, 2) - tf.expand_dims(box_targets, 1))
     box_cost = tf.reduce_sum(paired_differences, axis=-1)
 
-    #total_cost = self._task_config.losses.lambda_cls*cls_cost + self._task_config.losses.lambda_box*box_cost
     total_cost = cls_cost + box_cost
 
     max_cost = (
         self._task_config.losses.lambda_cls * 0.0 +
         self._task_config.losses.lambda_box * 4.0)
-        #self._task_config.losses.lambda_box * 2.0)
 
     # Set pads to large constant
     valid = tf.expand_dims(
@@ -187,24 +174,18 @@ class RNGDetTask(base_task.Task):
     """Builds segmentation losses for RNGDet."""
     gt_segment = labels['label_masks_roi'][:,:,:,0] 
     gt_keypoint = labels['label_masks_roi'][:,:,:,1]
-    """focal_loss_fn = focal_loss.FocalLoss(
-        alpha=0.75,
-        gamma=2.0,
-        reduction=tf.keras.losses.Reduction.SUM)"""
     focal_loss_fn = tf.keras.losses.BinaryCrossentropy(
       from_logits=True, reduction=tf.keras.losses.Reduction.SUM)
     
     batch_size = tf.shape(pred_segment)[0]
     pred_segment = tf.reshape(pred_segment, [batch_size, -1, 1])
     gt_segment = tf.reshape(gt_segment, [batch_size, -1, 1])
-    #num_valid_segment = tf.cast(tf.reduce_sum(gt_segment), tf.float32)
     valid_segment = tf.where(
         tf.equal(gt_segment, 1), tf.ones_like(gt_segment)*3, tf.ones_like(gt_segment))
     segment_weights_per_replica = tf.reduce_sum(valid_segment)
 
     pred_keypoint = tf.reshape(pred_keypoint, [batch_size, -1, 1])
     gt_keypoint = tf.reshape(gt_keypoint, [batch_size, -1, 1])
-    #num_valid_keypoint = tf.cast(tf.reduce_sum(gt_keypoint), tf.float32)
     valid_keypoint = tf.where(
         tf.equal(gt_keypoint, 1), tf.ones_like(gt_keypoint)*6, tf.ones_like(gt_keypoint))
     keypoint_weights_per_replica = tf.reduce_sum(valid_keypoint)
@@ -221,8 +202,6 @@ class RNGDetTask(base_task.Task):
     keypoint_loss = tf.math.divide_no_nan(
         focal_loss_fn(gt_keypoint, pred_keypoint, sample_weight=valid_keypoint),
         tf.cast(keypoint_weights_sum, tf.float32))
-    #segment_loss = focal_loss_fn(gt_segment, pred_segment, sample_weight=valid_segment)
-    #keypoint_loss = focal_loss_fn(gt_keypoint, pred_keypoint, sample_weight=valid_keypoint)
 
     loss = segment_loss + keypoint_loss
     return loss
@@ -281,16 +260,6 @@ class RNGDetTask(base_task.Task):
 
     aux_losses = tf.add_n(aux_losses) if aux_losses else 0.0
 
-    """print("************************")
-    print(cls_targets)
-    print(cls_assigned)
-    print(box_targets)
-    print(box_assigned)
-    print(cls_loss)
-    print(box_loss)
-    print("************************")
-    exit()"""
-
     total_loss = cls_loss + box_loss + aux_losses
     return total_loss, cls_loss, box_loss
 
@@ -336,11 +305,6 @@ class RNGDetTask(base_task.Task):
       box_loss = 0.0
       seg_loss = 0.0
 
-      """print("*************************")
-      print(outputs[-1]['cls_outputs'])
-      print(outputs[-1]['box_outputs'])
-      print("*************************")"""
-
       seg_loss = self.segmentation_loss(pred_segment, pred_keypoint, labels)
       loss += seg_loss
       
@@ -350,14 +314,6 @@ class RNGDetTask(base_task.Task):
       loss += layer_loss
       cls_loss += layer_cls_loss
       box_loss += layer_box_loss
-
-      """for output in outputs:
-        # Computes per-replica loss.
-        layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
-            outputs=output, labels=labels, aux_losses=model.losses)
-        loss += layer_loss/self._task_config.model.num_decoder_layers
-        cls_loss += layer_cls_loss/self._task_config.model.num_decoder_layers
-        box_loss += layer_box_loss/self._task_config.model.num_decoder_layers"""
       
       # Consider moving scaling logic from build_losses to here.
       scaled_loss = loss
@@ -393,10 +349,6 @@ class RNGDetTask(base_task.Task):
         'box_loss': box_loss,
         'seg_loss': seg_loss,
     }
-
-    # (gunho) check global norm
-    norm = tf.linalg.global_norm(grads)
-    logs['global_norm'] = norm
 
     # Metric results will be added to logs for you.
     if metrics:

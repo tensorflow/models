@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TensorFlow Model Garden Vision SimCLR trainer."""
+"""TensorFlow Model Garden Vision RNGDet trainer."""
 from absl import app
 from absl import flags
 import gin

@@ -63,11 +63,8 @@ class Agent(FrozenClass):
 
         :param seed (int): seed
         '''
-        #torch.manual_seed(seed)
-        #torch.cuda.manual_seed_all(seed)
         np.random.seed(seed)
         random.seed(seed)
-        #torch.backends.cudnn.deterministic = True
         
     def load_data_and_initialization(self):
         '''
@@ -75,8 +72,6 @@ class Agent(FrozenClass):
 
         :param image_name (str): name of input image
         '''
-        # load images
-        #self.sat_image = np.array(Image.open(os.path.join(self.args.dataroot,f'20cities/region_{tile_name}_sat.png')))
         self.sat_image = np.pad(self.image,np.array(((self.pad_size,self.pad_size),(self.pad_size,self.pad_size),(0,0))),'constant')
        
         # get initial candidates
@@ -104,7 +99,6 @@ class Agent(FrozenClass):
                 historical_ROI = tf.expand_dims(historical_ROI, 0)  
                 historical_ROI = tf.expand_dims(historical_ROI, -1)
                 historical_ROI = tf.cast(historical_ROI, tf.float32)
-                #print("---------------------------")
                 
                 _, pred_segment, pred_keypoint = self.model(sat_ROI, historical_ROI, training=False)
                 pred_mask = tf.cast(  ( sigmoid_fn(pred_segment) ) *255, tf.uint8)
@@ -205,16 +199,8 @@ class Agent(FrozenClass):
         d = dst - src
         N = np.max(np.abs(d))
         self.historical_map[src[1]+self.pad_size,src[0]+self.pad_size] = 255
-        #self.historical_map[src[1]+self.pad_size,src[0]+self.pad_size+1] = 255
-        #self.historical_map[src[1]+self.pad_size,src[0]+self.pad_size-1] = 255
-        #self.historical_map[src[1]+self.pad_size+1,src[0]+self.pad_size] = 255
-        #self.historical_map[src[1]+self.pad_size-1,src[0]+self.pad_size] = 255
 
         self.historical_map[dst[1]+self.pad_size,dst[0]+self.pad_size] = 255
-        #self.historical_map[dst[1]+self.pad_size+1,dst[0]+self.pad_size] = 255
-        #self.historical_map[dst[1]+self.pad_size-1,dst[0]+self.pad_size] = 255
-        #self.historical_map[dst[1]+self.pad_size,dst[0]+self.pad_size+1] = 255
-        #self.historical_map[dst[1]+self.pad_size,dst[0]+self.pad_size-1] = 255
          
         if N:
             s = d / (N)
@@ -237,18 +223,15 @@ class Agent(FrozenClass):
         softmax_fn = tf.keras.layers.Activation("softmax")
 
         # transformation within ROI
-        #pred_coords_ROI = pred_coords[0].cpu().detach().numpy().tolist()
         pred_coords_ROI = tf.stop_gradient(pred_coords[0]).numpy().tolist()
         pred_coords_ROI = [[x[0]*(self.crop_size//2)+self.crop_size//2,x[1]*(self.crop_size//2)+self.crop_size//2] for x in pred_coords_ROI]
         
         # find valid coords
-        #pred_logits = pred_logits[0].softmax(dim=1)
         pred_logits = softmax_fn(pred_logits[0])
         '''print("probability", pred_logits)''' 
  
         temp_pred_coords_ROI = []
         for ii, coord in enumerate(pred_coords_ROI):
-            #process_boundary = False state
             if self.process_boundary and (coord[0]+self.current_coord[0]-self.crop_size//2<=75 \
                 or coord[0]+self.current_coord[0]-self.crop_size//2>=self.image_size-75 \
                 or coord[1]+self.current_coord[1]-self.crop_size//2<=75 \
@@ -261,7 +244,6 @@ class Agent(FrozenClass):
                     temp_pred_coords_ROI.append(coord)
         
         temp_pred_coords_ROI = [[max(0,min(self.crop_size-1,int(y))) for y in x] for x in temp_pred_coords_ROI if x[0]>=0 and x[0]<=self.crop_size-1 and x[1]>=0 and x[1]<=self.crop_size-1]
-        #print("appended coordinates(vector), temp_pred_coords_ROI", temp_pred_coords_ROI)
 
         # filter coord by angle
         pred_coords_ROI = temp_pred_coords_ROI.copy()
@@ -292,16 +274,13 @@ class Agent(FrozenClass):
         pred_coords_world = [[min(self.image_size,max(0,y)) for y in x] for x in pred_coords_world]
 
         # alignment
-        #print("historical_vertices", self.historical_vertices)
         if len(self.historical_vertices):
             tree = cKDTree(self.historical_vertices)
             for i, v in enumerate(pred_coords_world):
                 dd, ii = tree.query(v,k=1) #distance between pred_coords_world's neareast historical point 
-                #print("dd", dd)
                 if ( dd < self.alignment_distance ) and ( self.historical_vertices[ii]!=self.current_coord ):
                     pred_coords_world[i] = self.historical_vertices[ii] #choose one of the historical vertices
         
-        #print("pred_coords_world", pred_coords_world)
         # remove coords that are not moving or filtered
         output_pred_coords_world = [v for i,v in enumerate(pred_coords_world) if v!=self.current_coord and self.counter_map[v[1],v[0]]<10]
 
@@ -321,7 +300,6 @@ class Agent(FrozenClass):
         :return pred_coords_ROI (list): valid predicted vertices in the next step in the ROI coordinate
         '''
         pred_coords_ROI, pred_coords_world = self.get_valid_coords(pred_logits, pred_coords, thr=thr)
-        #print("prediction number", len(pred_coords_world))
         # intersection mode
         self.LS_counter += 1
         # zero prediction

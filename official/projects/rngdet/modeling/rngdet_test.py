@@ -21,7 +21,7 @@ from official.vision.modeling.decoders import fpn
 
 class DetrTest(tf.test.TestCase):
 
-  """def test_forward(self):
+  def test_forward(self):
     num_queries = 10
     hidden_size = 128
     num_classes = 2
@@ -54,7 +54,7 @@ class DetrTest(tf.test.TestCase):
       self.assertAllEqual(
           tf.shape(out['cls_outputs']), (batch_size, num_queries, num_classes))
       self.assertAllEqual(
-          tf.shape(out['box_outputs']), (batch_size, num_queries, 4))"""
+          tf.shape(out['box_outputs']), (batch_size, num_queries, 4))
 
   def test_serialize_deserialize(self):
     retinanet_head = rngdet.InputProjection(

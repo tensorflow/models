@@ -12,21 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""COCO data loader for Pix2Seq."""
-roi_size=128
-import matplotlib.pyplot as plt
+"""Cityscale data loader for RNGDet."""
 
-from typing import Tuple
 import tensorflow as tf
-import math
 import numpy as np
-from PIL import Image, ImageDraw
 from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser
-from official.vision.ops import preprocess_ops
-from official.projects.rngdet.dataloaders import sampler as rngdet_sampler
-'''from tensorflow.python.framework.ops import enable_eager_execution
-print(tf.executing_eagerly())'''
+
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for RNGDet."""
 
@@ -110,7 +102,6 @@ class Parser(parser.Parser):
     gt_probs = tf.reshape(data['gt_probs'], [self._num_queries])
     gt_masks = tf.reshape( data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])
     
-    #sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
     sat_roi = tf.cast(sat_roi, tf.float32)/255
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
@@ -157,7 +148,6 @@ class Parser(parser.Parser):
     gt_masks = tf.reshape(
         data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])/255
     
-    #sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
     rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)
@@ -174,8 +164,6 @@ class Parser(parser.Parser):
     sat_roi = tf.image.rot90(sat_roi, rot_index)
     gt_masks = tf.image.rot90(gt_masks, rot_index)
 
-    #sat_roi = tf.cast(sat_roi, dtype=self._dtype)
-    #historical_roi = tf.cast(historical_roi, dtype=self._dtype)
     images = {
         'sat_roi': sat_roi,
         'historical_roi': historical_roi,
