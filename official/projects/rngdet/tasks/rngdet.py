@@ -401,7 +401,7 @@ class RNGDetTask(base_task.Task):
     cos_theta = 0 if ( rot_index%2==1 ) else (1 if (rot_index==0) else -1)
     sin_theta = 0 if ( rot_index%2==0 ) else (1 if (rot_index==1) else -1)
 
-    R = tf.constant([[cos_theta, sin_theta], [-sin_theta, cos_theta]], dtype=tf.float32)
+    R = tf.constant([[cos_theta, -sin_theta], [sin_theta, cos_theta]], dtype=tf.float32)
     
     gt_coords = tf.reverse(gt_coords, axis=[1])
     gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True) ) 
