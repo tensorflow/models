@@ -53,7 +53,7 @@ To evaluate one image with internal step visualization,
 python run_test.py -ckpt ./CKPT_DIR_NAME
 ```
 
-To evaluate all images in the test dataset, and see score for each images, 
+To evaluate all images in the test dataset, and see score(P-P, P-R, R-F) for each images, 
 
 ```
 python run_test_all.py -ckpt ./CKPT_DIR_NAME
