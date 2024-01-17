@@ -397,40 +397,21 @@ class RNGDetTask(base_task.Task):
     draw = ImageDraw.Draw(dst)
     dst.convert('RGB').save(f'./check_rot_before.png') 
 
-    rot_index = 3
+    rot_index = np.random.randint(0, 4)
     cos_theta = 0 if ( rot_index%2==1 ) else (1 if (rot_index==0) else -1)
     sin_theta = 0 if ( rot_index%2==0 ) else (1 if (rot_index==1) else -1)
 
-    # after rotation 
     R = tf.constant([[cos_theta, sin_theta], [-sin_theta, cos_theta]], dtype=tf.float32)
-    print("before", gt_coords)
-    gt_coords = tf.transpose ( (tf.linalg.matmul(R, gt_coords, transpose_b=True)), perm = [0,2,1] )
-    print("after", gt_coords)
+    
+    gt_coords = tf.reverse(gt_coords, axis=[1])
+    gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True) ) 
+    gt_coords = tf.reverse(gt_coords, axis=[1])
      
     label_masks_roi = tf.image.rot90(label_masks_roi, rot_index) #counter clock wise
     historical_roi = tf.image.rot90(historical_roi, rot_index) #counter clock wise 
     sat_roi = tf.image.rot90(sat_roi, rot_index)
     gt_masks = tf.image.rot90(gt_masks, rot_index)
 
-    dst = Image.new('RGB',(roi_size*2+5,roi_size*2+5))
-    sat_ROI_tmp = sat_roi[0]*255 
-    history_tmp = historical_roi[0, :, :, 0]*255
-    label_mask_tmp = label_masks_roi[0, :, :, 0]*255
-    gt_mask_tmp = gt_masks[0, :, :, 0]*255 
-
-    sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8)) #input
-    history = Image.fromarray(history_tmp.numpy().astype(np.uint8)) #input
-    label_mask = Image.fromarray(label_mask_tmp.numpy().astype(np.uint8)) #output
-    gt_mask = Image.fromarray(gt_mask_tmp.numpy().astype(np.uint8)) #output 
-    
-    dst.paste(sat,(0,0)) #original image 
-    dst.paste(history,(0,roi_size))
-    dst.paste(label_mask,(roi_size,0))
-    dst.paste(gt_mask,(roi_size,roi_size)) 
-    draw = ImageDraw.Draw(dst)
-    dst.convert('RGB').save(f'./check_rot_after.png') 
-
-    print(labels)
     #===============================================
     
     outputs = model(features, training=False)[-1]
