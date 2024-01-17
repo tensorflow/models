@@ -30,6 +30,21 @@ python create_cityscale_tf_record.py \
     --max_num_frame 10000 \
     --num_shards 32
 ```
+## Training 
+To edit training options of RNGDet, you can edit following commands in do_train.sh :
+
+```
+CUDA_VISIBLE_DEVICES=4 python3 train.py \
+  --mode=train \
+  --experiment=rngdet_cityscale  \
+  --model_dir=./CKPT_DIR \
+  --config_file=./configs/experiments/cityscale_rngdet_r50_gpu.yaml \
+```
+
+To start training, try the following command : 
+```
+sh do_train.sh 
+```
 
 ## Evaluation 
 To evaluate one image with internal step visualization,  
