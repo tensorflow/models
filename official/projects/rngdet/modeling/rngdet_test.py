@@ -26,12 +26,12 @@ class DetrTest(tf.test.TestCase):
     hidden_size = 128
     num_classes = 2
     image_size = 128
-    temp = [128,128,3]
+    input_size = [image_size,image_size,3]
     batch_size = 64
     backbone = resnet.ResNet(50, bn_trainable=False)
     backbone_endpoint_name = '5'
     history_specs = tf.keras.layers.InputSpec(
-        shape=[None] + temp[:2] + [3])
+        shape=[None] + input_size[:2] + [3])
     backbone_history = resnet.ResNet(50,
                                      input_specs=history_specs,
                                      bn_trainable=False)
