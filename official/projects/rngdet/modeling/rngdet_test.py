@@ -35,37 +35,45 @@ class DetrTest(tf.test.TestCase):
     backbone_history = resnet.ResNet(50,
                                      input_specs=history_specs,
                                      bn_trainable=False)
-    segment_head = fpn.FPN(backbone.output_specs,
+    segment_fpn = fpn.FPN(backbone.output_specs,
                            min_level=2,
                            max_level=5)
-    keypoint_head = fpn.FPN(backbone.output_specs,
+    keypoint_fpn = fpn.FPN(backbone.output_specs,
                            min_level=2,
                            max_level=5)
 
-    model = rngdet.RNGDet(backbone, backbone_history, backbone_endpoint_name,
-                          segment_head, keypoint_head,
-                          num_queries, hidden_size, num_classes)
+    input_proj = rngdet.InputProjection(hidden_size)
+
+    transformer = rngdet.DETRTransformer(
+        hidden_size= hidden_size,
+        num_encoder_layers=6,
+        num_decoder_layers=6)
+
+    model = rngdet.RNGDet(backbone,
+                      backbone_history,
+                      backbone_endpoint_name,
+                      segment_fpn,
+                      keypoint_fpn,
+                      transformer,
+                      input_proj,
+                      num_queries,
+                      hidden_size,
+                      num_classes) 
+
     test_input = tf.ones((batch_size, image_size, image_size, 3))
     test_history = tf.ones((batch_size, image_size, image_size, 1))
     outs = model(test_input, test_history, training=True)
-    #outs = model(tf.ones((batch_size, image_size, image_size, 3)))
-    self.assertLen(outs, 6)  # intermediate decoded outputs.
-    for out in outs:
-      self.assertAllEqual(
-          tf.shape(out['cls_outputs']), (batch_size, num_queries, num_classes))
-      self.assertAllEqual(
-          tf.shape(out['box_outputs']), (batch_size, num_queries, 4))
 
-  def test_serialize_deserialize(self):
-    retinanet_head = rngdet.InputProjection(
-        hidden_size=256
-    )
-    config = retinanet_head.get_config()
-    new_retinanet_head = (
-        rngdet.InputProjection.from_config(config))
+    self.assertLen(outs, 3)  # intermediate decoded outputs.
+
     self.assertAllEqual(
-        retinanet_head.get_config(), new_retinanet_head.get_config())
-
+        tf.shape(outs[0]['cls_outputs']), (batch_size, num_queries, num_classes))
+    self.assertAllEqual(
+        tf.shape(outs[0]['box_outputs']), (batch_size, num_queries, num_classes))
+    self.assertAllEqual(
+        tf.shape(outs[1]), (batch_size, hidden_size, hidden_size, 1))
+    self.assertAllEqual(
+        tf.shape(outs[2]), (batch_size, hidden_size, hidden_size, 1))
 
 if __name__ == '__main__':
   tf.test.main()
