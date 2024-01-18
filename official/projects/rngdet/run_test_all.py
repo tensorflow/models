@@ -144,6 +144,7 @@ time_start = time.time()
 
 create_directory(f'./segmentation/tests/graph',delete=True)
 create_directory(f'./segmentation/tests/skeleton',delete=True)
+create_directory(f'./segmentation/tests/json',delete=True)
 
 for i, tile_name in enumerate(tile_list):
     print('====================================================')
