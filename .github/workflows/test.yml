@@ -10,6 +10,7 @@ on:
     branches: [ "master" ]
 
 permissions:
+  id-token: write
   contents: read
 
 jobs:
@@ -38,6 +39,11 @@ jobs:
     #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
     #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
     #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::519025398946:role/github_actions
+        aws-region: ap-northeast-1
     - name: Test with pytest
       run: |
         pytest boto3/*_test.py
