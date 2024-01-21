@@ -2,8 +2,11 @@ from s3_utils import s3_utils
 import os
 
 def test_s3_utils():
+    from datetime import datetime
+    current_datetime = datetime.now().strftime('%Y%m%d%H%M%S')
     # Test for create bucket
-    bucket_name = 'test-bucket-by-matsukage'
+    bucket_name = 'test-bucket-by-matsukage-' + current_datetime
+    print(bucket_name)
     s3 = s3_utils(bucket_name)
     assert s3.exist_bucket()
     
