@@ -42,7 +42,7 @@ jobs:
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: arn:aws:iam::519025398946:role/github_actions
+        role-to-assume: arn:aws:iam::026823144273:role/github_actions
         aws-region: ap-northeast-1
     - name: Test with pytest
       run: |
