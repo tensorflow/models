@@ -1,7 +1,7 @@
 import boto3, os
 
 class s3_utils:
-    s3_resource = boto3.resource('s3')
+    s3_resource = boto3.resource('s3', region_name="ap-northeast-1")
     s3_clinet = boto3.client('s3')
     bucket_name=""
 
