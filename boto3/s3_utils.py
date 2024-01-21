@@ -31,7 +31,11 @@ class s3_utils:
     # Create a bucket on S3
     def mk_bucket(self, bucket_name):
         bucket = self.s3_resource.Bucket(bucket_name)
-        bucket.create()
+        bucket.create(
+            CreateBucketConfiguration={
+                'LocationConstraint': 'ap-northeast-1'
+            }
+        )
         assert self.exist_bucket()
         print(f'Created {bucket_name}')
 
@@ -140,8 +144,11 @@ class s3_utils:
 
 # Test
 def test_s3_utils():
+    from datetime import datetime
+    current_datetime = datetime.now().strftime('%Y%m%d%H%M%S')
     # Test for create bucket
-    bucket_name = 'test-bucket-by-matsukage'
+    bucket_name = 'test-bucket-by-matsukage-' + current_datetime
+    print(bucket_name)
     s3 = s3_utils(bucket_name)
     assert s3.exist_bucket()
     
