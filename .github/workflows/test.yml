@@ -46,4 +46,4 @@ jobs:
         aws-region: ap-northeast-1
     - name: Test with pytest
       run: |
-        pytest boto3/*_test.py
+        pytest s3/*_test.py
