@@ -10,7 +10,8 @@ def download_ckpt():
     os.system("rm -r /worker/BboxSuggestion/research/object_detection/test_data/*")
     os.system("wget http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d0_coco17_tpu-32.tar.gz")
     os.system("tar -xf efficientdet_d0_coco17_tpu-32.tar.gz")
-    os.system("mv  efficientdet_d0_coco17_tpu-32/ /worker/BboxSuggestion/research/object_detection/test_data/")
+    os.system("mkdir /worker/BboxSuggestion/research/object_detection/test_data")
+    os.system("mv  efficientdet_d0_coco17_tpu-32/ /worker/BboxSuggestion/research/object_detection/test_data/efficientdet_d0_coco17_tpu-32")
 
 def load_labelmap(configs, ):
     label_map_path = configs['eval_input_config'].label_map_path

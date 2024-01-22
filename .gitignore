@@ -4,6 +4,8 @@ test_data/
 *.tar.gz
 setup.py
 *.jpg
+*.jpeg
+images.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
