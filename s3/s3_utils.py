@@ -76,7 +76,8 @@ class s3_utils:
             assert False
         if not self.exist_dir(dir):
             self.mk_dir(dir)
-        self.s3_resource.Object(self.bucket_name, dir+file_name).upload_file(file_name)
+        fname = os.path.basename(file_name)
+        self.s3_resource.Object(self.bucket_name, dir+fname).upload_file(file_name)
         assert self.check_uploaded_file(file_name, dir)
         print(f'Uploaded {file_name} to {dir}')
 
