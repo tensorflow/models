@@ -1,5 +1,13 @@
 import s3_utils
 
+def test_upload_test_file():
+    # Test
+    s3 = s3_utils.s3_utils('bounding-box-suggestion')
+    assert s3.exist_dir('sample-id/')
+    assert s3.exist_dir('sample-id/input/')
+    assert s3.check_uploaded_file('boto3/images.zip', 'sample-id/input/')
+    assert s3.exist_dir('sample-id/output/')
+
 if __name__ == "__main__":
     # create bucket
     s3 = s3_utils.s3_utils('bounding-box-suggestion')
@@ -18,7 +26,4 @@ if __name__ == "__main__":
     s3.upload_file('boto3/images.zip', 'sample-id/input/')
 
     # Test
-    assert s3.exist_dir('sample-id/')
-    assert s3.exist_dir('sample-id/input/')
-    assert s3.check_uploaded_file('boto3/images.zip', 'sample-id/input/')
-    assert s3.exist_dir('sample-id/output/')
+    test_upload_test_file
