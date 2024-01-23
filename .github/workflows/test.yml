@@ -36,7 +36,7 @@ jobs:
         git clone https://github.com/tensorflow/models.git
         cd models
         export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/research
-        pip install --user -r models/official/requirements.txt
+        pip install --user -r official/requirements.txt
         pip install tensorflow==2.15.0
         pip install pandas
     - name: Configure AWS Credentials
