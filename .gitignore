@@ -6,6 +6,7 @@ setup.py
 *.jpg
 *.jpeg
 images.zip
+output.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

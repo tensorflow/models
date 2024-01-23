@@ -40,3 +40,4 @@ jobs:
     - name: Test with pytest
       run: |
         pytest s3/*_test.py
+        pytest *_test.py

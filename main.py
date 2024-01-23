@@ -7,6 +7,7 @@ from object_detection.builders import model_builder
 import utils
 import cv2, glob, shutil
 from s3.s3_utils import s3_utils
+from typing import Any
 
 def inference(input_dir = 'images', output_dir = 'output',  ext = ['jpg', 'png', 'bmp', 'jpeg']):
     # 入力ディレクトリの存在確認
@@ -96,15 +97,49 @@ def inference(input_dir = 'images', output_dir = 'output',  ext = ['jpg', 'png',
         output_name = os.path.basename(image_path)
         cv2.imwrite(f'{output_dir}/{output_name}', image_np_with_detections)
 
-if __name__ == '__main__':
-    s3 = s3_utils('bounding-box-suggestion')
-
+def download_input_imags(s3, user_id:str)->str:
+    # images.zipの存在確認
     if os.path.isdir('images'): shutil.rmtree('images')
-    assert s3.check_uploaded_file('images.zip', 'sample-id/input/')
-    s3.download_file('images.zip', 'sample-id/input/')
+    assert s3.check_uploaded_file('images.zip', f'{user_id}/input/')
+
+    # download
+    s3.download_file('images.zip', f'{user_id}/input/')
     os.path.isfile('images.zip')
+
+    # unzip
     os.system('unzip -o images.zip')
     assert os.path.isdir('images')
+
+    return 'images'
+
+def upload_output(output_path:str, s3, user_id:str, output_dir:str):
+    # zip output
+    os.system('zip -r output.zip output')
+    assert s3.exist_dir(f'{user_id}/output/')
+
+    # upload output.zip
+    if s3.check_uploaded_file('output.zip', f'{user_id}/output/'): s3.del_file('output.zip', f'{user_id}/output/')
+    s3.upload_file('output.zip', f'{user_id}/output/')
+    assert s3.check_uploaded_file('output.zip', f'{user_id}/output/')
+
+def main(user_id:str = 'sample-id'):
+    # download input images
+    s3 = s3_utils('bounding-box-suggestion')
+    input_dir:str = download_input_imags(s3, user_id)
     
-    inference('images', 'output')
+    # clear output
+    output_dir:str = 'output'
+    if os.path.isdir(output_dir): os.system(f'rm -rf {output_dir}')
+    if os.path.isfile('output.zip'): os.system(f'rm -rf output.zip')
+    
+    # inference
+    inference(input_dir, output_dir)
+
+    # upload output
+    upload_output(output_dir, s3, user_id, output_dir)
+
+
+if __name__ == '__main__':
+    main()
+
 
