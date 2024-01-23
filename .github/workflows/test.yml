@@ -34,8 +34,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y git
         git clone https://github.com/tensorflow/models.git
-        cd models/research
+        cd models
         pip install --user -r official/requirements.txt
+        cd research
         pip install tensorflow==2.15.0 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
