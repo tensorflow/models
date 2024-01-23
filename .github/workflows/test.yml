@@ -32,8 +32,8 @@ jobs:
         pip install pytest
         pip install boto3
         pip install tensorflow==2.15.0.post1
-        apt-get update
-        apt-get install -y git
+        sudo apt-get update
+        sudo apt-get install -y git
         git clone https://github.com/tensorflow/models.git
         export PATH="$PATH:/models/research/object_detection"
     - name: Configure AWS Credentials
