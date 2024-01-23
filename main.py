@@ -1,6 +1,8 @@
-import os
+import os,sys
 import numpy as np
 import tensorflow as tf
+sys.path.append('/home/runner/work/BboxSuggestion/BboxSuggestion/models')
+sys.path.append('/home/runner/work/BboxSuggestion/BboxSuggestion/models/research')
 from object_detection.utils import config_util
 from object_detection.utils import visualization_utils as viz_utils
 from object_detection.builders import model_builder

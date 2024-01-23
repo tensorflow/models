@@ -37,6 +37,8 @@ jobs:
         cd models
         pip install --user -r official/requirements.txt
         pip install tensorflow==2.15.0
+        cd research
+        export PYTHONPATH=$PYTHONPATH:pwd:pwd/slim
         export PYTHONPATH=$PYTHONPATH:/home/runner/work/BboxSuggestion/BboxSuggestion/models:/home/runner/work/BboxSuggestion/BboxSuggestion/models/research
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4

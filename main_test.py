@@ -1,9 +1,6 @@
 from main import main
 from s3.s3_utils import s3_utils
-import os, sys
-
-sys.path.append('/home/runner/work/BboxSuggestion/BboxSuggestion/models')
-sys.path.append('/home/runner/work/BboxSuggestion/BboxSuggestion/models/research')
+import os
 
 def test_main():
     user_id:str = 'sample-id'
