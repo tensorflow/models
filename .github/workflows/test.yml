@@ -31,7 +31,11 @@ jobs:
         pip install -r official/requirements.txt
         pip install pytest
         pip install boto3
-        pip3 install tf-models-official
+        sudo apt-get update
+        sudo apt-get install -y git
+        git clone https://github.com/tensorflow/models.git
+        export PYTHONPATH=$PYTHONPATH:models:/research
+        pip install --user -r models/official/requirements.txt
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
