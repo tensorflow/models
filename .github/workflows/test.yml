@@ -36,8 +36,8 @@ jobs:
         git clone https://github.com/tensorflow/models.git
         cd models
         pip install --user -r official/requirements.txt
-        cd research
-        pip install tensorflow==2.15.0 
+        pip install tensorflow==2.15.0
+        pwd
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
