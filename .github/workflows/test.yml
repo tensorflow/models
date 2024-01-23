@@ -34,11 +34,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y git
         git clone https://github.com/tensorflow/models.git
-        cd models
-        export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/research
+        cd models/research
         pip install --user -r official/requirements.txt
-        pip install tensorflow==2.15.0
-        pip install pandas
+        pip install tensorflow==2.15.0 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
