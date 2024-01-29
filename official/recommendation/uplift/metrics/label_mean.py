@@ -14,14 +14,14 @@
 
 """Keras metric for computing the label mean sliced by treatment group."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class LabelMean(tf_keras.metrics.Metric):
+@tf.keras.utils.register_keras_serializable(package="Uplift")
+class LabelMean(tf.keras.metrics.Metric):
   """Computes the overall and treatment sliced label mean.
 
   Note that the prediction tensor is expected to be of type
@@ -48,7 +48,7 @@ class LabelMean(tf_keras.metrics.Metric):
 
   >>> model.compile(
   ...     optimizer="sgd",
-  ...     loss=TrueLogitsLoss(tf_keras.losses.mean_squared_error),
+  ...     loss=TrueLogitsLoss(tf.keras.losses.mean_squared_error),
   ...     metrics=[LabelMean()]
   ... )
   """
@@ -64,7 +64,7 @@ class LabelMean(tf_keras.metrics.Metric):
     """
     super().__init__(name=name, **kwargs)
     self._sliced_mean = treatment_sliced_metric.TreatmentSlicedMetric(
-        metric=tf_keras.metrics.Mean(name=name, **kwargs)
+        metric=tf.keras.metrics.Mean(name=name, **kwargs)
     )
 
   def update_state(

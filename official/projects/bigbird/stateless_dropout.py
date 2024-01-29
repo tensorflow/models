@@ -18,7 +18,7 @@ import numbers
 from typing import Optional, Sequence, Text, Union
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def _as_shape(shape: Union[Sequence[int], tf.TensorShape]) -> tf.TensorShape:

@@ -14,7 +14,7 @@
 
 """Tests for the Gaussian error linear unit."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.modeling import activations
 

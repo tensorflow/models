@@ -19,7 +19,7 @@ import os
 import time
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.eager import monitoring
 
@@ -47,7 +47,7 @@ class BatchTimestamp(object):
         self.batch_index, self.timestamp)
 
 
-class TimeHistory(tf_keras.callbacks.Callback):
+class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
   def __init__(self, batch_size, log_steps, initial_step=0, logdir=None):
@@ -165,7 +165,7 @@ class TimeHistory(tf_keras.callbacks.Callback):
     self.steps_in_epoch = 0
 
 
-class SimpleCheckpoint(tf_keras.callbacks.Callback):
+class SimpleCheckpoint(tf.keras.callbacks.Callback):
   """Keras callback to save tf.train.Checkpoints."""
 
   def __init__(self, checkpoint_manager):

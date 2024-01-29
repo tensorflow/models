@@ -15,7 +15,7 @@
 """Tests for decoder factory functions."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from official.vision import configs

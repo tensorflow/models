@@ -18,11 +18,11 @@ from __future__ import annotations
 
 from typing import Any
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class TwoTowerLogitsHead(tf_keras.layers.Layer):
+@tf.keras.utils.register_keras_serializable(package="Uplift")
+class TwoTowerLogitsHead(tf.keras.layers.Layer):
   """Computes control and treatment logits from their respective embeddings.
 
   Takes as input a tuple of control and treatment embeddings and computes
@@ -31,8 +31,8 @@ class TwoTowerLogitsHead(tf_keras.layers.Layer):
 
   def __init__(
       self,
-      control_head: tf_keras.layers.Layer,
-      treatment_head: tf_keras.layers.Layer,
+      control_head: tf.keras.layers.Layer,
+      treatment_head: tf.keras.layers.Layer,
       **kwargs,
   ):
     """Initializes the instance.
@@ -76,13 +76,13 @@ class TwoTowerLogitsHead(tf_keras.layers.Layer):
         ("control_head", self._control_head),
         ("treatment_head", self._treatment_head),
     ):
-      config[layer_name] = tf_keras.utils.serialize_keras_object(layer)
+      config[layer_name] = tf.keras.utils.serialize_keras_object(layer)
 
     return config
 
   @classmethod
   def from_config(cls, config: dict[str, Any]) -> TwoTowerLogitsHead:
     for layer_name in ("control_head", "treatment_head"):
-      config[layer_name] = tf_keras.layers.deserialize(config[layer_name])
+      config[layer_name] = tf.keras.layers.deserialize(config[layer_name])
 
     return cls(**config)

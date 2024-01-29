@@ -16,7 +16,7 @@
 import dataclasses
 from typing import Optional, Tuple
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.vision.configs import backbones

@@ -15,7 +15,7 @@
 """Tests for roi_aligner.py."""
 
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.modeling.layers import roi_aligner
 

@@ -16,7 +16,7 @@
 
 from typing import List, Tuple
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class BoxMatcher:

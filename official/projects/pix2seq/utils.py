@@ -15,7 +15,7 @@
 """Pix2Seq required utility library."""
 import copy
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.projects.pix2seq.configs import pix2seq as pix2seq_cfg
 
 

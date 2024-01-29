@@ -14,7 +14,7 @@
 
 """nms computation."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.yolo.ops import box_ops
 

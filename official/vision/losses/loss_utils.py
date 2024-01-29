@@ -14,7 +14,7 @@
 
 """Losses utilities for detection models."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def multi_level_flatten(multi_level_inputs, last_dim=None):

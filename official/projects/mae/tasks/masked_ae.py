@@ -15,7 +15,7 @@
 """Task for masked autoencoder pretraining."""
 
 from typing import Optional
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.core import base_task
 from official.core import input_reader
@@ -32,7 +32,7 @@ from official.vision.dataloaders import tfds_factory
 class MaskedAETask(base_task.Task):
   """Task for masked autoencoder training."""
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> tf.keras.Model:
     encoder = vit.VisionTransformer(
         self.task_config.patch_h,
         self.task_config.patch_w,
@@ -102,5 +102,5 @@ class MaskedAETask(base_task.Task):
     return dataset
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    return tf_keras.metrics.mean_squared_error(
+    return tf.keras.metrics.mean_squared_error(
         labels, model_outputs)

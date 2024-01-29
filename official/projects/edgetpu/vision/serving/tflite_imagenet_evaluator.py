@@ -19,7 +19,7 @@ import multiprocessing.pool as mp
 from typing import Tuple
 from absl import logging
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 @dataclasses.dataclass

@@ -15,7 +15,7 @@
 """Mega model configurations and instantiation methods."""
 import dataclasses
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
@@ -66,7 +66,7 @@ def get_encoder(encoder_cfg: MegaEncoderConfig):
       attention_dropout=encoder_cfg.attention_dropout_rate,
       max_sequence_length=encoder_cfg.max_position_embeddings,
       type_vocab_size=encoder_cfg.type_vocab_size,
-      initializer=tf_keras.initializers.TruncatedNormal(
+      initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range
       ),
       output_range=encoder_cfg.output_range,

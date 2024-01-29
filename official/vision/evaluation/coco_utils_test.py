@@ -17,7 +17,7 @@
 import os
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.dataloaders import tfexample_utils
 from official.vision.evaluation import coco_utils

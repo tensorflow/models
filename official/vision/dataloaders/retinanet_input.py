@@ -23,7 +23,7 @@ from typing import Optional
 # Import libraries
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.dataloaders import parser
 from official.vision.dataloaders import utils

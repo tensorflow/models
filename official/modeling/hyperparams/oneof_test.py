@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import dataclasses
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import oneof
 

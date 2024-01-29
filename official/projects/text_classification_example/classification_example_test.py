@@ -14,7 +14,7 @@
 
 """Tests for nlp.projects.example.classification_example."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.nlp.configs import encoders
@@ -60,7 +60,7 @@ class ClassificationExampleTest(tf.test.TestCase):
     dataset = task.build_inputs(train_data_config)
 
     iterator = iter(dataset)
-    optimizer = tf_keras.optimizers.SGD(lr=0.1)
+    optimizer = tf.keras.optimizers.SGD(lr=0.1)
     task.initialize(model)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
 

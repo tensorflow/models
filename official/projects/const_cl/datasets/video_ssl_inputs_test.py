@@ -18,7 +18,7 @@ import io
 import numpy as np
 from PIL import Image
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.const_cl.configs import const_cl as exp_cfg
 from official.projects.const_cl.datasets import video_ssl_inputs

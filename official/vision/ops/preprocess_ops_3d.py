@@ -15,7 +15,7 @@
 """Utils for processing video dataset features."""
 
 from typing import Optional, Tuple
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def _sample_or_pad_sequence_indices(sequence: tf.Tensor, num_steps: int,

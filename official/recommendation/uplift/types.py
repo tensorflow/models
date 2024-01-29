@@ -14,7 +14,7 @@
 
 """Defines types used by the keras uplift modeling library."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 TensorType = tf.Tensor | tf.SparseTensor | tf.RaggedTensor
 

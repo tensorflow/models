@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.legacy.detection.utils import box_utils
 

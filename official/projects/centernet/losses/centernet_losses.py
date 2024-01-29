@@ -15,7 +15,7 @@
 """Losses for centernet model."""
 
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class PenaltyReducedLogisticFocalLoss(object):

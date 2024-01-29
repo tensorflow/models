@@ -16,7 +16,7 @@
 
 import functools
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class TfFunctionIfEagerDecorator(object):

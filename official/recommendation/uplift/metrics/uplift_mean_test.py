@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import uplift_mean

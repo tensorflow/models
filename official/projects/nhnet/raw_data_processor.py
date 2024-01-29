@@ -20,7 +20,7 @@ import multiprocessing.pool
 import os
 import urllib.parse
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.nlp.data import classifier_data_lib
 from official.nlp.tools import tokenization

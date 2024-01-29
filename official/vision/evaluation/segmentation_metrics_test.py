@@ -15,7 +15,7 @@
 """Tests for segmentation_metrics."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.evaluation import segmentation_metrics
 

@@ -15,7 +15,7 @@
 """Tests for maskrcnn_losses."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.losses import maskrcnn_losses
 

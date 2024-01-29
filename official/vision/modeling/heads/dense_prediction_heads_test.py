@@ -20,7 +20,7 @@ import unittest
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from official.vision.modeling.heads import dense_prediction_heads

@@ -37,7 +37,7 @@ from absl import flags
 import numpy as np
 
 from pycocotools import mask
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 import multiprocessing as mp
 from official.vision.data import tfrecord_lib

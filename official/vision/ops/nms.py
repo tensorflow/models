@@ -15,7 +15,7 @@
 """Tensorflow implementation of non max suppression."""
 
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.ops import box_ops
 

@@ -27,7 +27,7 @@ from object_detection.models.keras_models import model_utils
 try:
   from keras.applications import resnet  # pylint: disable=g-import-not-at-top
 except ImportError:
-  from tf_keras.applications import resnet  # pylint: disable=g-import-not-at-top
+  from tf.keras.applications import resnet  # pylint: disable=g-import-not-at-top
 
 
 def _fixed_padding(inputs, kernel_size, rate=1):  # pylint: disable=invalid-name

@@ -17,7 +17,7 @@
 import collections
 import tempfile
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.legacy.transformer.utils import tokenizer
 

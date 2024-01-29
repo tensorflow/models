@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift import keys
 from official.recommendation.uplift.layers.uplift_networks import two_tower_uplift_network
@@ -32,24 +32,24 @@ class TwoTowerUpliftModelTest(
     network = two_tower_uplift_network.TwoTowerUpliftNetwork(
         backbone=kwargs.get(
             "backbone",
-            tf_keras.layers.Lambda(lambda inputs: inputs["shared_feature"]),
+            tf.keras.layers.Lambda(lambda inputs: inputs["shared_feature"]),
         ),
-        control_tower=kwargs.get("control_tower", tf_keras.layers.Dense(1)),
-        treatment_tower=kwargs.get("treatment_tower", tf_keras.layers.Dense(1)),
-        logits_head=tf_keras.layers.Identity(),
+        control_tower=kwargs.get("control_tower", tf.keras.layers.Dense(1)),
+        treatment_tower=kwargs.get("treatment_tower", tf.keras.layers.Dense(1)),
+        logits_head=tf.keras.layers.Identity(),
         control_feature_encoder=kwargs.get(
             "control_feature_encoder",
-            tf_keras.layers.Lambda(lambda inputs: inputs["control_feature"]),
+            tf.keras.layers.Lambda(lambda inputs: inputs["control_feature"]),
         ),
         control_input_combiner=kwargs.get(
-            "control_input_combiner", tf_keras.layers.Concatenate()
+            "control_input_combiner", tf.keras.layers.Concatenate()
         ),
         treatment_feature_encoder=kwargs.get(
             "treatment_feature_encoder",
-            tf_keras.layers.Lambda(lambda inputs: inputs["treatment_feature"]),
+            tf.keras.layers.Lambda(lambda inputs: inputs["treatment_feature"]),
         ),
         treatment_input_combiner=kwargs.get(
-            "treatment_input_combiner", tf_keras.layers.Concatenate()
+            "treatment_input_combiner", tf.keras.layers.Concatenate()
         ),
     )
     return network
@@ -60,9 +60,9 @@ class TwoTowerUpliftModelTest(
         uplift_network=self._get_uplift_network(**kwargs),
     )
     model.compile(
-        optimizer=tf_keras.optimizers.SGD(0.1),
+        optimizer=tf.keras.optimizers.SGD(0.1),
         loss=true_logits_loss.TrueLogitsLoss(
-            tf_keras.losses.mean_squared_error
+            tf.keras.losses.mean_squared_error
         ),
     )
     return model
@@ -75,7 +75,7 @@ class TwoTowerUpliftModelTest(
     }
 
   def test_model_training_and_inference(self):
-    tf_keras.utils.set_random_seed(1)
+    tf.keras.utils.set_random_seed(1)
 
     # Create MSE uplift model.
     uplift_network = self._get_uplift_network(
@@ -86,9 +86,9 @@ class TwoTowerUpliftModelTest(
         uplift_network=uplift_network,
     )
     model.compile(
-        optimizer=tf_keras.optimizers.SGD(0.1),
+        optimizer=tf.keras.optimizers.SGD(0.1),
         loss=true_logits_loss.TrueLogitsLoss(
-            tf_keras.losses.mean_squared_error
+            tf.keras.losses.mean_squared_error
         ),
     )
 
@@ -156,7 +156,7 @@ class TwoTowerUpliftModelTest(
       },
       {
           "testcase_name": "relu",
-          "inverse_link_fn": tf_keras.activations.relu,
+          "inverse_link_fn": tf.keras.activations.relu,
           "expected_predictions": {
               keys.TwoTowerOutputKeys.CONTROL_PREDICTIONS: (
                   tf.ones((3, 1)) * 0.0
@@ -170,8 +170,8 @@ class TwoTowerUpliftModelTest(
   )
   def test_predict_step(self, inverse_link_fn, expected_predictions):
     uplift_network = self._get_uplift_network(
-        control_tower=tf_keras.layers.Dense(1, kernel_initializer="ones"),
-        treatment_tower=tf_keras.layers.Dense(1, kernel_initializer="ones"),
+        control_tower=tf.keras.layers.Dense(1, kernel_initializer="ones"),
+        treatment_tower=tf.keras.layers.Dense(1, kernel_initializer="ones"),
     )
     model = two_tower_uplift_model.TwoTowerUpliftModel(
         treatment_indicator_feature_name="is_treatment",
@@ -218,9 +218,9 @@ class TwoTowerUpliftModelTest(
   def test_layer_configurable(self):
     # Cannot use lambda layers since they are not serializable.
     model = self._get_compiled_model(
-        backbone=tf_keras.layers.Identity(),
-        control_feature_encoder=tf_keras.layers.Identity(),
-        treatment_feature_encoder=tf_keras.layers.Identity(),
+        backbone=tf.keras.layers.Identity(),
+        control_feature_encoder=tf.keras.layers.Identity(),
+        treatment_feature_encoder=tf.keras.layers.Identity(),
         inverse_link_fn=tf.math.sigmoid,
     )
     self.assertLayerConfigurable(layer=model)

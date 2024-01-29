@@ -17,10 +17,10 @@
 import re
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
-class AdamWeightDecay(tf_keras.optimizers.legacy.Adam):
+class AdamWeightDecay(tf.keras.optimizers.legacy.Adam):
   """Adam enables L2 weight decay and clip_by_global_norm on gradients.
 
   [Warning!]: Keras optimizer supports gradient clipping and has an AdamW

@@ -16,17 +16,17 @@
 
 from typing import Optional, Sequence, Tuple, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.evaluation import iou
 from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
 
-class MeanIoU(tf_keras.metrics.MeanIoU):
+class MeanIoU(tf.keras.metrics.MeanIoU):
   """Mean IoU metric for semantic segmentation.
 
-  This class utilizes tf_keras.metrics.MeanIoU to perform batched mean iou when
+  This class utilizes tf.keras.metrics.MeanIoU to perform batched mean iou when
   both input images and ground-truth masks are resized to the same size
   (rescale_predictions=False). It also computes mean IoU on ground-truth
   original sizes, in which case, each prediction is rescaled back to the

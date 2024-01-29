@@ -17,7 +17,7 @@
 import abc
 from typing import Any, Callable, Dict, Optional, Tuple
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.framework import dtypes
 from official.modeling import tf_utils

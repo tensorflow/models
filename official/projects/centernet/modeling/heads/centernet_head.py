@@ -16,12 +16,12 @@
 
 from typing import Any, Dict, List, Mapping
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.centernet.modeling.layers import cn_nn_blocks
 
 
-class CenterNetHead(tf_keras.Model):
+class CenterNetHead(tf.keras.Model):
   """CenterNet Head."""
 
   def __init__(self,
@@ -61,7 +61,7 @@ class CenterNetHead(tf_keras.Model):
     self._heatmap_bias = heatmap_bias
     self._num_inputs = len(input_levels)
 
-    inputs = {level: tf_keras.layers.Input(shape=self._input_specs[level][1:])
+    inputs = {level: tf.keras.layers.Input(shape=self._input_specs[level][1:])
               for level in input_levels}
     outputs = {}
 

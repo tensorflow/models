@@ -31,7 +31,7 @@
 import functools
 from typing import Any, Callable, Type, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 PossibleDatasetType = Union[Type[tf.data.Dataset], Callable[[tf.Tensor], Any]]
 

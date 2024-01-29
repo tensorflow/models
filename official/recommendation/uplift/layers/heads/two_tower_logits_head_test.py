@@ -14,7 +14,7 @@
 
 """Tests for two_tower_logits_head."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift.layers.heads import two_tower_logits_head
@@ -24,22 +24,22 @@ class TwoTowerLogitsHeadTest(keras_test_case.KerasTestCase):
 
   def _get_layer(
       self,
-      control_head=tf_keras.layers.Dense(1),
-      treatment_head=tf_keras.layers.Dense(1),
+      control_head=tf.keras.layers.Dense(1),
+      treatment_head=tf.keras.layers.Dense(1),
       **kwargs
   ):
     logits_head = two_tower_logits_head.TwoTowerLogitsHead(
         control_head=control_head, treatment_head=treatment_head, **kwargs
     )
-    return tf_keras.models.clone_model(logits_head)
+    return tf.keras.models.clone_model(logits_head)
 
   def test_layer_correctness(self):
     control_embedding = tf.ones((5, 10))
     treatment_embedding = tf.ones((5, 6))
     inputs = (control_embedding, treatment_embedding)
     layer = self._get_layer(
-        control_head=tf_keras.layers.Dense(1, kernel_initializer="ones"),
-        treatment_head=tf_keras.layers.Dense(1, kernel_initializer="ones"),
+        control_head=tf.keras.layers.Dense(1, kernel_initializer="ones"),
+        treatment_head=tf.keras.layers.Dense(1, kernel_initializer="ones"),
     )
     logits = layer(inputs)
     expected_logits = (10 * tf.ones((5, 1)), 6 * tf.ones((5, 1)))
@@ -61,8 +61,8 @@ class TwoTowerLogitsHeadTest(keras_test_case.KerasTestCase):
 
   def test_different_logit_shapes_raises_error(self):
     layer = two_tower_logits_head.TwoTowerLogitsHead(
-        control_head=tf_keras.layers.Dense(1),
-        treatment_head=tf_keras.layers.Dense(2),
+        control_head=tf.keras.layers.Dense(1),
+        treatment_head=tf.keras.layers.Dense(2),
     )
     inputs = (tf.zeros(3, 1), tf.ones(3, 1))
     with self.assertRaises(ValueError):

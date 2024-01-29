@@ -15,7 +15,7 @@
 """Classification decoder and parser."""
 from typing import List
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.vision.dataloaders import classification_input
 from official.vision.ops import preprocess_ops
 

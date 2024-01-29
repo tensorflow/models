@@ -17,7 +17,7 @@
 import abc
 from typing import Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class DataLoader(metaclass=abc.ABCMeta):

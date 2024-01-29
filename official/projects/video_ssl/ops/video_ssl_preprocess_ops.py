@@ -16,7 +16,7 @@
 
 import functools
 from typing import Optional
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def random_apply(func, p, x):

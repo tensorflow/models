@@ -14,7 +14,7 @@
 
 """Provides a utility class for training in epochs."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class EpochHelper:

@@ -16,7 +16,7 @@
 
 import tempfile
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.legacy.transformer import compute_bleu
 

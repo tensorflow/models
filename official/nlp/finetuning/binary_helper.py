@@ -19,7 +19,7 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.modeling import hyperparams

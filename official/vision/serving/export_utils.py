@@ -15,7 +15,7 @@
 """Helper utils for export library."""
 
 from typing import List, Optional
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 # pylint: disable=g-long-lambda
 

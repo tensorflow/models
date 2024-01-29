@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Functions for inference."""
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def split_and_pad(strategy, batch_size, x):

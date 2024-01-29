@@ -15,7 +15,7 @@
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.simclr.losses import contrastive_losses
 

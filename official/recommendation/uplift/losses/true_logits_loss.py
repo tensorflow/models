@@ -18,13 +18,13 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, MutableMapping
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import types
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class TrueLogitsLoss(tf_keras.__internal__.losses.LossFunctionWrapper):
+@tf.keras.utils.register_keras_serializable(package="Uplift")
+class TrueLogitsLoss(tf.keras.__internal__.losses.LossFunctionWrapper):
   """Computes any arbitrary loss between the labels and the true logits tensor.
 
   Note that the prediction tensor is expected to be of a tensor of type
@@ -40,9 +40,9 @@ class TrueLogitsLoss(tf_keras.__internal__.losses.LossFunctionWrapper):
   ...     is_treatment=tf.constant([[True], [False], [True]])
   ... )
   >>> loss = TrueLogitsLoss(
-  ...     loss_fn=tf_keras.losses.mean_squared_error,
+  ...     loss_fn=tf.keras.losses.mean_squared_error,
   ...     name="mean_squared_error",
-  ...     reduction=tf_keras.losses.Reduction.SUM,
+  ...     reduction=tf.keras.losses.Reduction.SUM,
   ... )
   >>> loss(y_true, y_pred)
   0.0
@@ -53,7 +53,7 @@ class TrueLogitsLoss(tf_keras.__internal__.losses.LossFunctionWrapper):
   model.compile(
       optimizer='sgd'.
       loss=TrueLogitsLoss(
-          loss_fn=tf_keras.losses.categorical_crossentropy,
+          loss_fn=tf.keras.losses.categorical_crossentropy,
           name="categorical_crossentropy",
           from_logits=True
       )
@@ -65,7 +65,7 @@ class TrueLogitsLoss(tf_keras.__internal__.losses.LossFunctionWrapper):
       self,
       loss_fn: Callable[[Any, tf.Tensor], tf.Tensor],
       name: str = "true_logits_loss",
-      reduction=tf_keras.losses.Reduction.AUTO,
+      reduction=tf.keras.losses.Reduction.AUTO,
       **loss_fn_kwargs,
   ):
     """Initialize `TrueLogitsLoss` instance.
@@ -74,7 +74,7 @@ class TrueLogitsLoss(tf_keras.__internal__.losses.LossFunctionWrapper):
       loss_fn: The loss function to apply between the labels and true logits
         tensor, with signature `loss_fn(y_true, y_pred, **loss_fn_kwargs)`.
       name: Optional name for the instance.
-      reduction: Type of `tf_keras.losses.Reduction` to apply to loss. Default
+      reduction: Type of `tf.keras.losses.Reduction` to apply to loss. Default
         value is `AUTO`. `AUTO` indicates that the reduction option will be
         determined by the usage context. For almost all cases this defaults to
         `SUM_OVER_BATCH_SIZE`. When used under a `tf.distribute.Strategy`,
@@ -98,5 +98,5 @@ class TrueLogitsLoss(tf_keras.__internal__.losses.LossFunctionWrapper):
 
   @classmethod
   def from_config(cls, config: MutableMapping[str, Any]) -> TrueLogitsLoss:
-    config["loss_fn"] = tf_keras.losses.get(config["loss_fn"])
+    config["loss_fn"] = tf.keras.losses.get(config["loss_fn"])
     return cls(**config)

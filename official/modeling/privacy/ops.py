@@ -17,7 +17,7 @@
 from typing import List, Tuple
 import warnings
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def clip_l2_norm(grads_vars: List[Tuple[tf.Tensor, tf.Tensor]],

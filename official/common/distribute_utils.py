@@ -16,7 +16,7 @@
 
 import json
 import os
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def _collective_communication(all_reduce_alg):

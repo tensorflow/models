@@ -15,7 +15,7 @@
 """Utils to sample tasks for interleaved optimization."""
 import abc
 from typing import Union, Dict, Text
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.modeling.multitask import configs
 

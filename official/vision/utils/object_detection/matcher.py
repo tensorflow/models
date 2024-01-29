@@ -33,7 +33,7 @@ to query the results.
 from abc import ABCMeta
 from abc import abstractmethod
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class Match(object):

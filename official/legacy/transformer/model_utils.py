@@ -17,7 +17,7 @@
 import math
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 # Very low numbers to represent -infinity. We do not actually use -Inf, since we
 # want to be able to multiply these values by zero to get zero. (-Inf * 0 = NaN)

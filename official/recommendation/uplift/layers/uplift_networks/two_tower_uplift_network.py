@@ -18,13 +18,13 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift.layers.uplift_networks import base_uplift_networks
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
+@tf.keras.utils.register_keras_serializable(package="Uplift")
 class TwoTowerUpliftNetwork(base_uplift_networks.BaseTwoTowerUpliftNetwork):
   """Computes control and treatment logits in two separate towers.
 
@@ -38,14 +38,14 @@ class TwoTowerUpliftNetwork(base_uplift_networks.BaseTwoTowerUpliftNetwork):
 
   def __init__(
       self,
-      backbone: tf_keras.layers.Layer,
-      control_tower: tf_keras.layers.Layer,
-      treatment_tower: tf_keras.layers.Layer,
-      logits_head: tf_keras.layers.Layer,
-      control_feature_encoder: tf_keras.layers.Layer | None = None,
-      control_input_combiner: tf_keras.layers.Layer | None = None,
-      treatment_feature_encoder: tf_keras.layers.Layer | None = None,
-      treatment_input_combiner: tf_keras.layers.Layer | None = None,
+      backbone: tf.keras.layers.Layer,
+      control_tower: tf.keras.layers.Layer,
+      treatment_tower: tf.keras.layers.Layer,
+      logits_head: tf.keras.layers.Layer,
+      control_feature_encoder: tf.keras.layers.Layer | None = None,
+      control_input_combiner: tf.keras.layers.Layer | None = None,
+      treatment_feature_encoder: tf.keras.layers.Layer | None = None,
+      treatment_input_combiner: tf.keras.layers.Layer | None = None,
       **kwargs,
   ):
     """Initializes a TwoTowerUpliftNetwork layer.
@@ -107,15 +107,15 @@ class TwoTowerUpliftNetwork(base_uplift_networks.BaseTwoTowerUpliftNetwork):
 
   def _validate_encoder_combiner_layers(
       self,
-      encoder: tf_keras.layer.Layer,
-      combiner: tf_keras.layer.Layer,
+      encoder: tf.keras.layer.Layer,
+      combiner: tf.keras.layer.Layer,
       name: str,
   ) -> None:
     if encoder is not None and combiner is None:
       raise ValueError(
           f"The {name}_input_combiner layer must be specified if the"
           f" {name}_feature_encoder is not None. Consider using"
-          " tf_keras.layers.Concatenate() as a combiner layer."
+          " tf.keras.layers.Concatenate() as a combiner layer."
       )
     if encoder is None and combiner is not None:
       raise ValueError(
@@ -189,7 +189,7 @@ class TwoTowerUpliftNetwork(base_uplift_networks.BaseTwoTowerUpliftNetwork):
         ("treatment_feature_encoder", self._treatment_feature_encoder),
         ("treatment_input_combiner", self._treatment_input_combiner),
     ):
-      config[layer_name] = tf_keras.utils.serialize_keras_object(layer)
+      config[layer_name] = tf.keras.utils.serialize_keras_object(layer)
 
     return config
 
@@ -207,6 +207,6 @@ class TwoTowerUpliftNetwork(base_uplift_networks.BaseTwoTowerUpliftNetwork):
     ):
       # layers.deserialize does not accept empty config
       if config.get(layer_name):
-        config[layer_name] = tf_keras.layers.deserialize(config[layer_name])
+        config[layer_name] = tf.keras.layers.deserialize(config[layer_name])
 
     return cls(**config)

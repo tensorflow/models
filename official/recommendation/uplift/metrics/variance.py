@@ -15,10 +15,10 @@
 """Keras metric for computing the (weighted) variance of a tensor."""
 
 from typing import Optional
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
-class Variance(tf_keras.metrics.Metric):
+class Variance(tf.keras.metrics.Metric):
   """Computes the (weighted) variance of the given values.
 
   For example, if values is [1, 2, 1, 4] then the variance is 1.5.
@@ -53,8 +53,8 @@ class Variance(tf_keras.metrics.Metric):
       dtype: (Optional) data type of the metric result.
     """
     super().__init__(name=name, dtype=dtype)
-    self._first_moment = tf_keras.metrics.Mean(name="first_moment", dtype=dtype)
-    self._second_moment = tf_keras.metrics.Mean(
+    self._first_moment = tf.keras.metrics.Mean(name="first_moment", dtype=dtype)
+    self._second_moment = tf.keras.metrics.Mean(
         name="second_moment", dtype=dtype
     )
 

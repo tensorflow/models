@@ -14,7 +14,7 @@
 
 """Data parser and processing for Mask R-CNN."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.legacy.detection.dataloader import anchor
 from official.legacy.detection.dataloader.maskrcnn_parser import Parser as MaskrcnnParser

@@ -14,7 +14,7 @@
 
 """Losses used for panoptic deeplab model."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.projects.panoptic.ops import mask_ops

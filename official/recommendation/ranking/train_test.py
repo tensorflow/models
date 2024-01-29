@@ -18,7 +18,7 @@ import json
 import os
 from absl import flags
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.ranking import common
 from official.recommendation.ranking import train

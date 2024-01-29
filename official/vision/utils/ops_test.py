@@ -14,7 +14,7 @@
 
 """Tests for ops."""
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.vision.utils.object_detection import ops
 
 

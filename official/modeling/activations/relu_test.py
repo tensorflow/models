@@ -14,7 +14,7 @@
 
 """Tests for the customized Relu activation."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.modeling import activations
 

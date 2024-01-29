@@ -16,7 +16,7 @@ import os
 import tempfile
 
 import six
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.nlp.tools import tokenization
 
