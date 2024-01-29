@@ -99,7 +99,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     zero_grads = lambda gv: [(tf.zeros_like(g), v) for g, v in gv]
 
     optimizer = opt_factory.build_optimizer(lr, gradient_aggregator=zero_grads)
-    if isinstance(optimizer, tf.keras.optimizers.experimental.Optimizer):
+    if isinstance(optimizer, tf.keras.optimizers.Optimizer):
       self.skipTest('New Keras optimizer does not support '
                     '`gradient_aggregator` arg.')
 

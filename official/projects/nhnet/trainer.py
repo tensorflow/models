@@ -120,7 +120,7 @@ class Trainer(tf.keras.Model):
     tvars = self.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     self.optimizer.apply_gradients(list(zip(grads, tvars)))
-    if isinstance(self.optimizer, tf.keras.optimizers.experimental.Optimizer):
+    if isinstance(self.optimizer, tf.keras.optimizers.Optimizer):
       learning_rate = self.optimizer.learning_rate
     else:
       learning_rate = self.optimizer._decayed_lr(var_dtype=tf.float32)

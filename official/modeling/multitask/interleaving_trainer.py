@@ -32,7 +32,7 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
                multi_task_model: Union[tf.keras.Model,
                                        base_model.MultiTaskBaseModel],
                optimizer: Union[tf.optimizers.Optimizer,
-                                tf.keras.optimizers.experimental.Optimizer,
+                                tf.keras.optimizers.Optimizer,
                                 tf.keras.optimizers.legacy.Optimizer],
                task_sampler: sampler.TaskSampler,
                trainer_options=None):
@@ -74,7 +74,7 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
     # If the new Keras optimizer is used, we require all model variables are
     # created before the training and let the optimizer to create the slot
     # variable all together.
-    if isinstance(optimizer, tf.keras.optimizers.experimental.Optimizer):
+    if isinstance(optimizer, tf.keras.optimizers.Optimizer):
       multi_task_model.build()
       optimizer.build(multi_task_model.trainable_variables)
 
