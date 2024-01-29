@@ -195,7 +195,7 @@ class NASFPN(tf.keras.Model):
                             target_level,
                             target_num_filters=256):
     x = inputs
-    _, _, _, input_num_filters = x.get_shape().as_list()
+    _, _, _, input_num_filters = x.shape
     if input_num_filters != target_num_filters:
       x = self._conv_op(
           filters=target_num_filters,

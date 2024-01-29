@@ -152,7 +152,7 @@ class RetinaNetModel(tf.keras.Model):
               'Input should be a tf.Tensor or a sequence of tf.Tensor, not {}.'
               .format(type(images)))
 
-        _, image_height, image_width, _ = primary_images.get_shape().as_list()
+        _, image_height, image_width, _ = primary_images.shape
         anchor_boxes = anchor.Anchor(
             min_level=self._config_dict['min_level'],
             max_level=self._config_dict['max_level'],

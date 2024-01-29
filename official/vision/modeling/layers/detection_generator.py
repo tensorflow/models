@@ -86,7 +86,7 @@ def _generate_detections_v1(
       learning is required.
   """
   with tf.name_scope('generate_detections'):
-    batch_size = scores.get_shape().as_list()[0]
+    batch_size = scores.shape[0]
     nmsed_boxes = []
     nmsed_classes = []
     nmsed_scores = []
@@ -193,8 +193,8 @@ def _generate_detections_per_image(
   nmsed_boxes = []
   nmsed_scores = []
   nmsed_classes = []
-  num_classes_for_box = boxes.get_shape().as_list()[1]
-  num_classes = scores.get_shape().as_list()[1]
+  num_classes_for_box = boxes.shape[1]
+  num_classes = scores.shape[1]
   if attributes:
     nmsed_attributes = {att_name: [] for att_name in attributes.keys()}
   else:
@@ -255,7 +255,7 @@ def _generate_detections_per_image(
     nmsed_classes.append(nmsed_classes_i)
     if attributes:
       for att_name, att in attributes.items():
-        num_classes_for_attr = att.get_shape().as_list()[1]
+        num_classes_for_attr = att.shape[1]
         att_i = att[:, min(num_classes_for_attr - 1, i)]
         att_i = tf.gather(att_i, indices)
         nmsed_att_i = tf.gather(att_i, nmsed_indices_i)
@@ -306,7 +306,7 @@ def _select_top_k_scores(scores_in: tf.Tensor, pre_nms_num_detections: int):
     scores and indices: A `tf.Tensor` with shape
       `[batch_size, pre_nms_num_detections, num_classes]`.
   """
-  batch_size, num_anchors, num_class = scores_in.get_shape().as_list()
+  batch_size, num_anchors, num_class = scores_in.shape
   if batch_size is None:
     batch_size = tf.shape(scores_in)[0]
   scores_trans = tf.transpose(scores_in, perm=[0, 2, 1])
@@ -371,10 +371,10 @@ def _generate_detections_v2_class_agnostic(
     nmsed_classes = []
     nmsed_scores = []
     valid_detections = []
-    batch_size, _, num_classes_for_box, _ = boxes.get_shape().as_list()
+    batch_size, _, num_classes_for_box, _ = boxes.shape
     if batch_size is None:
       batch_size = tf.shape(boxes)[0]
-    _, total_anchors, _ = scores.get_shape().as_list()
+    _, total_anchors, _ = scores.shape
 
     # Keeps only the class with highest score for each predicted box.
     scores_condensed, classes_ids = tf.nn.top_k(
@@ -486,10 +486,10 @@ def _generate_detections_v2_class_aware(
     nmsed_classes = []
     nmsed_scores = []
     valid_detections = []
-    batch_size, _, num_classes_for_box, _ = boxes.get_shape().as_list()
+    batch_size, _, num_classes_for_box, _ = boxes.shape
     if batch_size is None:
       batch_size = tf.shape(boxes)[0]
-    _, total_anchors, num_classes = scores.get_shape().as_list()
+    _, total_anchors, num_classes = scores.shape
     # Selects top pre_nms_num scores and indices before NMS.
     scores, indices = _select_top_k_scores(
         scores, min(total_anchors, pre_nms_top_k)
@@ -638,11 +638,11 @@ def _generate_detections_v3(
   one = tf.constant(1, dtype=scores.dtype)
   with tf.name_scope('generate_detections'):
     batch_size, num_box_classes, box_locations, sides = (
-        boxes.get_shape().as_list()
+        boxes.shape
     )
     if batch_size is None:
       batch_size = tf.shape(boxes)[0]
-    _, num_classes, locations = scores.get_shape().as_list()
+    _, num_classes, locations = scores.shape
     if num_box_classes != 1 and num_box_classes != num_classes:
       raise ValueError('Boxes should have either 1 class or same as scores.')
     if locations != box_locations:
@@ -837,7 +837,7 @@ def _generate_detections_tflite(
   batch_size = tf.shape(raw_scores[str(min_level)])[0]
 
   num_anchors_per_locations_times_4 = (
-      raw_boxes[str(min_level)].get_shape().as_list()[-1]
+      raw_boxes[str(min_level)].shape[-1]
   )
   if num_anchors_per_locations_times_4 % 4 != 0:
     raise ValueError(
@@ -846,7 +846,7 @@ def _generate_detections_tflite(
 
   num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
   num_classes_times_anchors_per_location = (
-      raw_scores[str(min_level)].get_shape().as_list()[-1]
+      raw_scores[str(min_level)].shape[-1]
   )
   if num_classes_times_anchors_per_location % num_anchors_per_locations != 0:
     raise ValueError(
@@ -1013,7 +1013,7 @@ class DetectionGenerator(tf.keras.layers.Layer):
 
     # Removes the background class.
     box_scores_shape = tf.shape(box_scores)
-    box_scores_shape_list = box_scores.get_shape().as_list()
+    box_scores_shape_list = box_scores.shape
     batch_size = box_scores_shape[0]
     num_locations = box_scores_shape_list[1]
     num_classes = box_scores_shape_list[-1]
@@ -1247,12 +1247,12 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       raw_scores_i = raw_scores[str(i)]
       batch_size = tf.shape(raw_boxes_i)[0]
       (_, feature_h_i, feature_w_i, num_anchors_per_locations_times_4) = (
-          raw_boxes_i.get_shape().as_list()
+          raw_boxes_i.shape
       )
       num_locations = feature_h_i * feature_w_i
       num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
       num_classes = (
-          raw_scores_i.get_shape().as_list()[-1] // num_anchors_per_locations
+          raw_scores_i.shape[-1] // num_anchors_per_locations
       )
 
       # Applies score transformation and remove the implicit background class.
@@ -1297,7 +1297,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       if raw_attributes:
         for att_name, raw_att in raw_attributes.items():
           attribute_size = (
-              raw_att[str(i)].get_shape().as_list()[-1]
+              raw_att[str(i)].shape[-1]
               // num_anchors_per_locations
           )
           att_i = tf.reshape(
@@ -1352,7 +1352,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
           unsharded_w,
           num_anchors_per_locations_times_4,
       ) = (
-          raw_boxes[str(i)].get_shape().as_list()
+          raw_boxes[str(i)].shape
       )
       num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
       if batch_size is None:
@@ -1376,10 +1376,10 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       for raw_scores_i, decoded_boxes_i in edgetpu.shard_tensors(
           1, block, (raw_scores[str(i)], decoded_boxes)
       ):
-        (_, feature_h_i, feature_w_i, _) = raw_scores_i.get_shape().as_list()
+        (_, feature_h_i, feature_w_i, _) = raw_scores_i.shape
         num_locations = feature_h_i * feature_w_i
         num_classes = (
-            raw_scores_i.get_shape().as_list()[-1] // num_anchors_per_locations
+            raw_scores_i.shape[-1] // num_anchors_per_locations
         )
 
         # Applies score transformation and remove the implicit background class.

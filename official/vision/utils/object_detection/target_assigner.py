@@ -182,7 +182,7 @@ class TargetAssigner(object):
     Returns:
       A tensor with the shape info filled in.
     """
-    target_shape = target.get_shape().as_list()
+    target_shape = target.shape
     target_shape[0] = num_anchors
     target.set_shape(target_shape)
     return target

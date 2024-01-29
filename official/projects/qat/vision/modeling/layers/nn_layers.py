@@ -941,7 +941,7 @@ class MaskScoringQuantized(heads.MaskScoring):
 
     x = self._resizing_layer(x)
 
-    _, h, w, filters = x.get_shape().as_list()
+    _, h, w, filters = x.shape
     x = tf.reshape(x, [-1, h * w * filters])
 
     for fc, bn in zip(self._fcs, self._fc_norms):

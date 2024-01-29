@@ -382,7 +382,7 @@ class FastrcnnHead(tf.keras.layers.Layer):
     with tf.name_scope(
         'fast_rcnn_head'):
       # reshape inputs beofre FC.
-      _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+      _, num_rois, height, width, filters = roi_features.shape
 
       net = tf.reshape(roi_features, [-1, height, width, filters])
       for i in range(self._num_convs):
@@ -525,7 +525,7 @@ class OlnBoxScoreHead(tf.keras.layers.Layer):
 
     with tf.name_scope('fast_rcnn_head'):
       # reshape inputs beofre FC.
-      _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+      _, num_rois, height, width, filters = roi_features.shape
 
       net = tf.reshape(roi_features, [-1, height, width, filters])
       for i in range(self._num_convs):
@@ -654,7 +654,7 @@ class MaskrcnnHead(tf.keras.layers.Layer):
     """
 
     with tf.name_scope('mask_head'):
-      _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+      _, num_rois, height, width, filters = roi_features.shape
       net = tf.reshape(roi_features, [-1, height, width, filters])
 
       for i in range(self._num_convs):
@@ -913,7 +913,7 @@ class ShapemaskPriorHead(object):
         mask_size, mask_size, 1].
     """
     with tf.name_scope('prior_mask'):
-      batch_size, num_instances, _ = boxes.get_shape().as_list()
+      batch_size, num_instances, _ = boxes.shape
       outer_boxes = tf.cast(outer_boxes, tf.float32)
       boxes = tf.cast(boxes, tf.float32)
       instance_features = spatial_transform_ops.multilevel_crop_and_resize(
@@ -950,7 +950,7 @@ class ShapemaskPriorHead(object):
       # Priors are loaded into shape [mask_num_classes, num_clusters, 32, 32].
       priors = np.load(tf.io.gfile.GFile(self._shape_prior_path, 'rb'))
       priors = tf.convert_to_tensor(priors, dtype=tf.float32)
-      self._num_clusters = priors.get_shape().as_list()[1]
+      self._num_clusters = priors.shape[1]
     else:
       # If prior path does not exist, do not use priors, i.e., pirors equal to
       # uniform empty 32x32 patch.
@@ -981,7 +981,7 @@ class ShapemaskPriorHead(object):
         output probability over all possible shapes.
     """
 
-    batch_size, num_instances, _, _, _ = features.get_shape().as_list()
+    batch_size, num_instances, _, _, _ = features.shape
     features *= tf.expand_dims(uniform_priors, axis=-1)
     # Reduce spatial dimension of features. The features have shape
     # [batch_size, num_instances, num_channels].
@@ -1112,7 +1112,7 @@ class ShapemaskCoarsemaskHead(object):
         num_channels]
     """
     (batch_size, num_instances, height, width,
-     num_channels) = features.get_shape().as_list()
+     num_channels) = features.shape
     features = tf.reshape(
         features, [batch_size * num_instances, height, width, num_channels])
     for i in range(self._num_convs):
@@ -1253,7 +1253,7 @@ class ShapemaskFinemaskHead(object):
         that of input.
     """
     (batch_size, num_instances, height, width,
-     num_channels) = features.get_shape().as_list()
+     num_channels) = features.shape
     features = tf.reshape(
         features, [batch_size * num_instances, height, width, num_channels])
     for i in range(self._num_convs):

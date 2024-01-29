@@ -143,7 +143,7 @@ class PerClassIoUV2(tf.keras.metrics.Metric):
       )
 
     one_hot_axis = self.axis if self.axis >= 0 else (
-        len(y_true.get_shape().as_list()) + self.axis)
+        len(y_true.shape) + self.axis)
     # Reduce sum the leading dimensions.
     # Shape: (num_classes, ...)
     current_intersection = tf.math.count_nonzero(

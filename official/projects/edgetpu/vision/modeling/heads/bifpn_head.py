@@ -166,7 +166,7 @@ def add_n(nodes):
 def resize_nearest_neighbor(data, height_scale, width_scale):
   """Nearest neighbor upsampling implementation."""
   with tf.name_scope('nearest_upsampling'):
-    bs, h, w, c = data.get_shape().as_list()
+    bs, h, w, c = data.shape
     bs = -1 if bs is None else bs
     # Use reshape to quickly upsample the input.  The nearest pixel is selected
     # implicitly via broadcasting.

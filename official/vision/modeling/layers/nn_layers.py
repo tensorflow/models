@@ -1353,7 +1353,7 @@ class MultiHeadAttention(tf.keras.layers.MultiHeadAttention):
       value = strategy.experimental_split_to_logical_devices(
           value, self._partition_dims)
 
-    batch_size = query.get_shape().as_list()[0]  # None if dynamic.
+    batch_size = query.shape[0]  # None if dynamic.
 
     if (
         training

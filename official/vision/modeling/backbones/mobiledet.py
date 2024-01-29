@@ -443,7 +443,7 @@ class MobileDet(tf.keras.Model):
       A tuple of output Tensor and dictionary that collects endpoints.
     """
 
-    input_shape = inputs.get_shape().as_list()
+    input_shape = inputs.shape
     if len(input_shape) != 4:
       raise ValueError('Expected rank 4 input, was: %d' % len(input_shape))
 

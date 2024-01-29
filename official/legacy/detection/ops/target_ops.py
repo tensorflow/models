@@ -185,7 +185,7 @@ def assign_and_sample_proposals(proposed_boxes,
         balanced_positive_negative_sampler.BalancedPositiveNegativeSampler(
             positive_fraction=fg_fraction, is_static=True))
 
-    batch_size, _ = sample_candidates.get_shape().as_list()
+    batch_size, _ = sample_candidates.shape
     sampled_indicators = []
     for i in range(batch_size):
       sampled_indicator = sampler.subsample(sample_candidates[i],
@@ -488,7 +488,7 @@ class ROIScoreSampler(ROISampler):
           balanced_positive_negative_sampler.BalancedPositiveNegativeSampler(
               positive_fraction=fg_fraction, is_static=True))
 
-      batch_size, _ = sample_candidates.get_shape().as_list()
+      batch_size, _ = sample_candidates.shape
       sampled_indicators = []
       for i in range(batch_size):
         sampled_indicator = sampler.subsample(sample_candidates[i],

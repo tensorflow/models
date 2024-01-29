@@ -99,7 +99,7 @@ def multilevel_propose_rois(rpn_boxes,
     for level in sorted(rpn_scores.keys()):
       with tf.name_scope('level_%d' % level):
         _, feature_h, feature_w, num_anchors_per_location = (
-            rpn_scores[level].get_shape().as_list())
+            rpn_scores[level].shape)
 
         num_boxes = feature_h * feature_w * num_anchors_per_location
         this_level_scores = tf.reshape(rpn_scores[level], [-1, num_boxes])
@@ -161,7 +161,7 @@ def multilevel_propose_rois(rpn_boxes,
     all_roi_scores = tf.concat(roi_scores, axis=1)
 
     with tf.name_scope('top_k_rois'):
-      _, num_valid_rois = all_roi_scores.get_shape().as_list()
+      _, num_valid_rois = all_roi_scores.shape
       overall_top_k = min(num_valid_rois, rpn_post_nms_top_k)
 
       selected_rois, selected_roi_scores = box_utils.top_k_boxes(
@@ -382,7 +382,7 @@ class OlnROIGenerator(ROIGenerator):
       for level in sorted(rpn_scores.keys()):
         with tf.name_scope('level_%d' % level):
           _, feature_h, feature_w, num_anchors_per_location = (
-              rpn_scores[level].get_shape().as_list())
+              rpn_scores[level].shape)
 
           num_boxes = feature_h * feature_w * num_anchors_per_location
           this_level_scores = tf.reshape(rpn_scores[level], [-1, num_boxes])
@@ -459,7 +459,7 @@ class OlnROIGenerator(ROIGenerator):
       all_roi_scores = tf.concat(roi_scores, axis=1)
 
       with tf.name_scope('top_k_rois'):
-        _, num_valid_rois = all_roi_scores.get_shape().as_list()
+        _, num_valid_rois = all_roi_scores.shape
         overall_top_k = min(num_valid_rois, rpn_post_nms_top_k)
 
         selected_rois, selected_roi_scores = box_utils.top_k_boxes(

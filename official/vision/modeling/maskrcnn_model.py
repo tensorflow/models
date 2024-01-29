@@ -225,7 +225,7 @@ class MaskRCNNModel(tf.keras.Model):
 
     # Generate anchor boxes for this batch if not provided.
     if anchor_boxes is None:
-      _, image_height, image_width, _ = images.get_shape().as_list()
+      _, image_height, image_width, _ = images.shape
       anchor_boxes = anchor.Anchor(
           min_level=self._config_dict['min_level'],
           max_level=self._config_dict['max_level'],

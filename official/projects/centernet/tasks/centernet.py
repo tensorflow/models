@@ -177,7 +177,7 @@ class CenterNetTask(base_task.Task):
                    aux_losses=None):
     """Build losses."""
     input_size = self.task_config.model.input_size[0:2]
-    output_size = outputs['ct_heatmaps'][0].get_shape().as_list()[1:3]
+    output_size = outputs['ct_heatmaps'][0].shape[1:3]
 
     gt_label = tf.map_fn(
         # pylint: disable=g-long-lambda

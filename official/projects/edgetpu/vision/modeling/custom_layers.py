@@ -348,7 +348,7 @@ class GroupConv2DKerasModel(tf.keras.Model):
 
   def call(self, inputs: Any) -> Any:  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """Applies 2d group convolution on the inputs."""
-    input_shape = inputs.get_shape().as_list()
+    input_shape = inputs.shape
     if input_shape[-1] % self._groups != 0:
       raise ValueError(
           f'Number of input channels: {input_shape[-1]} are not divisible '

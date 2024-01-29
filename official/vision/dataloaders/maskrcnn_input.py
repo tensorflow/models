@@ -236,7 +236,7 @@ class Parser(parser.Parser):
             self._output_size, 2 ** self._max_level),
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max)
-    image_height, image_width, _ = image.get_shape().as_list()
+    image_height, image_width, _ = image.shape
 
     # Resizes and crops boxes.
     # Now the coordinates of boxes are w.r.t the scaled image.
@@ -351,7 +351,7 @@ class Parser(parser.Parser):
             self._output_size, 2 ** self._max_level),
         aug_scale_min=1.0,
         aug_scale_max=1.0)
-    image_height, image_width, _ = image.get_shape().as_list()
+    image_height, image_width, _ = image.shape
 
     # Casts input image to self._dtype
     image = tf.cast(image, dtype=self._dtype)

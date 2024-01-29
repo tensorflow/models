@@ -575,7 +575,7 @@ def concatenate(boxlists, fields=None, scope=None):
     if fields is None:
       fields = boxlists[0].get_extra_fields()
     for field in fields:
-      first_field_shape = boxlists[0].get_field(field).get_shape().as_list()
+      first_field_shape = boxlists[0].get_field(field).shape
       first_field_shape[0] = -1
       if None in first_field_shape:
         raise ValueError('field %s must have fully defined shape except for the'
@@ -583,7 +583,7 @@ def concatenate(boxlists, fields=None, scope=None):
       for boxlist in boxlists:
         if not boxlist.has_field(field):
           raise ValueError('boxlist must contain all requested fields')
-        field_shape = boxlist.get_field(field).get_shape().as_list()
+        field_shape = boxlist.get_field(field).shape
         field_shape[0] = -1
         if field_shape != first_field_shape:
           raise ValueError('field %s must have same shape for all boxlists '

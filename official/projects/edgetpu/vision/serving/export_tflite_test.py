@@ -119,8 +119,8 @@ class ExportTfliteTest(tf.test.TestCase, parameterized.TestCase):
     model = _build_model(config)
     model_input = tf.random.normal([1, config.image_size, config.image_size, 3])
     self.assertEqual(
-        model(model_input).get_shape().as_list(),
-        [1, config.image_size, config.image_size])
+        model(model_input).shape,
+        (1, config.image_size, config.image_size))
 
 
 if __name__ == '__main__':

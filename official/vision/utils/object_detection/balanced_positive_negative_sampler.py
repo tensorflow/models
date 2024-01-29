@@ -231,10 +231,10 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
     Raises:
       ValueError: if labels and indicator are not 1D boolean tensors.
     """
-    if len(indicator.get_shape().as_list()) != 1:
+    if len(indicator.shape) != 1:
       raise ValueError('indicator must be 1 dimensional, got a tensor of '
                        'shape %s' % indicator.get_shape())
-    if len(labels.get_shape().as_list()) != 1:
+    if len(labels.shape) != 1:
       raise ValueError('labels must be 1 dimensional, got a tensor of '
                        'shape %s' % labels.get_shape())
     if labels.dtype != tf.bool:

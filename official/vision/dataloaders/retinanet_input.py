@@ -271,7 +271,7 @@ class Parser(parser.Parser):
     )
     image = tf.ensure_shape(image, padded_size + [3])
 
-    image_height, image_width, _ = image.get_shape().as_list()
+    image_height, image_width, _ = image.shape
 
     # Filters out ground-truth boxes that are all zeros.
     indices = box_ops.get_non_empty_box_indices(boxes)
@@ -353,7 +353,7 @@ class Parser(parser.Parser):
         keep_aspect_ratio=self._keep_aspect_ratio,
     )
     image = tf.ensure_shape(image, padded_size + [3])
-    image_height, image_width, _ = image.get_shape().as_list()
+    image_height, image_width, _ = image.shape
 
     # Resizes and crops boxes.
     image_scale = image_info[2, :]

@@ -270,7 +270,7 @@ def random_horizontal_flip(image,
 
 def _compute_new_static_size(image, min_dimension, max_dimension):
   """Compute new static shape for resize_to_range method."""
-  image_shape = image.get_shape().as_list()
+  image_shape = image.shape
   orig_height = image_shape[0]
   orig_width = image_shape[1]
   num_channels = image_shape[2]

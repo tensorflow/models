@@ -99,7 +99,7 @@ def _multilevel_propose_rois(raw_boxes: Mapping[str, tf.Tensor],
     for level in sorted(raw_scores.keys()):
       with tf.name_scope('level_%s' % level):
         _, feature_h, feature_w, num_anchors_per_location = (
-            raw_scores[level].get_shape().as_list())
+            raw_scores[level].shape)
 
         num_boxes = feature_h * feature_w * num_anchors_per_location
         this_level_scores = tf.reshape(raw_scores[level], [-1, num_boxes])
@@ -167,7 +167,7 @@ def _multilevel_propose_rois(raw_boxes: Mapping[str, tf.Tensor],
     all_roi_scores = tf.concat(roi_scores, axis=1)
 
     with tf.name_scope('top_k_rois'):
-      _, num_valid_rois = all_roi_scores.get_shape().as_list()
+      _, num_valid_rois = all_roi_scores.shape
       overall_top_k = min(num_valid_rois, num_proposals)
 
       selected_rois, selected_roi_scores = box_ops.top_k_boxes(

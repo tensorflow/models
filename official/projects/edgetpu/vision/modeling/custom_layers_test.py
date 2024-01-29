@@ -81,8 +81,8 @@ class GroupConv2DTest(tf.test.TestCase, parameterized.TestCase):
     l = custom_layers.GroupConv2D(
         output_channel, 3, groups=groups, use_bias=False, padding='same')
     outputs = l(_get_random_inputs(input_shape=[2, 32, 32, input_channel]))
-    self.assertListEqual(outputs.get_shape().as_list(),
-                         [2, 32, 32, output_channel])
+    self.assertListEqual(outputs.shape,
+                         (2, 32, 32, output_channel))
 
   @parameterized.parameters(
       itertools.product(GROUPS, USE_BATCH_NORM, ACTIVATION))

@@ -215,7 +215,7 @@ class Parser(MaskrcnnParser):
             self._output_size, 2 ** self._max_level),
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max)
-    image_height, image_width, _ = image.get_shape().as_list()
+    image_height, image_width, _ = image.shape
 
     # Resizes and crops boxes.
     # Now the coordinates of boxes are w.r.t the scaled image.

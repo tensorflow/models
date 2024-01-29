@@ -190,7 +190,7 @@ class DetectionHead(tf.keras.layers.Layer):
         predictions.
     """
     roi_features = inputs
-    _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+    _, num_rois, height, width, filters = roi_features.shape
 
     x = tf.reshape(roi_features, [-1, height, width, filters])
     for conv, bn in zip(self._convs, self._conv_norms):
@@ -198,7 +198,7 @@ class DetectionHead(tf.keras.layers.Layer):
       x = bn(x)
       x = self._activation(x)
 
-    _, _, _, filters = x.get_shape().as_list()
+    _, _, _, filters = x.shape
     x = tf.reshape(x, [-1, num_rois, height * width * filters])
 
     for fc, bn in zip(self._fcs, self._fc_norms):
@@ -397,7 +397,7 @@ class MaskHead(tf.keras.layers.Layer):
          roi_width * upsample_factor], representing the mask predictions.
     """
     roi_features, roi_classes = inputs
-    _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+    _, num_rois, height, width, filters = roi_features.shape
 
     x = tf.reshape(roi_features, [-1, height, width, filters])
     for conv, bn in zip(self._convs, self._conv_norms):

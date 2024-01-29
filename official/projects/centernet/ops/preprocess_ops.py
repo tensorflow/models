@@ -288,7 +288,7 @@ def resize_to_range(image,
         new_image = _resize_landscape_image(image)
       else:
         new_image = _resize_portrait_image(image)
-      new_size = tf.constant(new_image.get_shape().as_list())
+      new_size = tf.constant(new_image.shape)
     else:
       new_image = tf.cond(
           tf.less(tf.shape(image)[0], tf.shape(image)[1]),

@@ -363,7 +363,7 @@ class FastrcnnClassLoss(object):
       a scalar tensor representing total class loss.
     """
     with tf.name_scope('fast_rcnn_loss'):
-      batch_size, num_boxes, num_classes = class_outputs.get_shape().as_list()
+      batch_size, num_boxes, num_classes = class_outputs.shape
       class_targets = tf.cast(class_targets, dtype=tf.int32)
       class_targets_one_hot = tf.one_hot(class_targets, num_classes)
       return self._fast_rcnn_class_loss(class_outputs, class_targets_one_hot,
@@ -421,7 +421,7 @@ class FastrcnnBoxLoss(object):
       # Selects the box from `box_outputs` based on `class_targets`, with which
       # the box has the maximum overlap.
       (batch_size, num_rois,
-       num_class_specific_boxes) = box_outputs.get_shape().as_list()
+       num_class_specific_boxes) = box_outputs.shape
       num_classes = num_class_specific_boxes // 4
       box_outputs = tf.reshape(box_outputs,
                                [batch_size, num_rois, num_classes, 4])
@@ -534,7 +534,7 @@ class MaskrcnnLoss(object):
     """
     with tf.name_scope('mask_rcnn_loss'):
       (batch_size, num_masks, mask_height,
-       mask_width) = mask_outputs.get_shape().as_list()
+       mask_width) = mask_outputs.shape
 
       weights = tf.tile(
           tf.reshape(tf.greater(select_class_targets, 0),
@@ -592,7 +592,7 @@ class RetinanetClassLoss(object):
     """Computes RetinaNet classification loss."""
     # Onehot encoding for classification labels.
     cls_targets_one_hot = tf.one_hot(cls_targets, self._num_classes)
-    bs, height, width, _, _ = cls_targets_one_hot.get_shape().as_list()
+    bs, height, width, _, _ = cls_targets_one_hot.shape
     cls_targets_one_hot = tf.reshape(cls_targets_one_hot,
                                      [bs, height, width, -1])
     loss = focal_loss(tf.cast(cls_outputs, dtype=tf.float32),
@@ -680,7 +680,7 @@ class ShapemaskMseLoss(object):
       loss: an float tensor representing total mask classification loss.
     """
     with tf.name_scope('shapemask_prior_loss'):
-      batch_size, num_instances = valid_mask.get_shape().as_list()[:2]
+      batch_size, num_instances = valid_mask.shape[:2]
       diff = (tf.cast(labels, dtype=tf.float32) -
               tf.cast(probs, dtype=tf.float32))
       diff *= tf.cast(
@@ -714,7 +714,7 @@ class ShapemaskLoss(object):
       loss: an float tensor representing total mask classification loss.
     """
     with tf.name_scope('shapemask_loss'):
-      batch_size, num_instances = valid_mask.get_shape().as_list()[:2]
+      batch_size, num_instances = valid_mask.shape[:2]
       labels = tf.cast(labels, tf.float32)
       logits = tf.cast(logits, tf.float32)
       loss = self._binary_crossentropy(labels, logits)

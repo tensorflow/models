@@ -117,7 +117,7 @@ class RpnBoxLoss(object):
   def _rpn_box_loss(self, box_outputs, box_targets, normalizer=1.0):
     """Computes box regression loss."""
     with tf.name_scope('rpn_box_loss'):
-      _, height, width, num_anchors_vertices = box_targets.get_shape().as_list()
+      _, height, width, num_anchors_vertices = box_targets.shape
       # (batch_size, height, width, num_anchors, 4)
       reshaped_box_targets = tf.reshape(
           box_targets, [-1, height, width, num_anchors_vertices // 4, 4])
@@ -190,7 +190,7 @@ class FastrcnnClassLoss(object):
     """
     with tf.name_scope('fast_rcnn_loss'):
       output_dtype = class_outputs.dtype
-      num_classes = class_outputs.get_shape().as_list()[-1]
+      num_classes = class_outputs.shape[-1]
       class_weights = (
           class_weights if class_weights is not None else [1.0] * num_classes
       )
@@ -298,7 +298,7 @@ class FastrcnnBoxLoss(object):
 
   def _assign_class_targets(self, box_outputs, class_targets):
     """Selects the box from `box_outputs` based on `class_targets`, with which the box has the maximum overlap."""
-    _, num_rois, num_class_specific_boxes = box_outputs.get_shape().as_list()
+    _, num_rois, num_class_specific_boxes = box_outputs.shape
     num_classes = num_class_specific_boxes // 4
     box_outputs = tf.reshape(box_outputs, [-1, num_rois, num_classes, 4])
     class_targets_ont_hot = tf.one_hot(
@@ -364,7 +364,7 @@ class MaskrcnnLoss(object):
       mask_loss: a float tensor representing total mask loss.
     """
     with tf.name_scope('mask_rcnn_loss'):
-      _, _, mask_height, mask_width = mask_outputs.get_shape().as_list()
+      _, _, mask_height, mask_width = mask_outputs.shape
 
       weights = tf.tile(
           tf.greater(select_class_targets, 0)[:, :, tf.newaxis, tf.newaxis],

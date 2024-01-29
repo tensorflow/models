@@ -154,7 +154,7 @@ class YoloLayer(tf.keras.layers.Layer):
 
   def parse_prediction_path(self, key, inputs):
     shape_ = tf.shape(inputs)
-    shape = inputs.get_shape().as_list()
+    shape = inputs.shape
     batchsize, height, width = shape_[0], shape[1], shape[2]
 
     if height is None or width is None:
@@ -180,7 +180,7 @@ class YoloLayer(tf.keras.layers.Layer):
         data, [4, 1, self._classes], axis=-1)
 
     # Determine the number of classes.
-    classes = class_scores.get_shape().as_list()[-1]
+    classes = class_scores.shape[-1]
 
     # Configurable to use the new coordinates in scaled Yolo v4 or not.
     _, _, boxes = loss_utils.get_predicted_box(

@@ -47,7 +47,7 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
   Returns:
     `Tensor` with the first dimension padded to `size`.
   """
-  input_shape = input_tensor.get_shape().as_list()
+  input_shape = input_tensor.shape
   padding_shape = []
 
   # Computes the padding length on the first dimension, clip input tensor if it
