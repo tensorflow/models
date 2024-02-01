@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -311,6 +311,7 @@ class InputReader:
     self._prefetch_buffer_size = (
         params.prefetch_buffer_size or tf.data.experimental.AUTOTUNE)
     self._autotune_algorithm = params.autotune_algorithm
+    self._ram_budget = params.ram_budget
 
     # When tf.data service is enabled, each data service worker should get
     # different random seeds. Thus, we set `seed` to None.
@@ -586,6 +587,13 @@ class InputReader:
     if self._autotune_algorithm:
       options = tf.data.Options()
       options.autotune.autotune_algorithm = (
-          tf.data.experimental.AutotuneAlgorithm[self._autotune_algorithm])
+          tf.data.experimental.AutotuneAlgorithm[self._autotune_algorithm]
+      )
       dataset = dataset.with_options(options)
+
+    if self._ram_budget:
+      options = tf.data.Options()
+      options.autotune.ram_budget = self._ram_budget * 1024 * 1024 * 1024
+      dataset = dataset.with_options(options)
+
     return dataset.prefetch(self._prefetch_buffer_size)

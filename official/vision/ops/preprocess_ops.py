@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -669,14 +669,32 @@ def horizontal_flip_image(image):
 
 
 def horizontal_flip_masks(masks):
-  """Flips masks horizontally."""
-  return masks[:, :, ::-1]
+  """Flips masks horizontally. Expects rank-3 input dimensions [h, w, 1]."""
+  return masks[:, ::-1, :]
 
 
 def random_horizontal_flip(
     image, normalized_boxes=None, masks=None, seed=1, prob=0.5
 ):
-  """Randomly flips input image and bounding boxes horizontally."""
+  """Randomly flips input image and bounding boxes and/or masks horizontally.
+  
+  Expects input tensors without the batch dimension; i.e. for RGB image assume
+  rank-3 input like [h, w, 3], for masks assume [h, w, 1].
+  
+  Args:
+    image: `tf.Tensor`, the image to apply the random flip, [h, w, channels].
+    normalized_boxes: `tf.Tensor` or `None`, boxes corresponding to the image.
+    masks: `tf.Tensor` or `None`, masks corresponding to the image, [h, w, 1].
+    seed: Seed for Tensorflow's random number generator.
+    prob: A float from 0 to 1 indicating the probability of flipping the input
+      horizontally.
+
+  Returns:
+    image: `tf.Tensor`, flipped image.
+    boxes: `tf.Tensor` or `None`, flipped normalized boxes corresponding to the
+      image.
+    masks: `tf.Tensor` or `None`, flipped masks corresponding to the image.
+  """
   with tf.name_scope('random_horizontal_flip'):
     do_flip = tf.less(tf.random.uniform([], seed=seed), prob)
 
