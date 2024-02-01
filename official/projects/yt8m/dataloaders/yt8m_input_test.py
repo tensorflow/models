@@ -86,11 +86,11 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     batch_size = params.global_batch_size
     expected_num_frames = num_sample_frames or params.max_frames
     self.assertEqual(
-        example['video_matrix'].shape.as_list(),
+        example['video_matrix'].shape,
         [batch_size, expected_num_frames, sum(params.feature_sizes)],
     )
     self.assertEqual(
-        example['labels'].shape.as_list(), [batch_size, params.num_classes]
+        example['labels'].shape, [batch_size, params.num_classes]
     )
     # Check non empty labels.
     self.assertGreater(np.nonzero(example['labels'][0].numpy())[0].shape[0], 0)
@@ -107,7 +107,7 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
       )
 
     if include_video_id:
-      self.assertEqual(example['video_ids'].shape.as_list(), [batch_size, 1])
+      self.assertEqual(example['video_ids'].shape, [batch_size, 1])
 
   @parameterized.parameters((True, 20), (False, 20), (False, None))
   def test_read_segment_level_input(self, include_video_id, num_sample_frames):
@@ -137,13 +137,13 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     batch_size = params.global_batch_size * self.num_segment
     expected_num_frames = num_sample_frames or params.max_frames
     self.assertEqual(
-        example['video_matrix'].shape.as_list(),
+        example['video_matrix'].shape,
         [batch_size, expected_num_frames, sum(params.feature_sizes)],
     )
-    self.assertEqual(example['labels'].shape.as_list(),
+    self.assertEqual(example['labels'].shape,
                      [batch_size, params.num_classes])
     self.assertGreater(np.nonzero(example['labels'][0].numpy())[0].shape[0], 0)
-    self.assertEqual(example['label_weights'].shape.as_list(),
+    self.assertEqual(example['label_weights'].shape,
                      [batch_size, params.num_classes])
 
     if num_sample_frames:
@@ -158,7 +158,7 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
       )
 
     if include_video_id:
-      self.assertEqual(example['video_ids'].shape.as_list(), [batch_size])
+      self.assertEqual(example['video_ids'].shape, [batch_size])
 
   @parameterized.parameters(
       (True, 4, False),
@@ -234,14 +234,14 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     batch_size = params.global_batch_size
     expected_num_frames = params.num_sample_frames or params.max_frames
     self.assertEqual(
-        example['video_matrix'].shape.as_list(),
+        example['video_matrix'].shape,
         [batch_size, expected_num_frames, sum(params.feature_sizes)],
     )
-    self.assertEqual(example['labels'].shape.as_list(),
+    self.assertEqual(example['labels'].shape,
                      [batch_size, params.num_classes])
-    self.assertEqual(example['num_frames'].shape.as_list(), [batch_size, 1])
+    self.assertEqual(example['num_frames'].shape, [batch_size, 1])
     if include_video_id:
-      self.assertEqual(example['video_ids'].shape.as_list(), [batch_size, 1])
+      self.assertEqual(example['video_ids'].shape, [batch_size, 1])
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ class DenseBNTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.keras.Input(shape=(64,))
     out_x = test_layer(x)
 
-    self.assertAllEqual(out_x.shape.as_list(), [None, output_dim])
+    self.assertAllEqual(out_x.shape, [None, output_dim])
 
     # kernel of the dense layer
     train_var_len = 1

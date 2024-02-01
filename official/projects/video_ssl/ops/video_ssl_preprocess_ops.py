@@ -198,7 +198,7 @@ def random_color_jitter_3d(frames):
       return random_apply(to_grayscale, p=0.2, x=image)
     return random_apply(_transform, p=p, x=image)
 
-  num_frames, width, height, channels = frames.shape.as_list()
+  num_frames, width, height, channels = frames.shape
   big_image = tf.reshape(frames, [num_frames*width, height, channels])
   big_image = random_color_jitter(big_image)
   return tf.reshape(big_image, [num_frames, width, height, channels])

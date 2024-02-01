@@ -125,12 +125,12 @@ class Attention(tf.keras.layers.Layer):
     if cache is not None:
       # Combine cached keys and values with new keys and values.
       if decode_loop_step is not None:
-        cache_k_shape = cache["k"].shape.as_list()
+        cache_k_shape = cache["k"].shape
         indices = tf.reshape(
             tf.one_hot(decode_loop_step, cache_k_shape[1], dtype=key.dtype),
             [1, cache_k_shape[1], 1, 1])
         key = cache["k"] + key * indices
-        cache_v_shape = cache["v"].shape.as_list()
+        cache_v_shape = cache["v"].shape
         indices = tf.reshape(
             tf.one_hot(decode_loop_step, cache_v_shape[1], dtype=value.dtype),
             [1, cache_v_shape[1], 1, 1])

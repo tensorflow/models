@@ -20,7 +20,7 @@ from official.vision.ops import sampling_ops
 
 
 def _get_shape(tensor, num_dims):
-  assert len(tensor.shape.as_list()) == num_dims
+  assert len(tensor.shape) == num_dims
   return sampling_ops.combined_static_and_dynamic_shape(tensor)
 
 

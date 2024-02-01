@@ -293,9 +293,9 @@ class ResampleFeatureMap(tf.keras.layers.Layer):
 
   def call(self, feat, training, all_feats):
     hwc_idx = (2, 3, 1) if self.data_format == 'channels_first' else (1, 2, 3)
-    height, width, num_channels = [feat.shape.as_list()[i] for i in hwc_idx]
+    height, width, num_channels = [feat.shape[i] for i in hwc_idx]
     if all_feats:
-      target_feat_shape = all_feats[self.feat_level].shape.as_list()
+      target_feat_shape = all_feats[self.feat_level].shape
       target_height, target_width, _ = [target_feat_shape[i] for i in hwc_idx]
     else:
       # Default to downsampling if all_feats is empty.

@@ -40,7 +40,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     input_seq = tf.Variable([[2, 3, 4, 5]])
     token_type = tf.Variable([[0, 1, 1, 1]])
     output = layer(input_seq, token_type)
-    output_shape = output.shape.as_list()
+    output_shape = output.shape
     expected_shape = [1, 4, 16]
     self.assertListEqual(output_shape, expected_shape, msg=None)
 
@@ -48,7 +48,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     layer = mobile_bert_layers.MobileBertEmbedding(10, 8, 2, 16)
     input_seq = tf.Variable([[2, 3, 4, 5]])
     output = layer(input_seq)
-    output_shape = output.shape.as_list()
+    output_shape = output.shape
     expected_shape = [1, 4, 16]
     self.assertListEqual(output_shape, expected_shape, msg=None)
 
@@ -70,7 +70,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     layer = mobile_bert_layers.NoNorm()
     feature = tf.random.normal([2, 3, 4])
     output = layer(feature)
-    output_shape = output.shape.as_list()
+    output_shape = output.shape
     expected_shape = [2, 3, 4]
     self.assertListEqual(output_shape, expected_shape, msg=None)
 
@@ -81,7 +81,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     layer = mobile_bert_layers.MobileBertTransformer(
         key_query_shared_bottleneck=is_kq_shared)
     output = layer(feature)
-    output_shape = output.shape.as_list()
+    output_shape = output.shape
     expected_shape = [2, 3, 512]
     self.assertListEqual(output_shape, expected_shape, msg=None)
 
@@ -92,7 +92,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     input_mask = np.asarray(input_mask)
     layer = mobile_bert_layers.MobileBertTransformer()
     output = layer(feature, input_mask)
-    output_shape = output.shape.as_list()
+    output_shape = output.shape
     expected_shape = [2, 3, 512]
     self.assertListEqual(output_shape, expected_shape, msg=None)
 
@@ -105,7 +105,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     _, attention_score = layer(feature, return_attention_scores=True)
     expected_shape = [2, num_attention_heads, sequence_length, sequence_length]
     self.assertListEqual(
-        attention_score.shape.as_list(), expected_shape, msg=None)
+        attention_score.shape, expected_shape, msg=None)
 
   def test_transformer_get_config(self):
     layer = mobile_bert_layers.MobileBertTransformer(
@@ -168,7 +168,7 @@ class MobileBertMaskedLMTest(tf.test.TestCase):
     output = test_layer(lm_input_tensor, masked_positions=masked_positions)
 
     expected_output_shape = [None, num_predictions, vocab_size]
-    self.assertEqual(expected_output_shape, output.shape.as_list())
+    self.assertEqual(expected_output_shape, output.shape)
 
   def test_layer_invocation_with_external_logits(self):
     vocab_size = 100

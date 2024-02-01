@@ -370,7 +370,7 @@ class RelativePositionGenerator(object):
       ], 0)
       x += direction_adder
 
-    len_x = x.shape.as_list()[0]
+    len_x = x.shape[0]
     if len_x > window_size:
       trim_amount = (len_x - window_size) // 2
       return x[trim_amount:-trim_amount]

@@ -62,7 +62,7 @@ class SequenceEncoderTest(tf.test.TestCase):
     data = dict_outputs["latent_output"]
 
     expected_data_shape = [None, z_index_dim, d_latents]
-    self.assertAllEqual(expected_data_shape, data.shape.as_list())
+    self.assertAllEqual(expected_data_shape, data.shape)
 
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, data.dtype)

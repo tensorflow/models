@@ -183,7 +183,7 @@ def export_inference_graph(
               tf.TensorSpec([1, 2], tf.float32)
       }
       dummy_inputs = {
-          k: tf.ones(v.shape.as_list(), tf.float32)
+          k: tf.ones(v.shape, tf.float32)
           for k, v in inputs_kwargs.items()
       }
       # Must do forward pass to build the model.

@@ -141,7 +141,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     for idx, num_filter in enumerate(mobilenet_layers[model_id]):
       self.assertAllEqual(
           [1, input_size / 2 ** (idx+2), input_size / 2 ** (idx+2), num_filter],
-          endpoints[str(idx+2)].shape.as_list())
+          endpoints[str(idx+2)].shape)
 
   @parameterized.parameters(
       itertools.product(
@@ -192,7 +192,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
 
       self.assertAllEqual(
           [1, input_size / 2**(idx + 2), input_size / 2**(idx + 2), num_filter],
-          endpoints[str(idx + 2) + '/depthwise'].shape.as_list())
+          endpoints[str(idx + 2) + '/depthwise'].shape)
 
   @parameterized.parameters(
       itertools.product(
@@ -291,7 +291,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     num_filter = mobilenet_layers[model_id]
     self.assertAllEqual(
         [1, input_size / output_stride, input_size / output_stride, num_filter],
-        endpoints[str(level)].shape.as_list())
+        endpoints[str(level)].shape)
 
 
 if __name__ == '__main__':

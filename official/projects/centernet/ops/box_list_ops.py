@@ -153,7 +153,7 @@ def gather(boxlist, indices, fields=None, use_static_shapes=False):
       indices are not of type int32
   """
   with tf.name_scope('Gather'):
-    if len(indices.shape.as_list()) != 1:
+    if len(indices.shape) != 1:
       raise ValueError('indices should have rank 1')
     if indices.dtype != tf.int32 and indices.dtype != tf.int64:
       raise ValueError('indices should be an int32 / int64 tensor')

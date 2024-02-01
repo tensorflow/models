@@ -39,7 +39,7 @@ class TransformerEncoderBlockQuantizedLayerTest(
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+    self.assertEqual(data_tensor.shape, output_tensor.shape)
 
   def test_layer_creation_with_mask(self, transformer_cls):
     test_layer = transformer_cls(
@@ -52,7 +52,7 @@ class TransformerEncoderBlockQuantizedLayerTest(
     mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+    self.assertEqual(data_tensor.shape, output_tensor.shape)
 
   def test_layer_invocation(self, transformer_cls):
     test_layer = transformer_cls(
@@ -187,7 +187,7 @@ class TransformerEncoderBlockQuantizedLayerTest(
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
     output = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output.shape.as_list())
+    self.assertEqual(data_tensor.shape, output.shape)
 
   def test_dynamic_layer_sequence(self, transformer_cls):
     test_layer = transformer_cls(

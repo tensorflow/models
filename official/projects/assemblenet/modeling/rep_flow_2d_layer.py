@@ -285,7 +285,7 @@ class RepresentationFlow(layers.Layer):
     axis = 3 if data_format == 'channels_last' else 1  # channel axis
     dtype = inputs.dtype
     residual = inputs
-    depth = inputs.shape.as_list()[axis]
+    depth = inputs.shape[axis]
     # assert depth == self._depth, f'rep_flow {depth} != {self._depth}'
 
     if self._bottleneck == 1:
@@ -294,7 +294,7 @@ class RepresentationFlow(layers.Layer):
     elif depth != self._bottleneck:
       inputs = self._bottleneck_conv1(inputs)
 
-    input_shape = inputs.shape.as_list()
+    input_shape = inputs.shape
     inp = norm_img(inputs)
     inp = tf.reshape(
         inp,
@@ -392,7 +392,7 @@ class RepresentationFlow(layers.Layer):
     # folwo is [bs*t, w, h, 2*c]
 
     if self._bottleneck == 1:
-      output_shape = residual.shape.as_list()
+      output_shape = residual.shape
       output_shape[-1] = self._bottleneck * 2
       flow = tf.ensure_shape(flow, output_shape)
       return flow

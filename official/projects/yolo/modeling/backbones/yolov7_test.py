@@ -43,7 +43,7 @@ class YoloV7BackboneTest(parameterized.TestCase, tf.test.TestCase):
     for level, level_output in outputs.items():
       scale = 2**int(level)
       input_size = (_INPUT_SIZE[0] // scale, _INPUT_SIZE[1] // scale)
-      self.assertAllEqual((1, *input_size), level_output.shape.as_list()[:-1])
+      self.assertAllEqual((1, *input_size), level_output.shape[:-1])
 
   @combinations.generate(
       combinations.combine(

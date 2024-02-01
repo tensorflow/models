@@ -44,7 +44,7 @@ class UNet3DDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertIn('1', feats)
     self.assertAllEqual([1, input_size[0], input_size[0], input_size[1], 64],
-                        feats['1'].shape.as_list())
+                        feats['1'].shape)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

@@ -81,7 +81,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     endpoints = decoder.call(inputs)
 
     for key in endpoints.keys():
-      self.assertAllEqual(endpoints[key].shape.as_list(), input_shape[key])
+      self.assertAllEqual(endpoints[key].shape, input_shape[key])
 
   @combinations.generate(
       combinations.combine(

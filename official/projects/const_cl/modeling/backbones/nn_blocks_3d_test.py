@@ -50,7 +50,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([
         1, temporal_size // temporal_strides, spatial_size // spatial_strides,
         spatial_size // spatial_strides, filters * 4
-    ], features.shape.as_list())
+    ], features.shape)
     vnames = [v.name for v in block.trainable_variables]
     expected_names = [
         'bottleneck_block3d/temporal_conv/kernel:0',

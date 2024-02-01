@@ -48,7 +48,7 @@ class YoloV7DetectionHeadTest(parameterized.TestCase, tf.test.TestCase):
       num_anchors = head_config['num_anchors']
       self.assertAllEqual(
           (1, *input_size, num_anchors, num_classes + 5),
-          level_output.shape.as_list(),
+          level_output.shape,
       )
 
   def test_serialize_deserialize(self):

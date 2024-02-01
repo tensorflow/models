@@ -86,8 +86,8 @@ class SparseMixerTest(parameterized.TestCase, tf.test.TestCase):
 
     expected_data_shape = [batch_size, sequence_length, hidden_size]
     expected_pooled_shape = [batch_size, hidden_size]
-    self.assertAllEqual(expected_data_shape, data.shape.as_list())
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+    self.assertAllEqual(expected_data_shape, data.shape)
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, data.dtype)
@@ -131,8 +131,8 @@ class SparseMixerTest(parameterized.TestCase, tf.test.TestCase):
     expected_pooled_shape = [batch_size, hidden_size]
     self.assertLen(all_encoder_outputs, 3)
     for data in all_encoder_outputs:
-      self.assertAllEqual(expected_data_shape, data.shape.as_list())
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+      self.assertAllEqual(expected_data_shape, data.shape)
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)

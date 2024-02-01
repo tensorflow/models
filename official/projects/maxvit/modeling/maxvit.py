@@ -741,7 +741,7 @@ class MaxViT(tf.keras.Model):
     """Add absolute sinusoid position encoding, which is computed on the fly."""
     output = ops.maybe_reshape_to_2d(inputs)
     h, w = tf.shape(output)[1], tf.shape(output)[2]
-    enc_size = output.shape.as_list()[-1] // 2
+    enc_size = output.shape[-1] // 2
     # sinusoid positional encoding that can be generated online
     h_seq = tf.range(-h / 2, h / 2)
     w_seq = tf.range(-w / 2, w / 2)

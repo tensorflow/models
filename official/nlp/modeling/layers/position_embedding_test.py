@@ -35,7 +35,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
     expected_output_shape = [None, sequence_length, width]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+    self.assertEqual(expected_output_shape, output_tensor.shape)
     # The default output dtype for this layer should be tf.float32.
     self.assertEqual(tf.float32, output_tensor.dtype)
 
@@ -51,7 +51,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
     expected_output_shape = [None, width, sequence_length, width]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+    self.assertEqual(expected_output_shape, output_tensor.shape)
     # The default output dtype for this layer should be tf.float32.
     self.assertEqual(tf.float32, output_tensor.dtype)
 
@@ -67,7 +67,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
     expected_output_shape = [None, sequence_length, width]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+    self.assertEqual(expected_output_shape, output_tensor.shape)
     # The default output dtype for this layer should be tf.float32.
     self.assertEqual(tf.float16, output_tensor.dtype)
 
@@ -84,7 +84,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     # to be the same as the input shape in all dimensions - but may be None if
     # the input shape is None there.
     expected_output_shape = [None, None, width]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+    self.assertEqual(expected_output_shape, output_tensor.shape)
 
   def test_non_default_axis_dynamic(self):
     max_sequence_length = 60
@@ -99,7 +99,7 @@ class PositionEmbeddingLayerTest(tf.test.TestCase):
     # to be the same as the input shape in all dimensions - but may be None if
     # the input shape is None there.
     expected_output_shape = [None, None, None, width]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+    self.assertEqual(expected_output_shape, output_tensor.shape)
 
   def test_dynamic_layer_slicing(self):
     max_sequence_length = 40

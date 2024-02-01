@@ -37,8 +37,8 @@ class EncoderTest(tf.test.TestCase):
 
     output_tensor = test_layer((data_input, latent_input))
     self.assertEqual(
-        latent_input.shape.as_list(),
-        output_tensor.shape.as_list())
+        latent_input.shape,
+        output_tensor.shape)
 
   def test_layer_creation_with_mask(self):
     test_layer = encoder.Encoder(
@@ -59,8 +59,8 @@ class EncoderTest(tf.test.TestCase):
         (data_input, latent_input),
         input_mask=mask_tensor)
     self.assertEqual(
-        latent_input.shape.as_list(),
-        output_tensor.shape.as_list())
+        latent_input.shape,
+        output_tensor.shape)
 
   def test_layer_invocation(self):
     test_layer = encoder.Encoder(

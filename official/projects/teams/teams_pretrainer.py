@@ -164,7 +164,7 @@ class MultiWordSelectionHead(tf.keras.layers.Layer):
         tf.concat([tf.shape(candidate_sets), [self.embed_size]], axis=0)
     )
     candidate_embeddings.set_shape(
-        candidate_sets.shape.as_list() + [self.embed_size])
+        candidate_sets.shape + [self.embed_size])
     candidate_embeddings = tf.transpose(candidate_embeddings, [0, 1, 3, 2])
 
     # matrix multiplication + squeeze -> (batch_size, num_prediction, k)

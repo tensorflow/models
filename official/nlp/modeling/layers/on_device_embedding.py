@@ -108,7 +108,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
     embeddings = tf.reshape(
         embeddings,
         tf.concat([tf.shape(inputs), [self._embedding_width]], axis=0))
-    embeddings.set_shape(inputs.shape.as_list() + [self._embedding_width])
+    embeddings.set_shape(inputs.shape + [self._embedding_width])
     if self._scale_factor:
       embeddings *= self._scale_factor
     return embeddings

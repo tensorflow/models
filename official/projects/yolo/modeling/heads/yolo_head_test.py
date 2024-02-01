@@ -45,7 +45,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     for key in endpoints.keys():
       expected_input_shape = input_shape[key]
       expected_input_shape[-1] = (classes + 5) * bps
-      self.assertAllEqual(endpoints[key].shape.as_list(), expected_input_shape)
+      self.assertAllEqual(endpoints[key].shape, expected_input_shape)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

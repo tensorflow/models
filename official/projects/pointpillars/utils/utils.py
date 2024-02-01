@@ -265,7 +265,7 @@ def generate_anchors(min_level: int, max_level: int, image_size: Tuple[int],
     # (h, w, k, 4)
     boxes_i = tf.concat([y_min, x_min, y_max, x_max], axis=-1)
     # [h, w, k * 4]
-    shape = boxes_i.shape.as_list()
+    shape = boxes_i.shape
     boxes_i = tf.reshape(boxes_i, [shape[0], shape[1], shape[2] * shape[3]])
 
     boxes_all[str(level)] = boxes_i

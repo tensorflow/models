@@ -522,7 +522,7 @@ def gather(boxlist, indices, fields=None, scope=None, use_static_shapes=False):
       indices are not of type int32
   """
   with tf.name_scope(scope or 'Gather'):
-    if len(indices.shape.as_list()) != 1:
+    if len(indices.shape) != 1:
       raise ValueError('indices should have rank 1')
     if indices.dtype != tf.int32 and indices.dtype != tf.int64:
       raise ValueError('indices should be an int32 / int64 tensor')
@@ -617,7 +617,7 @@ def sort_by_field(boxlist, field, order=SortOrder.descend, scope=None):
       raise ValueError('Invalid sort order')
 
     field_to_sort = boxlist.get_field(field)
-    if len(field_to_sort.shape.as_list()) != 1:
+    if len(field_to_sort.shape) != 1:
       raise ValueError('Field should have rank 1')
 
     num_boxes = boxlist.num_boxes()
@@ -716,9 +716,9 @@ def filter_greater_than(boxlist, thresh, scope=None):
     if not boxlist.has_field('scores'):
       raise ValueError('input boxlist must have \'scores\' field')
     scores = boxlist.get_field('scores')
-    if len(scores.shape.as_list()) > 2:
+    if len(scores.shape) > 2:
       raise ValueError('Scores should have rank 1 or 2')
-    if len(scores.shape.as_list()) == 2 and scores.shape.as_list()[1] != 1:
+    if len(scores.shape) == 2 and scores.shape[1] != 1:
       raise ValueError('Scores should have rank 1 or have shape '
                        'consistent with [None, 1]')
     high_score_indices = tf.cast(

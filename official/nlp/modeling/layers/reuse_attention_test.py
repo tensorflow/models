@@ -39,7 +39,7 @@ class ReuseMultiHeadAttentionTest(tf.test.TestCase, parameterized.TestCase):
     query = tf.keras.Input(shape=(40, 80))
     value = tf.keras.Input(shape=(20, 80))
     output = test_layer(query=query, value=value)
-    self.assertEqual(output.shape.as_list(), [None] + output_dims)
+    self.assertEqual(output.shape, [None] + output_dims)
 
   def test_non_masked_self_attention(self):
     """Test with one input (self-attenntion) and no mask tensor."""
@@ -48,7 +48,7 @@ class ReuseMultiHeadAttentionTest(tf.test.TestCase, parameterized.TestCase):
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
     output = test_layer(query, query)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, [None, 40, 80])
 
   def test_attention_scores(self):
     """Test attention outputs with coefficients."""
@@ -57,8 +57,8 @@ class ReuseMultiHeadAttentionTest(tf.test.TestCase, parameterized.TestCase):
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
     output, coef = test_layer(query, query, return_attention_scores=True)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
-    self.assertEqual(coef.shape.as_list(), [None, 12, 40, 40])
+    self.assertEqual(output.shape, [None, 40, 80])
+    self.assertEqual(coef.shape, [None, 12, 40, 40])
 
   def test_attention_scores_with_values(self):
     """Test attention outputs with coefficients."""
@@ -68,8 +68,8 @@ class ReuseMultiHeadAttentionTest(tf.test.TestCase, parameterized.TestCase):
     query = tf.keras.Input(shape=(40, 80))
     value = tf.keras.Input(shape=(60, 80))
     output, coef = test_layer(query, value, return_attention_scores=True)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
-    self.assertEqual(coef.shape.as_list(), [None, 12, 40, 60])
+    self.assertEqual(output.shape, [None, 40, 80])
+    self.assertEqual(coef.shape, [None, 12, 40, 60])
 
   @parameterized.named_parameters(
       ("with_bias", True, 0), ("no_bias", False, 0),
@@ -156,7 +156,7 @@ class ReuseMultiHeadAttentionTest(tf.test.TestCase, parameterized.TestCase):
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
     output = test_layer(query, query)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, [None, 40, 80])
 
   def test_masked_attention_with_scores(self):
     """Test with a mask tensor."""
@@ -265,7 +265,7 @@ class ReuseMultiHeadAttentionTest(tf.test.TestCase, parameterized.TestCase):
     query = tf.keras.Input(shape=(40, 80))
     reuse_scores = tf.keras.Input(shape=(12, 40, 40))
     output = test_layer(query, query, reuse_attention_scores=reuse_scores)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, [None, 40, 80])
 
   @parameterized.named_parameters(
       ("no_reuse_with_pe_max_seq_length_20", False, 20),
@@ -284,21 +284,21 @@ class ReuseMultiHeadAttentionTest(tf.test.TestCase, parameterized.TestCase):
     query = tf.keras.Input(shape=(40, 80))
     reuse_scores = tf.keras.Input(shape=(12, 40, 40))
     output = test_layer(query, query, reuse_attention_scores=reuse_scores)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, [None, 40, 80])
     query = tf.keras.Input(shape=(30, 80))
     reuse_scores = tf.keras.Input(shape=(12, 30, 30))
     output = test_layer(query, query, reuse_attention_scores=reuse_scores)
-    self.assertEqual(output.shape.as_list(), [None, 30, 80])
+    self.assertEqual(output.shape, [None, 30, 80])
     query = tf.keras.Input(shape=(30, 80))
     key = tf.keras.Input(shape=(20, 80))
     reuse_scores = tf.keras.Input(shape=(12, 30, 20))
     output = test_layer(query, key, reuse_attention_scores=reuse_scores)
-    self.assertEqual(output.shape.as_list(), [None, 30, 80])
+    self.assertEqual(output.shape, [None, 30, 80])
     query = tf.keras.Input(shape=(50, 80))
     key = tf.keras.Input(shape=(60, 80))
     reuse_scores = tf.keras.Input(shape=(12, 50, 60))
     output = test_layer(query, key, reuse_attention_scores=reuse_scores)
-    self.assertEqual(output.shape.as_list(), [None, 50, 80])
+    self.assertEqual(output.shape, [None, 50, 80])
 
 if __name__ == "__main__":
   tf.test.main()

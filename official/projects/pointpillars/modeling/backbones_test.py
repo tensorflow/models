@@ -38,7 +38,7 @@ class BackboneTest(parameterized.TestCase, tf.test.TestCase):
           int(h / 2**level),
           int(w / 2**level),
           int(c * 2**(level - 1))
-      ], endpoints[str(level)].shape.as_list())
+      ], endpoints[str(level)].shape)
 
   def test_serialization(self):
     kwargs = dict(

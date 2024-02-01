@@ -82,10 +82,10 @@ class MaskedLM(tf.keras.layers.Layer):
     lm_data = tf.matmul(lm_data, self.embedding_table, transpose_b=True)
     logits = tf.nn.bias_add(lm_data, self.bias)
     masked_positions_length = (
-        masked_positions.shape.as_list()[1] or tf.shape(masked_positions)[1]
+        masked_positions.shape[1] or tf.shape(masked_positions)[1]
     )
     batch_size = (
-        masked_positions.shape.as_list()[0] or tf.shape(masked_positions)[0]
+        masked_positions.shape[0] or tf.shape(masked_positions)[0]
     )
     logits = tf.reshape(
         logits,
@@ -117,7 +117,7 @@ class MaskedLM(tf.keras.layers.Layer):
     """
     sequence_shape = tf.shape(sequence_tensor)
     batch_size, seq_length = sequence_shape[0], sequence_shape[1]
-    width = sequence_tensor.shape.as_list()[2] or sequence_shape[2]
+    width = sequence_tensor.shape[2] or sequence_shape[2]
 
     flat_offsets = tf.reshape(
         tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])

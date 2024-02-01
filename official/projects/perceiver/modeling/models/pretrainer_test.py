@@ -104,11 +104,11 @@ class PretrainerTest(tf.test.TestCase, parameterized.TestCase):
     expected_lm_shape = [None, num_token_predictions, vocab_size]
     if has_masked_lm_positions:
       self.assertAllEqual(expected_lm_shape,
-                          outputs['mlm_logits'].shape.as_list())
+                          outputs['mlm_logits'].shape)
 
     expected_sequence_output_shape = [None, sequence_length, d_model]
     self.assertAllEqual(expected_sequence_output_shape,
-                        outputs['sequence_output'].shape.as_list())
+                        outputs['sequence_output'].shape)
 
   def test_serialize_deserialize(self):
     """Validate that the trainer can be serialized and deserialized."""

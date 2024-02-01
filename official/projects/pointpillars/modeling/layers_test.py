@@ -38,14 +38,14 @@ class ConvBlockTest(parameterized.TestCase, tf.test.TestCase):
 
     if not use_transpose_conv:
       if strides == 1:
-        self.assertAllEqual([n, h, w, filters], outputs.shape.as_list())
+        self.assertAllEqual([n, h, w, filters], outputs.shape)
       elif strides == 2:
-        self.assertAllEqual([n, h/2, w/2, filters], outputs.shape.as_list())
+        self.assertAllEqual([n, h/2, w/2, filters], outputs.shape)
     else:
       if strides == 1:
-        self.assertAllEqual([n, h, w, filters], outputs.shape.as_list())
+        self.assertAllEqual([n, h, w, filters], outputs.shape)
       elif strides == 2:
-        self.assertAllEqual([n, h*2, w*2, filters], outputs.shape.as_list())
+        self.assertAllEqual([n, h*2, w*2, filters], outputs.shape)
 
   def test_serialization(self):
     kwargs = dict(

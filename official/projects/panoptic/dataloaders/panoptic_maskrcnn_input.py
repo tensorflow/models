@@ -267,7 +267,7 @@ class Parser(maskrcnn_input.Parser):
         prob=tf.where(self.aug_rand_vflip, 0.5, 0.0),
     )
 
-    num_image_channels = data['image'].shape.as_list()[-1]
+    num_image_channels = data['image'].shape[-1]
     image = image_mask[:, :, :num_image_channels]
     segmentation_mask = image_mask[:, :, num_image_channels:]
 

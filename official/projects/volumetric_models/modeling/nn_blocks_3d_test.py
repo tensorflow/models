@@ -41,7 +41,7 @@ class NNBlocks3DTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([
         1, spatial_size // strides, spatial_size // strides,
         volume_size // strides, filters * 4
-    ], features.shape.as_list())
+    ], features.shape)
 
   @parameterized.parameters((128, 128, 32, 1), (256, 256, 64, 2))
   def test_residual_block_3d_volume_creation(self, spatial_size, volume_size,
@@ -60,7 +60,7 @@ class NNBlocks3DTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([
         1, spatial_size // strides, spatial_size // strides,
         volume_size // strides, filters
-    ], features.shape.as_list())
+    ], features.shape)
 
   @parameterized.parameters((128, 128, 64, 1, 3), (256, 256, 128, 2, 1))
   def test_basic_block_3d_volume_creation(self, spatial_size, volume_size,
@@ -75,7 +75,7 @@ class NNBlocks3DTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([
         1, spatial_size // strides, spatial_size // strides,
         volume_size // strides, filters
-    ], features.shape.as_list())
+    ], features.shape)
 
 
 if __name__ == '__main__':

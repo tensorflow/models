@@ -58,7 +58,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertAllEqual(
         [1, input_size // strides, input_size // strides, filter_size * 4],
-        features.shape.as_list())
+        features.shape)
 
   @parameterized.parameters(
       (nn_blocks.InvertedBottleneckBlockQuantized, 1, 1, None, None),
@@ -88,7 +88,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertAllEqual(
         [1, input_size // strides, input_size // strides, out_filters],
-        features.shape.as_list())
+        features.shape)
 
 
 if __name__ == '__main__':

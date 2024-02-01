@@ -32,7 +32,7 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
     y = tf.constant(4.0)
     x = tf.ones([7, tf.cast(tf.sqrt(y), tf.int32), 2, 5])
     shape = beam_search._get_shape_keep_last_dim(x)
-    self.assertAllEqual([None, None, None, 5], shape.as_list())
+    self.assertAllEqual([None, None, None, 5], shape)
 
   def test_flatten_beam_dim(self):
     x = tf.ones([7, 4, 2, 5])

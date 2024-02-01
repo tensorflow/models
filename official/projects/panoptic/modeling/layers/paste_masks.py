@@ -62,7 +62,7 @@ class BilinearGridSampler(tf.keras.layers.Layer):
     clipped_x = tf.clip_by_value(x_coord, 0, self._width - 1)
     clipped_y = tf.clip_by_value(y_coord, 0, self._height - 1)
 
-    batch_size, _, _, _ = features.shape.as_list()
+    batch_size, _, _, _ = features.shape
     if batch_size is None:
       batch_size = tf.shape(features)[0]
 

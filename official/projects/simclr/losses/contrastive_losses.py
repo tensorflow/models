@@ -54,7 +54,7 @@ def cross_replica_concat(tensor: tf.Tensor, num_replicas: int) -> tf.Tensor:
     # Flatten the replica dimension.
     # The first dimension size will be: tensor.shape[0] * num_replicas
     # Using [-1] trick to support also scalar input.
-    return tf.reshape(ext_tensor, [-1] + ext_tensor.shape.as_list()[2:])
+    return tf.reshape(ext_tensor, [-1] + ext_tensor.shape[2:])
 
 
 class ContrastiveLoss(object):

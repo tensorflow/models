@@ -90,7 +90,7 @@ class Bert2Bert(tf.keras.Model):
                         cache=None):
     if cache:
       if self.params.get("padded_decode", False):
-        bias_shape = decoder_self_attention_bias.shape.as_list()
+        bias_shape = decoder_self_attention_bias.shape
         self_attention_bias = tf.slice(
             decoder_self_attention_bias, [0, 0, step, 0],
             [bias_shape[0], bias_shape[1], 1, bias_shape[3]])

@@ -302,7 +302,7 @@ class VisionTransformer(tf.keras.Model):
           feat_level,
       )
       endpoints[str(feat_level)] = tf.reshape(
-          output_feature, [-1, feat_h, feat_w, x.shape.as_list()[-1]])
+          output_feature, [-1, feat_h, feat_w, x.shape[-1]])
 
       # Don"t include `pre_logits` or `encoded_tokens` to support decoders.
       self._output_specs = {k: v.shape for k, v in endpoints.items()}

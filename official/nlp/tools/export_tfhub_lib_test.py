@@ -245,8 +245,8 @@ class ExportModelTest(tf.test.TestCase, parameterized.TestCase):
     sequence_output = output_dict["sequence_output"]
     encoder_outputs = output_dict["encoder_outputs"]
 
-    self.assertEqual(pooled_output.shape.as_list(), [None, hidden_size])
-    self.assertEqual(sequence_output.shape.as_list(),
+    self.assertEqual(pooled_output.shape, [None, hidden_size])
+    self.assertEqual(sequence_output.shape,
                      [None, seq_length, hidden_size])
     self.assertLen(encoder_outputs, num_hidden_layers)
 
@@ -477,9 +477,9 @@ class ExportModelWithMLMTest(tf.test.TestCase, parameterized.TestCase):
         input_mask=input_mask,
         input_type_ids=input_type_ids)
     hub_outputs_dict = hub_layer(input_dict)
-    self.assertEqual(hub_outputs_dict["pooled_output"].shape.as_list(),
+    self.assertEqual(hub_outputs_dict["pooled_output"].shape,
                      [None, hidden_size])
-    self.assertEqual(hub_outputs_dict["sequence_output"].shape.as_list(),
+    self.assertEqual(hub_outputs_dict["sequence_output"].shape,
                      [None, seq_length, hidden_size])
 
 
@@ -661,17 +661,17 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
 
     # Root callable.
     bert_inputs = preprocess(inputs)
-    self.assertAllEqual(bert_inputs["input_word_ids"].shape.as_list(), [2, 128])
+    self.assertAllEqual(bert_inputs["input_word_ids"].shape, [2, 128])
     self.assertAllEqual(
         bert_inputs["input_word_ids"][:, :10],
         tf.constant([[2, 6, 4, 5, 3, 0, 0, 0, 0, 0],
                      [2, 6, 4, 5, 4, 3, 0, 0, 0, 0]]))
-    self.assertAllEqual(bert_inputs["input_mask"].shape.as_list(), [2, 128])
+    self.assertAllEqual(bert_inputs["input_mask"].shape, [2, 128])
     self.assertAllEqual(
         bert_inputs["input_mask"][:, :10],
         tf.constant([[1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0]]))
-    self.assertAllEqual(bert_inputs["input_type_ids"].shape.as_list(), [2, 128])
+    self.assertAllEqual(bert_inputs["input_type_ids"].shape, [2, 128])
     self.assertAllEqual(
         bert_inputs["input_type_ids"][:, :10],
         tf.constant([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -682,17 +682,17 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
     token_ids_2 = preprocess.tokenize(inputs_2)
     bert_inputs = preprocess.bert_pack_inputs([token_ids, token_ids_2],
                                               seq_length=256)
-    self.assertAllEqual(bert_inputs["input_word_ids"].shape.as_list(), [2, 256])
+    self.assertAllEqual(bert_inputs["input_word_ids"].shape, [2, 256])
     self.assertAllEqual(
         bert_inputs["input_word_ids"][:, :10],
         tf.constant([[2, 6, 4, 5, 3, 4, 7, 3, 0, 0],
                      [2, 6, 4, 5, 4, 3, 7, 6, 3, 0]]))
-    self.assertAllEqual(bert_inputs["input_mask"].shape.as_list(), [2, 256])
+    self.assertAllEqual(bert_inputs["input_mask"].shape, [2, 256])
     self.assertAllEqual(
         bert_inputs["input_mask"][:, :10],
         tf.constant([[1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
                      [1, 1, 1, 1, 1, 1, 1, 1, 1, 0]]))
-    self.assertAllEqual(bert_inputs["input_type_ids"].shape.as_list(), [2, 256])
+    self.assertAllEqual(bert_inputs["input_type_ids"].shape, [2, 256])
     self.assertAllEqual(
         bert_inputs["input_type_ids"][:, :10],
         tf.constant([[0, 0, 0, 0, 0, 1, 1, 1, 0, 0],
@@ -1068,7 +1068,7 @@ def _result_shapes_in_tf_function(fn, *args, **kwargs):
   def shape_reporting_wrapper(*args, **kwargs):
     result = fn(*args, **kwargs)
     result_shapes_container[0] = tf.nest.map_structure(
-        lambda x: x.shape.as_list(), result)
+        lambda x: x.shape, result)
     return result
 
   shape_reporting_wrapper.get_concrete_function(*args, **kwargs)

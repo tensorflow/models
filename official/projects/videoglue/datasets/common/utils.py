@@ -808,7 +808,7 @@ def merge_multi_labels(
   if unique_labels.shape.rank != 2:
     raise ValueError('one_hot should be turned off if merge_multi_labels.')
 
-  num_instances_per_frame = unique_boxes.shape.as_list()[-2]
+  num_instances_per_frame = unique_boxes.shape[-2]
 
   labels = tf.unstack(unique_labels, axis=0)
   boxes = tf.unstack(unique_boxes, axis=0)
@@ -1148,7 +1148,7 @@ def filter_instances_box_by_score(
   """
   instances_position = inputs.pop(f'{box_key_prefix}_position')
   instances_score = inputs[f'{box_key_prefix}_score']
-  num_frames, num_instances = instances_score.shape.as_list()
+  num_frames, num_instances = instances_score.shape
 
   masks_list = tf.unstack(instances_score > score_threshold, num_frames, axis=0)
   position_list = tf.unstack(instances_position, num_frames, axis=0)

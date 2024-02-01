@@ -59,7 +59,7 @@ def combined_static_and_dynamic_shape(tensor):
   Returns:
     A list of size tensor.shape.ndims containing integers or a scalar tensor.
   """
-  static_tensor_shape = tensor.shape.as_list()
+  static_tensor_shape = tensor.shape
   dynamic_tensor_shape = tf.shape(input=tensor)
   combined_shape = []
   for index, dim in enumerate(static_tensor_shape):

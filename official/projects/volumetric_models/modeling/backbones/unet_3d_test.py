@@ -39,7 +39,7 @@ class UNet3DTest(parameterized.TestCase, tf.test.TestCase):
       self.assertAllEqual([
           1, input_size[0] / 2**layer_depth, input_size[0] / 2**layer_depth,
           input_size[1] / 2**layer_depth, 64 * 2**layer_depth
-      ], endpoints[str(layer_depth + 1)].shape.as_list())
+      ], endpoints[str(layer_depth + 1)].shape)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

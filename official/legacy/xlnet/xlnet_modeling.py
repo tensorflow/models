@@ -566,9 +566,9 @@ class TransformerXLModel(tf.keras.layers.Layer):
 
     bsz = tf.shape(inp_k)[1]
 
-    qlen = inp_k.shape.as_list()[0]
+    qlen = inp_k.shape[0]
 
-    mlen = mems[0].shape.as_list()[0] if mems is not None else 0
+    mlen = mems[0].shape[0] if mems is not None else 0
     klen = mlen + qlen
 
     ##### Attention mask

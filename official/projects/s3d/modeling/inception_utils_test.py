@@ -40,7 +40,7 @@ class InceptionUtilsTest(parameterized.TestCase, tf.test.TestCase):
         temporal_conv_endpoints=temporal_conv_endpoints,
         self_gating_endpoints={'Conv2d_2c_3x3'},
         first_temporal_kernel_size=first_temporal_kernel_size)
-    self.assertListEqual(outputs.shape.as_list(),
+    self.assertListEqual(outputs.shape,
                          [batch_size, 32, 28, 28, int(192 * depth_multiplier)])
 
     expected_endpoints = {
@@ -77,7 +77,7 @@ class InceptionUtilsTest(parameterized.TestCase, tf.test.TestCase):
     outputs = inception_v1_cell_layer(inputs)
 
     # self.assertTrue(net.op.name.startswith('test'))
-    self.assertListEqual(outputs.shape.as_list(),
+    self.assertListEqual(outputs.shape,
                          [batch_size, 32, 28, 28, 256])
 
 if __name__ == '__main__':

@@ -54,14 +54,14 @@ class BertTokenClassifierTest(tf.test.TestCase, parameterized.TestCase):
     if output_encoder_outputs:
       logits = outputs['logits']
       encoder_outputs = outputs['encoder_outputs']
-      self.assertAllEqual(encoder_outputs.shape.as_list(),
+      self.assertAllEqual(encoder_outputs.shape,
                           [None, sequence_length, hidden_size])
     else:
       logits = outputs['logits']
 
     # Validate that the outputs are of the expected shape.
     expected_classification_shape = [None, sequence_length, num_classes]
-    self.assertAllEqual(expected_classification_shape, logits.shape.as_list())
+    self.assertAllEqual(expected_classification_shape, logits.shape)
 
   def test_bert_trainer_tensor_call(self):
     """Validate that the Keras object can be invoked."""

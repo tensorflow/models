@@ -66,9 +66,9 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertLen(test_network.transformer_layers, num_blocks)
 
     layer_output_shape = [None, sequence_length, hidden_size]
-    self.assertAllEqual(layer_output.shape.as_list(), layer_output_shape)
+    self.assertAllEqual(layer_output.shape, layer_output_shape)
     pooler_output_shape = [None, hidden_size]
-    self.assertAllEqual(pooler_output.shape.as_list(), pooler_output_shape)
+    self.assertAllEqual(pooler_output.shape, pooler_output_shape)
     self.assertAllEqual(tf.float32, layer_output.dtype)
 
   def test_mobilebert_encoder_return_all_layer_output(self):
@@ -162,7 +162,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     prediction = classifier([word_ids, mask, type_ids])
     if task == models.BertTokenClassifier:
       prediction = prediction['logits']
-    self.assertAllEqual(prediction.shape.as_list(), prediction_shape)
+    self.assertAllEqual(prediction.shape, prediction_shape)
 
 
 if __name__ == '__main__':

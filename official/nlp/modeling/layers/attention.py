@@ -34,12 +34,12 @@ class CachedAttention(tf.keras.layers.MultiHeadAttention):
     # Combines cached keys and values with new keys and values.
     if decode_loop_step is not None:
       # TPU special case.
-      key_seq_dim = cache["key"].shape.as_list()[1]
+      key_seq_dim = cache["key"].shape[1]
       indices = tf.reshape(
           tf.one_hot(decode_loop_step, key_seq_dim, dtype=key.dtype),
           [1, key_seq_dim, 1, 1])
       key = cache["key"] + key * indices
-      value_seq_dim = cache["value"].shape.as_list()[1]
+      value_seq_dim = cache["value"].shape[1]
       indices = tf.reshape(
           tf.one_hot(decode_loop_step, value_seq_dim, dtype=value.dtype),
           [1, value_seq_dim, 1, 1])

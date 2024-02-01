@@ -42,12 +42,12 @@ class SSDHeadTest(parameterized.TestCase, tf.test.TestCase):
       self.assertIn(str(level), scores)
       self.assertIn(str(level), boxes)
       scale = 2**(level - min_level)
-      self.assertAllEqual(scores[str(level)].shape.as_list(), [
+      self.assertAllEqual(scores[str(level)].shape, [
           n,
           int(h / scale),
           int(w / scale), num_classes * num_anchors_per_location
       ])
-      self.assertAllEqual(boxes[str(level)].shape.as_list(), [
+      self.assertAllEqual(boxes[str(level)].shape, [
           n,
           int(h / scale),
           int(w / scale), num_params_per_anchor * num_anchors_per_location
@@ -60,7 +60,7 @@ class SSDHeadTest(parameterized.TestCase, tf.test.TestCase):
       for level in range(min_level, max_level+1):
         self.assertIn(str(level), attr)
         scale = 2**(level - min_level)
-        self.assertAllEqual(attr[str(level)].shape.as_list(), [
+        self.assertAllEqual(attr[str(level)].shape, [
             n,
             int(h / scale),
             int(w / scale), size * num_anchors_per_location

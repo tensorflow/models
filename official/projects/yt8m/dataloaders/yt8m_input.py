@@ -63,7 +63,7 @@ def resize_axis(tensor, axis, new_size, fill_value=0):
   ], axis)
 
   # Update shape.
-  new_shape = tensor.shape.as_list()  # A copy is being made.
+  new_shape = tensor.shape  # A copy is being made.
   new_shape[axis] = new_size
   resized = tf.ensure_shape(resized, new_shape)
   return resized

@@ -71,7 +71,7 @@ def decode_object_seq_to_bbox(
 def seq_to_bbox(seq, quantization_bins, seq_format='yxyx_name'):
   """Returns [0, 1] normalized yxyx bbox from token sequence."""
   # [batch, 5*num_instances]
-  assert seq.shape.rank == 2, seq.shape.as_list()
+  assert seq.shape.rank == 2, seq.shape
   # [batch, num_instances, 1]
   if seq_format.startswith('name'):
     ymin = tf.expand_dims(seq[:, 1::5], -1)
@@ -312,7 +312,7 @@ def clip_or_pad_to_max_len(data, max_len, dim):
 
 def shape_as_list(t):
   # Assumes rank of `t` is statically known.
-  shape = t.shape.as_list()
+  shape = t.shape
   dynamic_shape = tf.shape(t)
   return [
       shape[i] if shape[i] is not None else dynamic_shape[i]

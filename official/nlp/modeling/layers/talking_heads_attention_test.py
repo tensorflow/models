@@ -39,7 +39,7 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     query = tf.keras.Input(shape=(40, 80))
     value = tf.keras.Input(shape=(20, 80))
     output = test_layer(query=query, value=value)
-    self.assertEqual(output.shape.as_list(), [None] + output_dims)
+    self.assertEqual(output.shape, [None] + output_dims)
 
   def test_non_masked_self_attention(self):
     """Test with one input (self-attenntion) and no mask tensor."""
@@ -48,7 +48,7 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
     output = test_layer(query=query, value=query)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, [None, 40, 80])
 
   def test_attention_scores(self):
     """Test attention outputs with coefficients."""
@@ -58,8 +58,8 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     query = tf.keras.Input(shape=(40, 80))
     output, coef = test_layer(query=query, value=query,
                               return_attention_scores=True)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
-    self.assertEqual(coef.shape.as_list(), [None, 12, 40, 40])
+    self.assertEqual(output.shape, [None, 40, 80])
+    self.assertEqual(coef.shape, [None, 12, 40, 40])
 
   @parameterized.named_parameters(("with_bias", True), ("no_bias", False))
   def test_masked_attention(self, use_bias):
@@ -122,7 +122,7 @@ class TalkingHeadsAttentionTest(tf.test.TestCase, parameterized.TestCase):
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
     output = test_layer(query=query, value=query)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, [None, 40, 80])
 
   @parameterized.named_parameters(
       ("4d_inputs_one_free_batch", [3, 4], [3, 2], [4, 2], (2,)),

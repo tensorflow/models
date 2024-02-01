@@ -29,7 +29,7 @@ from official.projects.pix2seq.modeling import transformer
 
 
 def get_shape(x):
-  static = x.shape.as_list()
+  static = x.shape
   dynamic = tf.shape(x)
   return [dynamic[i] if s is None else s for i, s in enumerate(static)]
 

@@ -149,7 +149,7 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
         first_cache: The cache after init token
     """
     batch_size = (
-        initial_ids.shape.as_list()[0]
+        initial_ids.shape[0]
         if self.padded_decode else tf.shape(initial_ids)[0])
 
     state, state_shapes = self._create_initial_state(initial_ids, initial_cache,

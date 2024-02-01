@@ -255,7 +255,7 @@ class Transformer(tf.keras.Model):
       decoder_input = self.embedding_softmax_layer(decoder_input)
       decoder_input += timing_signal[i]
       if self.params["padded_decode"]:
-        bias_shape = decoder_self_attention_bias.shape.as_list()
+        bias_shape = decoder_self_attention_bias.shape
         self_attention_bias = tf.slice(
             decoder_self_attention_bias, [0, 0, i, 0],
             [bias_shape[0], bias_shape[1], 1, bias_shape[3]])
@@ -280,8 +280,8 @@ class Transformer(tf.keras.Model):
     """Return predicted sequence."""
     encoder_outputs = tf.cast(encoder_outputs, self.params["dtype"])
     if self.params["padded_decode"]:
-      batch_size = encoder_outputs.shape.as_list()[0]
-      input_length = encoder_outputs.shape.as_list()[1]
+      batch_size = encoder_outputs.shape[0]
+      input_length = encoder_outputs.shape[1]
     else:
       batch_size = tf.shape(encoder_outputs)[0]
       input_length = tf.shape(encoder_outputs)[1]

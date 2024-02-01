@@ -41,7 +41,7 @@ class FeaturizerTest(parameterized.TestCase, tf.test.TestCase):
         shape=[n, 2], batch_size=train_batch_size, dtype=tf.int32)
     image = featurizer(pillars, indices, training=True)
     self.assertAllEqual([train_batch_size, h, w, num_channels],
-                        image.shape.as_list())
+                        image.shape)
 
     # Evaluation mode.
     pillars = tf.keras.Input(shape=pillars_size, batch_size=eval_batch_size)
@@ -49,7 +49,7 @@ class FeaturizerTest(parameterized.TestCase, tf.test.TestCase):
         shape=[n, 2], batch_size=eval_batch_size, dtype=tf.int32)
     image = featurizer(pillars, indices, training=False)
     self.assertAllEqual([eval_batch_size, h, w, num_channels],
-                        image.shape.as_list())
+                        image.shape)
 
     # Test mode, batch size must be 1.
     pillars = tf.keras.Input(shape=pillars_size, batch_size=1)
@@ -57,7 +57,7 @@ class FeaturizerTest(parameterized.TestCase, tf.test.TestCase):
         shape=[n, 2], batch_size=1, dtype=tf.int32)
     image = featurizer(pillars, indices, training=None)
     self.assertAllEqual([1, h, w, num_channels],
-                        image.shape.as_list())
+                        image.shape)
 
   def test_serialization(self):
     kwargs = dict(

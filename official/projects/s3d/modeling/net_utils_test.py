@@ -59,10 +59,10 @@ class Tf2NetUtilsTest(parameterized.TestCase, tf.test.TestCase):
         conv_type, kernel_size, filters, strides, rates, name=name)
 
     features = parameterized_conv_layer(inputs)
-    logging.info(features.shape.as_list())
+    logging.info(features.shape)
     logging.info([w.name for w in parameterized_conv_layer.weights])
 
-    self.assertAllEqual(features.shape.as_list(), expected_shape)
+    self.assertAllEqual(features.shape, expected_shape)
 
 if __name__ == '__main__':
   tf.test.main()

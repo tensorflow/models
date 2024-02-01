@@ -41,11 +41,11 @@ class TransformerV2Test(tf.test.TestCase):
     inputs, outputs = model.inputs, model.outputs
     self.assertEqual(len(inputs), 2)
     self.assertEqual(len(outputs), 1)
-    self.assertEqual(inputs[0].shape.as_list(), [None, None])
+    self.assertEqual(inputs[0].shape, [None, None])
     self.assertEqual(inputs[0].dtype, tf.int64)
-    self.assertEqual(inputs[1].shape.as_list(), [None, None])
+    self.assertEqual(inputs[1].shape, [None, None])
     self.assertEqual(inputs[1].dtype, tf.int64)
-    self.assertEqual(outputs[0].shape.as_list(), [None, None, 41])
+    self.assertEqual(outputs[0].shape, [None, None, 41])
     self.assertEqual(outputs[0].dtype, tf.float32)
 
   def test_create_model_not_train(self):
@@ -53,11 +53,11 @@ class TransformerV2Test(tf.test.TestCase):
     inputs, outputs = model.inputs, model.outputs
     self.assertEqual(len(inputs), 1)
     self.assertEqual(len(outputs), 2)
-    self.assertEqual(inputs[0].shape.as_list(), [None, None])
+    self.assertEqual(inputs[0].shape, [None, None])
     self.assertEqual(inputs[0].dtype, tf.int64)
-    self.assertEqual(outputs[0].shape.as_list(), [None, None])
+    self.assertEqual(outputs[0].shape, [None, None])
     self.assertEqual(outputs[0].dtype, tf.int32)
-    self.assertEqual(outputs[1].shape.as_list(), [None])
+    self.assertEqual(outputs[1].shape, [None])
     self.assertEqual(outputs[1].dtype, tf.float32)
 
   def test_export(self):
@@ -88,7 +88,7 @@ class TransformerV2Test(tf.test.TestCase):
     serving_fn = imported.signatures["serving_default"]
     all_outputs = serving_fn(sample_input)
     output = all_outputs["outputs"]
-    output_shapes = output.shape.as_list()
+    output_shapes = output.shape
     self.assertEqual(output_shapes[0], batch_size)
     self.assertEqual(output_shapes[1],
                      max_length + model.params["extra_decode_length"])

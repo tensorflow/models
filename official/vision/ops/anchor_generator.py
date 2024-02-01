@@ -104,7 +104,7 @@ class _SingleAnchorGenerator:
 
     # [H, W, K, 4]
     result = tf.concat([y_min, x_min, y_max, x_max], axis=-1)
-    shape = result.shape.as_list()
+    shape = result.shape
     # [H, W, K * 4]
     return tf.reshape(result, [shape[0], shape[1], shape[2] * shape[3]])
 

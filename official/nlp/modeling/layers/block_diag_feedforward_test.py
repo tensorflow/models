@@ -57,7 +57,7 @@ class BlockDiagFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
     data_tensor = tf.keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+    self.assertEqual(data_tensor.shape, output_tensor.shape)
 
   @parameterized.parameters(
       (1, True, "float32"),

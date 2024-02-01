@@ -76,7 +76,7 @@ def position_embedding_sine(attention_mask,
       [tf.sin(pos_col[:, :, :, 0::2]),
        tf.cos(pos_col[:, :, :, 1::2])], axis=4)
 
-  # final_shape = pos_row.shape.as_list()[:3] + [-1]
+  # final_shape = pos_row.shape[:3] + [-1]
   final_shape = tf_utils.get_shape_list(pos_row)[:3] + [-1]
   pos_row = tf.reshape(pos_row, final_shape)
   pos_col = tf.reshape(pos_col, final_shape)

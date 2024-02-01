@@ -47,7 +47,7 @@ class BertSpanLabelerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertLen(cls_outs, 2)
     expected_shape = [None, sequence_length]
     for out in cls_outs:
-      self.assertAllEqual(expected_shape, out.shape.as_list())
+      self.assertAllEqual(expected_shape, out.shape)
 
   def test_bert_trainer_named_compilation(self):
     """Validate compilation using explicit output names."""

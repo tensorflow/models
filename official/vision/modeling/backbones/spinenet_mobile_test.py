@@ -69,7 +69,7 @@ class SpineNetMobileTest(parameterized.TestCase, tf.test.TestCase):
       self.assertIn(str(l), endpoints.keys())
       self.assertAllEqual(
           [1, input_size / 2**l, input_size / 2**l, endpoints_num_filters],
-          endpoints[str(l)].shape.as_list())
+          endpoints[str(l)].shape)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

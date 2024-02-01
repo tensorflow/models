@@ -32,8 +32,8 @@ class MatMulWithMarginTest(tf.test.TestCase):
 
     # Validate that the outputs are of the expected shape.
     expected_output_shape = [None, None]
-    self.assertEqual(expected_output_shape, left_logits.shape.as_list())
-    self.assertEqual(expected_output_shape, right_logits.shape.as_list())
+    self.assertEqual(expected_output_shape, left_logits.shape)
+    self.assertEqual(expected_output_shape, right_logits.shape)
 
   def test_serialize_deserialize(self):
     # Create a layer object that sets all of its config options.

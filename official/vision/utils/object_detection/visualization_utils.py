@@ -444,7 +444,7 @@ def visualize_outputs(
           _denormalize_images,
           elems=images,
           fn_output_signature=tf.TensorSpec(
-              shape=images.shape.as_list()[1:], dtype=tf.uint8
+              shape=images.shape[1:], dtype=tf.uint8
           ),
           parallel_iterations=32,
       ),
@@ -526,11 +526,11 @@ def draw_bounding_boxes_on_image_tensors(images,
       'line_thickness': 4
   }
   if true_image_shape is None:
-    true_shapes = tf.constant(-1, shape=[images.shape.as_list()[0], 3])
+    true_shapes = tf.constant(-1, shape=[images.shape[0], 3])
   else:
     true_shapes = true_image_shape
   if original_image_spatial_shape is None:
-    original_shapes = tf.constant(-1, shape=[images.shape.as_list()[0], 2])
+    original_shapes = tf.constant(-1, shape=[images.shape[0], 2])
   else:
     original_shapes = original_image_spatial_shape
 
@@ -980,18 +980,18 @@ def visualize_segmentation_outputs(
           _denormalize_images,
           elems=images,
           fn_output_signature=tf.TensorSpec(
-              shape=images.shape.as_list()[1:], dtype=tf.uint8
+              shape=images.shape[1:], dtype=tf.uint8
           ),
           parallel_iterations=32,
       ),
   )
 
   if true_image_shape is None:
-    true_shapes = tf.constant(-1, shape=[images.shape.as_list()[0], 3])
+    true_shapes = tf.constant(-1, shape=[images.shape[0], 3])
   else:
     true_shapes = true_image_shape
   if original_image_spatial_shape is None:
-    original_shapes = tf.constant(-1, shape=[images.shape.as_list()[0], 2])
+    original_shapes = tf.constant(-1, shape=[images.shape[0], 2])
   else:
     original_shapes = original_image_spatial_shape
 

@@ -45,7 +45,7 @@ class DecoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIn(str(min_level), endpoints)
     expected_channels = input_shape[str(min_level)][-1] * 2 * (
         max_level - min_level + 1)
-    self.assertAllEqual(endpoints[str(min_level)].shape.as_list(),
+    self.assertAllEqual(endpoints[str(min_level)].shape,
                         [batch_size, height, width, expected_channels])
 
   def test_serialization(self):

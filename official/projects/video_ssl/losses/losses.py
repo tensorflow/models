@@ -121,7 +121,7 @@ def tpu_cross_replica_concat(tensor, num_replicas):
     ext_tensor = tf.scatter_nd(
         indices=[[xla.replica_id()]],
         updates=[tensor],
-        shape=[num_replicas] + tensor.shape.as_list())
+        shape=[num_replicas] + tensor.shape)
 
     # As every value is only present on one replica and 0 in all others, adding
     # them all together will result in the full tensor on all replicas.
@@ -132,4 +132,4 @@ def tpu_cross_replica_concat(tensor, num_replicas):
     # Flatten the replica dimension.
     # The first dimension size will be: tensor.shape[0] * num_replicas
     # Using [-1] trick to support also scalar input.
-    return tf.reshape(ext_tensor, [-1] + ext_tensor.shape.as_list()[2:])
+    return tf.reshape(ext_tensor, [-1] + ext_tensor.shape[2:])

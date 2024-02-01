@@ -329,7 +329,7 @@ class Seq2SeqTransformer(tf.keras.Model):
       decoder_input += timing_signal[i]
       if self._padded_decode:
         # indexing does not work on TPU.
-        bias_shape = decoder_self_attention_mask.shape.as_list()
+        bias_shape = decoder_self_attention_mask.shape
         self_attention_mask = tf.slice(decoder_self_attention_mask, [0, i, 0],
                                        [bias_shape[0], 1, bias_shape[2]])
       else:

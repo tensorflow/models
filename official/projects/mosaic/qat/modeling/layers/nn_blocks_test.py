@@ -51,7 +51,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual([1, input_size, input_size,
-                         sum(output_filter_depths)], features.shape.as_list())
+                         sum(output_filter_depths)], features.shape)
 
   @parameterized.parameters(
       (nn_blocks.MosaicEncoderBlockQuantized, [32, 64], [3, 3], [2, 2]),
@@ -74,7 +74,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual([1, input_size, input_size,
-                         sum(branch_filter_depths)], features.shape.as_list())
+                         sum(branch_filter_depths)], features.shape)
 
   @parameterized.parameters(
       (nn_blocks.DecoderSumMergeBlockQuantized, 32, [128, 64]),
@@ -93,7 +93,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertAllEqual(
         [1, output_size[0], output_size[1], decoder_projected_depth],
-        features.shape.as_list())
+        features.shape)
 
   @parameterized.parameters(
       (nn_blocks.DecoderConcatMergeBlockQuantized, 64, 32, [128, 64]),
@@ -114,7 +114,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertAllEqual(
         [1, output_size[0], output_size[1], decoder_projected_depth],
-        features.shape.as_list())
+        features.shape)
 
 if __name__ == '__main__':
   tf.test.main()

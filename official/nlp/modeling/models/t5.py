@@ -634,12 +634,12 @@ class MultiHeadAttention(Module):
     """Updates cache states and gets full-length key/value tensors."""
     # Combines cached keys and values with new keys and values.
     # TPU one-hot handling.
-    key_seq_dim = cache["key"].shape.as_list()[1]
+    key_seq_dim = cache["key"].shape[1]
     indices = tf.reshape(
         tf.one_hot(decode_position, key_seq_dim, dtype=key.dtype),
         [1, key_seq_dim, 1, 1])
     key = cache["key"] + key * indices
-    value_seq_dim = cache["value"].shape.as_list()[1]
+    value_seq_dim = cache["value"].shape[1]
     indices = tf.reshape(
         tf.one_hot(decode_position, value_seq_dim, dtype=value.dtype),
         [1, value_seq_dim, 1, 1])
@@ -698,7 +698,7 @@ class MultiHeadAttention(Module):
       # If position_bias is None, the input embedings should already include
       # position embeddings.
       if use_cache:
-        bias_shape = position_bias.shape.as_list()
+        bias_shape = position_bias.shape
         position_bias = tf.slice(
             position_bias, [0, 0, decode_position, 0],
             [bias_shape[0], bias_shape[1], 1, bias_shape[3]])

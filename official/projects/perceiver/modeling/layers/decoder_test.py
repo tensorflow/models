@@ -37,8 +37,8 @@ class PerceiverBasicDecoderTest(tf.test.TestCase):
 
     output_tensor = test_layer((query_input, latent_input))
     self.assertEqual(
-        query_input.shape.as_list(),
-        output_tensor.shape.as_list())
+        query_input.shape,
+        output_tensor.shape)
 
   def test_layer_creation_with_mask(self):
     embedding_width = 800
@@ -59,8 +59,8 @@ class PerceiverBasicDecoderTest(tf.test.TestCase):
         (query_input, latent_input),
         query_mask=mask_tensor)
     self.assertEqual(
-        query_input.shape.as_list(),
-        output_tensor.shape.as_list())
+        query_input.shape,
+        output_tensor.shape)
 
   def test_layer_invocation(self):
     embedding_width = 800

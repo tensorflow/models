@@ -151,8 +151,8 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
-    self.assertAllEqual(expected_data_shape, data.shape.as_list())
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+    self.assertAllEqual(expected_data_shape, data.shape)
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, data.dtype)
@@ -208,8 +208,8 @@ class EncoderScaffoldLayerClassTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
-    self.assertAllEqual(expected_data_shape, data.shape.as_list())
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+    self.assertAllEqual(expected_data_shape, data.shape)
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
     # If float_dtype is set to float16, the data output is float32 (from a layer
     # norm) and pool output should be float16.

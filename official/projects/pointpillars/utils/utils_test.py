@@ -88,7 +88,7 @@ class UtilsTest(parameterized.TestCase, tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       anchors = all_anchors[str(level)]
       stride = 2**level
-      self.assertAllEqual(anchors.shape.as_list(),
+      self.assertAllEqual(anchors.shape,
                           [image_size[0] / stride, image_size[1] / stride, 4])
 
 

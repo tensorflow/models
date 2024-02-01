@@ -205,7 +205,7 @@ def _process_label(label: tf.Tensor,
   if one_hot_label:
     # Replace label index by one hot representation.
     label = tf.one_hot(label, num_classes)
-    if len(label.shape.as_list()) > 1:
+    if len(label.shape) > 1:
       label = tf.reduce_sum(label, axis=0)
     if num_classes == 1:
       # The trick for single label.

@@ -38,7 +38,7 @@ class FactorizedEmbeddingTest(tf.test.TestCase):
     # The output should be the same as the input, save that it has an extra
     # embedding_width dimension on the end.
     expected_output_shape = [None, sequence_length, output_dim]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
+    self.assertEqual(expected_output_shape, output_tensor.shape)
     self.assertEqual(output_tensor.dtype, tf.float32)
 
   def test_layer_invocation(self):

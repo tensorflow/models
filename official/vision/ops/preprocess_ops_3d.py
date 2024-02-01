@@ -250,7 +250,7 @@ def crop_image(
     shape = tf.shape(frames)
     # If a static_shape is available (e.g. when using this method from add_image
     # method), it will be used to have an output tensor with static shape.
-    static_shape = frames.shape.as_list()
+    static_shape = frames.shape
     seq_len = shape[0] if static_shape[0] is None else static_shape[0]
     channels = shape[3] if static_shape[3] is None else static_shape[3]
     frames = tf.image.random_crop(
@@ -264,7 +264,7 @@ def crop_image(
     elif num_crops == 3:
       # Three-crop evaluation.
       shape = tf.shape(frames)
-      static_shape = frames.shape.as_list()
+      static_shape = frames.shape
       seq_len = shape[0] if static_shape[0] is None else static_shape[0]
       height = shape[1] if static_shape[1] is None else static_shape[1]
       width = shape[2] if static_shape[2] is None else static_shape[2]

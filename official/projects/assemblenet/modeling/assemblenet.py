@@ -816,7 +816,7 @@ class AssembleNet(tf.keras.Model):
       axis = 3 if data_format == 'channels_last' else 1
       flow_inputs = rf.RepresentationFlow(
           original_num_frames,
-          depth=reshape_inputs.shape.as_list()[axis],
+          depth=reshape_inputs.shape[axis],
           num_iter=40,
           bottleneck=1)(
               reshape_inputs)

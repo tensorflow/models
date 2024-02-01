@@ -57,7 +57,7 @@ class MaskedLMTest(tf.test.TestCase, parameterized.TestCase):
     output = test_layer(lm_input_tensor, masked_positions=masked_positions)
 
     expected_output_shape = [None, num_predictions, vocab_size]
-    self.assertEqual(expected_output_shape, output.shape.as_list())
+    self.assertEqual(expected_output_shape, output.shape)
 
   def test_layer_invocation_with_external_logits(self):
     vocab_size = 100

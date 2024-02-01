@@ -364,7 +364,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
     Raises:
       ValueError: A Tensor shape or parameter is invalid.
     """
-    input_width = input_tensor.shape.as_list()[-1]
+    input_width = input_tensor.shape[-1]
     if input_width != self.hidden_size:
       raise ValueError(
           (f'The width of the input tensor {input_width} != '
@@ -533,7 +533,7 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
             transpose_b=True)
 
     logits = tf.nn.bias_add(lm_data, self.bias)
-    masked_positions_length = masked_positions.shape.as_list()[1] or tf.shape(
+    masked_positions_length = masked_positions.shape[1] or tf.shape(
         masked_positions)[1]
     logits = tf.reshape(logits,
                         [-1, masked_positions_length, self._vocab_size])
@@ -563,7 +563,7 @@ class MobileBertMaskedLM(tf.keras.layers.Layer):
     """
     sequence_shape = tf.shape(sequence_tensor)
     batch_size, seq_length = sequence_shape[0], sequence_shape[1]
-    width = sequence_tensor.shape.as_list()[2] or sequence_shape[2]
+    width = sequence_tensor.shape[2] or sequence_shape[2]
 
     flat_offsets = tf.reshape(
         tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])

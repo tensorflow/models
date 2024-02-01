@@ -62,8 +62,8 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     boxes = endpoints['bbox']
     classes = endpoints['classes']
 
-    self.assertAllEqual(boxes.shape.as_list(), [1, 10, 4])
-    self.assertAllEqual(classes.shape.as_list(), [1, 10])
+    self.assertAllEqual(boxes.shape, [1, 10, 4])
+    self.assertAllEqual(classes.shape, [1, 10])
 
 
 if __name__ == '__main__':

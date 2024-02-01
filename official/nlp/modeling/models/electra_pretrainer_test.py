@@ -76,10 +76,10 @@ class ElectraPretrainerTest(tf.test.TestCase):
     expected_classification_shape = [None, num_classes]
     expected_disc_logits_shape = [None, sequence_length]
     expected_disc_label_shape = [None, sequence_length]
-    self.assertAllEqual(expected_lm_shape, lm_outs.shape.as_list())
-    self.assertAllEqual(expected_classification_shape, cls_outs.shape.as_list())
-    self.assertAllEqual(expected_disc_logits_shape, disc_logits.shape.as_list())
-    self.assertAllEqual(expected_disc_label_shape, disc_label.shape.as_list())
+    self.assertAllEqual(expected_lm_shape, lm_outs.shape)
+    self.assertAllEqual(expected_classification_shape, cls_outs.shape)
+    self.assertAllEqual(expected_disc_logits_shape, disc_logits.shape)
+    self.assertAllEqual(expected_disc_label_shape, disc_label.shape)
 
   def test_electra_trainer_tensor_call(self):
     """Validate that the Keras object can be invoked."""

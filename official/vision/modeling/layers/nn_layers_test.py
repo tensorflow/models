@@ -425,7 +425,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     query = tf.keras.Input(shape=(40, 80))
     value = tf.keras.Input(shape=(20, 80))
     output = layer(query=query, value=value)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, [None, 40, 80])
 
 
 if __name__ == '__main__':

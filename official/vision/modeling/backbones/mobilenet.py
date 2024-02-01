@@ -828,7 +828,7 @@ class MobileNet(tf.keras.Model):
           #   equal to (1, 1) (there is no need to apply atrous convolution to
           #   any 1x1 convolution).
           use_rate = layer_rate
-        in_filters = net.shape.as_list()[-1]
+        in_filters = net.shape[-1]
         block = nn_blocks.InvertedBottleneckBlock(
             in_filters=in_filters,
             out_filters=block_def.filters,

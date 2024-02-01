@@ -416,7 +416,7 @@ class MobileBertTransformerQuantized(tf.keras.layers.Layer):
     Raises:
       ValueError: A Tensor shape or parameter is invalid.
     """
-    input_width = input_tensor.shape.as_list()[-1]
+    input_width = input_tensor.shape[-1]
     if input_width != self.hidden_size:
       raise ValueError(
           (f'The width of the input tensor {input_width} != '

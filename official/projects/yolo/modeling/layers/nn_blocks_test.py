@@ -30,9 +30,9 @@ class CSPConnectTest(tf.test.TestCase, parameterized.TestCase):
     outx, px = test_layer(x)
     outx = test_layer2([outx, px])
     print(outx)
-    print(outx.shape.as_list())
+    print(outx.shape)
     self.assertAllEqual(
-        outx.shape.as_list(),
+        outx.shape,
         [None, np.ceil(width // 2),
          np.ceil(height // 2), (filters)])
 
@@ -72,9 +72,9 @@ class CSPRouteTest(tf.test.TestCase, parameterized.TestCase):
     test_layer = nn_blocks.CSPRoute(filters=filters, filter_scale=mod)
     outx, _ = test_layer(x)
     print(outx)
-    print(outx.shape.as_list())
+    print(outx.shape)
     self.assertAllEqual(
-        outx.shape.as_list(),
+        outx.shape,
         [None, np.ceil(width // 2),
          np.ceil(height // 2), (filters / mod)])
 
@@ -123,14 +123,14 @@ class ConvBNTest(tf.test.TestCase, parameterized.TestCase):
         strides=strides,
         trainable=False)
     outx = test_layer(x)
-    print(outx.shape.as_list())
+    print(outx.shape)
     test = [
         None,
         int((224 - kernel_size[0] + (2 * pad_const)) / strides[0] + 1),
         int((224 - kernel_size[1] + (2 * pad_const)) / strides[1] + 1), 64
     ]
     print(test)
-    self.assertAllEqual(outx.shape.as_list(), test)
+    self.assertAllEqual(outx.shape, test)
 
   @parameterized.named_parameters(('filters', 3))
   def test_gradient_pass_though(self, filters):
@@ -166,9 +166,9 @@ class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
     test_layer = nn_blocks.DarkResidual(filters=filters, downsample=downsample)
     outx = test_layer(x)
     print(outx)
-    print(outx.shape.as_list())
+    print(outx.shape)
     self.assertAllEqual(
-        outx.shape.as_list(),
+        outx.shape,
         [None, np.ceil(width / mod),
          np.ceil(height / mod), filters])
 
@@ -212,7 +212,7 @@ class DarkSppTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.keras.Input(shape=(width, height, channels))
     test_layer = nn_blocks.SPP(sizes=sizes)
     outx = test_layer(x)
-    self.assertAllEqual(outx.shape.as_list(),
+    self.assertAllEqual(outx.shape,
                         [None, width, height, channels * (len(sizes) + 1)])
     return
 
@@ -259,12 +259,12 @@ class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
     else:
       filter_y1 = filters // 2
     self.assertAllEqual(
-        outx[1].shape.as_list(), [None, width, height, filter_y1])
+        outx[1].shape, [None, width, height, filter_y1])
     self.assertAllEqual(
         filters % 2,
         0,
         msg='Output of a DarkRouteProcess layer has an odd number of filters')
-    self.assertAllEqual(outx[0].shape.as_list(), [None, width, height, filters])
+    self.assertAllEqual(outx[0].shape, [None, width, height, filters])
 
   @parameterized.named_parameters(
       ('test1', 224, 224, 64, 7, False), ('test2', 223, 223, 32, 3, False),
@@ -310,7 +310,7 @@ class SPPCSPCTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.keras.Input(shape=(width, height, filters))
     test_layer = nn_blocks.SPPCSPC(filters, pool_sizes, scale)
     out = test_layer(x)
-    self.assertAllEqual(out.shape.as_list(), [None, width, height, filters])
+    self.assertAllEqual(out.shape, [None, width, height, filters])
 
   @parameterized.named_parameters(('SPPCSPC', 224, 224, 8, [5, 9, 13], 0.5),
                                   ('test1', 300, 300, 32, [2, 3, 4, 5], 1.0),
@@ -346,7 +346,7 @@ class RepConvTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.keras.Input(shape=(width, height, filters))
     test_layer = nn_blocks.RepConv(filters, strides=strides)
     out = test_layer(x)
-    self.assertAllEqual(out.shape.as_list(),
+    self.assertAllEqual(out.shape,
                         [None, width // strides, height // strides, filters])
 
   @parameterized.named_parameters(('RepConv', 224, 224, 8, 1),

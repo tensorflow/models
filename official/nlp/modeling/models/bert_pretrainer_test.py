@@ -57,9 +57,9 @@ class BertPretrainerTest(tf.test.TestCase, parameterized.TestCase):
     # Validate that the outputs are of the expected shape.
     expected_lm_shape = [None, num_token_predictions, vocab_size]
     expected_classification_shape = [None, num_classes]
-    self.assertAllEqual(expected_lm_shape, outputs['masked_lm'].shape.as_list())
+    self.assertAllEqual(expected_lm_shape, outputs['masked_lm'].shape)
     self.assertAllEqual(expected_classification_shape,
-                        outputs['classification'].shape.as_list())
+                        outputs['classification'].shape)
 
   def test_bert_trainer_tensor_call(self):
     """Validate that the Keras object can be invoked."""
@@ -163,15 +163,15 @@ class BertPretrainerV2Test(tf.test.TestCase, parameterized.TestCase):
     expected_lm_shape = [None, num_token_predictions, vocab_size]
     if has_masked_lm_positions:
       self.assertAllEqual(expected_lm_shape,
-                          outputs['mlm_logits'].shape.as_list())
+                          outputs['mlm_logits'].shape)
 
     expected_sequence_output_shape = [None, sequence_length, hidden_size]
     self.assertAllEqual(expected_sequence_output_shape,
-                        outputs['sequence_output'].shape.as_list())
+                        outputs['sequence_output'].shape)
 
     expected_pooled_output_shape = [None, hidden_size]
     self.assertAllEqual(expected_pooled_output_shape,
-                        outputs['pooled_output'].shape.as_list())
+                        outputs['pooled_output'].shape)
 
   def test_multiple_cls_outputs(self):
     """Validate that the Keras object can be created."""
@@ -201,8 +201,8 @@ class BertPretrainerV2Test(tf.test.TestCase, parameterized.TestCase):
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
     outputs = bert_trainer_model(inputs)
-    self.assertEqual(outputs['foo'].shape.as_list(), [None, 2])
-    self.assertEqual(outputs['bar'].shape.as_list(), [None, 3])
+    self.assertEqual(outputs['foo'].shape, [None, 2])
+    self.assertEqual(outputs['bar'].shape, [None, 3])
 
   def test_v2_serialize_deserialize(self):
     """Validate that the BERT trainer can be serialized and deserialized."""

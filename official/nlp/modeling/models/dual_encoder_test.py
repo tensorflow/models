@@ -59,10 +59,10 @@ class DualEncoderTest(tf.test.TestCase, parameterized.TestCase):
       # Validate that the outputs are of the expected shape.
       expected_sequence_shape = [None, sequence_length, 768]
       self.assertAllEqual(expected_sequence_shape,
-                          outputs['sequence_output'].shape.as_list())
+                          outputs['sequence_output'].shape)
       left_encoded = outputs['pooled_output']
       expected_encoding_shape = [None, 768]
-      self.assertAllEqual(expected_encoding_shape, left_encoded.shape.as_list())
+      self.assertAllEqual(expected_encoding_shape, left_encoded.shape)
 
   @parameterized.parameters((192, 'logits'), (768, 'predictions'))
   def test_dual_encoder_tensor_call(self, hidden_size, output):

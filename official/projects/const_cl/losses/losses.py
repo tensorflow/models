@@ -165,7 +165,7 @@ class InstanceContrastiveLoss(object):
       inst_a = tf.math.l2_normalize(inst_a, axis=-1)
       inst_b = tf.math.l2_normalize(inst_b, axis=-1)
 
-    b, n = inst_a.shape.as_list()[:2]
+    b, n = inst_a.shape[:2]
     batch_index = tf.range(b)
 
     # Computes similarity based on raw features in view a and b.
@@ -302,7 +302,7 @@ class InstanceContrastiveLoss(object):
     Returns:
       loss_and_stats: a dictionary of loss and intermediate statistics.
     """
-    b, n = inst_translated.shape.as_list()[:2]
+    b, n = inst_translated.shape[:2]
 
     if num_replicas == 1:
       inst_target_large = inst_target

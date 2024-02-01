@@ -83,7 +83,7 @@ class SpectralNormalization(tf.keras.layers.Wrapper):
     self._dtype = self.layer.kernel.dtype
 
     self.w = self.layer.kernel
-    self.w_shape = self.w.shape.as_list()
+    self.w_shape = self.w.shape
 
     self.v = self.add_weight(
         shape=(1, np.prod(self.w_shape[:-1])),
@@ -203,7 +203,7 @@ class SpectralNormalizationConv2D(tf.keras.layers.Wrapper):
 
     # Shape (kernel_size_1, kernel_size_2, in_channel, out_channel).
     self.w = self.layer.kernel
-    self.w_shape = self.w.shape.as_list()
+    self.w_shape = self.w.shape
     self.strides = self.layer.strides
 
     # Set the dimensions of u and v vectors.

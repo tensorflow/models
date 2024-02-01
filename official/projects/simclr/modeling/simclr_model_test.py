@@ -61,7 +61,7 @@ class SimCLRModelTest(parameterized.TestCase, tf.test.TestCase):
     projection_outputs = outputs[simclr_model.PROJECTION_OUTPUT_KEY]
     supervised_outputs = outputs[simclr_model.SUPERVISED_OUTPUT_KEY]
 
-    self.assertAllEqual(projection_outputs.shape.as_list(),
+    self.assertAllEqual(projection_outputs.shape,
                         [2, project_dim])
     self.assertAllEqual([2, num_classes],
                         supervised_outputs.numpy().shape)

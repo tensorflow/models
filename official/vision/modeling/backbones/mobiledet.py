@@ -472,7 +472,7 @@ class MobileDet(tf.keras.Model):
 
       elif block_def.block_fn == 'invertedbottleneck':
 
-        in_filters = net.shape.as_list()[-1]
+        in_filters = net.shape[-1]
         net = nn_blocks.InvertedBottleneckBlock(
             in_filters=in_filters,
             out_filters=block_def.filters,
@@ -499,7 +499,7 @@ class MobileDet(tf.keras.Model):
 
       elif block_def.block_fn == 'tucker':
 
-        in_filters = net.shape.as_list()[-1]
+        in_filters = net.shape[-1]
         net = nn_blocks.TuckerConvBlock(
             in_filters=in_filters,
             out_filters=block_def.filters,

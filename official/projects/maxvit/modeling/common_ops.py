@@ -116,7 +116,7 @@ def residual_add(residual, shortcut, survival_prob, training):
 def maybe_reshape_to_2d(x, height=None):
   """Reshape tensor to 2d if not already 2d."""
   if x.shape.rank == 3:
-    _, length, num_channel = x.shape.as_list()
+    _, length, num_channel = x.shape
     if height is None:
       height = int(np.sqrt(length))
     else:
@@ -135,7 +135,7 @@ def maybe_reshape_to_2d(x, height=None):
 def maybe_reshape_to_1d(x):
   """Reshape tensor to 1d if not already 1d."""
   if x.shape.rank == 4:
-    _, h, w, num_channel = x.shape.as_list()
+    _, h, w, num_channel = x.shape
     logging.debug('Reshape %s -> %s', [h, w, num_channel], [h * w, num_channel])
     return tf.reshape(x, [-1, h * w, num_channel])
   elif x.shape.rank == 3:
@@ -228,7 +228,7 @@ def reindex_2d_einsum_lookup(
       '{0}ixw{1},jyw->{0}ijxy{1}'.format(prefix, suffix),
       reindexed_tensor, width_lookup, name='width_lookup')
 
-  ret_shape = relative_position_tensor.shape.as_list()
+  ret_shape = relative_position_tensor.shape
   ret_shape[h_axis] = height * width
   ret_shape[h_axis + 1] = height * width
   reindexed_tensor = tf.reshape(reindexed_tensor, ret_shape)

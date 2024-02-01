@@ -111,4 +111,4 @@ class MobileDetTest(parameterized.TestCase, tf.test.TestCase):
     for idx, num_filter in enumerate(mobiledet_layers[model_id]):
       self.assertAllEqual(
           [1, input_size / 2 ** (idx+1), input_size / 2 ** (idx+1), num_filter],
-          endpoints[str(idx+1)].shape.as_list())
+          endpoints[str(idx+1)].shape)

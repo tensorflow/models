@@ -233,7 +233,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
         model=self.get_model_config(2),
         train_data=train_data_config)
     outputs = self._run_task(config)
-    self.assertEqual(outputs["sentence_prediction"].shape.as_list(), [8, 1])
+    self.assertEqual(outputs["sentence_prediction"].shape, [8, 1])
 
   @parameterized.named_parameters(
       {

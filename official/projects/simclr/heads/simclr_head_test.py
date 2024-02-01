@@ -39,12 +39,12 @@ class ProjectionHeadTest(tf.test.TestCase, parameterized.TestCase):
     proj_head_output_dim = input_dim
     if num_proj_layers > 0:
       proj_head_output_dim = proj_output_dim
-    self.assertAllEqual(proj_head_output.shape.as_list(),
+    self.assertAllEqual(proj_head_output.shape,
                         [None, proj_head_output_dim])
 
     if num_proj_layers > 0:
       proj_finetune_output_dim = input_dim
-      self.assertAllEqual(proj_finetune_output.shape.as_list(),
+      self.assertAllEqual(proj_finetune_output.shape,
                           [None, proj_finetune_output_dim])
 
   @parameterized.parameters(
@@ -69,15 +69,15 @@ class ProjectionHeadTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(inputs, proj_head_output)
       self.assertAllClose(inputs, proj_finetune_output)
     else:
-      self.assertAllEqual(proj_head_output.shape.as_list(),
+      self.assertAllEqual(proj_head_output.shape,
                           [batch_size, proj_output_dim])
       if ft_proj_idx == 0:
         self.assertAllClose(inputs, proj_finetune_output)
       elif ft_proj_idx < num_proj_layers:
-        self.assertAllEqual(proj_finetune_output.shape.as_list(),
+        self.assertAllEqual(proj_finetune_output.shape,
                             [batch_size, input_dim])
       else:
-        self.assertAllEqual(proj_finetune_output.shape.as_list(),
+        self.assertAllEqual(proj_finetune_output.shape,
                             [batch_size, proj_output_dim])
 
 
@@ -93,7 +93,7 @@ class ClassificationHeadTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.keras.Input(shape=(input_dim,))
     out_x = test_layer(x)
 
-    self.assertAllEqual(out_x.shape.as_list(),
+    self.assertAllEqual(out_x.shape,
                         [None, num_classes])
 
 

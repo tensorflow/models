@@ -47,7 +47,7 @@ class BertModelsTest(tf.test.TestCase):
     self.assertIsInstance(encoder, networks.BertEncoder)
 
     # model has one scalar output: loss value.
-    self.assertEqual(model.output.shape.as_list(), [
+    self.assertEqual(model.output.shape, [
         None,
     ])
 
@@ -55,7 +55,7 @@ class BertModelsTest(tf.test.TestCase):
     self.assertIsInstance(encoder.output, list)
     self.assertLen(encoder.output, 2)
     # shape should be [batch size, hidden_size]
-    self.assertEqual(encoder.output[1].shape.as_list(), [None, 16])
+    self.assertEqual(encoder.output[1].shape, [None, 16])
 
   def test_squad_model(self):
     model, core_model = bert_models.squad_model(
@@ -75,9 +75,9 @@ class BertModelsTest(tf.test.TestCase):
     self.assertIsInstance(core_model.output, list)
     self.assertLen(core_model.output, 2)
     # shape should be [batch size, None, hidden_size]
-    self.assertEqual(core_model.output[0].shape.as_list(), [None, None, 16])
+    self.assertEqual(core_model.output[0].shape, [None, None, 16])
     # shape should be [batch size, hidden_size]
-    self.assertEqual(core_model.output[1].shape.as_list(), [None, 16])
+    self.assertEqual(core_model.output[1].shape, [None, 16])
 
   def test_classifier_model(self):
     model, core_model = bert_models.classifier_model(
@@ -91,15 +91,15 @@ class BertModelsTest(tf.test.TestCase):
     self.assertIsInstance(core_model, tf.keras.Model)
 
     # model has one classification output with num_labels=3.
-    self.assertEqual(model.output.shape.as_list(), [None, 3])
+    self.assertEqual(model.output.shape, [None, 3])
 
     # Expect two output from core_model: sequence and classification output.
     self.assertIsInstance(core_model.output, list)
     self.assertLen(core_model.output, 2)
     # shape should be [batch size, None, hidden_size]
-    self.assertEqual(core_model.output[0].shape.as_list(), [None, None, 16])
+    self.assertEqual(core_model.output[0].shape, [None, None, 16])
     # shape should be [batch size, hidden_size]
-    self.assertEqual(core_model.output[1].shape.as_list(), [None, 16])
+    self.assertEqual(core_model.output[1].shape, [None, 16])
 
 
 if __name__ == '__main__':

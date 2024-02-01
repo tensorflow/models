@@ -102,7 +102,7 @@ class DefaultNBitQuantizeConfigTest(tf.test.TestCase, _TestHelper):
   def testSetsQuantizeWeights(self):
     layer = self._simple_dense_layer()
     quantize_kernel = tf.keras.backend.variable(
-        np.ones(layer.kernel.shape.as_list()))
+        np.ones(layer.kernel.shape))
     num_bits_weight = 4
     num_bits_activation = 4
 
@@ -127,7 +127,7 @@ class DefaultNBitQuantizeConfigTest(tf.test.TestCase, _TestHelper):
   def testSetsQuantizeWeights_ErrorOnWrongNumberOfWeights(self):
     layer = self._simple_dense_layer()
     quantize_kernel = tf.keras.backend.variable(
-        np.ones(layer.kernel.shape.as_list()))
+        np.ones(layer.kernel.shape))
     num_bits_weight = 4
     num_bits_activation = 4
 

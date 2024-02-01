@@ -101,9 +101,9 @@ class ExportModelTest(tf.test.TestCase):
     input_mask = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
     input_type_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
     outputs = hub_layer([input_word_ids, input_mask, input_type_ids])
-    self.assertEqual(outputs["pooled_output"].shape.as_list(),
+    self.assertEqual(outputs["pooled_output"].shape,
                      [None, hidden_size])
-    self.assertEqual(outputs["sequence_output"].shape.as_list(),
+    self.assertEqual(outputs["sequence_output"].shape,
                      [None, seq_length, hidden_size])
 
 

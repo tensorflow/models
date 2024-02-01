@@ -52,7 +52,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertAllEqual([
         2, expected_shape * upsample_factor, expected_shape * upsample_factor, 5
-    ], features.shape.as_list())
+    ], features.shape)
 
   @parameterized.parameters(
       (None, []),
@@ -89,7 +89,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     feats = network(endpoints)
 
     self.assertAllEqual([2, input_size, input_size, num_filters],
-                        feats.shape.as_list())
+                        feats.shape)
 
   @parameterized.parameters(False, True)
   def test_bnorm_wrapper_creation(self, use_sync_bn):
@@ -126,7 +126,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     scores = head(inputs)
-    self.assertAllEqual(scores.shape.as_list(), [None, 2])
+    self.assertAllEqual(scores.shape, [None, 2])
 
 
 if __name__ == '__main__':

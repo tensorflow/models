@@ -100,7 +100,7 @@ def frame_pooling(frames, method="average", num_frames=None):
   """
   frame_mask = None
   if num_frames is not None:
-    max_frames = frames.shape.as_list()[1]
+    max_frames = frames.shape[1]
     # Generate binary mask from number of frames.
     frame_mask = tf.sequence_mask(num_frames, max_frames, frames.dtype)
     frame_mask = tf.expand_dims(frame_mask, axis=2)
@@ -129,7 +129,7 @@ def frame_pooling(frames, method="average", num_frames=None):
     # fail.
     reduced = frame_swap(frames, frame_mask)
   elif method == "none":
-    feature_size = frames.shape.as_list()[2]
+    feature_size = frames.shape[2]
     reduced = tf.reshape(frames, [-1, feature_size])
   else:
     raise ValueError("Unrecognized pooling method: %s" % method)

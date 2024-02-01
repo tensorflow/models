@@ -267,7 +267,7 @@ class Attention(tf.keras.layers.Layer):
         h_axis = 0
 
       if self.scale_ratio is not None:
-        src_shape = self.relative_bias.shape.as_list()
+        src_shape = self.relative_bias.shape
         relative_bias = tf.expand_dims(self.relative_bias, axis=-1)
         relative_bias = tf.image.resize(
             relative_bias, [2 * self._feat_height - 1, 2 * self._feat_width - 1]
@@ -275,7 +275,7 @@ class Attention(tf.keras.layers.Layer):
         relative_bias = tf.cast(
             tf.squeeze(relative_bias, axis=-1), self.compute_dtype
         )
-        tgt_shape = relative_bias.shape.as_list()
+        tgt_shape = relative_bias.shape
         logging.info(
             'Bilinear resize relative position bias %s -> %s.',
             src_shape,

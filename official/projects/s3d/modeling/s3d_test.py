@@ -65,7 +65,7 @@ class S3dTest(parameterized.TestCase, tf.test.TestCase):
 
     output_shapes = dict()
     for end_point, output_tensor in endpoints.items():
-      output_shapes[end_point] = output_tensor.shape.as_list()
+      output_shapes[end_point] = output_tensor.shape
     self.assertDictEqual(output_shapes, expected_shapes)
 
   def test_serialize_deserialize(self):

@@ -35,7 +35,7 @@ class ClassificationTest(tf.test.TestCase, parameterized.TestCase):
 
     # Validate that the outputs are of the expected shape.
     expected_output_shape = [None, num_classes]
-    self.assertEqual(expected_output_shape, output.shape.as_list())
+    self.assertEqual(expected_output_shape, output.shape)
 
   @parameterized.parameters(1, 10)
   def test_network_invocation(self, num_classes):

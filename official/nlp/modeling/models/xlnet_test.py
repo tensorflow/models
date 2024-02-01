@@ -88,7 +88,7 @@ class XLNetPretrainerTest(tf.test.TestCase):
 
     # [None, hidden_size, vocab_size]
     expected_output_shape = [None, 4, 100]
-    self.assertAllEqual(expected_output_shape, logits.shape.as_list())
+    self.assertAllEqual(expected_output_shape, logits.shape)
 
   def test_xlnet_tensor_call(self):
     """Validates that the Keras object can be invoked."""
@@ -170,7 +170,7 @@ class XLNetClassifierTest(tf.test.TestCase, parameterized.TestCase):
     logits = xlnet_trainer_model(inputs)
 
     expected_classification_shape = [None, num_classes]
-    self.assertAllEqual(expected_classification_shape, logits.shape.as_list())
+    self.assertAllEqual(expected_classification_shape, logits.shape)
 
   @parameterized.parameters(1, 2)
   def test_xlnet_tensor_call(self, num_classes):

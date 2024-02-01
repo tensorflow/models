@@ -116,8 +116,8 @@ class ContextGate(tf.keras.layers.Layer):
       )
 
   def call(self, inputs: tf.Tensor):
-    num_dimensions = len(inputs.shape.as_list())
-    feature_size = inputs.shape.as_list()[-1]
+    num_dimensions = len(inputs.shape)
+    feature_size = inputs.shape[-1]
 
     if self._pooling_method:
       assert num_dimensions > 2

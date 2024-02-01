@@ -75,7 +75,7 @@ class AssembleNetPlusTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     outputs = model(inputs)
-    self.assertAllEqual(outputs.shape.as_list(), [batch_size, num_classes])
+    self.assertAllEqual(outputs.shape, [batch_size, num_classes])
 
 
 if __name__ == '__main__':

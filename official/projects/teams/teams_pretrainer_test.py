@@ -109,15 +109,15 @@ class TeamsPretrainerTest(tf.test.TestCase):
         None, num_token_predictions, candidate_size
     ]
     expected_disc_disc_mws_label_shape = [None, num_token_predictions]
-    self.assertAllEqual(expected_lm_shape, lm_outs.shape.as_list())
+    self.assertAllEqual(expected_lm_shape, lm_outs.shape)
     self.assertAllEqual(expected_disc_rtd_logits_shape,
-                        disc_rtd_logits.shape.as_list())
+                        disc_rtd_logits.shape)
     self.assertAllEqual(expected_disc_rtd_label_shape,
-                        disc_rtd_label.shape.as_list())
+                        disc_rtd_label.shape)
     self.assertAllEqual(expected_disc_disc_mws_logits_shape,
-                        disc_mws_logits.shape.as_list())
+                        disc_mws_logits.shape)
     self.assertAllEqual(expected_disc_disc_mws_label_shape,
-                        disc_mws_label.shape.as_list())
+                        disc_mws_label.shape)
 
   def test_teams_trainer_tensor_call(self):
     """Validate that the Keras object can be invoked."""

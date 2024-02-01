@@ -86,7 +86,7 @@ def multi_crop_image(frames: tf.Tensor,
     with the cropped images.
   """
   shape = tf.shape(frames)
-  static_shape = frames.shape.as_list()
+  static_shape = frames.shape
   seq_len = shape[0] if static_shape[0] is None else static_shape[0]
   height = shape[1] if static_shape[1] is None else static_shape[1]
   width = shape[2] if static_shape[2] is None else static_shape[2]
@@ -188,7 +188,7 @@ def resize_and_crop(
   image_size = tf.cast(shape[1:3], tf.float32)
   # If a static_shape is available (e.g. when using this method from add_image
   # method), it will be used to have an output tensor with static shape.
-  static_shape = frames.shape.as_list()
+  static_shape = frames.shape
   seq_len = shape[0] if static_shape[0] is None else static_shape[0]
   channels = shape[3] if static_shape[3] is None else static_shape[3]
   size = tf.convert_to_tensor(value=(seq_len, crop_size, crop_size, channels))

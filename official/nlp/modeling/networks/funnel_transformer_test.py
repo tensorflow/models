@@ -92,8 +92,8 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
       expected_data_shape = [None, 2, hidden_size]
     expected_pooled_shape = [None, hidden_size]
 
-    self.assertAllEqual(expected_data_shape, data.shape.as_list())
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+    self.assertAllEqual(expected_data_shape, data.shape)
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
     # The default output dtype is float32.
     # If float_dtype is set to float16, the data output is float32 (from a layer
@@ -152,8 +152,8 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     expected_data_shape = [None, 3, hidden_size]
     expected_pooled_shape = [None, hidden_size]
 
-    self.assertAllEqual(expected_data_shape, data.shape.as_list())
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+    self.assertAllEqual(expected_data_shape, data.shape)
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
   @parameterized.named_parameters(
       ("frac_pool_rezero", "ReZeroTransformer"),
@@ -183,7 +183,7 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
 
     expected_data_shape = [None, 4, hidden_size]
 
-    self.assertAllEqual(expected_data_shape, data.shape.as_list())
+    self.assertAllEqual(expected_data_shape, data.shape)
 
   def test_invalid_stride_and_num_layers(self):
     hidden_size = 32
@@ -237,8 +237,8 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
       expected_data_shape[1] = unpool_length + (
           expected_data_shape[1] + layer_pool_stride - 1 -
           unpool_length) // layer_pool_stride
-      self.assertAllEqual(expected_data_shape, data.shape.as_list())
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+      self.assertAllEqual(expected_data_shape, data.shape)
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)
@@ -367,7 +367,7 @@ class FunnelTransformerEncoderTest(parameterized.TestCase, tf.test.TestCase):
     pooled = dict_outputs["pooled_output"]
 
     expected_pooled_shape = [None, hidden_size]
-    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+    self.assertAllEqual(expected_pooled_shape, pooled.shape)
 
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)

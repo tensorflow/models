@@ -24,7 +24,7 @@ from official.vision.modeling.layers import roi_aligner
 
 def _get_shape(x):
   """Helper function to return shape of a given tensor."""
-  static = x.shape.as_list()
+  static = x.shape
   dynamic = tf.shape(x)
   return [dynamic[i] if s is None else s for i, s in enumerate(static)]
 

@@ -84,7 +84,7 @@ class ClassificationLossTest(tf.test.TestCase):
     # Total loss data should have one value, and that value shouldn't be zero
     # in this case (as we're using random data).
     expected_shape = []  # Scalar
-    self.assertEqual(expected_shape, per_example_loss_data.shape.as_list())
+    self.assertEqual(expected_shape, per_example_loss_data.shape)
     self.assertNotAllClose(
         tf.zeros_like(per_example_loss_data), per_example_loss_data)
 

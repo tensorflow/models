@@ -98,7 +98,7 @@ class BoxMatcher:
       squeeze_result = True
       similarity_matrix = tf.expand_dims(similarity_matrix, axis=0)
 
-    static_shape = similarity_matrix.shape.as_list()
+    static_shape = similarity_matrix.shape
     num_rows = static_shape[1] or tf.shape(similarity_matrix)[1]
     batch_size = static_shape[0] or tf.shape(similarity_matrix)[0]
 
@@ -174,7 +174,7 @@ class BoxMatcher:
 
         return matched_columns, match_indicators
 
-    num_gt_boxes = similarity_matrix.shape.as_list()[-1] or tf.shape(
+    num_gt_boxes = similarity_matrix.shape[-1] or tf.shape(
         similarity_matrix)[-1]
     matched_columns, match_indicators = tf.cond(
         pred=tf.greater(num_gt_boxes, 0),

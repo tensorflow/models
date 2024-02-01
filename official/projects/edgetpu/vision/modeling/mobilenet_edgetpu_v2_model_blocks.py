@@ -1105,7 +1105,7 @@ def mobilenet_edgetpu_v2(image_input: tf.keras.layers.Input,
       name='top')
 
   # Build classifier
-  pool_size = (x.shape.as_list()[1], x.shape.as_list()[2])
+  pool_size = (x.shape[1], x.shape[2])
   x = tf.keras.layers.AveragePooling2D(pool_size, name='top_pool')(x)
   if dropout_rate and dropout_rate > 0:
     x = tf.keras.layers.Dropout(dropout_rate, name='top_dropout')(x)

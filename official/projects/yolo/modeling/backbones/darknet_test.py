@@ -46,25 +46,25 @@ class DarknetTest(parameterized.TestCase, tf.test.TestCase):
     if dilate:
       self.assertAllEqual([
           1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
-      ], endpoints['3'].shape.as_list())
+      ], endpoints['3'].shape)
       self.assertAllEqual([
           1, input_size / 2**3, input_size / 2**3, 256 * endpoint_filter_scale
-      ], endpoints['4'].shape.as_list())
+      ], endpoints['4'].shape)
       self.assertAllEqual([
           1, input_size / 2**3, input_size / 2**3,
           512 * endpoint_filter_scale * scale_final
-      ], endpoints['5'].shape.as_list())
+      ], endpoints['5'].shape)
     else:
       self.assertAllEqual([
           1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
-      ], endpoints['3'].shape.as_list())
+      ], endpoints['3'].shape)
       self.assertAllEqual([
           1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale
-      ], endpoints['4'].shape.as_list())
+      ], endpoints['4'].shape)
       self.assertAllEqual([
           1, input_size / 2**5, input_size / 2**5,
           512 * endpoint_filter_scale * scale_final
-      ], endpoints['5'].shape.as_list())
+      ], endpoints['5'].shape)
 
   @combinations.generate(
       combinations.combine(

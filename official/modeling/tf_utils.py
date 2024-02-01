@@ -155,7 +155,7 @@ def get_shape_list(tensor, expected_rank=None, name=None):
   if expected_rank is not None:
     assert_rank(tensor, expected_rank, name)
 
-  shape = tensor.shape.as_list()
+  shape = tensor.shape
 
   non_static_indexes = []
   for (index, dim) in enumerate(shape):
@@ -278,7 +278,7 @@ def cross_replica_concat(value, axis, name="cross_replica_concat"):
     # dataset with finite epochs and drop_remainder=False, where the last
     # batch could of different batch size and then the dim-0 is of dynamic
     # shape.
-    if value.shape.as_list()[0] is None:
+    if value.shape[0] is None:
       raise RuntimeError(f"{value} has unknown batch.")
     return context.all_gather(value, axis=axis)
 

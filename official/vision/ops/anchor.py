@@ -398,7 +398,7 @@ class RpnAnchorLabeler(AnchorLabeler):
     box_targets = self.box_coder.encode(box_targets_list, anchor_box_list)
 
     # Zero out the unmatched and ignored regression targets.
-    num_matches = match_indices.shape.as_list()[0] or tf.shape(match_indices)[0]
+    num_matches = match_indices.shape[0] or tf.shape(match_indices)[0]
     unmatched_ignored_box_targets = tf.zeros([num_matches, 4], dtype=tf.float32)
     matched_anchors_mask = tf.greater_equal(match_indicators, 0)
     # To broadcast matched_anchors_mask to the same shape as
@@ -466,7 +466,7 @@ def unpack_targets(
   unpacked_targets = collections.OrderedDict()
   count = 0
   for level, anchor_boxes in anchor_boxes_dict.items():
-    feat_size_shape = anchor_boxes.shape.as_list()
+    feat_size_shape = anchor_boxes.shape
     feat_size_y = feat_size_shape[0]
     feat_size_x = feat_size_shape[1]
     anchors_per_location = int(feat_size_shape[2] / 4)

@@ -84,7 +84,7 @@ class BertPretrainer(tf.keras.Model):
       sequence_output = sequence_output[-1]
     if isinstance(cls_output, list):
       cls_output = cls_output[-1]
-    sequence_output_length = sequence_output.shape.as_list()[1]
+    sequence_output_length = sequence_output.shape[1]
     if sequence_output_length is not None and (sequence_output_length <
                                                num_token_predictions):
       raise ValueError(

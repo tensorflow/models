@@ -114,7 +114,7 @@ class TransformerLayersTest(tf.test.TestCase):
                                    name="logits")
     targets = tf.keras.layers.Input((None,), dtype="int64", name="targets")
     output_logits = metrics.MetricLayer(vocab_size)([logits, targets])
-    self.assertEqual(output_logits.shape.as_list(), [
+    self.assertEqual(output_logits.shape, [
         None,
         None,
         vocab_size,

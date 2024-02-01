@@ -85,7 +85,7 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
 
     # Validate that the outputs are of the expected shape.
     expected_classification_shape = [None, num_classes]
-    self.assertAllEqual(expected_classification_shape, cls_outs.shape.as_list())
+    self.assertAllEqual(expected_classification_shape, cls_outs.shape)
 
   @parameterized.named_parameters(
       ('single_cls', 1, False),

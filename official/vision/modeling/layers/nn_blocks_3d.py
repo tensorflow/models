@@ -253,7 +253,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs, training=None):
-    in_filters = inputs.shape.as_list()[-1]
+    in_filters = inputs.shape[-1]
     if in_filters == 4 * self._filters:
       if self._temporal_strides == 1 and self._spatial_strides == 1:
         shortcut = inputs

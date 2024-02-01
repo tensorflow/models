@@ -34,8 +34,8 @@ class SpanLabelingTest(tf.test.TestCase):
 
     # Validate that the outputs are of the expected shape.
     expected_output_shape = [None, sequence_length]
-    self.assertEqual(expected_output_shape, start_outputs.shape.as_list())
-    self.assertEqual(expected_output_shape, end_outputs.shape.as_list())
+    self.assertEqual(expected_output_shape, start_outputs.shape)
+    self.assertEqual(expected_output_shape, end_outputs.shape)
 
   def test_network_invocation(self):
     """Validate that the Keras object can be invoked."""
