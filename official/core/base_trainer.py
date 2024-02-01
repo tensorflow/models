@@ -204,7 +204,6 @@ class Trainer(_AsyncTrainer):
     self._checkpoint = tf.train.Checkpoint(
         global_step=self.global_step,
         model=self.model,
-        optimizer=self.optimizer,
         **checkpoint_items)
 
     self._train_loss = tf.keras.metrics.Mean("training_loss", dtype=tf.float32)
