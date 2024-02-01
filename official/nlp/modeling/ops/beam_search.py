@@ -482,7 +482,7 @@ class SequenceBeamSearch(tf.Module):
           _StateKeys.ALIVE_LOG_PROBS:
               tf.TensorShape([batch_size, self.beam_size]),
           _StateKeys.ALIVE_CACHE:
-              tf.nest.map_structure(lambda state: state.get_shape(),
+              tf.nest.map_structure(lambda state: state.shape,
                                     alive_cache),
           _StateKeys.FINISHED_SEQ:
               tf.TensorShape(

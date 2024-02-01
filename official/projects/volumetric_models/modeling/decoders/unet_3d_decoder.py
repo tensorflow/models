@@ -127,7 +127,7 @@ class UNet3DDecoder(tf.keras.Model):
               x)
 
     feats = {'1': x}
-    self._output_specs = {l: feats[l].get_shape() for l in feats}
+    self._output_specs = {l: feats[l].shape for l in feats}
 
     super(UNet3DDecoder, self).__init__(inputs=inputs, outputs=feats, **kwargs)
 

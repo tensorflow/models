@@ -157,7 +157,7 @@ class ResNet3D(tf.keras.Model):
     # Build ResNet3D backbone.
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
     endpoints = self._build_model(inputs)
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
 
     super(ResNet3D, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 

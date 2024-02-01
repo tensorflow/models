@@ -91,7 +91,7 @@ class Backbone(tf.keras.Model):
     for level in range(min_level, max_level + 1):
       endpoints[str(level)] = net[level]
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     super(Backbone, self).__init__(inputs=inputs, outputs=endpoints)
 
   def _block_group(self,

@@ -90,7 +90,7 @@ def jitter_boxes(boxes, noise_scale=0.025):
         boxes.shape[-1]))
 
   with tf.name_scope('jitter_boxes'):
-    bbox_jitters = tf.random.normal(boxes.get_shape(), stddev=noise_scale)
+    bbox_jitters = tf.random.normal(boxes.shape, stddev=noise_scale)
     ymin = boxes[..., 0:1]
     xmin = boxes[..., 1:2]
     ymax = boxes[..., 2:3]

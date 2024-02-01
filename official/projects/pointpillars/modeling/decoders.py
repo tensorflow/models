@@ -90,7 +90,7 @@ class Decoder(tf.keras.Model):
     endpoints = {}
     endpoints[str(output_level)] = tf.keras.layers.Concatenate(axis=-1)(feats)
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     super(Decoder, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
   def get_config(self) -> Mapping[str, Any]:

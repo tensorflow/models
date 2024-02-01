@@ -70,7 +70,7 @@ class GroupConv2DTest(tf.test.TestCase, parameterized.TestCase):
                                int(output_channel / groups))
                               for _ in range(groups)]
     kernel_shapes = [
-        l.trainable_weights[i].get_shape()
+        l.trainable_weights[i].shape
         for i in range(len(l.trainable_weights))
     ]
     self.assertListEqual(kernel_shapes, expected_kernel_shapes)

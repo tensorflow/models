@@ -58,7 +58,7 @@ def mean_image_subtraction(
       than three or if the number of channels in `image` doesn't match the
       number of values in `means`.
   """
-  if image_bytes.get_shape().ndims != 3:
+  if image_bytes.shape.ndims != 3:
     raise ValueError('Input must be of size [height, width, C>0]')
 
   if len(means) != num_channels:
@@ -102,7 +102,7 @@ def standardize_image(
       than three or if the number of channels in `image` doesn't match the
       number of values in `stddev`.
   """
-  if image_bytes.get_shape().ndims != 3:
+  if image_bytes.shape.ndims != 3:
     raise ValueError('Input must be of size [height, width, C>0]')
 
   if len(stddev) != num_channels:

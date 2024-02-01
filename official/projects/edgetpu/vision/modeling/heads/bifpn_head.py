@@ -183,7 +183,7 @@ def resize(feat,
            method='bilinear'):
   """Resizes the spitial dimensions."""
   dtype = feat.dtype
-  feat_shape = feat.get_shape()
+  feat_shape = feat.shape
   if method == 'bilinear':
     if strategy == 'tpu' and training:
       if dtype == tf.bfloat16:

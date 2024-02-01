@@ -223,7 +223,7 @@ class SpineNet(tf.keras.Model):
     net = self._build_scale_permuted_network(net=net, input_width=input_width)
     endpoints = self._build_endpoints(net=net)
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     super(SpineNet, self).__init__(inputs=inputs, outputs=endpoints)
 
   def _set_activation_fn(self, activation):

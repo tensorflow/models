@@ -378,7 +378,7 @@ class PanopticFPNFusion(tf.keras.Model):
       upscaled_features.append(x)
 
     fused_features = tf.math.add_n(upscaled_features)
-    self._output_specs = {str(target_level): fused_features.get_shape()}
+    self._output_specs = {str(target_level): fused_features.shape}
 
     super(PanopticFPNFusion, self).__init__(
         inputs=inputs, outputs=fused_features, **kwargs)

@@ -81,12 +81,12 @@ class DiceScore:
       ValueError: If number of classes from groundtruth label does not equal to
         `num_classes`.
     """
-    if self._num_classes != y_true.get_shape()[-1]:
+    if self._num_classes != y_true.shape[-1]:
       raise ValueError(
           'The number of classes from groundtruth labels and `num_classes` '
           'should equal, but they are {0} and {1}.'.format(
               self._num_classes,
-              y_true.get_shape()[-1]))
+              y_true.shape[-1]))
 
     # If both y_pred and y_true are all 0s, we skip computing the metrics;
     # otherwise the averaged metrics will be erroneously lower.

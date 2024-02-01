@@ -494,7 +494,7 @@ class Darknet(tf.keras.Model):
             config.output_name <= self._max_size):
         endpoints[str(config.output_name)] = x
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints.keys()}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints.keys()}
     return endpoints
 
   def _get_activation(self, activation):

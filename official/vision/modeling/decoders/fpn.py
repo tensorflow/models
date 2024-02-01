@@ -187,7 +187,7 @@ class FPN(tf.keras.Model):
               feats[str(level)])
 
     self._output_specs = {
-        str(level): feats[str(level)].get_shape()
+        str(level): feats[str(level)].shape
         for level in range(min_level, max_level + 1)
     }
 

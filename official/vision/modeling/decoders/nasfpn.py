@@ -170,7 +170,7 @@ class NASFPN(tf.keras.Model):
                for level in range(self._min_level, self._max_level + 1)]
 
     self._output_specs = {
-        str(level): output_feats[level].get_shape()
+        str(level): output_feats[level].shape
         for level in range(min_level, max_level + 1)
     }
     output_feats = {str(level): output_feats[level]

@@ -725,7 +725,7 @@ class MobileNet(tf.keras.Model):
 
     x, endpoints, next_endpoint_level = self._mobilenet_base(inputs=inputs)
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     # Don't include the final layer in `self._output_specs` to support decoders.
     endpoints[str(next_endpoint_level)] = x
 

@@ -120,5 +120,5 @@ def stateless_dropout(x: tf.Tensor,
     keep_mask = random_tensor >= rate
     ret = x * scale * tf.cast(keep_mask, x.dtype)
     if not tf.executing_eagerly():
-      ret.set_shape(x.get_shape())
+      ret.set_shape(x.shape)
     return ret

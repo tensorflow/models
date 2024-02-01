@@ -123,7 +123,7 @@ class UNet3D(tf.keras.Model):
         x = x2
       endpoints[str(layer_depth + 1)] = x2
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
 
     super(UNet3D, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 

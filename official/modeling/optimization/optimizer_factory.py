@@ -29,30 +29,26 @@ from official.modeling.optimization.configs import optimization_config as opt_cf
 
 # Optimizer CLS to be used in both legacy and new path.
 SHARED_OPTIMIZERS = {
-    'sgd_experimental': tf.keras.optimizers.SGD,
-    'adam_experimental': tf.keras.optimizers.Adam,
-    'adamw': legacy_adamw.AdamWeightDecay,
-    'adamw_experimental': tf.keras.optimizers.AdamW,
     'lamb': lamb.LAMB,
     'lars': lars.LARS,
     'slide': slide_optimizer.SLIDE,
-    'adafactor': adafactor_optimizer.Adafactor,
-    'adafactor_keras': tf.keras.optimizers.Adafactor,
 }
 
-LEGACY_OPTIMIZERS_CLS = {
-    'sgd': tf.keras.optimizers.legacy.SGD,
-    'adam': tf.keras.optimizers.legacy.Adam,
-    'rmsprop': tf.keras.optimizers.legacy.RMSprop,
-    'adagrad': tf.keras.optimizers.legacy.Adagrad,
-}
-LEGACY_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
+# LEGACY_OPTIMIZERS_CLS = {
+#     'sgd': tf.keras.optimizers.legacy.SGD,
+#     'adam': tf.keras.optimizers.legacy.Adam,
+#     'rmsprop': tf.keras.optimizers.legacy.RMSprop,
+#     'adagrad': tf.keras.optimizers.legacy.Adagrad,
+# }
+# LEGACY_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
 NEW_OPTIMIZERS_CLS = {
     'sgd': tf.keras.optimizers.SGD,
     'adam': tf.keras.optimizers.Adam,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'adagrad': tf.keras.optimizers.Adagrad,
+    'adafactor_keras': tf.keras.optimizers.Adafactor,
+    'adamw': tf.keras.optimizers.AdamW,
 }
 NEW_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
@@ -90,14 +86,14 @@ def register_optimizer_cls(key: str,
     optimizer_config_cls: A class which inherits tf.keras.optimizers.Optimizer.
     use_legacy_optimizer: A boolean that indicates if using legacy optimizers.
   """
-  if use_legacy_optimizer:
-    if key in LEGACY_OPTIMIZERS_CLS:
-      raise ValueError('%s already registered in LEGACY_OPTIMIZERS_CLS.' % key)
-    LEGACY_OPTIMIZERS_CLS[key] = optimizer_config_cls
-  else:
-    if key in NEW_OPTIMIZERS_CLS:
-      raise ValueError('%s already registered in NEW_OPTIMIZERS_CLS.' % key)
-    NEW_OPTIMIZERS_CLS[key] = optimizer_config_cls
+  # if use_legacy_optimizer:
+  #   if key in LEGACY_OPTIMIZERS_CLS:
+  #     raise ValueError('%s already registered in LEGACY_OPTIMIZERS_CLS.' % key)
+  #   LEGACY_OPTIMIZERS_CLS[key] = optimizer_config_cls
+  # else:
+  if key in NEW_OPTIMIZERS_CLS:
+    raise ValueError('%s already registered in NEW_OPTIMIZERS_CLS.' % key)
+  NEW_OPTIMIZERS_CLS[key] = optimizer_config_cls
 
 
 class OptimizerFactory:
@@ -234,15 +230,15 @@ class OptimizerFactory:
     if gradient_transformers is not None:
       optimizer_dict['gradient_transformers'] = gradient_transformers
 
-    if use_legacy_optimizer:
-      optimizer = LEGACY_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
-    else:
-      if 'decay' in optimizer_dict:
-        raise ValueError(
-            '`decay` is deprecated in new Keras optimizer, please reflect the '
-            'decay logic in `lr` or set `use_legacy_optimizer=True` to use the '
-            'legacy optimizer.')
-      optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
+    # if use_legacy_optimizer:
+    #   optimizer = LEGACY_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
+    # else:
+    if 'decay' in optimizer_dict:
+      raise ValueError(
+          '`decay` is deprecated in new Keras optimizer, please reflect the '
+          'decay logic in `lr` or set `use_legacy_optimizer=True` to use the '
+          'legacy optimizer.')
+    optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
 
     if self._use_ema:
       if not use_legacy_optimizer:

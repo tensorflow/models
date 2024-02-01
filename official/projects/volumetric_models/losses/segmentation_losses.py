@@ -62,7 +62,7 @@ class SegmentationLossDiceScore(object):
     """
     labels = tf.cast(labels, logits.dtype)
 
-    if labels.get_shape().ndims < 2 or logits.get_shape().ndims < 2:
+    if labels.shape.ndims < 2 or logits.shape.ndims < 2:
       raise ValueError('The labels and logits must be at least rank 2.')
 
     epsilon = tf.keras.backend.epsilon()

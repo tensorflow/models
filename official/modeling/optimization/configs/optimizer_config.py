@@ -49,7 +49,6 @@ class SGDConfig(BaseOptimizerConfig):
     momentum: momentum for SGD optimizer.
   """
   name: str = "SGD"
-  decay: float = 0.0
   nesterov: bool = False
   momentum: float = 0.0
 

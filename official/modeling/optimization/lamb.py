@@ -27,7 +27,7 @@ FloatTensorLike = Union[tf.Tensor, float, np.float16, np.float32]
 
 
 @tf.keras.utils.register_keras_serializable(package="Addons")
-class LAMB(tf.keras.optimizers.legacy.Optimizer):
+class LAMB(tf.keras.optimizers.Optimizer):
   """Optimizer that implements the Layer-wise Adaptive Moments (LAMB).
 
   See paper [Large Batch Optimization for Deep Learning: Training BERT

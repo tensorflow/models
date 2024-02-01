@@ -390,7 +390,7 @@ class YoloV7(tf.keras.Model):
       if is_output:
         endpoints[str(level)] = x
         level += 1
-    self._output_specs = {k: v.get_shape() for k, v in endpoints.items()}
+    self._output_specs = {k: v.shape for k, v in endpoints.items()}
     super().__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
   def _generate_inputs(self, input_specs):

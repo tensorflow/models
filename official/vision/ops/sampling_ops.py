@@ -339,10 +339,10 @@ class BalancedPositiveNegativeSampler:
     """
     if len(indicator.shape) != 1:
       raise ValueError('indicator must be 1 dimensional, got a tensor of '
-                       'shape %s' % indicator.get_shape())
+                       'shape %s' % indicator.shape)
     if len(labels.shape) != 1:
       raise ValueError('labels must be 1 dimensional, got a tensor of '
-                       'shape %s' % labels.get_shape())
+                       'shape %s' % labels.shape)
     if labels.dtype != tf.bool:
       raise ValueError('labels should be of type bool. Received: %s' %
                        labels.dtype)

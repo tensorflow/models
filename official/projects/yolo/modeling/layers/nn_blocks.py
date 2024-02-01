@@ -201,7 +201,7 @@ class ConvBN(tf.keras.layers.Layer):
       w_conv = tf.reshape(w_conv_base, [conv_weights.shape[-1], -1])
 
       w_bn = tf.linalg.diag(gamma / base)
-      w_conv = tf.reshape(tf.matmul(w_bn, w_conv), w_conv_base.get_shape())
+      w_conv = tf.reshape(tf.matmul(w_bn, w_conv), w_conv_base.shape)
       w_conv = tf.transpose(w_conv, perm=(2, 3, 1, 0))
 
       b_bn = beta - gamma * moving_mean / base

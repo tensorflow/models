@@ -806,7 +806,7 @@ class MaxViT(tf.keras.Model):
       )
 
     self._output_specs = {
-        idx: endpoint.get_shape() for idx, endpoint in endpoints.items()
+        idx: endpoint.shape for idx, endpoint in endpoints.items()
     }
 
     if self._representation_size and self._representation_size > 0:

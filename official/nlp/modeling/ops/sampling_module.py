@@ -313,7 +313,7 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
           decoding_module.StateKeys.ALIVE_LOG_PROBS:
               tf.TensorShape([batch_size, 1]),
           decoding_module.StateKeys.ALIVE_CACHE:
-              tf.nest.map_structure(lambda state: state.get_shape(),
+              tf.nest.map_structure(lambda state: state.shape,
                                     alive_cache),
           decoding_module.StateKeys.FINISHED_SEQ:
               tf.TensorShape([batch_size, self.max_decode_length + 1]),
@@ -347,7 +347,7 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
       if self.padded_decode:
         state_shape_invariants.update({
             decoding_module.StateKeys.INITIAL_OUTPUT_CACHE:
-                tf.nest.map_structure(lambda state: state.get_shape(),
+                tf.nest.map_structure(lambda state: state.shape,
                                       alive_cache)
         })
       else:

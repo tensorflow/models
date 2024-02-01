@@ -120,7 +120,7 @@ def padded_sequence_accuracy(logits, labels):
     padded_labels = tf.cast(labels, tf.int32)
     not_correct = tf.cast(tf.not_equal(outputs, padded_labels),
                           tf.float32) * weights
-    axis = list(range(1, len(outputs.get_shape())))
+    axis = list(range(1, len(outputs.shape)))
     correct_seq = 1.0 - tf.minimum(1.0, tf.reduce_sum(not_correct, axis=axis))
     return correct_seq, tf.constant(1.0)
 

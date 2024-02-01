@@ -293,11 +293,11 @@ def _convert_translation_to_transform(translations: tf.Tensor) -> tf.Tensor:
 
   """
   translations = tf.convert_to_tensor(translations, dtype=tf.float32)
-  if translations.get_shape().ndims is None:
+  if translations.shape.ndims is None:
     raise TypeError('translations rank must be statically known')
-  elif len(translations.get_shape()) == 1:
+  elif len(translations.shape) == 1:
     translations = translations[None]
-  elif len(translations.get_shape()) != 2:
+  elif len(translations.shape) != 2:
     raise TypeError('translations should have rank 1 or 2.')
   num_translations = tf.shape(translations)[0]
 
@@ -333,9 +333,9 @@ def _convert_angles_to_transform(angles: tf.Tensor, image_width: tf.Tensor,
 
   """
   angles = tf.convert_to_tensor(angles, dtype=tf.float32)
-  if len(angles.get_shape()) == 0:  # pylint:disable=g-explicit-length-test
+  if len(angles.shape) == 0:  # pylint:disable=g-explicit-length-test
     angles = angles[None]
-  elif len(angles.get_shape()) != 1:
+  elif len(angles.shape) != 1:
     raise TypeError('Angles should have a rank 0 or 1.')
   x_offset = ((image_width - 1) -
               (tf.math.cos(angles) * (image_width - 1) - tf.math.sin(angles) *
@@ -419,7 +419,7 @@ def _apply_transform_to_images(
         output_shape, tf.int32, name='output_shape'
     )
 
-    if not output_shape.get_shape().is_compatible_with([2]):
+    if not output_shape.shape.is_compatible_with([2]):
       raise ValueError(
           'output_shape must be a 1-D Tensor of 2 elements: '
           'new_height, new_width, instead got '
@@ -1309,8 +1309,8 @@ def _apply_multi_bbox_augmentation(image, bboxes, prob, aug_func,
 
   _, (image, new_bboxes) = tf.while_loop(
       cond, body, [idx, (image, new_bboxes)],
-      shape_invariants=[idx.get_shape(),
-                        (image.get_shape(), tf.TensorShape([None, 4]))])
+      shape_invariants=[idx.shape,
+                        (image.shape, tf.TensorShape([None, 4]))])
 
   # Either return the altered bboxes or the original ones depending on if
   # we altered them in anyway.
