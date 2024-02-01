@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -162,9 +162,37 @@ class MobileBERTEncoder(tf_keras.Model):
         pooled_output=first_token,
         encoder_outputs=all_layer_outputs,
         attention_scores=all_attention_scores)
+    self._config = dict(
+        word_vocab_size=word_vocab_size,
+        word_embed_size=word_embed_size,
+        type_vocab_size=type_vocab_size,
+        max_sequence_length=max_sequence_length,
+        num_blocks=num_blocks,
+        hidden_size=hidden_size,
+        num_attention_heads=num_attention_heads,
+        intermediate_size=intermediate_size,
+        intermediate_act_fn=intermediate_act_fn,
+        hidden_dropout_prob=hidden_dropout_prob,
+        attention_probs_dropout_prob=attention_probs_dropout_prob,
+        intra_bottleneck_size=intra_bottleneck_size,
+        initializer_range=initializer_range,
+        use_bottleneck_attention=use_bottleneck_attention,
+        key_query_shared_bottleneck=key_query_shared_bottleneck,
+        num_feedforward_networks=num_feedforward_networks,
+        normalization_type=normalization_type,
+        classifier_activation=classifier_activation,
+        input_mask_dtype=input_mask_dtype,
+    )
 
     super().__init__(
         inputs=self.inputs, outputs=outputs, **kwargs)
+
+  def get_config(self):
+    return dict(self._config)
+
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
 
   def get_embedding_table(self):
     return self.embedding_layer.word_embedding.embeddings
