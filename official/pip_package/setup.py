@@ -38,12 +38,16 @@ if '--project_name' in sys.argv:
   sys.argv.pop(project_name_idx)
 
 
-def _get_requirements():
+def _get_requirements(is_nightly=False):
   """Parses requirements.txt file."""
   install_requires_tmp = []
   dependency_links_tmp = []
+  if is_nightly:
+    file_name = '../nightly_requirements.txt'
+  else:
+    file_name = '../requirements.txt'
   with open(
-      os.path.join(os.path.dirname(__file__), '../requirements.txt'), 'r') as f:
+      os.path.join(os.path.dirname(__file__), file_name), 'r') as f:
     for line in f:
       package_name = line.strip()
       # Skip empty line or comments starting with "#".
@@ -55,13 +59,13 @@ def _get_requirements():
         install_requires_tmp.append(package_name)
   return install_requires_tmp, dependency_links_tmp
 
-install_requires, dependency_links = _get_requirements()
-
 if project_name == 'tf-models-nightly':
+  install_requires, dependency_links = _get_requirements(is_nightly=True)
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
   install_requires.append('tf-nightly')
   install_requires.append('tensorflow-text-nightly')
 else:
+  install_requires, dependency_links = _get_requirements()
   install_requires.append(f'tensorflow~={tf_version}')
   install_requires.append(f'tensorflow-text~={tf_version}')
 
