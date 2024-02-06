@@ -14,7 +14,7 @@
 
 """Extract properties from each object mask and detect its color."""
 
-from typing import Annotated, Literal, TypeVar, Union
+from typing import Dict, List, Tuple, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -30,7 +30,8 @@ DType = TypeVar('DType', bound=np.generic)
 # Those values could be in different scales like
 # RGB ([0.0,255.0], [0.0,255.0], [0.0 to 255.0])
 # LAB ([0.0,100], [-128,127], [-128,127])
-NColor = Annotated[npt.NDArray[DType], Literal[3]][np.float64]
+# NColor = Annotated[npt.NDArray[DType], Literal[3]][np.float64]
+NColor = np.ndarray
 
 
 PROPERTIES = [
@@ -108,11 +109,11 @@ GENERIC_COLORS = [
 
 
 def extract_properties_and_object_masks(
-    final_result: dict[str, np.ndarray],
+    final_result: Dict[str, np.ndarray],
     height: int,
     width: int,
     original_image: np.ndarray,
-) -> tuple[list[pd.DataFrame], list[np.ndarray]]:
+) -> Tuple[List[pd.DataFrame], List[np.ndarray]]:
   """Extract specific properties from given detection masks.
 
   Properties that will be computed includes the area of the masks, bbox
@@ -163,7 +164,7 @@ def extract_properties_and_object_masks(
 
 def find_dominant_color(
     image: np.ndarray, black_threshold: int = 50
-) -> tuple[Union[int, str], Union[int, str], Union[int, str]]:
+) -> Tuple[Union[int, str], Union[int, str], Union[int, str]]:
   """Determines the dominant color in a given image.
 
   The function performs the following steps:
@@ -212,7 +213,7 @@ def color_difference(color1: int, color2: int) -> Union[float, int]:
   return (color1 - color2) ** 2
 
 
-def est_color(requested_color: tuple[int, int, int]) -> str:
+def est_color(requested_color: Tuple[int, int, int]) -> str:
   """Estimates the closest named color for a given RGB color.
 
   The function uses the Euclidean distance in the RGB space to find the closest
@@ -238,7 +239,7 @@ def est_color(requested_color: tuple[int, int, int]) -> str:
   return min_colors[min(min_colors.keys())]
 
 
-def get_color_name(rgb_color: tuple[int, int, int]) -> str | None:
+def get_color_name(rgb_color: Tuple[int, int, int]) -> str | None:
   """Retrieves the name of a given RGB color.
 
   If the RGB color exactly matches one of the CSS3 predefined colors, it returns
@@ -265,7 +266,7 @@ def get_color_name(rgb_color: tuple[int, int, int]) -> str | None:
     return None
 
 
-def rgb_int_to_lab(rgb_int_color: tuple[int, int, int]) -> NColor:
+def rgb_int_to_lab(rgb_int_color: Tuple[int, int, int]) -> NColor:
   """Convert RGB color to LAB color space.
 
   Args:
@@ -280,7 +281,7 @@ def rgb_int_to_lab(rgb_int_color: tuple[int, int, int]) -> NColor:
 
 
 def color_distance(
-    a: tuple[int, int, int], b: tuple[int, int, int]
+    a: Tuple[int, int, int], b: Tuple[int, int, int]
 ) -> np.ndarray:
   """The color distance following the ciede2000 formula.
 
@@ -297,8 +298,8 @@ def color_distance(
 
 
 def build_color_lab_list(
-    generic_colors: list[tuple[str, str]]
-) -> tuple[npt.NDArray[np.str_], list[NColor]]:
+    generic_colors: List[Tuple[str, str]]
+) -> Tuple[npt.NDArray[np.str_], List[NColor]]:
   """Get Simple colors names and lab values.
 
   Args:
@@ -326,9 +327,9 @@ def build_color_lab_list(
 
 
 def get_generic_color_name(
-    rgb_colors: list[tuple[int, int, int]],
-    generic_colors: list[tuple[str, str]] | None = None,
-) -> list[str]:
+    rgb_colors: List[Tuple[int, int, int]],
+    generic_colors: List[Tuple[str, str]] | None = None,
+) -> List[str]:
   """Retrieves generic names of given RGB colors.
 
   Estimates the closest matching color name.
