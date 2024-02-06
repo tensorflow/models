@@ -26,7 +26,7 @@ saves this annotated image.
 
 import os
 import sys
-from typing import Any
+from typing import Any, Dict
 import cv2
 import numpy as np
 
@@ -35,11 +35,11 @@ from object_detection.utils import visualization_utils as viz_utils  # pylint: d
 
 
 def save_bbox_masks_labels(
-    result: dict[Any, np.ndarray],
+    result: Dict[Any, np.ndarray],
     image: np.ndarray,
     file_name: str,
     folder: str,
-    category_index: dict[int, dict[str, str]],
+    category_index: Dict[int, Dict[str, str]],
     threshold: float,
 ) -> None:
   """Saves an image with visualized bounding boxes, labels, and masks.
@@ -86,7 +86,7 @@ def save_bbox_masks_labels(
 
 
 def save_binary_masks(
-    result: dict[Any, np.ndarray], file_name: str, folder: str
+    result: Dict[Any, np.ndarray], file_name: str, folder: str
 ) -> None:
   """Saves binary masks generated from object detection results.
 

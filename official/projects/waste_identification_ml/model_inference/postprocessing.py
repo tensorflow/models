@@ -28,7 +28,7 @@ the same object. The parent bounding boxes are removed in this step so that any
 object should not have more than a single bounding box. 
 """
 import copy
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional, TypedDict, Dict, Tuple, List
 import numpy as np
 import tensorflow as tf, tf_keras
 
@@ -128,8 +128,8 @@ def reframe_box_masks_to_image_masks(
 
 
 def reframing_masks(
-    results: dict[str, np.ndarray], height: int, width: int
-) -> dict[str, np.ndarray]:
+    results: Dict[str, np.ndarray], height: int, width: int
+) -> Dict[str, np.ndarray]:
   """Processes the output from Mask RCNN model to create a full size mask.
 
   Args:
@@ -155,7 +155,7 @@ def reframing_masks(
 
 
 def find_id_by_name(
-    dictionary: dict[int, ItemDict], name: str
+    dictionary: Dict[int, ItemDict], name: str
 ) -> Optional[int]:
   """Finds the id of a dictionary given its value.
 
@@ -178,9 +178,9 @@ def find_id_by_name(
 
 
 def combine_bounding_boxes(
-    box1: list[float],
-    box2: list[float],
-) -> list[float]:
+    box1: List[float],
+    box2: List[float],
+) -> List[float]:
   """Combines two bounding boxes.
 
   Args:
@@ -207,9 +207,9 @@ def calculate_combined_scores_boxes_classes(
     j: int,
     results_1: DetectionResult,
     results_2: DetectionResult,
-    category_indices: list[list[Any]],
-    category_index_combined: dict[int, ItemDict],
-) -> tuple[Any, list[float], Any, Optional[int]]:
+    category_indices: List[List[Any]],
+    category_index_combined: Dict[int, ItemDict],
+) -> Tuple[Any, List[float], Any, Optional[int]]:
   """Calculate combined scores, boxes, and classes for matched masks.
 
   Args:
@@ -249,9 +249,9 @@ def calculate_combined_scores_boxes_classes(
 def calculate_single_result(
     index: int,
     result: DetectionResult,
-    category_indices: list[list[Any]],
+    category_indices: List[List[Any]],
     flag: Any | str,
-) -> tuple[float, tuple[float, float, float, float], str]:
+) -> Tuple[float, Tuple[float, float, float, float], str]:
   """Calculate scores, boxes, and classes for non-matched masks.
 
   Args:
@@ -279,7 +279,7 @@ def calculate_single_result(
 
 def calculate_iou(
     mask1: np.ndarray, mask2: np.ndarray
-) -> tuple[float, np.ndarray]:
+) -> Tuple[float, np.ndarray]:
   """Calculates the intersection over union (IoU) score for two masks.
 
   Args:
@@ -305,11 +305,11 @@ def find_similar_masks(
     results_2: DetectionResult,
     num_detections: int,
     min_score_thresh: float,
-    category_indices: list[list[Any]],
-    category_index_combined: dict[int, ItemDict],
+    category_indices: List[List[Any]],
+    category_index_combined: Dict[int, ItemDict],
     area_threshold: float,
     iou_threshold: float = 0.8,
-) -> dict[str, np.ndarray]:
+) -> Dict[str, np.ndarray]:
   """Aligns the masks of the detections in `results_1` and `results_2`.
 
   Args:
@@ -437,10 +437,10 @@ def find_similar_masks(
 
 
 def filter_bounding_boxes(
-    bounding_boxes: list[tuple[int, int, int, int]],
+    bounding_boxes: List[Tuple[int, int, int, int]],
     iou_threshold: float = 0.5,
     area_ratio_threshold: float = 0.8,
-) -> tuple[list[tuple[int, int, int, int]], list[int]]:
+) -> Tuple[List[Tuple[int, int, int, int]], List[int]]:
   """Filters overlapping bounding boxes based on IoU and area ratio criteria.
 
   This function filters out overlapping bounding boxes from a given list based
