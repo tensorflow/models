@@ -587,7 +587,7 @@ class SequenceBeamSearch(tf.Module):
       Nested structure containing tensors with shape
         [batch_size, new_beam_size, ...]
     """
-    # Computes the i'th coodinate that contains the batch index for gather_nd.
+    # Computes the i'th coordinate that contains the batch index for gather_nd.
     # Batch pos is a tensor like [[0,0,0,0,],[1,1,1,1],..].
     batch_pos = tf.range(batch_size * new_beam_size) // new_beam_size
     batch_pos = tf.reshape(batch_pos, [batch_size, new_beam_size])

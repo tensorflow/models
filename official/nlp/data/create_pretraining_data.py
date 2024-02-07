@@ -453,7 +453,7 @@ def _contiguous(sorted_grams):
 def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
   """Create a list of masking {1, ..., n}-grams from a list of one-grams.
 
-  This is an extention of 'whole word masking' to mask multiple, contiguous
+  This is an extension of 'whole word masking' to mask multiple, contiguous
   words such as (e.g., "the red boat").
 
   Each input gram represents the token indices of a single word,
@@ -509,7 +509,7 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
     rng.shuffle(v)
 
   # Create the weighting for n-gram length selection.
-  # Stored cummulatively for `random.choices` below.
+  # Stored cumulatively for `random.choices` below.
   cummulative_weights = list(
       itertools.accumulate([1./n for n in range(1, max_ngram_size+1)]))
 
@@ -519,7 +519,7 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
   # Loop until we have enough masked tokens or there are no more candidate
   # n-grams of any length.
   # Each code path should ensure one or more elements from `ngrams` are removed
-  # to guarentee this loop terminates.
+  # to guarantee this loop terminates.
   while (sum(masked_tokens) < max_masked_tokens and
          sum(len(s) for s in ngrams.values())):
     # Pick an n-gram size based on our weights.

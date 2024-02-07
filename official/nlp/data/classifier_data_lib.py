@@ -668,7 +668,7 @@ class TfdsProcessor(DataProcessor):
       self._labels = list(range(info.features[self.label_key].num_classes))
 
   def _process_tfds_params_str(self, params_str):
-    """Extracts TFDS parameters from a comma-separated assignements string."""
+    """Extracts TFDS parameters from a comma-separated assignments string."""
     dtype_map = {"int": int, "float": float}
     cast_str_to_bool = lambda s: s.lower() not in ["false", "0"]
 

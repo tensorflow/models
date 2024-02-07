@@ -26,7 +26,7 @@ on how to train models with this codebase.
 By default, the experiment runs on GPUs. To run on TPUs, one should overwrite
 `runtime.distribution_strategy` and set the tpu address. See [RuntimeConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py) for details.
 
-In general, the experiments can run with the folloing command by setting the
+In general, the experiments can run with the following command by setting the
 corresponding `${TASK}`, `${TASK_CONFIG}`, `${MODEL_CONFIG}`.
 ```
 EXPERIMENT=???
@@ -72,7 +72,7 @@ Note that
 
 [How to Train Models](https://github.com/tensorflow/models/blob/master/official/nlp/docs/train.md)
 
-[List of Pretrained Models for finetuning](https://github.com/tensorflow/models/blob/master/official/nlp/docs/pretrained_models.md)
+[List of Pre-trained Models for finetuning](https://github.com/tensorflow/models/blob/master/official/nlp/docs/pretrained_models.md)
 
 [How to Publish Models](https://github.com/tensorflow/models/blob/master/official/nlp/docs/tfhub.md)
 
