@@ -28,7 +28,7 @@ class Graph():
         self.edge_counter = 0
         self.v_id = 0
         self.nidmap = None
-    
+
     def add_v(self,v_list):
         if f'{v_list[0]}_{v_list[1]}' in self.vertices.keys():
             return self.vertices[f'{v_list[0]}_{v_list[1]}']
@@ -36,7 +36,7 @@ class Graph():
             self.vertices[f'{v_list[0]}_{v_list[1]}'] = Vertex(v_list[0],v_list[1],self.v_id)
             self.v_id += 1
             return self.vertices[f'{v_list[0]}_{v_list[1]}']
-    
+
     def add_e(self,v_list1,v_list2):
         v1 = self.add_v(v_list1)
         v2 = self.add_v(v_list2)
@@ -48,7 +48,7 @@ class Graph():
             v1.neighbor_edges.append(new_edge)
             v2.neighbor_edges.append(new_edge)
             self.edges.append(new_edge)
-    
+
 
     def merge(self,edge_list):
         e1 = edge_list[0]
@@ -99,7 +99,7 @@ class Edge():
         else:
             self.vertices = vertices
         self.orientation = orientation
-    
+
     def reverse(self):
         self.src, self.dst = self.dst, self.src
         self.vertices = self.vertices[::-1]
@@ -163,7 +163,7 @@ for tile_index in range(180):
     # =============================================================================================
     # Data load part
     # =============================================================================================
-    
+
     gt_graph = pickle.load(open(f"./dataset/20cities/region_{tile_index}_refine_gt_graph.p",'rb'))
     graph = Graph()
     for n, v in gt_graph.items():
@@ -177,7 +177,7 @@ for tile_index in range(180):
     for k,v in graph.vertices.items():
         if len(v.neighbor_edges)==2 and len([e for e in v.neighbor_edges])==2: 
             graph.merge(v.neighbor_edges)
-    
+
     # densify edge pixels
     temp_edges = []
     edge_names = []
@@ -214,7 +214,7 @@ for tile_index in range(180):
             for v_idx in range(1,len(new_vertices)):
                 if not current_segment_inside:
                     pointer = v_idx
-                if vertex_state_list[v_idx] != vertex_state_list[v_idx-1] or v_idx==len(new_vertices)-1:
+                if vertex_state_list[v_idx] != vertex_state_list[v_idx-1] or v_idx==len(new_vertices)-1: # image boundary
                     if current_segment_inside:
                         if v_idx==len(new_vertices)-1 and vertex_state_list[-1]: 
                             current_segment_vertices = new_vertices[pointer:].copy()
@@ -232,7 +232,7 @@ for tile_index in range(180):
                             edge_names.append(f'{src.id}_{dst.id}')
                             edge_names.append(f'{dst.id}_{src.id}')
                             temp_edges.append(new_e)
-                        
+
                     current_segment_inside = not current_segment_inside
     # filter edges
     output_edges = []
@@ -250,7 +250,7 @@ for tile_index in range(180):
     for k,v in graph.vertices.items():
         if len(v.neighbor_edges):
             output_vertices.append({'id':v.id,'x':v.x,'y':v.y,'neighbors':[x.id for x in v.neighbor_edges]})
-        
+
 
     with open(f'./dataset/graph/{tile_index}.json','w') as jf:
         json.dump({'edges':output_edges,'vertices':output_vertices},jf)
@@ -279,7 +279,7 @@ for tile_index in range(180):
     # =============================================================================================
     # Processing segmentation label
     # =============================================================================================
-    
+
     # 
     global_mask = Image.fromarray(np.zeros((IMAGE_SIZE,IMAGE_SIZE))).convert('RGB')
     draw = ImageDraw.Draw(global_mask)
@@ -288,7 +288,7 @@ for tile_index in range(180):
     for e in output_edges:
         for i, v in enumerate(e['vertices'][1:]):
             draw.line([e['vertices'][i][0],e['vertices'][i][1],v[0],v[1]],width=SEGMENT_WIDTH,fill=(255,255,255))
-                
+
     global_mask.save(f'./dataset/segment/{tile_index}.png')
 
     # 
@@ -296,7 +296,7 @@ for tile_index in range(180):
     draw = ImageDraw.Draw(global_keypoint_map)
     for v in output_vertices:
         draw.ellipse([v['x']-3,v['y']-3,v['x']+3,v['y']+3],fill='white')
-    
+
     global_keypoint_map.save(f'./dataset/intersection/{tile_index}.png')
 
     print(f'tile: {tile_index}/180')
