@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import box_ops
 from official.vision.ops import mask_ops
 
 
-class AveragePrecision(tf.keras.layers.Layer):
+class AveragePrecision(tf_keras.layers.Layer):
   """The algorithm which computes average precision from P-R curve."""
 
   def __init__(self, *args, **kwargs):
@@ -179,7 +179,7 @@ class VOC2010AveragePrecision(AveragePrecision):
     return tf.reduce_sum(p * delta_r[..., :-1], axis=-1)
 
 
-class MatchingAlgorithm(tf.keras.layers.Layer):
+class MatchingAlgorithm(tf_keras.layers.Layer):
   """The algorithm which matches detections to ground truths."""
 
   def __init__(self, *args, **kwargs):
@@ -465,7 +465,7 @@ def _count_detection_type(
   return count
 
 
-class InstanceMetrics(tf.keras.metrics.Metric):
+class InstanceMetrics(tf_keras.metrics.Metric):
   """Reports the metrics of instance detection & segmentation."""
 
   def __init__(

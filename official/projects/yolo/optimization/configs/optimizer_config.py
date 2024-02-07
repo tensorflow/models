@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ class BaseOptimizerConfig(base_config.Config):
 class SGDTorchConfig(optimizer_config.BaseOptimizerConfig):
   """Configuration for SGD optimizer.
 
-  The attributes for this class matches the arguments of tf.keras.optimizer.SGD.
+  The attributes for this class matches the arguments of tf_keras.optimizer.SGD.
 
   Attributes:
     name: name of the optimizer.

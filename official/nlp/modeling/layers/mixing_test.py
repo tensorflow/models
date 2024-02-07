@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Tests for mixing.py."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import mixing
 
@@ -64,7 +64,7 @@ class MixingTest(tf.test.TestCase):
 
     inputs = tf.ones((batch_size, max_seq_length, hidden_dim), dtype=tf.float32)
     outputs = mixing.LinearTransformLayer(
-        kernel_initializer=tf.keras.initializers.Ones())(
+        kernel_initializer=tf_keras.initializers.Ones())(
             query=inputs, value=inputs)
 
     # hidden_dim * (max_seq_length * 1) = 12.

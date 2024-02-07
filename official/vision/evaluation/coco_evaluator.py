@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ from absl import logging
 import numpy as np
 from pycocotools import cocoeval
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.evaluation import coco_utils
 

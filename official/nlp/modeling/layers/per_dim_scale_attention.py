@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
 """Keras-based attention layer with learnable per dim scaling."""
 import gin
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 @gin.configurable
-@tf.keras.utils.register_keras_serializable(package='Text')
-class PerDimScaleAttention(tf.keras.layers.MultiHeadAttention):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class PerDimScaleAttention(tf_keras.layers.MultiHeadAttention):
   """Learn scales for individual dims.
 
      It can improve quality but might hurt training stability.

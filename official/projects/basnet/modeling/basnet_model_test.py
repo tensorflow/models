@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.basnet.modeling import basnet_model
 from official.projects.basnet.modeling import refunet
@@ -32,7 +32,7 @@ class BASNetNetworkTest(parameterized.TestCase, tf.test.TestCase):
       self, input_size):
     """Test for creation of a segmentation network."""
     inputs = np.random.rand(2, input_size, input_size, 3)
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = basnet_model.BASNetEncoder()
     decoder = basnet_model.BASNetDecoder()

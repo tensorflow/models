@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
 """Contains definitions of ROI aligner."""
 
 from typing import Mapping
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import spatial_transform_ops
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MultilevelROIAligner(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MultilevelROIAligner(tf_keras.layers.Layer):
   """Performs ROIAlign for the second stage processing."""
 
   def __init__(self, crop_size: int = 7, sample_offset: float = 0.5, **kwargs):

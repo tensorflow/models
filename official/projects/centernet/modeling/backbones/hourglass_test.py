@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.common import registry_imports  # pylint: disable=unused-import
 from official.projects.centernet.configs import backbones
@@ -28,7 +28,7 @@ class HourglassTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_hourglass(self):
     backbone = hourglass.build_hourglass(
-        input_specs=tf.keras.layers.InputSpec(shape=[None, 512, 512, 3]),
+        input_specs=tf_keras.layers.InputSpec(shape=[None, 512, 512, 3]),
         backbone_config=backbones.Backbone(type='hourglass'),
         norm_activation_config=common.NormActivation(use_sync_bn=True)
     )

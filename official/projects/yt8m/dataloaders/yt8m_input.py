@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 """
 from typing import Any, Dict
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.yt8m.dataloaders import utils
 from official.vision.configs import video_classification as exp_cfg
 from official.vision.dataloaders import decoder
@@ -157,6 +157,7 @@ def _process_segment_and_label(video_matrix, num_frames, contexts,
   return output_dict
 
 
+# TODO(allenyan, zhengxu): Adds a unit test for this function.
 def _get_video_matrix(features, feature_size, dtype, max_frames,
                       max_quantized_value, min_quantized_value):
   """Decodes features from an input string and quantizes it.
@@ -187,8 +188,16 @@ def _get_video_matrix(features, feature_size, dtype, max_frames,
   return feature_matrix, num_frames
 
 
-def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
-                     max_frames, max_quantized_value, min_quantized_value):
+def _concat_features(
+    features,
+    feature_names,
+    feature_sizes,
+    feature_dtypes,
+    max_frames,
+    max_quantized_value,
+    min_quantized_value,
+    per_feature_l2_norm=False,
+):
   """Loads (potentially) different types of features and concatenates them.
 
   Args:
@@ -199,6 +208,7 @@ def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
       max_frames: number of frames in the sequence
       max_quantized_value: the maximum of the quantized value.
       min_quantized_value: the minimum of the quantized value.
+      per_feature_l2_norm: whether to l2 normalize each feature.
 
   Returns:
       video_matrix: different features concatenated into one matrix
@@ -215,21 +225,27 @@ def _concat_features(features, feature_names, feature_sizes, feature_dtypes,
       "length of feature_names (={}) != length of feature_sizes (={})".format(
           len(feature_names), len(feature_dtypes)))
 
-  num_frames = -1  # the number of frames in the video
+  # the number of common frames of all features in the video
+  num_common_frames = 1080000  # set max to a 10-hour video at 30fps
   feature_matrices = [None] * num_features  # an array of different features
   for i in range(num_features):
     feature_matrix, num_frames_in_this_feature = _get_video_matrix(
         features[feature_names[i]], feature_sizes[i],
         tf.dtypes.as_dtype(feature_dtypes[i]), max_frames, max_quantized_value,
         min_quantized_value)
-    if num_frames == -1:
-      num_frames = num_frames_in_this_feature
+    num_common_frames = tf.math.minimum(num_frames_in_this_feature,
+                                        num_common_frames)
+    if per_feature_l2_norm:
+      feature_matrix = tf.math.l2_normalize(feature_matrix, axis=-1)
     feature_matrices[i] = feature_matrix
+
+  for i in range(num_features):
+    feature_matrices[i] = feature_matrices[i][:num_common_frames]
 
   # Concatenate different features.
   video_matrix = tf.concat(feature_matrices, 1)
 
-  return video_matrix, num_frames
+  return video_matrix, num_common_frames
 
 
 class Decoder(decoder.Decoder):
@@ -343,6 +359,7 @@ class Parser(parser.Parser):
     self._num_sample_frames = input_params.num_sample_frames
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
+    self._input_per_feature_l2_norm = input_params.input_per_feature_l2_norm
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
@@ -350,17 +367,26 @@ class Parser(parser.Parser):
     video_matrix, num_frames = _concat_features(
         decoded_tensors, self._feature_names, self._feature_sizes,
         self._feature_dtypes, self._max_frames, self._max_quantized_value,
-        self._min_quantized_value)
+        self._min_quantized_value, self._input_per_feature_l2_norm)
     if not self._include_video_id and "id" in decoded_tensors:
       del decoded_tensors["id"]
 
+    # Valid `num_frames` comes from _concat_features().
     outputs = self._process_label(video_matrix, num_frames, decoded_tensors)
-    if self._num_sample_frames is not None:
+    if self._num_sample_frames is None:
+      # Padding to max_frames.
+      outputs["video_matrix"] = resize_axis(
+          outputs["video_matrix"], 1, self._max_frames
+      )
+    else:
       outputs["video_matrix"] = utils.sample_video_frames(
           outputs["video_matrix"],
           tf.reshape(outputs["num_frames"], [-1, 1]),
           random_frames=self._sample_random_frames,
           num_sample_frames=self._num_sample_frames,
+      )
+      outputs["num_frames"] = (
+          tf.ones_like(outputs["num_frames"]) * self._num_sample_frames
       )
     return outputs
 
@@ -370,17 +396,25 @@ class Parser(parser.Parser):
     video_matrix, num_frames = _concat_features(
         decoded_tensors, self._feature_names, self._feature_sizes,
         self._feature_dtypes, self._max_frames, self._max_quantized_value,
-        self._min_quantized_value)
+        self._min_quantized_value, self._input_per_feature_l2_norm)
     if not self._include_video_id and "id" in decoded_tensors:
       del decoded_tensors["id"]
 
     outputs = self._process_label(video_matrix, num_frames, decoded_tensors)
-    if self._num_sample_frames is not None:
+    if self._num_sample_frames is None:
+      # Padding to max_frames.
+      outputs["video_matrix"] = resize_axis(
+          outputs["video_matrix"], 1, self._max_frames
+      )
+    else:
       outputs["video_matrix"] = utils.sample_video_frames(
           outputs["video_matrix"],
           tf.reshape(outputs["num_frames"], [-1, 1]),
           random_frames=self._sample_random_frames,
           num_sample_frames=self._num_sample_frames,
+      )
+      outputs["num_frames"] = (
+          tf.ones_like(outputs["num_frames"]) * self._num_sample_frames
       )
     return outputs
 
@@ -484,7 +518,9 @@ class PostBatchProcessor():
   def __init__(self, input_params: exp_cfg.DataConfig):
     self.segment_labels = input_params.segment_labels
     self.num_classes = input_params.num_classes
-    self.num_sample_frames = input_params.num_sample_frames
+    self.num_batched_frames = (
+        input_params.num_sample_frames or input_params.max_frames
+    )
     self.num_features = sum(input_params.feature_sizes)
 
   def post_fn(self, batched_tensors: Dict[str,
@@ -496,12 +532,13 @@ class PostBatchProcessor():
     num_frames = batched_tensors["num_frames"]
 
     if self.segment_labels:
-      # [batch x num_segment x num_sample_frames x num_features]
-      # -> [batch * num_segment x num_sample_frames x num_features]
+      # [batch x num_segment x num_batched_frames x num_features]
+      # -> [batch * num_segment x num_batched_frames x num_features]
       if video_ids is not None:
         video_ids = tf.reshape(video_ids, [-1])
-      video_matrix = tf.reshape(video_matrix,
-                                [-1, self.num_sample_frames, self.num_features])
+      video_matrix = tf.reshape(
+          video_matrix, [-1, self.num_batched_frames, self.num_features]
+      )
       labels = tf.reshape(labels, [-1, self.num_classes])
       num_frames = tf.reshape(num_frames, [-1, 1])
       batched_tensors["label_weights"] = tf.reshape(

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Losses used for segmentation models."""
 
 from typing import Optional, Sequence
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class SegmentationLossDiceScore(object):
@@ -65,7 +65,7 @@ class SegmentationLossDiceScore(object):
     if labels.get_shape().ndims < 2 or logits.get_shape().ndims < 2:
       raise ValueError('The labels and logits must be at least rank 2.')
 
-    epsilon = tf.keras.backend.epsilon()
+    epsilon = tf_keras.backend.epsilon()
     keep_label_axis = list(range(len(logits.shape) - 1))
     keep_batch_axis = list(range(1, len(logits.shape)))
 

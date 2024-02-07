@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Contains common building blocks for yolo layer (detection layer)."""
 from typing import Optional
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.losses import yolo_loss
 from official.projects.yolo.ops import box_ops
@@ -22,7 +22,7 @@ from official.projects.yolo.ops import loss_utils
 from official.vision.modeling.layers import detection_generator
 
 
-class YoloLayer(tf.keras.layers.Layer):
+class YoloLayer(tf_keras.layers.Layer):
   """Yolo layer (detection generator)."""
 
   def __init__(

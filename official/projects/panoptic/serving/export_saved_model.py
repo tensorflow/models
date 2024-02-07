@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ output = model_fn(input_images)
 
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.modeling import hyperparams
@@ -96,7 +96,7 @@ def main(_):
   params.lock()
 
   input_image_size = [int(x) for x in FLAGS.input_image_size.split(',')]
-  input_specs = tf.keras.layers.InputSpec(
+  input_specs = tf_keras.layers.InputSpec(
       shape=[FLAGS.batch_size, *input_image_size, 3])
 
   if FLAGS.model == 'panoptic_deeplab':

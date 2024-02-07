@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Tests for helper."""
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.quantization import helper
@@ -23,8 +23,8 @@ from official.projects.qat.vision.quantization import helper
 class HelperTest(tf.test.TestCase):
 
   def create_simple_model(self):
-    return tf.keras.models.Sequential([
-        tf.keras.layers.Dense(8, input_shape=(16,)),
+    return tf_keras.models.Sequential([
+        tf_keras.layers.Dense(8, input_shape=(16,)),
     ])
 
   def test_copy_original_weights_for_simple_model_with_custom_weights(self):

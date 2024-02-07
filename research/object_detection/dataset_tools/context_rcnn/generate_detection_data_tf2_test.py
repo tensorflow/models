@@ -38,7 +38,7 @@ if tf_version.is_tf2():
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
 else:
-  mock = unittest.mock
+  from unittest import mock  # pylint: disable=g-import-not-at-top
 
 try:
   import apache_beam as beam  # pylint:disable=g-import-not-at-top

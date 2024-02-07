@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Pix2Seq detection task definition."""
+
 from typing import Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -25,6 +26,7 @@ from official.projects.pix2seq import utils
 from official.projects.pix2seq.configs import pix2seq as pix2seq_cfg
 from official.projects.pix2seq.dataloaders import pix2seq_input
 from official.projects.pix2seq.modeling import pix2seq_model
+from official.projects.uvit.modeling import vit  # pylint: disable=unused-import
 from official.vision.dataloaders import input_reader_factory
 from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfds_factory
@@ -44,32 +46,38 @@ class Pix2SeqTask(base_task.Task):
 
   def build_model(self):
     """Build Pix2Seq model."""
+    config: pix2seq_cfg.Pix2Seq = self._task_config.model
 
-    input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + self._task_config.model.input_size
+    input_specs = tf_keras.layers.InputSpec(
+        shape=[None] + config.input_size
     )
 
     backbone = backbones.factory.build_backbone(
         input_specs=input_specs,
-        backbone_config=self._task_config.model.backbone,
-        norm_activation_config=self._task_config.model.norm_activation,
+        backbone_config=config.backbone,
+        norm_activation_config=config.norm_activation,
     )
 
     model = pix2seq_model.Pix2Seq(
-        backbone,
-        self._task_config.model.backbone_endpoint_name,
-        self._task_config.model.max_num_instances * 5,
-        self._task_config.model.vocab_size,
-        self._task_config.model.hidden_size,
-        self._task_config.model.num_encoder_layers,
-        self._task_config.model.num_decoder_layers,
-        self._task_config.model.drop_path,
-        self._task_config.model.drop_units,
-        self._task_config.model.drop_att,
+        backbone=backbone,
+        backbone_endpoint_name=config.backbone_endpoint_name,
+        max_seq_len=config.max_num_instances * 5,
+        vocab_size=config.vocab_size,
+        hidden_size=config.hidden_size,
+        num_encoder_layers=config.num_encoder_layers,
+        num_decoder_layers=config.num_decoder_layers,
+        drop_path=config.drop_path,
+        drop_units=config.drop_units,
+        drop_att=config.drop_att,
+        num_heads=config.num_heads,
+        temperature=config.temperature,
+        top_p=config.top_p,
+        top_k=config.top_k,
+        eos_token=config.eos_token,
     )
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
     if not self._task_config.init_checkpoint:
       return
@@ -81,17 +89,28 @@ class Pix2SeqTask(base_task.Task):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
 
     if self._task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      ckpt = tf.train.Checkpoint(model=model)
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
+      logging.info(
+          'Finished loading pretrained checkpoint from %s', ckpt_dir_or_file
+      )
     elif self._task_config.init_checkpoint_modules == 'backbone':
-      ckpt = tf.train.Checkpoint(backbone=model.backbone)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.expect_partial().assert_existing_objects_matched()
-
-    logging.info(
-        'Finished loading pretrained checkpoint from %s', ckpt_dir_or_file
-    )
+      if self.task_config.model.backbone.type == 'uvit':
+        model.backbone.load_checkpoint(ckpt_filepath=ckpt_dir_or_file)
+      else:
+        ckpt = tf.train.Checkpoint(backbone=model.backbone)
+        status = ckpt.restore(ckpt_dir_or_file)
+        status.expect_partial().assert_existing_objects_matched()
+      logging.info(
+          'Finished loading pretrained backbone from %s', ckpt_dir_or_file
+      )
+    else:
+      raise ValueError(
+          f'Failed to load {ckpt_dir_or_file}. Unsupported '
+          'init_checkpoint_modules: '
+          f'{self._task_config.init_checkpoint_modules}'
+      )
 
   def build_inputs(
       self, params, input_context: Optional[tf.distribute.InputContext] = None
@@ -145,8 +164,8 @@ class Pix2SeqTask(base_task.Task):
 
     targets = tf.one_hot(targets, self._task_config.model.vocab_size)
 
-    loss = tf.keras.losses.CategoricalCrossentropy(
-        from_logits=True, reduction=tf.keras.losses.Reduction.NONE
+    loss = tf_keras.losses.CategoricalCrossentropy(
+        from_logits=True, reduction=tf_keras.losses.Reduction.NONE
     )(targets, outputs)
 
     weights = tf.cast(weights, loss.dtype)
@@ -162,7 +181,7 @@ class Pix2SeqTask(base_task.Task):
     metrics = []
     metric_names = ['loss']
     for name in metric_names:
-      metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
       self.coco_metric = coco_evaluator.COCOEvaluator(
@@ -199,13 +218,13 @@ class Pix2SeqTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 

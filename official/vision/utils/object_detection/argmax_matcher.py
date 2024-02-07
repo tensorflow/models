@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ This matcher is used in Fast(er)-RCNN.
 Note: matchers are used in TargetAssigners. There is a create_target_assigner
 factory function for popular implementations.
 """
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.utils.object_detection import matcher
 from official.vision.utils.object_detection import shape_utils

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 import os
 from absl.testing import parameterized
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from sentencepiece import SentencePieceTrainer
 from official.nlp.data import wmt_dataloader
@@ -41,7 +41,7 @@ def _generate_record_file(filepath, src_lines, tgt_lines, unique_id=False):
     }
     if unique_id:
       features['unique_id'] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[i])),
+          int64_list=tf.train.Int64List(value=[i]))
     example = tf.train.Example(
         features=tf.train.Features(
             feature=features))

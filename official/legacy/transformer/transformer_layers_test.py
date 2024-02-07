@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Tests for layers in Transformer."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.transformer import attention_layer
 from official.legacy.transformer import embedding_layer
@@ -109,10 +109,10 @@ class TransformerLayersTest(tf.test.TestCase):
 
   def test_metric_layer(self):
     vocab_size = 50
-    logits = tf.keras.layers.Input((None, vocab_size),
+    logits = tf_keras.layers.Input((None, vocab_size),
                                    dtype="float32",
                                    name="logits")
-    targets = tf.keras.layers.Input((None,), dtype="int64", name="targets")
+    targets = tf_keras.layers.Input((None,), dtype="int64", name="targets")
     output_logits = metrics.MetricLayer(vocab_size)([logits, targets])
     self.assertEqual(output_logits.shape.as_list(), [
         None,

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
+from official.projects.uvit.configs import backbones as uvit_backbones
 from official.vision.configs import backbones
 from official.vision.configs import common
 
@@ -87,11 +88,26 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Backbone(backbones.Backbone):
+  """Configuration for backbones.
+
+  Attributes:
+    type: "str", type of backbone be used, one the of fields below.
+    uvit: uvit backbone config.
+  """
+  type: Optional[str] = None
+  resnet: backbones.ResNet = dataclasses.field(default_factory=backbones.ResNet)
+  uvit: uvit_backbones.VisionTransformer = dataclasses.field(
+      default_factory=uvit_backbones.VisionTransformer)
+
+
+@dataclasses.dataclass
 class Pix2Seq(hyperparams.Config):
   """Pix2Seq model definations."""
 
   max_num_instances: int = 100
   hidden_size: int = 256
+  num_heads: int = 8
   num_encoder_layers: int = 6
   num_decoder_layers: int = 6
   vocab_size: int = 3000
@@ -99,8 +115,8 @@ class Pix2Seq(hyperparams.Config):
   shared_decoder_embedding: bool = True
   decoder_output_bias: bool = True
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: backbones.Backbone = dataclasses.field(
-      default_factory=lambda: backbones.Backbone(  # pylint: disable=g-long-lambda
+  backbone: Backbone = dataclasses.field(
+      default_factory=lambda: Backbone(  # pylint: disable=g-long-lambda
           type='resnet',
           resnet=backbones.ResNet(model_id=50, bn_trainable=False),
       )
@@ -113,6 +129,10 @@ class Pix2Seq(hyperparams.Config):
   drop_units: float = 0.1
   drop_att: float = 0.0
   norm_first: bool = True
+  temperature: float = 1.0
+  top_k: int = 0
+  top_p: float = 0.4
+  eos_token: int | None = None
 
 
 @dataclasses.dataclass
@@ -156,7 +176,7 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
                   norm_momentum=0.9,
                   norm_epsilon=1e-5,
                   use_sync_bn=True),
-              backbone=backbones.Backbone(
+              backbone=Backbone(
                   type='resnet', resnet=backbones.ResNet(model_id=50)
               ),
           ),

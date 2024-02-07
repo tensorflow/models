@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Image classification input and model functions for serving/inference."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling import factory
 from official.vision.ops import preprocess_ops
@@ -25,7 +25,7 @@ class ClassificationModule(export_base.ExportModule):
   """classification Module."""
 
   def _build_model(self):
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
     return factory.build_classification_model(

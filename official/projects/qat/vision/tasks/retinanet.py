@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """RetinaNet task definition."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.qat.vision.configs import retinanet as exp_cfg
@@ -25,16 +25,22 @@ from official.vision.tasks import retinanet
 class RetinaNetTask(retinanet.RetinaNetTask):
   """A task for RetinaNet object detection with QAT."""
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     """Builds RetinaNet model with QAT."""
     model = super(RetinaNetTask, self).build_model()
     # Call the model with dummy input to build the head part.
     dummpy_input = tf.zeros([1] + self.task_config.model.input_size)
     model(dummpy_input, training=True)
 
-    if self.task_config.quantization:
+    # Only build a QAT model when quantization version is v2; otherwise leave it
+    # for outer quantization scope.
+    if (
+        self.task_config.quantization
+        and self.task_config.quantization.version == 'v2'
+    ):
       model = factory.build_qat_retinanet(
           model,
           self.task_config.quantization,
-          model_config=self.task_config.model)
+          model_config=self.task_config.model,
+      )
     return model

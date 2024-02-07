@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import functools
 import os
 
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from sentencepiece import SentencePieceTrainer
 from official.nlp.data import wmt_dataloader
@@ -97,7 +97,7 @@ class TranslationTaskTest(tf.test.TestCase):
     model = task.build_model()
     dataset = task.build_inputs(config.train_data)
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer)
 
   def test_no_sentencepiece_path(self):

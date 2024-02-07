@@ -1,4 +1,4 @@
-# Copyright 2023 The Orbit Authors. All Rights Reserved.
+# Copyright 2024 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,9 @@
 import os
 
 from orbit import actions
+from orbit.actions import export_saved_model
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _id_key(name):
@@ -153,6 +154,62 @@ class ExportSavedModelTest(tf.test.TestCase):
     step_folder = os.path.join(directory.full_path, 'basename-1000')
     self.assertIn(subdirectory, tf.io.gfile.listdir(step_folder))
 
+  def test_export_file_manager_with_suffix_second_cleanup_succeeds(self):
+    directory = self.create_tempdir()
+    base_name = os.path.join(directory.full_path, 'basename')
+
+    id_num = 0
+
+    def next_id():
+      return id_num
+
+    subdirectory = 'sub'
+
+    manager = actions.ExportFileManager(
+        base_name, max_to_keep=2, next_id_fn=next_id, subdirectory=subdirectory
+    )
+    id_num = 30
+    directory.create_file(manager.next_name())
+    id_num = 200
+    directory.create_file(manager.next_name())
+    id_num = 1000
+    directory.create_file(manager.next_name())
+    manager.clean_up()  # Should delete file with lowest ID.
+    # Note that the base folder is intact, only the suffix folder is deleted.
+    self.assertEqual(
+        _id_sorted_file_base_names(directory.full_path),
+        ['basename-30', 'basename-200', 'basename-1000'],
+    )
+    # Verify that the suffix folder has been deleted from the lowest ID
+    # but not from the others.
+    self.assertEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-30'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-200'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-1000'))
+    )
+    # Add another ID, run clean_up again and verify that it worked.
+    id_num = 2000
+    directory.create_file(manager.next_name())
+    manager.clean_up()  # Should delete file with lowest ID.
+    # Verify that the suffix folder has been deleted from the two lowest ID
+    # directories but not from the others.
+    self.assertEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-30'))
+    )
+    self.assertEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-200'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-1000'))
+    )
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(directory.full_path, 'basename-2000'))
+    )
+
   def test_export_file_manager_managed_files(self):
     directory = self.create_tempdir()
     directory.create_file('basename-5')
@@ -219,6 +276,10 @@ class ExportSavedModelTest(tf.test.TestCase):
     self.assertLen(file_manager.managed_files, 2)  # Still 2, due to clean up.
     reloaded_model = tf.saved_model.load(file_manager.managed_files[-1])
     self.assertEqual(reloaded_model(), 7)
+
+  def test_safe_normpath_gs(self):
+    path = export_saved_model.safe_normpath('gs://foo//bar')
+    self.assertEqual(path, 'gs://foo/bar')
 
 
 if __name__ == '__main__':

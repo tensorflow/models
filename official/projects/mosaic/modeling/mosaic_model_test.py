@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.mosaic.modeling import mosaic_blocks
 from official.projects.mosaic.modeling import mosaic_head
@@ -45,7 +45,7 @@ class SegmentationNetworkTest(parameterized.TestCase, tf.test.TestCase):
     """Test for building and calling of a MOSAIC segmentation network."""
     num_classes = 32
     inputs = np.random.rand(2, input_size, input_size, 3)
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     backbone = backbones.MobileNet(model_id='MobileNetMultiAVGSeg')
     encoder_input_level = 4
 

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Semantic segmentation task definition."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.projects.qat.vision.configs import semantic_segmentation as exp_cfg
@@ -25,12 +25,21 @@ from official.vision.tasks import semantic_segmentation
 class SemanticSegmentationTask(semantic_segmentation.SemanticSegmentationTask):
   """A task for semantic segmentation with QAT."""
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     """Builds semantic segmentation model with QAT."""
     model = super().build_model()
-    input_specs = tf.keras.layers.InputSpec(shape=[None] +
-                                            self.task_config.model.input_size)
-    if self.task_config.quantization:
+    input_specs = tf_keras.layers.InputSpec(
+        shape=[None] + self.task_config.model.input_size
+    )
+
+    # Only build a QAT model when quantization version is v2; otherwise leave it
+    # for outer quantization scope.
+    if (
+        self.task_config.quantization
+        and hasattr(self.task_config.quantization, 'version')
+        and self.task_config.quantization.version == 'v2'
+    ):
       model = factory.build_qat_segmentation_model(
-          model, self.task_config.quantization, input_specs)
+          model, self.task_config.quantization, input_specs
+      )
     return model

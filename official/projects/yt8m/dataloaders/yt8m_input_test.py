@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import os
 from absl import logging
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import input_reader
 from official.projects.yt8m.configs import yt8m as yt8m_configs
@@ -60,13 +60,15 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
         postprocess_fn=postprocess_fn,
         transform_and_batch_fn=batch_fn)
 
-  @parameterized.parameters((True,), (False,))
-  def test_read_video_level_input(self, include_video_id):
+  @parameterized.parameters((True, 20), (False, 20), (False, None))
+  def test_read_video_level_input(self, include_video_id, num_sample_frames):
     params = yt8m_configs.yt8m(is_training=False)
     params.global_batch_size = 4
     params.segment_labels = False
     params.input_path = self.data_path
     params.include_video_id = include_video_id
+    params.max_frames = 122
+    params.num_sample_frames = num_sample_frames
     reader = self.create_input_reader(params)
 
     dataset = reader.read()
@@ -82,27 +84,40 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
       self.assertCountEqual(['video_matrix', 'labels', 'num_frames'],
                             example.keys())
     batch_size = params.global_batch_size
+    expected_num_frames = num_sample_frames or params.max_frames
     self.assertEqual(
         example['video_matrix'].shape.as_list(),
-        [batch_size, params.num_sample_frames, sum(params.feature_sizes)],
+        [batch_size, expected_num_frames, sum(params.feature_sizes)],
     )
-    self.assertEqual(example['labels'].shape.as_list(),
-                     [batch_size, params.num_classes])
+    self.assertEqual(
+        example['labels'].shape.as_list(), [batch_size, params.num_classes]
+    )
     # Check non empty labels.
     self.assertGreater(np.nonzero(example['labels'][0].numpy())[0].shape[0], 0)
 
-    self.assertEqual(example['num_frames'].shape.as_list(), [batch_size, 1])
+    if num_sample_frames:
+      self.assertAllEqual(
+          example['num_frames'].numpy(),
+          [[num_sample_frames]] * batch_size,
+      )
+    else:
+      self.assertAllEqual(
+          example['num_frames'].numpy(),
+          [[120], [121], [122], [122]],
+      )
+
     if include_video_id:
       self.assertEqual(example['video_ids'].shape.as_list(), [batch_size, 1])
 
-  @parameterized.parameters((True,), (False,))
-  def test_read_segment_level_input(self, include_video_id=False):
+  @parameterized.parameters((True, 20), (False, 20), (False, None))
+  def test_read_segment_level_input(self, include_video_id, num_sample_frames):
     params = yt8m_configs.yt8m(is_training=False)
     params.global_batch_size = 2
     params.segment_labels = True
     params.segment_size = 24
     params.input_path = self.data_path
     params.include_video_id = include_video_id
+    params.num_sample_frames = num_sample_frames
     reader = self.create_input_reader(params)
 
     dataset = reader.read()
@@ -120,21 +135,42 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
           ['video_matrix', 'labels', 'num_frames', 'label_weights'],
           example.keys())
     batch_size = params.global_batch_size * self.num_segment
+    expected_num_frames = num_sample_frames or params.max_frames
     self.assertEqual(
         example['video_matrix'].shape.as_list(),
-        [batch_size, params.num_sample_frames, sum(params.feature_sizes)],
+        [batch_size, expected_num_frames, sum(params.feature_sizes)],
     )
     self.assertEqual(example['labels'].shape.as_list(),
                      [batch_size, params.num_classes])
     self.assertGreater(np.nonzero(example['labels'][0].numpy())[0].shape[0], 0)
-    self.assertEqual(example['num_frames'].shape.as_list(), [batch_size, 1])
     self.assertEqual(example['label_weights'].shape.as_list(),
                      [batch_size, params.num_classes])
+
+    if num_sample_frames:
+      self.assertAllEqual(
+          example['num_frames'].numpy(),
+          [[num_sample_frames]] * batch_size,
+      )
+    else:
+      self.assertAllEqual(
+          example['num_frames'].numpy(),
+          [[params.segment_size]] * batch_size,
+      )
+
     if include_video_id:
       self.assertEqual(example['video_ids'].shape.as_list(), [batch_size])
 
-  @parameterized.parameters((True,), (False,))
-  def test_read_video_level_float_input(self, include_video_id):
+  @parameterized.parameters(
+      (True, 4, False),
+      (False, 4, False),
+      (False, None, False),
+      (True, 4, True),
+      (False, 4, True),
+      (False, None, True),
+  )
+  def test_read_video_level_float_input(
+      self, include_video_id, num_sample_frames, per_feature_l2_norm
+  ):
     data_dir = os.path.join(self.get_temp_dir(), 'data2')
     tf.io.gfile.makedirs(data_dir)
     data_path = os.path.join(data_dir, 'data2.tfrecord')
@@ -150,6 +186,7 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     params.input_path = data_path
     params.num_frames = 2
     params.max_frames = 2
+    params.num_sample_frames = num_sample_frames
     params.feature_names = ('VIDEO_EMBEDDING/context_feature/floats',
                             'FEATURE/feature/floats')
     params.feature_sources = ('context', 'feature')
@@ -158,6 +195,7 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
     params.feature_from_bytes = (False, False)
     params.label_field = 'clip/label/index'
     params.include_video_id = include_video_id
+    params.input_per_feature_l2_norm = per_feature_l2_norm
     reader = self.create_input_reader(params)
 
     dataset = reader.read()
@@ -181,6 +219,9 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
         'FEATURE/feature/floats'].feature[0].float_list.value
     expected_labels = examples[0].context.feature[
         params.label_field].int64_list.value
+    if per_feature_l2_norm:
+      expected_feature = tf.math.l2_normalize(expected_feature, axis=-1)
+      expected_context = tf.math.l2_normalize(expected_context, axis=-1)
     self.assertAllEqual(expected_feature,
                         example['video_matrix'][0, 0, params.feature_sizes[0]:])
     self.assertAllEqual(expected_context,
@@ -191,15 +232,17 @@ class Yt8mInputTest(parameterized.TestCase, tf.test.TestCase):
 
     # Check tensor shape.
     batch_size = params.global_batch_size
+    expected_num_frames = params.num_sample_frames or params.max_frames
     self.assertEqual(
         example['video_matrix'].shape.as_list(),
-        [batch_size, params.num_sample_frames, sum(params.feature_sizes)],
+        [batch_size, expected_num_frames, sum(params.feature_sizes)],
     )
     self.assertEqual(example['labels'].shape.as_list(),
                      [batch_size, params.num_classes])
     self.assertEqual(example['num_frames'].shape.as_list(), [batch_size, 1])
     if include_video_id:
       self.assertEqual(example['video_ids'].shape.as_list(), [batch_size, 1])
+
 
 if __name__ == '__main__':
   tf.test.main()

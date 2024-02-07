@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Tests for movinet_layers.py."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.movinet.modeling import movinet_layers
 from official.vision.modeling.layers import nn_layers
@@ -64,7 +64,7 @@ class MovinetLayersTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllClose(predicted, expected)
 
   def test_mobile_conv2d_bn(self):
-    batch_norm_op = tf.keras.layers.BatchNormalization(
+    batch_norm_op = tf_keras.layers.BatchNormalization(
         momentum=0.9,
         epsilon=1.,
         name='bn')

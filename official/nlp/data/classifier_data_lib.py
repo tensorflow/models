@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import json
 import os
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 from official.nlp.tools import tokenization
@@ -668,7 +668,7 @@ class TfdsProcessor(DataProcessor):
       self._labels = list(range(info.features[self.label_key].num_classes))
 
   def _process_tfds_params_str(self, params_str):
-    """Extracts TFDS parameters from a comma-separated assignements string."""
+    """Extracts TFDS parameters from a comma-separated assignments string."""
     dtype_map = {"int": int, "float": float}
     cast_str_to_bool = lambda s: s.lower() not in ["false", "0"]
 

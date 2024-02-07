@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
 
 Model paper: https://arxiv.org/pdf/1706.03762.pdf
 """
+import inspect
 import math
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
+
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling.ops import beam_search
@@ -26,7 +28,7 @@ from official.nlp.modeling.ops import beam_search
 EOS_ID = 1
 
 
-class Seq2SeqTransformer(tf.keras.Model):
+class Seq2SeqTransformer(tf_keras.Model):
   """Transformer model with Keras.
 
   Implemented as described in: https://arxiv.org/pdf/1706.03762.pdf
@@ -87,8 +89,8 @@ class Seq2SeqTransformer(tf.keras.Model):
     self.decoder_layer = decoder_layer
     self.position_embedding = layers.RelativePositionEmbedding(
         hidden_size=self._embedding_width)
-    self.encoder_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
-    self.decoder_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self.encoder_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
+    self.decoder_dropout = tf_keras.layers.Dropout(rate=self._dropout_rate)
 
   def get_config(self):
     config = {
@@ -357,7 +359,7 @@ class Seq2SeqTransformer(tf.keras.Model):
     return symbols_to_logits_fn
 
 
-class TransformerEncoder(tf.keras.layers.Layer):
+class TransformerEncoder(tf_keras.layers.Layer):
   """Transformer encoder.
 
   Transformer encoder is made up of N identical layers. Each layer is composed
@@ -394,7 +396,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         layers is normalized.
       norm_epsilon: Epsilon value to initialize normalization layers.
       intermediate_dropout: Dropout probability for intermediate_dropout_layer.
-      **kwargs: key word arguemnts passed to tf.keras.layers.Layer.
+      **kwargs: key word arguemnts passed to tf_keras.layers.Layer.
     """
 
     super(TransformerEncoder, self).__init__(**kwargs)
@@ -426,7 +428,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
               inner_dropout=self._intermediate_dropout,
               attention_initializer=attention_initializer(input_shape[2]),
               name=("layer_%d" % i)))
-    self.output_normalization = tf.keras.layers.LayerNormalization(
+    self.output_normalization = tf_keras.layers.LayerNormalization(
         epsilon=self._norm_epsilon, dtype="float32")
     super(TransformerEncoder, self).build(input_shape)
 
@@ -469,7 +471,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
     return output_tensor
 
 
-class TransformerDecoder(tf.keras.layers.Layer):
+class TransformerDecoder(tf_keras.layers.Layer):
   """Transformer decoder.
 
   Like the encoder, the decoder is made up of N identical layers.
@@ -491,6 +493,8 @@ class TransformerDecoder(tf.keras.layers.Layer):
                norm_first=True,
                norm_epsilon=1e-6,
                intermediate_dropout=0.0,
+               self_attention_cls=None,
+               cross_attention_cls=None,
                **kwargs):
     """Initialize a Transformer decoder.
 
@@ -508,7 +512,11 @@ class TransformerDecoder(tf.keras.layers.Layer):
         layers is normalized.
       norm_epsilon: Epsilon value to initialize normalization layers.
       intermediate_dropout: Dropout probability for intermediate_dropout_layer.
-      **kwargs: key word arguemnts passed to tf.keras.layers.Layer.
+      self_attention_cls: An optional class to use for self attention
+        or a function that provides the class per layer.
+      cross_attention_cls: An optional class to use for cross attention
+        or a function that provides the class per layer.
+      **kwargs: key word arguemnts passed to tf_keras.layers.Layer.
     """
     super(TransformerDecoder, self).__init__(**kwargs)
     self.num_layers = num_layers
@@ -521,11 +529,26 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
     self._intermediate_dropout = intermediate_dropout
+    self._self_attention_cls = self_attention_cls
+    self._cross_attention_cls = cross_attention_cls
 
   def build(self, input_shape):
     """Implements build() for the layer."""
+
+    def _select_attention_cls(attention_cls, index):
+      cls = None
+      if attention_cls is not None:
+        cls = (
+            attention_cls(index)
+            if inspect.isfunction(attention_cls)
+            else attention_cls
+        )
+      return cls
+
     self.decoder_layers = []
     for i in range(self.num_layers):
+      self_attention_cls = _select_attention_cls(self._self_attention_cls, i)
+      cross_attention_cls = _select_attention_cls(self._cross_attention_cls, i)
       self.decoder_layers.append(
           layers.TransformerDecoderBlock(
               num_attention_heads=self.num_attention_heads,
@@ -538,8 +561,10 @@ class TransformerDecoder(tf.keras.layers.Layer):
               norm_epsilon=self._norm_epsilon,
               intermediate_dropout=self._intermediate_dropout,
               attention_initializer=attention_initializer(input_shape[2]),
-              name=("layer_%d" % i)))
-    self.output_normalization = tf.keras.layers.LayerNormalization(
+              name=("layer_%d" % i),
+              self_attention_cls=self_attention_cls,
+              cross_attention_cls=cross_attention_cls))
+    self.output_normalization = tf_keras.layers.LayerNormalization(
         epsilon=1e-6, dtype="float32")
     super(TransformerDecoder, self).build(input_shape)
 
@@ -554,7 +579,9 @@ class TransformerDecoder(tf.keras.layers.Layer):
         "use_bias": self._use_bias,
         "norm_first": self._norm_first,
         "norm_epsilon": self._norm_epsilon,
-        "intermediate_dropout": self._intermediate_dropout
+        "intermediate_dropout": self._intermediate_dropout,
+        "self_attention_cls": self._self_attention_cls,
+        "cross_attention_cls": self._cross_attention_cls,
     }
     base_config = super(TransformerDecoder, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -620,4 +647,4 @@ def attention_initializer(hidden_size):
   """Initializer for attention layers in Seq2SeqTransformer."""
   hidden_size = int(hidden_size)
   limit = math.sqrt(6.0 / (hidden_size + hidden_size))
-  return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
+  return tf_keras.initializers.RandomUniform(minval=-limit, maxval=limit)

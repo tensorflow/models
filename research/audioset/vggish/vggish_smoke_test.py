@@ -32,6 +32,7 @@ Usage:
 from __future__ import print_function
 
 import numpy as np
+import resampy  # pylint: disable=import-error
 import tensorflow.compat.v1 as tf
 
 import vggish_input
@@ -48,13 +49,18 @@ pca_params_path = 'vggish_pca_params.npz'
 # Relative tolerance of errors in mean and standard deviation of embeddings.
 rel_error = 0.1  # Up to 10%
 
-# Generate a 1 kHz sine wave at 44.1 kHz (we use a high sampling rate
-# to test resampling to 16 kHz during feature extraction).
+# Generate a 1 kHz sine wave at 16 kHz, the preferred sample rate of VGGish.
 num_secs = 3
 freq = 1000
-sr = 44100
+sr = 16000
 t = np.arange(0, num_secs, 1 / sr)
 x = np.sin(2 * np.pi * freq * t)
+
+# Check that we can resample a signal. Don't use the resampled signal to
+# produce an embedding where we check the results because we don't want
+# to depend on the resampler never changing too much.
+resampled_x = resampy.resample(x, sr, sr * 0.75)
+print('Resampling via resampy works!')
 
 # Produce a batch of log mel spectrogram examples.
 input_batch = vggish_input.waveform_to_examples(x, sr)
@@ -76,19 +82,31 @@ with tf.Graph().as_default(), tf.Session() as sess:
   [embedding_batch] = sess.run([embedding_tensor],
                                feed_dict={features_tensor: input_batch})
   print('VGGish embedding: ', embedding_batch[0])
-  expected_embedding_mean = -0.0333
-  expected_embedding_std = 0.380
-  np.testing.assert_allclose(
-      [np.mean(embedding_batch), np.std(embedding_batch)],
-      [expected_embedding_mean, expected_embedding_std],
-      rtol=rel_error)
+  print('embedding mean/stddev', np.mean(embedding_batch),
+        np.std(embedding_batch))
 
 # Postprocess the results to produce whitened quantized embeddings.
 pproc = vggish_postprocess.Postprocessor(pca_params_path)
 postprocessed_batch = pproc.postprocess(embedding_batch)
 print('Postprocessed VGGish embedding: ', postprocessed_batch[0])
-expected_postprocessed_mean = 122.0
-expected_postprocessed_std = 93.5
+print('postproc embedding mean/stddev', np.mean(postprocessed_batch),
+      np.std(postprocessed_batch))
+
+# Expected mean/stddev were measured to 3 significant places on 07/25/23 with
+# NumPy 1.21.6 / TF 2.8.2 (dating to Apr-May 2022)
+# NumPy 1.24.3 / TF 2.13.0 (representative of July 2023)
+# with Python 3.10 on a Debian-like Linux system. Both configs produced
+# identical results.
+
+expected_embedding_mean = 0.000657
+expected_embedding_std = 0.343
+np.testing.assert_allclose(
+    [np.mean(embedding_batch), np.std(embedding_batch)],
+    [expected_embedding_mean, expected_embedding_std],
+    rtol=rel_error)
+
+expected_postprocessed_mean = 126.0
+expected_postprocessed_std = 89.3
 np.testing.assert_allclose(
     [np.mean(postprocessed_batch), np.std(postprocessed_batch)],
     [expected_postprocessed_mean, expected_postprocessed_std],

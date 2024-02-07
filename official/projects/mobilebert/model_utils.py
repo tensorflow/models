@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -159,7 +159,7 @@ def create_mobilebert_pretrainer(bert_config):
   masked_lm = layers.MobileBertMaskedLM(
       embedding_table=mobilebert_encoder.get_embedding_table(),
       activation=tf_utils.get_activation(bert_config.hidden_act),
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       name="cls/predictions")
 

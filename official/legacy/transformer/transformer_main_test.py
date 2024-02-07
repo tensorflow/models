@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import unittest
 
 from absl import flags
 from absl.testing import flagsaver
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tensorflow.python.eager import context  # pylint: disable=ungrouped-imports
 from official.legacy.transformer import misc
 from official.legacy.transformer import transformer_main

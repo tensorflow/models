@@ -1,4 +1,4 @@
-# Copyright 2023 The Orbit Authors. All Rights Reserved.
+# Copyright 2024 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import os
 from orbit.utils import common
 from orbit.utils import tpu_summaries
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class TrainFunctionWithSummaries(tpu_summaries.OptionalSummariesFunction):

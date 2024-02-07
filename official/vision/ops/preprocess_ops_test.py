@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,13 @@
 """Tests for preprocess_ops.py."""
 
 import io
+
 # Import libraries
+
 from absl.testing import parameterized
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import preprocess_ops
 
@@ -56,6 +58,44 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     output_data = output_data.numpy()
     self.assertAllClose(output_size, output_data.shape[0])
     self.assertAllClose(expected_outputs, output_data)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='no_jittering',
+          input_size=(100, 200),
+          desired_size=(20, 10),
+          aug_scale_max=1.0,
+          output_scales=(20 / 100, 10 / 200),
+      ),
+      dict(
+          testcase_name='with_jittering',
+          input_size=(100, 200),
+          desired_size=(20, 10),
+          aug_scale_max=2.0,
+          output_scales=(20 / 100, 10 / 200),
+      ),
+  )
+  def test_resize_and_crop_image_not_keep_aspect_ratio(
+      self, input_size, desired_size, aug_scale_max, output_scales
+  ):
+    image = tf.convert_to_tensor(np.random.rand(*input_size, 3))
+
+    resized_image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        desired_size=desired_size,
+        padded_size=desired_size,
+        aug_scale_max=aug_scale_max,
+        keep_aspect_ratio=False,
+    )
+    resized_image_shape = tf.shape(resized_image)
+
+    self.assertAllEqual([*desired_size, 3], resized_image_shape.numpy())
+    if aug_scale_max == 1:
+      self.assertNDArrayNear(
+          [input_size, desired_size, output_scales, [0.0, 0.0]],
+          image_info.numpy(),
+          1e-5,
+      )
 
   @parameterized.parameters(
       (100, 200, 100, 200, 32, 1.0, 1.0, 128, 224),
@@ -329,6 +369,31 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(
         [output_height, output_width, 3],
         resized_image_shape.numpy())
+
+  @parameterized.product(
+      prenormalize=[True, False],
+      dtype=[tf.uint8, tf.float32, tf.float64, tf.float16],
+  )
+  def test_normalize_image(self, prenormalize, dtype):
+    image = tf.constant([[[0, 200, 255]]], dtype=tf.uint8)
+    image = tf.tile(image, [64, 64, 1])
+
+    if dtype != tf.uint8 and prenormalize:
+      image = image / 255
+    image = tf.cast(image, dtype=dtype)
+
+    if dtype == tf.uint8 or prenormalize:
+      normalized_image = preprocess_ops.normalize_image(
+          image, offset=[0.5, 0.5, 0.5], scale=[0.5, 0.5, 0.5]
+      )
+    else:
+      normalized_image = preprocess_ops.normalize_image(
+          image, offset=[127.0, 127.0, 127.0], scale=[127.0, 127.0, 127.0]
+      )
+    max_val = tf.reduce_max(normalized_image)
+    # If we mistakely use scale=[0.5, 0.5, 0.5] for non-normalized float input,
+    # the normalized image data will contain very large values (e.g. 500).
+    tf.assert_greater(2.0, max_val)
 
 
 if __name__ == '__main__':

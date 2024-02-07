@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ from typing import Mapping, Optional
 from absl import logging
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.common import dataset_fn
 from official.core import config_definitions as cfg
 from official.core import input_reader
@@ -143,7 +143,7 @@ class XLNetPretrainDataConfig(cfg.DataConfig):
 
   Attributes:
     input_path: See base class.
-    global_batch_size: See base calss.
+    global_batch_size: See base class.
     is_training: See base class.
     seq_length: The length of each sequence.
     max_predictions_per_seq: The number of predictions per sequence.
@@ -259,7 +259,7 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
           input_mask=input_mask[:self._reuse_length])
 
       # Creates permutation mask and target mask for the rest of tokens in
-      # current example, which are concatentation of two new segments.
+      # current example, which are concatenation of two new segments.
       perm_mask_1, target_mask_1, tokens_1, masked_1 = self._get_factorization(
           inputs[self._reuse_length:], input_mask[self._reuse_length:])
 

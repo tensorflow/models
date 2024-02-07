@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
 
 """Optimizer from addons and learning rate scheduler."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+class LearningRateSchedule(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Learning rate schedule."""
 
   def __init__(self, initial_learning_rate, hidden_size, warmup_steps):

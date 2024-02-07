@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 import abc
 from typing import Dict, List, Optional, Text, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import base_task
 from official.core import config_definitions
 from official.core import task_factory
@@ -103,7 +103,7 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
 
   def joint_train_step(self, task_inputs,
                        multi_task_model: base_model.MultiTaskBaseModel,
-                       optimizer: tf.keras.optimizers.Optimizer, task_metrics,
+                       optimizer: tf_keras.optimizers.Optimizer, task_metrics,
                        **kwargs):
     """The joint train step.
 

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
 
 """Implementation of embedding layer with shared weights."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class EmbeddingSharedWeights(tf.keras.layers.Layer):
+class EmbeddingSharedWeights(tf_keras.layers.Layer):
   """Calculates input embeddings and pre-softmax linear with shared weights."""
 
   def __init__(self, vocab_size, hidden_size):

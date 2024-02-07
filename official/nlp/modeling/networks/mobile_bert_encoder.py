@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
 
 """MobileBERT text encoder network."""
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 
 
 @gin.configurable
-class MobileBERTEncoder(tf.keras.Model):
+class MobileBERTEncoder(tf_keras.Model):
   """A Keras functional API implementation for MobileBERT encoder."""
 
   def __init__(self,
@@ -84,7 +84,7 @@ class MobileBERTEncoder(tf.keras.Model):
       **kwargs: Other keyworded and arguments.
     """
     self._self_setattr_tracking = False
-    initializer = tf.keras.initializers.TruncatedNormal(
+    initializer = tf_keras.initializers.TruncatedNormal(
         stddev=initializer_range)
 
     # layer instantiation
@@ -117,11 +117,11 @@ class MobileBERTEncoder(tf.keras.Model):
       self._transformer_layers.append(transformer)
 
     # input tensor
-    input_ids = tf.keras.layers.Input(
+    input_ids = tf_keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_word_ids')
-    input_mask = tf.keras.layers.Input(
+    input_mask = tf_keras.layers.Input(
         shape=(None,), dtype=input_mask_dtype, name='input_mask')
-    type_ids = tf.keras.layers.Input(
+    type_ids = tf_keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_type_ids')
     self.inputs = [input_ids, input_mask, type_ids]
 
@@ -146,7 +146,7 @@ class MobileBERTEncoder(tf.keras.Model):
     first_token = tf.squeeze(prev_output[:, 0:1, :], axis=1)
 
     if classifier_activation:
-      self._pooler_layer = tf.keras.layers.EinsumDense(
+      self._pooler_layer = tf_keras.layers.EinsumDense(
           'ab,bc->ac',
           output_shape=hidden_size,
           activation=tf.tanh,
@@ -162,9 +162,37 @@ class MobileBERTEncoder(tf.keras.Model):
         pooled_output=first_token,
         encoder_outputs=all_layer_outputs,
         attention_scores=all_attention_scores)
+    self._config = dict(
+        word_vocab_size=word_vocab_size,
+        word_embed_size=word_embed_size,
+        type_vocab_size=type_vocab_size,
+        max_sequence_length=max_sequence_length,
+        num_blocks=num_blocks,
+        hidden_size=hidden_size,
+        num_attention_heads=num_attention_heads,
+        intermediate_size=intermediate_size,
+        intermediate_act_fn=intermediate_act_fn,
+        hidden_dropout_prob=hidden_dropout_prob,
+        attention_probs_dropout_prob=attention_probs_dropout_prob,
+        intra_bottleneck_size=intra_bottleneck_size,
+        initializer_range=initializer_range,
+        use_bottleneck_attention=use_bottleneck_attention,
+        key_query_shared_bottleneck=key_query_shared_bottleneck,
+        num_feedforward_networks=num_feedforward_networks,
+        normalization_type=normalization_type,
+        classifier_activation=classifier_activation,
+        input_mask_dtype=input_mask_dtype,
+    )
 
     super().__init__(
         inputs=self.inputs, outputs=outputs, **kwargs)
+
+  def get_config(self):
+    return dict(self._config)
+
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
 
   def get_embedding_table(self):
     return self.embedding_layer.word_embedding.embeddings

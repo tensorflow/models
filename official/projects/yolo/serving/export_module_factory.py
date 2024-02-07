@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,18 +16,18 @@
 
 from typing import Any, Callable, Dict, List, Optional, Text, Union
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
 from official.core import export_base
-from official.projects.yolo.configs.yolo import YoloTask
-from official.projects.yolo.configs.yolov7 import YoloV7Task
+from official.projects.yolo.configs import darknet_classification
+from official.projects.yolo.configs import yolo
+from official.projects.yolo.configs import yolov7
+from official.projects.yolo.dataloaders import classification_input
 from official.projects.yolo.modeling import factory as yolo_factory
 from official.projects.yolo.modeling.backbones import darknet  # pylint: disable=unused-import
 from official.projects.yolo.modeling.decoders import yolo_decoder  # pylint: disable=unused-import
 from official.projects.yolo.serving import model_fn as yolo_model_fn
-from official.vision import configs
-from official.vision.dataloaders import classification_input
 from official.vision.modeling import factory
 from official.vision.serving import export_utils
 
@@ -37,7 +37,7 @@ class ExportModule(export_base.ExportModule):
 
   def __init__(self,
                params: cfg.ExperimentConfig,
-               model: tf.keras.Model,
+               model: tf_keras.Model,
                input_signature: Union[tf.TensorSpec, Dict[str, tf.TensorSpec]],
                preprocessor: Optional[Callable[..., Any]] = None,
                inference_step: Optional[Callable[..., Any]] = None,
@@ -47,7 +47,7 @@ class ExportModule(export_base.ExportModule):
 
     Args:
       params: A dataclass for parameters to the module.
-      model: A tf.keras.Model instance to be exported.
+      model: A tf_keras.Model instance to be exported.
       input_signature: tf.TensorSpec, e.g. tf.TensorSpec(shape=[None, 224, 224,
         3], dtype=tf.uint8)
       preprocessor: An optional callable to preprocess the inputs.
@@ -112,7 +112,7 @@ def create_classification_export_module(
   """Creates classification export module."""
   input_signature = export_utils.get_image_input_signatures(
       input_type, batch_size, input_image_size, num_channels, input_name)
-  input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
+  input_specs = tf_keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
 
   model = factory.build_classification_model(
@@ -162,14 +162,14 @@ def create_yolo_export_module(
   """Creates YOLO export module."""
   input_signature = export_utils.get_image_input_signatures(
       input_type, batch_size, input_image_size, num_channels, input_name)
-  input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
+  input_specs = tf_keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
-  if isinstance(params.task, YoloTask):
+  if isinstance(params.task, yolo.YoloTask):
     model, _ = yolo_factory.build_yolo(
         input_specs=input_specs,
         model_config=params.task.model,
         l2_regularization=None)
-  elif isinstance(params.task, YoloV7Task):
+  elif isinstance(params.task, yolov7.YoloV7Task):
     model = yolo_factory.build_yolov7(
         input_specs=input_specs,
         model_config=params.task.model,
@@ -248,13 +248,13 @@ def get_export_module(params: cfg.ExperimentConfig,
                       input_name: Optional[str] = None) -> ExportModule:
   """Factory for export modules."""
   if isinstance(params.task,
-                configs.image_classification.ImageClassificationTask):
+                darknet_classification.ImageClassificationTask):
     export_module = create_classification_export_module(params, input_type,
                                                         batch_size,
                                                         input_image_size,
                                                         num_channels,
                                                         input_name)
-  elif isinstance(params.task, (YoloTask, YoloV7Task)):
+  elif isinstance(params.task, (yolo.YoloTask, yolov7.YoloV7Task)):
     export_module = create_yolo_export_module(params, input_type, batch_size,
                                               input_image_size, num_channels,
                                               input_name)

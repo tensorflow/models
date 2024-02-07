@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 import itertools
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
@@ -59,10 +59,10 @@ class MobileBERTEdgeTPUPretrainerTest(tf.test.TestCase, parameterized.TestCase):
     num_token_predictions = 20
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     inputs = dict(
-        input_word_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
-        input_mask=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
-        input_type_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32))
-    inputs['masked_lm_positions'] = tf.keras.Input(
+        input_word_ids=tf_keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_mask=tf_keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_type_ids=tf_keras.Input(shape=(sequence_length,), dtype=tf.int32))
+    inputs['masked_lm_positions'] = tf_keras.Input(
         shape=(num_token_predictions,), dtype=tf.int32)
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
@@ -109,10 +109,10 @@ class MobileBERTEdgeTPUPretrainerTest(tf.test.TestCase, parameterized.TestCase):
     num_token_predictions = 20
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     inputs = dict(
-        input_word_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
-        input_mask=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
-        input_type_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
-        masked_lm_positions=tf.keras.Input(
+        input_word_ids=tf_keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_mask=tf_keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_type_ids=tf_keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        masked_lm_positions=tf_keras.Input(
             shape=(num_token_predictions,), dtype=tf.int32))
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.

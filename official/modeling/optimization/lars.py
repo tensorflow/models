@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 import re
 from typing import Text, List, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 # pylint: disable=protected-access
 
 
-class LARS(tf.keras.optimizers.legacy.Optimizer):
+class LARS(tf_keras.optimizers.legacy.Optimizer):
   """Layer-wise Adaptive Rate Scaling for large batch training.
 
   Introduced by "Large Batch Training of Convolutional Networks" by Y. You,

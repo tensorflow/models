@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ from absl import app
 from absl import flags
 from absl import logging
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import distribute_utils
 from official.core import base_trainer
@@ -73,7 +73,7 @@ def main(_) -> None:
 
   task = RankingTask(
       params=params.task,
-      optimizer_config=params.trainer.optimizer_config,
+      trainer_config=params.trainer,
       logging_dir=model_dir,
       steps_per_execution=params.trainer.steps_per_loop,
       name='RankingTask')
@@ -150,7 +150,7 @@ def main(_) -> None:
     callbacks = [checkpoint_callback, time_callback]
 
     if enable_tensorboard:
-      tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      tensorboard_callback = tf_keras.callbacks.TensorBoard(
           log_dir=model_dir,
           update_freq=min(1000, params.trainer.validation_interval),
           profile_batch=FLAGS.profile_steps)

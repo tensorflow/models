@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Tests for decoders."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.pointpillars.modeling import decoders
 
@@ -35,7 +35,7 @@ class DecoderTest(parameterized.TestCase, tf.test.TestCase):
     for k, v in input_shape.items():
       if k == str(min_level):
         batch_size, height, width, _ = v
-      inputs[k] = tf.keras.Input(shape=v[1:], batch_size=batch_size)
+      inputs[k] = tf_keras.Input(shape=v[1:], batch_size=batch_size)
     decoder = decoders.Decoder(input_shape)
     endpoints = decoder(inputs)
 

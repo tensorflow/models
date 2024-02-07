@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Tests for official.nlp.tasks.masked_lm."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
@@ -49,7 +49,7 @@ class MLMTaskTest(tf.test.TestCase):
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
 

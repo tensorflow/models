@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,8 +51,9 @@ class DataConfig(cfg.DataConfig):
     temporal_stride: Not used. Need to deprecated.
     max_frames: Maxim Number of frames in a input example. It is used to crop
       the input in the temporal dimension.
-    sample_random_frames: If sample random frames.
-    num_sample_frames: Number of frames to sample for each input example.
+    sample_random_frames: If sample random frames or random sequence.
+    num_sample_frames: Number of frames to sample for each input example. No
+      frame sampling if None.
     num_classes: Number of classes to classify. Assuming it is a classification
       task.
     num_devices: Not used. To be deprecated.
@@ -79,6 +80,7 @@ class DataConfig(cfg.DataConfig):
   sample_random_frames: bool = True
   # Sample random frames if not None. No sampling in inference.
   num_sample_frames: Optional[int] = 300
+  input_per_feature_l2_norm: bool = False
   prefetch_buffer_size: int = 100
   shuffle_buffer_size: int = 100
   num_classes: int = 3862

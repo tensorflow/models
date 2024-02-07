@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import os
 
 # Import libraries
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_hub as hub
 from official.legacy.bert import configs
 from official.projects.labse import export_tfhub
@@ -97,9 +97,9 @@ class ExportModelTest(tf.test.TestCase):
     self.assertGreater(_dropout_mean_stddev(training=True), 1e-3)
 
     # Test propagation of seq_length in shape inference.
-    input_word_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
-    input_mask = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
-    input_type_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_word_ids = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_mask = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_type_ids = tf_keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
     outputs = hub_layer([input_word_ids, input_mask, input_type_ids])
     self.assertEqual(outputs["pooled_output"].shape.as_list(),
                      [None, hidden_size])

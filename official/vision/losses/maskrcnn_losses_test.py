@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Tests for maskrcnn_losses."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.losses import maskrcnn_losses
 
@@ -77,7 +77,10 @@ class MaskrcnnLossesTest(parameterized.TestCase, tf.test.TestCase):
                                       maxval=num_classes + 1,
                                       dtype=tf.int32)
     loss_fn = maskrcnn_losses.FastrcnnClassLoss(use_binary_cross_entropy)
-    self.assertEqual(tf.rank(loss_fn(class_outputs, class_targets)), 0)
+    class_weights = [1.0] * num_classes
+    self.assertEqual(
+        tf.rank(loss_fn(class_outputs, class_targets, class_weights)), 0
+    )
 
   def testFastrcnnClassLossTopK(self):
     class_targets = tf.constant([[0, 0, 0, 2]])
@@ -87,16 +90,17 @@ class MaskrcnnLossesTest(parameterized.TestCase, tf.test.TestCase):
         [100.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
     ]])
+    class_weights = [1.0, 1.0, 1.0]
     self.assertAllClose(
         maskrcnn_losses.FastrcnnClassLoss(top_k_percent=0.5)(
-            class_outputs, class_targets
+            class_outputs, class_targets, class_weights
         ),
         0.775718,
         atol=1e-4,
     )
     self.assertAllClose(
         maskrcnn_losses.FastrcnnClassLoss(top_k_percent=1.0)(
-            class_outputs, class_targets
+            class_outputs, class_targets, class_weights
         ),
         0.387861,
         atol=1e-4,

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -55,6 +55,8 @@ class DataConfig(base_config.Config):
       interleaving files.
     block_length: The number of consecutive elements to produce from each input
       element before cycling to another input element when interleaving files.
+    ram_budget: RAM budget for tf.data service in GB. If None, tf.data will use
+      50% of the available host RAM.
     deterministic: A boolean controlling whether determinism should be enforced.
     sharding: Whether sharding is used in the input pipeline.
     enable_tf_data_service: A boolean indicating whether to enable tf.data
@@ -117,6 +119,7 @@ class DataConfig(base_config.Config):
   cache: bool = False
   cycle_length: Optional[int] = None
   block_length: int = 1
+  ram_budget: Optional[int] = None
   deterministic: Optional[bool] = None
   sharding: bool = True
   enable_tf_data_service: bool = False
@@ -214,6 +217,7 @@ class TrainerConfig(base_config.Config):
     train_tf_while_loop: whether or not to use tf while loop.
     train_tf_function: whether or not to use tf_function for training loop.
     eval_tf_function: whether or not to use tf_function for eval.
+    eval_tf_while_loop: whether or not to use tf while loop for eval.
     allow_tpu_summary: Whether to allow summary happen inside the XLA program
       runs on TPU through automatic outside compilation.
     steps_per_loop: number of steps per loop to report training metrics. This

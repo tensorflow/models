@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,11 @@
 """BERT token classifier."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class BertTokenClassifier(tf.keras.Model):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class BertTokenClassifier(tf_keras.Model):
   """Token classifier model based on a BERT-style transformer-based encoder.
 
   This is an implementation of the network structure surrounding a transformer
@@ -68,10 +68,10 @@ class BertTokenClassifier(tf.keras.Model):
       sequence_output = outputs[0]
     else:
       sequence_output = outputs['sequence_output']
-    sequence_output = tf.keras.layers.Dropout(rate=dropout_rate)(
+    sequence_output = tf_keras.layers.Dropout(rate=dropout_rate)(
         sequence_output)
 
-    classifier = tf.keras.layers.Dense(
+    classifier = tf_keras.layers.Dense(
         num_classes,
         activation=None,
         kernel_initializer=initializer,
@@ -81,7 +81,7 @@ class BertTokenClassifier(tf.keras.Model):
       output_tensors = {'logits': logits}
     elif output == 'predictions':
       output_tensors = {
-          'predictions': tf.keras.layers.Activation(tf.nn.log_softmax)(logits)
+          'predictions': tf_keras.layers.Activation(tf.nn.log_softmax)(logits)
       }
     else:
       raise ValueError(

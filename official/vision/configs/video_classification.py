@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ class DataConfig(cfg.DataConfig):
   mixup_and_cutmix: Optional[common.MixupAndCutmix] = None
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'clip/label/index'
+  input_image_format: str = 'jpeg'
 
 
 def kinetics400(is_training):

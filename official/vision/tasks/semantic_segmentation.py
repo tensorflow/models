@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 from typing import Any, List, Mapping, Optional, Tuple, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -29,6 +29,7 @@ from official.vision.dataloaders import tfds_factory
 from official.vision.evaluation import segmentation_metrics
 from official.vision.losses import segmentation_losses
 from official.vision.modeling import factory
+from official.vision.utils.object_detection import visualization_utils
 
 
 @task_factory.register_task_cls(exp_cfg.SemanticSegmentationTask)
@@ -37,7 +38,7 @@ class SemanticSegmentationTask(base_task.Task):
 
   def build_model(self):
     """Builds segmentation model."""
-    input_specs = tf.keras.layers.InputSpec(shape=[None] +
+    input_specs = tf_keras.layers.InputSpec(shape=[None] +
                                             self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
@@ -45,7 +46,7 @@ class SemanticSegmentationTask(base_task.Task):
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
     l2_regularizer = (
-        tf.keras.regularizers.l2(l2_weight_decay /
+        tf_keras.regularizers.l2(l2_weight_decay /
                                  2.0) if l2_weight_decay else None)
 
     model = factory.build_segmentation_model(
@@ -53,11 +54,11 @@ class SemanticSegmentationTask(base_task.Task):
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
     # Builds the model
-    dummy_inputs = tf.keras.Input(self.task_config.model.input_size)
+    dummy_inputs = tf_keras.Input(self.task_config.model.input_size)
     _ = model(dummy_inputs, training=False)
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -203,7 +204,7 @@ class SemanticSegmentationTask(base_task.Task):
               dtype=tf.float32))
       if self.task_config.model.get('mask_scoring_head'):
         metrics.append(
-            tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
+            tf_keras.metrics.MeanSquaredError(name='mask_scores_mse'))
 
     if not training:
       self.iou_metric = segmentation_metrics.PerClassIoU(
@@ -217,14 +218,14 @@ class SemanticSegmentationTask(base_task.Task):
         # Masks scores metric can only be computed if labels are scaled to match
         # preticted mask scores.
         metrics.append(
-            tf.keras.metrics.MeanSquaredError(name='mask_scores_mse'))
+            tf_keras.metrics.MeanSquaredError(name='mask_scores_mse'))
 
     return metrics
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
@@ -263,14 +264,14 @@ class SemanticSegmentationTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -283,7 +284,7 @@ class SemanticSegmentationTask(base_task.Task):
 
   def validation_step(self,
                       inputs: Tuple[Any, Any],
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
     """Validatation step.
 
@@ -321,26 +322,54 @@ class SemanticSegmentationTask(base_task.Task):
     if metrics:
       self.process_metrics(metrics, labels, outputs)
 
+    if (
+        hasattr(self.task_config, 'allow_image_summary')
+        and self.task_config.allow_image_summary
+    ):
+      logs.update(
+          {'visualization': (tf.cast(features, dtype=tf.float32), outputs)}
+      )
+
     return logs
 
-  def inference_step(self, inputs: tf.Tensor, model: tf.keras.Model):
+  def inference_step(self, inputs: tf.Tensor, model: tf_keras.Model):
     """Performs the forward step."""
     return model(inputs, training=False)
 
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None and self.iou_metric is not None:
       self.iou_metric.reset_states()
-      state = self.iou_metric
+
+    if 'visualization' in step_outputs:
+      # Update segmentation state for writing summary if there are artifacts for
+      # visualization.
+      if state is None:
+        state = {}
+      state.update(visualization_utils.update_segmentation_state(step_outputs))
+
+    if state is None:
+      # Create an arbitrary state to indicate it's not the first step in the
+      # following calls to this function.
+      state = True
+
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
-    result = {}
+    logs = {}
     if self.iou_metric is not None:
       ious = self.iou_metric.result()
       # TODO(arashwan): support loading class name from a label map file.
       if self.task_config.evaluation.report_per_class_iou:
         for i, value in enumerate(ious.numpy()):
-          result.update({'iou/{}'.format(i): value})
+          logs.update({'iou/{}'.format(i): value})
       # Computes mean IoU
-      result.update({'mean_iou': tf.reduce_mean(ious)})
-    return result
+      logs.update({'mean_iou': tf.reduce_mean(ious)})
+
+    # Add visualization for summary.
+    if isinstance(aggregated_logs, dict) and 'image' in aggregated_logs:
+      validation_outputs = visualization_utils.visualize_segmentation_outputs(
+          logs=aggregated_logs, task_config=self.task_config
+      )
+      logs.update(validation_outputs)
+
+    return logs

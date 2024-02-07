@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +16,17 @@
 # pylint: disable=g-classes-have-attributes
 import math
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
-EinsumDense = tf.keras.layers.EinsumDense
-MultiHeadAttention = tf.keras.layers.MultiHeadAttention
+EinsumDense = tf_keras.layers.EinsumDense
+MultiHeadAttention = tf_keras.layers.MultiHeadAttention
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class CachedAttention(tf.keras.layers.MultiHeadAttention):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class CachedAttention(tf_keras.layers.MultiHeadAttention):
   """Attention layer with cache used for autoregressive decoding.
 
-  Arguments are the same as `tf.keras.layers.MultiHeadAttention` layer.
+  Arguments are the same as `tf_keras.layers.MultiHeadAttention` layer.
   """
 
   def _update_cache(self, key, value, cache, decode_loop_step):

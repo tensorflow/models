@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ from official.modeling import performance
 from official.projects.mosaic import mosaic_tasks
 from official.projects.mosaic import registry_imports as mosaic_registry_imports
 from official.vision import registry_imports
+from official.vision.utils import summary_manager
 # pylint: enable=unused-import
 
 FLAGS = flags.FLAGS
@@ -94,7 +95,11 @@ def main(_):
       mode=FLAGS.mode,
       params=params,
       model_dir=model_dir,
-      trainer=mosaic_trainer)
+      trainer=mosaic_trainer,
+      eval_summary_manager=summary_manager.maybe_build_eval_summary_manager(
+          params=params, model_dir=model_dir
+      ),
+  )
 
   train_utils.save_gin_config(FLAGS.mode, model_dir)
 

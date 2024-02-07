@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Unit tests for task."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.recommendation.ranking import task
@@ -40,7 +40,7 @@ class TaskTest(parameterized.TestCase, tf.test.TestCase):
     params.task.model.num_dense_features = 5
 
     ranking_task = task.RankingTask(params.task,
-                                    params.trainer.optimizer_config)
+                                    params.trainer)
 
     if is_training:
       dataset = data_pipeline.train_input_fn(params.task)

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from typing import Dict, Mapping, Text
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.deepmac_maskrcnn.configs import deep_mask_head_rcnn as cfg
 from official.projects.deepmac_maskrcnn.modeling import maskrcnn_model
@@ -61,7 +61,7 @@ class DetectionModule(detection.DetectionModule):
       ValueError("batch_size can't be None for detection models")
     if self.params.task.model.detection_generator.nms_version != 'batched':
       ValueError('Only batched_nms is supported.')
-    input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
+    input_specs = tf_keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
 
     if isinstance(self.params.task.model, cfg.DeepMaskHeadRCNN):

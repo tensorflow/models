@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Task for perceiver wordpiece tokenized masked language model (MLM)."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import task_factory
 from official.modeling import tf_utils
@@ -55,7 +55,7 @@ class PretrainTask(masked_lm.MaskedLMTask):
         .position_encoding_intializer_stddev)
     return pretrainer.Pretrainer(
         mlm_activation=tf_utils.get_activation(config.mlm_activation),
-        mlm_initializer=tf.keras.initializers.TruncatedNormal(
+        mlm_initializer=tf_keras.initializers.TruncatedNormal(
             stddev=config.mlm_initializer_range),
         encoder=encoder_network,
         decoder=mlm_decoder)

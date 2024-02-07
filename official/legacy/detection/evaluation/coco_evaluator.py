@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ from absl import logging
 import numpy as np
 from pycocotools import cocoeval
 import six
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.evaluation import coco_utils
 from official.legacy.detection.utils import class_utils
@@ -277,7 +277,7 @@ class OlnCOCOevalXclassWrapper(OlnCOCOevalWrapper):
 class MetricWrapper(object):
   """Metric Wrapper of the COCO evaluator."""
   # This is only a wrapper for COCO metric and works on for numpy array. So it
-  # doesn't inherit from tf.keras.layers.Layer or tf.keras.metrics.Metric.
+  # doesn't inherit from tf_keras.layers.Layer or tf_keras.metrics.Metric.
 
   def __init__(self, evaluator):
     self._evaluator = evaluator

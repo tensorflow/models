@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,16 +16,16 @@
 
 from typing import Mapping, Union, Any
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class CenterNetModel(tf.keras.Model):
+class CenterNetModel(tf_keras.Model):
   """CenterNet Model."""
 
   def __init__(self,
-               backbone: tf.keras.Model,
-               head: tf.keras.Model,
-               detection_generator: tf.keras.layers.Layer,
+               backbone: tf_keras.Model,
+               head: tf_keras.Model,
+               detection_generator: tf_keras.layers.Layer,
                **kwargs):
     """CenterNet Model.
 
@@ -55,7 +55,7 @@ class CenterNetModel(tf.keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
+      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
 

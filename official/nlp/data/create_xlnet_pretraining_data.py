@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ from absl import flags
 from absl import logging
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.tools import tokenization
 
@@ -271,7 +271,7 @@ def _create_a_and_b_segments(
   Args:
     tokens: The 1D input token ids. This represents an individual entry within a
       batch.
-    sentence_ids: The 1D input sentence ids. This represents an indivdual entry
+    sentence_ids: The 1D input sentence ids. This represents an individual entry
       within a batch. This should be the same length as `tokens`.
     begin_index: The reference beginning index to split data.
     total_length: The target combined length of segments A and B.

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,16 +15,16 @@
 """Metrics for segmentation."""
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.projects.volumetric_models.losses import segmentation_losses
 
 
 class DiceScore:
   """Dice score metric for semantic segmentation.
 
-  This class follows the same function interface as tf.keras.metrics.Metric but
-  does not derive from tf.keras.metrics.Metric or utilize its functions. The
-  reason is a tf.keras.metrics.Metric object does not run well on CPU while
+  This class follows the same function interface as tf_keras.metrics.Metric but
+  does not derive from tf_keras.metrics.Metric or utilize its functions. The
+  reason is a tf_keras.metrics.Metric object does not run well on CPU while
   created on GPU, when running with MirroredStrategy. The same interface allows
   for minimal change to the upstream tasks.
 

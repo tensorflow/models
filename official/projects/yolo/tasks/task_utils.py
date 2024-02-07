@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Utils for yolo task."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class ListMetrics:
@@ -29,7 +29,7 @@ class ListMetrics:
     metric_names = self._metric_names
     metrics = []
     for name in metric_names:
-      metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
     return metrics
 
   def update_state(self, loss_metrics):

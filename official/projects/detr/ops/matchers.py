@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ Matching Algorithm (https://www.cse.ust.hk/~golin/COMP572/Notes/Matching.pdf).
 
 Based on the original implementation by Jiquan Ngiam <jngiam@google.com>.
 """
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.modeling import tf_utils
 
 

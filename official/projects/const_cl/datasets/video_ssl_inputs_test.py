@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import io
 import numpy as np
 from PIL import Image
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.const_cl.configs import const_cl as exp_cfg
 from official.projects.const_cl.datasets import video_ssl_inputs

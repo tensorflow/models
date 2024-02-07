@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Export modules for QAT model serving/inference."""
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.qat.vision.modeling import factory as qat_factory
 from official.vision import configs
@@ -27,7 +27,7 @@ class ClassificationModule(image_classification.ClassificationModule):
 
   def _build_model(self):
     model = super()._build_model()
-    input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
+    input_specs = tf_keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
     return qat_factory.build_qat_classification_model(
         model, self.params.task.quantization, input_specs,
@@ -39,7 +39,7 @@ class SegmentationModule(semantic_segmentation.SegmentationModule):
 
   def _build_model(self):
     model = super()._build_model()
-    input_specs = tf.keras.layers.InputSpec(shape=[self._batch_size] +
+    input_specs = tf_keras.layers.InputSpec(shape=[self._batch_size] +
                                             self._input_image_size + [3])
     return qat_factory.build_qat_segmentation_model(
         model, self.params.task.quantization, input_specs)

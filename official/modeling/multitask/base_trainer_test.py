@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Tests for multitask.base_trainer."""
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -47,7 +47,7 @@ class BaseTrainerTest(tf.test.TestCase, parameterized.TestCase):
       task_weights = {"foo": 1.0, "bar": 1.0}
       test_multitask = multitask.MultiTask(
           tasks=tasks, task_weights=task_weights)
-      test_optimizer = tf.keras.optimizers.SGD(0.1)
+      test_optimizer = tf_keras.optimizers.SGD(0.1)
       model = test_utils.MockMultiTaskModel()
       test_trainer = base_trainer.MultiTaskBaseTrainer(
           multi_task=test_multitask,
@@ -70,7 +70,7 @@ class BaseTrainerTest(tf.test.TestCase, parameterized.TestCase):
                            task_config=test_utils.BarConfig(),
                            task_weight=0.5)))
     test_multitask = multitask.MultiTask.from_config(config)
-    test_optimizer = tf.keras.optimizers.SGD(0.1)
+    test_optimizer = tf_keras.optimizers.SGD(0.1)
     model = test_utils.MockMultiTaskModel()
     test_trainer = base_trainer.MultiTaskBaseTrainer(
         multi_task=test_multitask,

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import os
 
 from absl import flags
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.data import create_coco_tf_record as create_coco_tf_record_lib
 from official.vision.data import tfrecord_lib
@@ -135,7 +135,7 @@ class TfrecordLibTest(parameterized.TestCase):
       os.mkdir(image_dir)
     for image in images:
       image_path = os.path.join(image_dir, image['file_name'])
-      tf.keras.utils.save_img(
+      tf_keras.utils.save_img(
           image_path,
           tf.ones(shape=(image['height'], image['width'], 3)).numpy(),
       )

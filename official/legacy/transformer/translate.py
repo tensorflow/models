@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 # Import libraries
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.transformer.utils import tokenizer
 
@@ -110,7 +110,7 @@ def translate_file(model,
       if distribution_strategy:
         for j in range(batch_size - len(lines)):
           lines.append([tokenizer.EOS_ID])
-      batch = tf.keras.preprocessing.sequence.pad_sequences(
+      batch = tf_keras.preprocessing.sequence.pad_sequences(
           lines,
           maxlen=params["decode_max_length"],
           dtype="int32",

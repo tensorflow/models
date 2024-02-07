@@ -10,12 +10,13 @@ scipy>=0.19.1
 tensorflow-hub>=0.6.0
 tensorflow-model-optimization>=0.4.1
 tensorflow-datasets
+tf-keras
 gin-config
 tf_slim>=1.1.0
 Cython
 matplotlib
 # Loader becomes a required positional argument in 6.0 in yaml.load
-pyyaml>=5.1,<6.0
+pyyaml>=6.0.0
 # CV related dependencies
 opencv-python-headless
 Pillow

@@ -25,7 +25,7 @@ $ export PYTHONPATH=$(pwd)
 
 ## Preparing Dataset
 ```bash
-$ ./official/vision/beta/data/process_coco_panoptic.sh <path-to-data-directory>
+$ ./official/data/process_coco_panoptic.sh <path-to-data-directory>
 ```
 
 ## Launch Training

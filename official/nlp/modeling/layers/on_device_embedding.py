@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,11 @@
 """Keras-based one-hot embedding layer."""
 # pylint: disable=g-classes-have-attributes
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
-class OnDeviceEmbedding(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package="Text")
+class OnDeviceEmbedding(tf_keras.layers.Layer):
   """Performs an embedding lookup suitable for accelerator devices.
 
   This layer uses either tf.gather or tf.one_hot to translate integer indices to
@@ -38,7 +38,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
       is, not to scale). Setting this option to a float will let values in
       output embeddings multiplied by scale_factor.
     weight_fallback_dtype: When keras mix precision inferred wrong dtype for
-      varibales, `weight_fallback_dtype` will be used to define the dtype of
+      variables, `weight_fallback_dtype` will be used to define the dtype of
       weights.
   """
 

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 from absl.testing import parameterized
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.simclr.modeling.layers import nn_blocks
 
@@ -33,7 +33,7 @@ class DenseBNTest(tf.test.TestCase, parameterized.TestCase):
         use_normalization=use_normalization
     )
 
-    x = tf.keras.Input(shape=(64,))
+    x = tf_keras.Input(shape=(64,))
     out_x = test_layer(x)
 
     self.assertAllEqual(out_x.shape.as_list(), [None, output_dim])
