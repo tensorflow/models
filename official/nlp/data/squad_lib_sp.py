@@ -63,7 +63,7 @@ class SquadExample(object):
         tokenization.printable_text(self.question_text))
     s += ", paragraph_text: [%s]" % (" ".join(self.paragraph_text))
     if self.start_position:
-      s += ", start_position: %d" % (self.start_position)
+      s += ", start_position: %d" % (self.start_position,)
     if self.start_position:
       s += ", end_position: %d" % (self.end_position)
     if self.start_position:
@@ -776,7 +776,7 @@ def postprocess_output(all_examples,
               start_logit=pred.start_logit,
               end_logit=pred.end_logit))
 
-    # if we didn't inlude the empty option in the n-best, include it
+    # if we didn't include the empty option in the n-best, include it
     if version_2_with_negative and not xlnet_format:
       if "" not in seen_predictions:
         nbest.append(

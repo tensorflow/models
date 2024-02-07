@@ -1,7 +1,7 @@
 # Public docs for TensorFlow Models
 
 This directory contains the top-level public documentation for
-[TensorFlow Models](https://github.com/tensorflow/models)
+[TensorFlow Models](https://github.com/tensorflow/models).
 
 This directory is mirrored to https://tensorflow.org/tfmodels, and is mainly
 concerned with documenting the tools provided in the `tensorflow_models` pip

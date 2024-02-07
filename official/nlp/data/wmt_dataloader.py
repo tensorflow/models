@@ -117,7 +117,7 @@ def _batch_examples(dataset, batch_size, max_length):
   # Validates bucket batch sizes.
   if any([batch_size <= 0 for batch_size in bucket_batch_sizes]):
     raise ValueError(
-        'The token budget, global batch size, is too small to yeild 0 bucket '
+        'The token budget, global batch size, is too small to yield 0 bucket '
         'window: %s' % str(bucket_batch_sizes))
 
   # bucket_id will be a tensor, so convert this list to a tensor as well.

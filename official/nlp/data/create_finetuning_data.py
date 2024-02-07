@@ -165,7 +165,7 @@ flags.DEFINE_enum(
     "while ALBERT uses SentencePiece tokenizer.")
 
 flags.DEFINE_string(
-    "tfds_params", "", "Comma-separated list of TFDS parameter assigments for "
+    "tfds_params", "", "Comma-separated list of TFDS parameter assignments for "
     "generic classfication data import (for more details "
     "see the TfdsProcessor class documentation).")
 
@@ -270,7 +270,7 @@ def generate_classifier_dataset():
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
-      raise ValueError("Task not found: %s" % (task_name))
+      raise ValueError("Task not found: %s" % (task_name,))
 
     processor = processors[task_name](process_text_fn=processor_text_fn)
     return classifier_data_lib.generate_tf_record_from_data_file(
