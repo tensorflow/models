@@ -13,10 +13,8 @@
 # limitations under the License.
 
 r"""Convert raw cityscale dataset to TFRecord format.
-
 This scripts follows the label map decoder format and supports detection
 boxes, instance masks and captions.
-
 Example usage:
     python create_cityscale_tf_record.py --logtostderr \
       --image_dir="${TRAIN_IMAGE_DIR}" \
@@ -67,7 +65,6 @@ logger.setLevel(logging.INFO)
 def create_tf_example(sat_ROI, label_masks_ROI, historical_ROI,
                       gt_probs,gt_coords, list_len, gt_masks):
   """Converts image and annotations to a tf.Example proto.
-
   Args:
     sat_ROI: [roi_size, roi_size, 3]
     label_masks_ROI: [roi_size, roi_size, 2]
@@ -76,11 +73,9 @@ def create_tf_example(sat_ROI, label_masks_ROI, historical_ROI,
     gt_coords: [num_queries, 2]
     list_len: int
     gt_masks: [roi_size, roi_size, num_queries]
-
   Returns:
     example: The converted tf.Example
     num_annotations_skipped: Number of (invalid) annotations that were ignored.
-
   """
   feature_dict = {
     "sat_roi": tfrecord_lib.convert_to_feature(sat_ROI, 'int64_list'),
@@ -92,7 +87,7 @@ def create_tf_example(sat_ROI, label_masks_ROI, historical_ROI,
     "gt_masks": tfrecord_lib.convert_to_feature(gt_masks, 'int64_list')
   }
   example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
-  
+
   return example, 0
 
 def generate_samples(dataroot, image_size, roi_size, num_queries,
@@ -114,7 +109,7 @@ def generate_samples(dataroot, image_size, roi_size, num_queries,
       v_nexts, ahead_segments = sampler.step_expert_BC_sampler()
       # save training sample
       gt_probs, gt_coords, list_len = sampler.calcualte_label(v_current,v_nexts)
-      
+
       gt_masks = np.zeros((roi_size, roi_size, num_queries))
       kernel = np.ones((4,4), np.uint8)
       for ii,segment in enumerate(ahead_segments):
@@ -125,7 +120,7 @@ def generate_samples(dataroot, image_size, roi_size, num_queries,
             print(segment)
             raise Exception
         gt_masks[:,:,ii] = cv2.dilate(gt_masks[:,:,ii], kernel, iterations=1)
-      
+
       yield (sat_ROI.astype(np.int64), label_masks_ROI.astype(np.uint8),
              historical_ROI.astype(np.uint8), gt_probs, gt_coords, list_len,
              gt_masks.astype(np.uint8))
@@ -138,7 +133,7 @@ def main(_):
   directory = os.path.dirname(prefix)
   if not tf.io.gfile.isdir(directory):
     tf.io.gfile.makedirs(directory)
-  
+
   cityscale_annotations_iter = generate_samples(FLAGS.dataroot,
                                                 FLAGS.image_size,
                                                 FLAGS.roi_size,
