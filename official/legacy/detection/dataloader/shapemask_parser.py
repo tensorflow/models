@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ Weicheng Kuo, Anelia Angelova, Jitendra Malik, Tsung-Yi Lin
 ShapeMask: Learning to Segment Novel Objects by Refining Shape Priors.
 arXiv:1904.03239.
 """
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.detection.dataloader import anchor
 from official.legacy.detection.dataloader import mode_keys as ModeKeys

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.modeling.heads import yolo_head as heads
 
@@ -25,7 +25,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_network_creation(self):
     """Test creation of YOLO family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     input_shape = {
         '3': [1, 52, 52, 256],
         '4': [1, 26, 26, 512],
@@ -49,7 +49,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     input_shape = {
         '3': [1, 52, 52, 256],
         '4': [1, 26, 26, 512],

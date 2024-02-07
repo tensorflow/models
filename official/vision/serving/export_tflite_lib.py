@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import functools
 from typing import Iterator, List, Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -87,7 +87,8 @@ def representative_dataset(
 
 def convert_tflite_model(
     saved_model_dir: Optional[str] = None,
-    model: Optional[tf.keras.Model] = None,
+    concrete_function: Optional[tf.types.experimental.ConcreteFunction] = None,
+    model: Optional[tf.Module] = None,
     quant_type: Optional[str] = None,
     params: Optional[cfg.ExperimentConfig] = None,
     task: Optional[base_task.Task] = None,
@@ -98,8 +99,9 @@ def convert_tflite_model(
 
   Args:
     saved_model_dir: The directory to the SavedModel.
-    model: An optional tf.keras.Model instance. If `saved_model_dir` is not
-      available, convert this model to TFLite.
+    concrete_function: An optional concrete function to be exported.
+    model: An optional tf_keras.Model instance. If both `saved_model_dir` and
+      `concrete_function` are not available, convert this model to TFLite.
     quant_type: The post training quantization (PTQ) method. It can be one of
       `default` (dynamic range), `fp16` (float16), `int8` (integer wih float
       fallback), `int8_full` (integer only) and None (no quantization).
@@ -116,15 +118,21 @@ def convert_tflite_model(
 
   Raises:
     ValueError: If `representative_dataset_path` is not present if integer
-      quantization is requested, or both `saved_model_dir` or `model` are not
-      provided.
+      quantization is requested, or `saved_model_dir`, `concrete_function` or
+      `model` are not provided.
   """
   if saved_model_dir:
     converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+  elif concrete_function is not None:
+    converter = tf.lite.TFLiteConverter.from_concrete_functions(
+        [concrete_function]
+    )
   elif model is not None:
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
   else:
-    raise ValueError('Either `saved_model_dir` or `model` must be specified.')
+    raise ValueError(
+        '`saved_model_dir`, `model` or `concrete_function` must be specified.'
+    )
 
   if quant_type:
     if quant_type.startswith('int8'):

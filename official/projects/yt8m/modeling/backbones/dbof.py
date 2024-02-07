@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,22 +15,23 @@
 """Dbof model definitions."""
 
 import functools
-from typing import Optional
+from typing import Any, Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.projects.yt8m.configs import yt8m as yt8m_cfg
-from official.projects.yt8m.modeling import yt8m_model_utils as utils
+from official.projects.yt8m.modeling import nn_layers
+from official.projects.yt8m.modeling import yt8m_model_utils
 from official.vision.configs import common
 from official.vision.modeling.backbones import factory
 
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-class Dbof(tf.keras.Model):
+class Dbof(layers.Layer):
   """A YT8M model class builder.
 
   Creates a Deep Bag of Frames model.
@@ -48,23 +49,24 @@ class Dbof(tf.keras.Model):
       ),
       params: yt8m_cfg.DbofModel = yt8m_cfg.DbofModel(),
       norm_activation: common.NormActivation = common.NormActivation(),
-      l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """YT8M initialization function.
 
     Args:
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
         [batch_size x num_frames x num_features].
       params: model configuration parameters.
       norm_activation: Model normalization and activation configs.
       l2_regularizer: An optional kernel weight regularizer.
       **kwargs: keyword arguments to be passed.
     """
-    self._self_setattr_tracking = False
+    super().__init__(**kwargs)
     self._input_specs = input_specs
     self._params = params
     self._norm_activation = norm_activation
+    self._l2_regularizer = l2_regularizer
     self._act_fn = tf_utils.get_activation(self._norm_activation.activation)
     self._norm = functools.partial(
         layers.BatchNormalization,
@@ -72,99 +74,113 @@ class Dbof(tf.keras.Model):
         epsilon=self._norm_activation.norm_epsilon,
         synchronized=self._norm_activation.use_sync_bn,
     )
-
-    # [batch_size x num_frames x num_features]
     feature_size = input_specs.shape[-1]
-    # shape 'excluding' batch_size
-    model_input = tf.keras.Input(shape=self._input_specs.shape[1:])
-    # normalize input features
-    input_data = tf.nn.l2_normalize(model_input, -1)
-    tf.summary.histogram("input_hist", input_data)
 
-    # configure model
-    if params.add_batch_norm:
-      input_data = self._norm(name="input_bn")(input_data)
-
-    # activation = reshaped input * cluster weights
-    if params.cluster_size > 0:
-      activation = layers.Dense(
-          params.cluster_size,
-          kernel_regularizer=l2_regularizer,
-          kernel_initializer=tf.random_normal_initializer(
-              stddev=1 / tf.sqrt(tf.cast(feature_size, tf.float32))
+    # Configure model batch norm layer.
+    if self._params.add_batch_norm:
+      self._input_bn = self._norm(name="input_bn")
+      self._cluster_bn = self._norm(name="cluster_bn")
+      self._hidden_bn = self._norm(name="hidden_bn")
+    else:
+      self._hidden_biases = self.add_weight(
+          name="hidden_biases",
+          shape=[self._params.hidden_size],
+          initializer=tf.random_normal_initializer(stddev=0.01),
+      )
+      self._cluster_biases = self.add_weight(
+          name="cluster_biases",
+          shape=[self._params.cluster_size],
+          initializer=tf.random_normal_initializer(
+              stddev=1.0 / tf.math.sqrt(feature_size)
           ),
-      )(input_data)
-    else:
-      activation = input_data
+      )
 
-    if params.add_batch_norm:
-      activation = self._norm(name="cluster_bn")(activation)
-    else:
-      cluster_biases = tf.Variable(
-          tf.random_normal_initializer(stddev=1 / tf.math.sqrt(feature_size))(
-              shape=[params.cluster_size]),
-          name="cluster_biases")
-      tf.summary.histogram("cluster_biases", cluster_biases)
-      activation += cluster_biases
-
-    activation = self._act_fn(activation)
-    tf.summary.histogram("cluster_output", activation)
-
-    if params.use_context_gate_cluster_layer:
-      pooling_method = None
-      norm_args = dict(name="context_gate_bn")
-      activation = utils.context_gate(
-          activation,
+    if self._params.use_context_gate_cluster_layer:
+      self._context_gate = nn_layers.ContextGate(
           normalizer_fn=self._norm,
-          normalizer_params=norm_args,
-          pooling_method=pooling_method,
-          hidden_layer_size=params.context_gate_cluster_bottleneck_size,
-          kernel_regularizer=l2_regularizer)
+          pooling_method=None,
+          hidden_layer_size=self._params.context_gate_cluster_bottleneck_size,
+          kernel_regularizer=self._l2_regularizer,
+          name="context_gate_cluster",
+      )
 
-    activation = utils.frame_pooling(activation, params.pooling_method)
-
-    # activation = activation * hidden1_weights
-    activation = layers.Dense(
-        params.hidden_size,
-        kernel_regularizer=l2_regularizer,
+    self._hidden_dense = layers.Dense(
+        self._params.hidden_size,
+        kernel_regularizer=self._l2_regularizer,
         kernel_initializer=tf.random_normal_initializer(
-            stddev=1 / tf.sqrt(tf.cast(params.cluster_size, tf.float32))))(
-                activation)
+            stddev=1.0 / tf.sqrt(tf.cast(self._params.cluster_size, tf.float32))
+        ),
+        name="hidden_dense",
+    )
 
-    if params.add_batch_norm:
-      activation = self._norm(name="hidden1_bn")(activation)
+    if self._params.cluster_size > 0:
+      self._cluster_dense = layers.Dense(
+          self._params.cluster_size,
+          kernel_regularizer=self._l2_regularizer,
+          kernel_initializer=tf.random_normal_initializer(
+              stddev=1.0 / tf.sqrt(tf.cast(feature_size, tf.float32))
+          ),
+          name="cluster_dense",
+      )
 
-    else:
-      hidden1_biases = tf.Variable(
-          tf.random_normal_initializer(stddev=0.01)(shape=[params.hidden_size]),
-          name="hidden1_biases")
+  def call(
+      self, inputs: tf.Tensor, num_frames: Any = None,
+  ) -> tf.Tensor:
+    # L2 normalize input features
+    activation = tf.nn.l2_normalize(inputs, -1)
 
-      tf.summary.histogram("hidden1_biases", hidden1_biases)
-      activation += hidden1_biases
+    if self._params.add_batch_norm:
+      activation = self._input_bn(activation)
+
+    if self._params.cluster_size > 0:
+      activation = self._cluster_dense(activation)
+      if self._params.add_batch_norm:
+        activation = self._cluster_bn(activation)
+    if not self._params.add_batch_norm:
+      activation += self._cluster_biases
 
     activation = self._act_fn(activation)
-    tf.summary.histogram("hidden1_output", activation)
 
-    super().__init__(inputs=model_input, outputs=activation, **kwargs)
+    if self._params.use_context_gate_cluster_layer:
+      activation = self._context_gate(activation)
+
+    activation = yt8m_model_utils.frame_pooling(
+        activation,
+        method=self._params.pooling_method,
+        num_frames=num_frames,
+    )
+
+    activation = self._hidden_dense(activation)
+    if self._params.add_batch_norm:
+      activation = self._hidden_bn(activation)
+    else:
+      activation += self._hidden_biases
+
+    activation = self._act_fn(activation)
+    return activation
 
 
 @factory.register_backbone_builder("dbof")
 def build_dbof(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
     **kwargs,
-) -> tf.keras.Model:
+) -> tf_keras.Model:
   """Builds a dbof backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
   assert backbone_type == "dbof", f"Inconsistent backbone type {backbone_type}"
 
-  return Dbof(
+  dbof = Dbof(
       input_specs=input_specs,
       params=backbone_cfg,
       norm_activation=norm_activation_config,
       l2_regularizer=l2_regularizer,
       **kwargs,
   )
+
+  # Warmup calls to build model variables.
+  dbof(tf_keras.Input(input_specs.shape[1:]))
+  return dbof

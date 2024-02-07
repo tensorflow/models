@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import functools
 from typing import Any, Optional
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.projects.yt8m.modeling import backbones  # pylint: disable=unused-import
@@ -26,10 +26,10 @@ from official.projects.yt8m.modeling import heads
 from official.vision.modeling.backbones import factory
 
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-class VideoClassificationModel(tf.keras.Model):
+class VideoClassificationModel(tf_keras.Model):
   """A video classification model class builder.
 
   The model consists of a backbone (dbof) and a classification head.
@@ -43,7 +43,7 @@ class VideoClassificationModel(tf.keras.Model):
   def __init__(
       self,
       params: yt8m_cfg.VideoClassificationModel,
-      backbone: Optional[tf.keras.Model] = None,
+      backbone: Optional[tf_keras.Model] = None,
       num_classes: int = 3862,
       input_specs: layers.InputSpec = layers.InputSpec(
           shape=[None, None, 1152]
@@ -57,7 +57,7 @@ class VideoClassificationModel(tf.keras.Model):
       params: Model configuration parameters.
       backbone: Optional backbone model. Will build a backbone if None.
       num_classes: `int` number of classes in dataset.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
         [batch_size x num_frames x num_features]
       l2_weight_decay: An optional `float` of kernel regularizer weight decay.
       **kwargs: keyword arguments to be passed.
@@ -79,7 +79,7 @@ class VideoClassificationModel(tf.keras.Model):
       # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
       # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
       l2_regularizer = (
-          tf.keras.regularizers.l2(l2_weight_decay / 2.0)
+          tf_keras.regularizers.l2(l2_weight_decay / 2.0)
           if l2_weight_decay
           else None
       )
@@ -113,14 +113,11 @@ class VideoClassificationModel(tf.keras.Model):
       return
 
     l2_regularizer = (
-        tf.keras.regularizers.l2(self._l2_weight_decay / 2.0)
+        tf_keras.regularizers.l2(self._l2_weight_decay / 2.0)
         if self._l2_weight_decay
         else None
     )
     self.head = aggregation_head(
-        input_specs=layers.InputSpec(
-            shape=[None, self._params.backbone.get().hidden_size]
-        ),
         vocab_size=self._num_classes,
         l2_regularizer=l2_regularizer,
         **head_cfg.as_dict(),
@@ -134,10 +131,17 @@ class VideoClassificationModel(tf.keras.Model):
     return cls(**config)
 
   def call(
-      self, inputs: tf.Tensor, training: Any = None, mask: Any = None
+      self,
+      inputs: tf.Tensor,
+      num_frames: Any = None,
+      training: Any = None,
   ) -> dict[str, tf.Tensor]:
-    features = self.backbone(inputs)
-    outputs = self.head(features)
+    features = self.backbone(
+        inputs,
+        num_frames=num_frames,
+        training=training,
+    )
+    outputs = self.head(features, training=training)
     return outputs
 
   @property

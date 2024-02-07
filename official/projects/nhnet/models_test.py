@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import os
 from absl import logging
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.distribute import combinations
@@ -224,7 +224,7 @@ class NHNetTest(tf.test.TestCase, parameterized.TestCase):
     else:
       return int(
           np.sum([
-              tf.keras.backend.count_params(p) for p in layer.trainable_weights
+              tf_keras.backend.count_params(p) for p in layer.trainable_weights
           ]))
 
   def test_create_nhnet_layers(self):

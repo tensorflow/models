@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import os
 # Import libraries
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.nlp.data import classifier_data_lib
 from official.nlp.data import sentence_retrieval_lib
 # word-piece tokenizer based squad_lib
@@ -165,7 +165,7 @@ flags.DEFINE_enum(
     "while ALBERT uses SentencePiece tokenizer.")
 
 flags.DEFINE_string(
-    "tfds_params", "", "Comma-separated list of TFDS parameter assigments for "
+    "tfds_params", "", "Comma-separated list of TFDS parameter assignments for "
     "generic classfication data import (for more details "
     "see the TfdsProcessor class documentation).")
 
@@ -270,7 +270,7 @@ def generate_classifier_dataset():
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
-      raise ValueError("Task not found: %s" % (task_name))
+      raise ValueError("Task not found: %s" % (task_name,))
 
     processor = processors[task_name](process_text_fn=processor_text_fn)
     return classifier_data_lib.generate_tf_record_from_data_file(

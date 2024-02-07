@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ Batching scheme
 from typing import Dict, Optional
 
 import dataclasses
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_text as tftxt
 from official.core import config_definitions as cfg
 from official.core import input_reader
@@ -117,7 +117,7 @@ def _batch_examples(dataset, batch_size, max_length):
   # Validates bucket batch sizes.
   if any([batch_size <= 0 for batch_size in bucket_batch_sizes]):
     raise ValueError(
-        'The token budget, global batch size, is too small to yeild 0 bucket '
+        'The token budget, global batch size, is too small to yield 0 bucket '
         'window: %s' % str(bucket_batch_sizes))
 
   # bucket_id will be a tensor, so convert this list to a tensor as well.

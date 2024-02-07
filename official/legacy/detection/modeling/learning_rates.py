@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.modeling.hyperparams import params_dict
 
 
 class StepLearningRateWithLinearWarmup(
-    tf.keras.optimizers.schedules.LearningRateSchedule):
+    tf_keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
   def __init__(self, total_steps, params):
@@ -57,7 +57,7 @@ class StepLearningRateWithLinearWarmup(
 
 
 class CosineLearningRateWithLinearWarmup(
-    tf.keras.optimizers.schedules.LearningRateSchedule):
+    tf_keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
   def __init__(self, total_steps, params):

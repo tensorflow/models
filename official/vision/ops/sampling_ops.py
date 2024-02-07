@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ This is originally implemented in TensorFlow Object Detection API.
 """
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def combined_static_and_dynamic_shape(tensor):

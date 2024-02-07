@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Tests for mat_mul_with_margin layer."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import mat_mul_with_margin
 
@@ -26,8 +26,8 @@ class MatMulWithMarginTest(tf.test.TestCase):
     input_width = 512
     test_layer = mat_mul_with_margin.MatMulWithMargin()
     # Create a 2-dimensional input (the first dimension is implicit).
-    left_encoded = tf.keras.Input(shape=(input_width,), dtype=tf.float32)
-    right_encoded = tf.keras.Input(shape=(input_width,), dtype=tf.float32)
+    left_encoded = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
+    right_encoded = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
     left_logits, right_logits = test_layer(left_encoded, right_encoded)
 
     # Validate that the outputs are of the expected shape.

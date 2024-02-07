@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.backbones import revnet
 
@@ -30,10 +30,10 @@ class RevNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, input_size, model_id,
                             endpoint_filter_scale):
     """Test creation of RevNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     network = revnet.RevNet(model_id=model_id)
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     network.summary()
 
@@ -53,12 +53,12 @@ class RevNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
+    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, input_dim])
     network = revnet.RevNet(model_id=56, input_specs=input_specs)
 
-    inputs = tf.keras.Input(shape=(128, 128, input_dim), batch_size=1)
+    inputs = tf_keras.Input(shape=(128, 128, input_dim), batch_size=1)
     _ = network(inputs)
 
   def test_serialize_deserialize(self):

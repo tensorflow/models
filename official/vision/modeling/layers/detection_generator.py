@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple
 # Import libraries
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import edgetpu
 from official.vision.ops import box_ops
@@ -764,7 +764,6 @@ def _generate_detections_tflite_implements_signature(
   Returns:
     An `experimental_implements` signature string.
   """
-  scale_value = 1.0
 
   implements_signature = [
       'name: "%s"' % 'TFLite_Detection_PostProcess',
@@ -772,16 +771,18 @@ def _generate_detections_tflite_implements_signature(
       % config['max_detections'],
       'attr { key: "max_classes_per_detection" value { i: %d } }'
       % config['max_classes_per_detection'],
+      'attr { key: "detections_per_class" value { i: %d } }'
+      % config.get('detections_per_class', 5),
       'attr { key: "use_regular_nms" value { b: %s } }'
       % str(config['use_regular_nms']).lower(),
       'attr { key: "nms_score_threshold" value { f: %f } }'
       % config['nms_score_threshold'],
       'attr { key: "nms_iou_threshold" value { f: %f } }'
       % config['nms_iou_threshold'],
-      'attr { key: "y_scale" value { f: %f } }' % scale_value,
-      'attr { key: "x_scale" value { f: %f } }' % scale_value,
-      'attr { key: "h_scale" value { f: %f } }' % scale_value,
-      'attr { key: "w_scale" value { f: %f } }' % scale_value,
+      'attr { key: "y_scale" value { f: %f } }' % config.get('y_scale', 1.0),
+      'attr { key: "x_scale" value { f: %f } }' % config.get('x_scale', 1.0),
+      'attr { key: "h_scale" value { f: %f } }' % config.get('h_scale', 1.0),
+      'attr { key: "w_scale" value { f: %f } }' % config.get('w_scale', 1.0),
       'attr { key: "num_classes" value { i: %d } }' % config['num_classes'],
   ]
   implements_signature = ' '.join(implements_signature)
@@ -793,6 +794,7 @@ def _generate_detections_tflite(
     raw_scores: Mapping[str, tf.Tensor],
     anchor_boxes: Mapping[str, tf.Tensor],
     config: Dict[str, Any],
+    box_coder_weights: List[float] | None = None,
 ) -> Sequence[Any]:
   """Generate detections for conversion to TFLite.
 
@@ -816,7 +818,10 @@ def _generate_detections_tflite(
       features and value is a tensor denoting a level of anchors with shape
       [num_anchors, 4].
     config: A dictionary of configs defining parameters for TFLite NMS op.
-
+    box_coder_weights: An optional `list` of 4 positive floats to scale y, x, h,
+      and w when encoding box coordinates. If set to None, does not perform
+      scaling. For Faster RCNN, the open-source implementation recommends using
+      [10.0, 10.0, 5.0, 5.0].
   Returns:
     A (dummy) tuple of (boxes, scores, classess, num_detections).
 
@@ -838,15 +843,18 @@ def _generate_detections_tflite(
     raise ValueError(
         'The last dimension of predicted boxes should be divisible by 4.'
     )
+
   num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
-  if num_anchors_per_locations_times_4 % 4 != 0:
+  num_classes_times_anchors_per_location = (
+      raw_scores[str(min_level)].get_shape().as_list()[-1]
+  )
+  if num_classes_times_anchors_per_location % num_anchors_per_locations != 0:
     raise ValueError(
         'The last dimension of predicted scores should be divisible by'
         f' {num_anchors_per_locations}.'
     )
   num_classes = (
-      raw_scores[str(min_level)].get_shape().as_list()[-1]
-      // num_anchors_per_locations
+      num_classes_times_anchors_per_location // num_anchors_per_locations
   )
   config.update({'num_classes': num_classes})
 
@@ -863,6 +871,14 @@ def _generate_detections_tflite(
   ha = anchors[..., 2] - anchors[..., 0]
   wa = anchors[..., 3] - anchors[..., 1]
   anchors = tf.stack([ycenter_a, xcenter_a, ha, wa], axis=-1)
+
+  if box_coder_weights:
+    config.update({
+        'y_scale': box_coder_weights[0],
+        'x_scale': box_coder_weights[1],
+        'h_scale': box_coder_weights[2],
+        'w_scale': box_coder_weights[3],
+    })
 
   if config.get('normalize_anchor_coordinates', False):
     # TFLite's object detection APIs require normalized anchors.
@@ -897,8 +913,8 @@ def _generate_detections_tflite(
   return dummy_post_processing(boxes, scores, anchors)[::-1]
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class DetectionGenerator(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class DetectionGenerator(tf_keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
   def __init__(
@@ -1109,8 +1125,8 @@ class DetectionGenerator(tf.keras.layers.Layer):
     return cls(**config)
 
 
-@tf.keras.utils.register_keras_serializable(package='Vision')
-class MultilevelDetectionGenerator(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MultilevelDetectionGenerator(tf_keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
   def __init__(
@@ -1128,6 +1144,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       nms_v3_refinements: Optional[int] = None,
       return_decoded: Optional[bool] = None,
       use_class_agnostic_nms: Optional[bool] = None,
+      box_coder_weights: Optional[List[float]] = None,
       **kwargs,
   ):
     """Initializes a multi-level detection generator.
@@ -1162,6 +1179,10 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         regardless of whether `apply_nms` is True or not.
       use_class_agnostic_nms: A `bool` of whether non max suppression is
         operated on all the boxes using max scores across all classes.
+      box_coder_weights: An optional `list` of 4 positive floats to scale y, x,
+        h, and w when encoding box coordinates. If set to None, does not perform
+        scaling. For Faster RCNN, the open-source implementation recommends
+        using [10.0, 10.0, 5.0, 5.0].
       **kwargs: Additional keyword arguments passed to Layer.
 
     Raises:
@@ -1186,6 +1207,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
         'soft_nms_sigma': soft_nms_sigma,
         'return_decoded': return_decoded,
         'use_class_agnostic_nms': use_class_agnostic_nms,
+        'box_coder_weights': box_coder_weights,
     }
     # Don't store if were not defined
     if pre_nms_top_k_sharding_block is not None:
@@ -1257,7 +1279,11 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
           raw_boxes_i,
           [batch_size, num_locations * num_anchors_per_locations, 4],
       )
-      boxes_i = box_ops.decode_boxes(raw_boxes_i, anchor_boxes_i)
+      boxes_i = box_ops.decode_boxes(
+          raw_boxes_i,
+          anchor_boxes_i,
+          weights=self._config_dict['box_coder_weights'],
+      )
 
       # Box clipping.
       if image_shape is not None:
@@ -1452,6 +1478,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
           raw_scores,
           anchor_boxes,
           self.get_config()['tflite_post_processing_config'],
+          self._config_dict['box_coder_weights'],
       )
       return {
           'num_detections': num_detections,

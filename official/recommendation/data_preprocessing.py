@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ from typing import Dict, Text, Tuple
 from absl import logging
 import numpy as np
 import pandas as pd
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline

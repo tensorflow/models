@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import math
 from typing import Callable, Dict, Optional, Sequence, Text, Union
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 
@@ -157,7 +157,7 @@ class Embed(Module):
     if embeddings_initializer:
       self.embed_init = embeddings_initializer
     else:
-      self.embed_init = tf.keras.initializers.TruncatedNormal(stddev=1.0)
+      self.embed_init = tf_keras.initializers.TruncatedNormal(stddev=1.0)
     with self.name_scope:
       self.embeddings = self.create_variable(
           "embedding", [self.vocab_size, self.features],
@@ -224,7 +224,7 @@ class RMSNorm(Module):
       self.weight = self.create_variable(
           "scale", [hidden_size],
           dtype=self.dtype,
-          initializer=tf.keras.initializers.Ones())
+          initializer=tf_keras.initializers.Ones())
 
   @tf.Module.with_name_scope
   def __call__(self, x):
@@ -254,14 +254,14 @@ class Linear(Module):
     self.use_bias = use_bias
     self.w_init = w_init
     if self.use_bias:
-      self.b_init = b_init if b_init else tf.keras.initializers.Zeros()
+      self.b_init = b_init if b_init else tf_keras.initializers.Zeros()
     elif b_init is not None:
       raise ValueError("When not using a bias the b_init must be None.")
 
     with self.name_scope:
       if self.w_init is None:
         stddev = 1 / math.sqrt(self.in_features)
-        self.w_init = tf.keras.initializers.HeNormal()
+        self.w_init = tf_keras.initializers.HeNormal()
 
       self.w = self.create_variable(
           "kernel", [self.in_features, self.out_features],
@@ -322,13 +322,13 @@ class Linear3D(Module):
       self.bias_shape = (self.out_features,)
       bias_rank = 1
     if self.use_bias:
-      self.b_init = b_init or tf.keras.initializers.Zeros()
+      self.b_init = b_init or tf_keras.initializers.Zeros()
     elif b_init is not None:
       raise ValueError("When not using a bias the b_init must be None.")
 
     with self.name_scope:
       if self.w_init is None:
-        self.w_init = tf.keras.initializers.HeNormal()
+        self.w_init = tf_keras.initializers.HeNormal()
 
       self.w = self.create_variable(
           "kernel",
@@ -707,6 +707,7 @@ class MultiHeadAttention(Module):
     if mask is not None:
       scores += mask  # (bs, n_heads, qlen, klen)
     weights = tf.nn.softmax(tf.cast(scores, tf.float32), axis=-1)
+    output_scores = weights
     # weights shape = (bs, n_heads, qlen, klen)
     weights = tf.cast(weights, scores.dtype)
     weight_shape = tf_utils.get_shape_list(weights)
@@ -720,6 +721,7 @@ class MultiHeadAttention(Module):
     c = self.o(c)
 
     outputs = dict(context=c)
+    outputs["attention_scores"] = output_scores
     if cache:
       outputs["cache"] = cache
     return outputs
@@ -853,6 +855,7 @@ class EncoderBlock(Module):
                rescale_query: bool = False,
                weight_initializer: Optional[Initializer] = None,
                bias_initializer: Optional[Initializer] = None,
+               return_attention_scores: bool = False,
                **kwargs):
     super().__init__(**kwargs)
     with self.name_scope:
@@ -881,6 +884,7 @@ class EncoderBlock(Module):
           dtype=self.dtype,
           name="ffn")
       self.ffn_output_dropout = Dropout(dropout_rate)
+      self.return_attention_scores = return_attention_scores
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -902,7 +906,8 @@ class EncoderBlock(Module):
     ffn_output = self.ffn_output_dropout(
         ffn_output, noise_shape=tensor_shape, training=training)
     ffn_output = attn_output + ffn_output
-
+    if self.return_attention_scores:
+      return ffn_output, attention_outputs["attention_scores"]
     return ffn_output
 
 
@@ -1014,7 +1019,7 @@ class T5TransformerParams:
   relative_attention_num_buckets: int = 32
   relative_attention_max_distance: int = 128
   relative_embeddings_initializer: Optional[Initializer] = None
-  weight_initializer: Optional[Initializer] = (tf.keras.initializers.HeNormal())
+  weight_initializer: Optional[Initializer] = (tf_keras.initializers.HeNormal())
   bias_initializer: Optional[Initializer] = None
   rescale_query: bool = False
   bidirectional: bool = True
@@ -1026,6 +1031,7 @@ class T5TransformerParams:
   # If true, uses one relative embedding for all encoder layers and one for all
   # decoder layers. Otherwise, have relative embedding for each layer.
   use_shared_relative_position_bias: bool = True
+  return_attention_scores: bool = False
 
 
 class Encoder(Module):
@@ -1099,6 +1105,7 @@ class Encoder(Module):
                   rescale_query=self.config.rescale_query,
                   weight_initializer=self.config.weight_initializer,
                   bias_initializer=self.config.bias_initializer,
+                  return_attention_scores=self.config.return_attention_scores,
                   dtype=self.dtype,
                   name="encoder_block_%d" % layer_idx))
       self.output_norm = RMSNorm(
@@ -1168,6 +1175,7 @@ class Encoder(Module):
     else:
       input_length = 0
 
+    attention_outputs = []
     for i in range(cfg.num_layers):
       position_bias = self.get_relpos_bias(input_length, dense_inputs, i)
       x = self.encoder_layers[i](
@@ -1175,10 +1183,16 @@ class Encoder(Module):
           attention_mask=encoder_mask,
           position_bias=position_bias,
           training=training)
+      if self.config.return_attention_scores:
+        x, attention_scores = x
+        attention_outputs.append(attention_scores)
 
     encoded = self.output_norm(x)
     encoded = self.output_dropout(encoded, training=training)
-    return encoded
+    if self.config.return_attention_scores:
+      return encoded, attention_outputs
+    else:
+      return encoded
 
 
 class Decoder(Module):
@@ -1373,6 +1387,7 @@ class T5Transformer(Module):
     # Builds the model components.
     shared_embedding = config.shared_embedding
     self.compute_dtype = compute_dtype
+    self.config = config
     self.decoder_cfg = dataclasses.replace(config, bidirectional=False)
     if self.decoder_cfg.num_decoder_layers is None:
       self.decoder_cfg.num_decoder_layers = self.decoder_cfg.num_layers
@@ -1556,6 +1571,8 @@ class T5Transformer(Module):
         encoder_dense_inputs=encoder_dense_inputs,
         encoder_dense_segment_ids=encoder_dense_segment_ids,
         training=training)
+    if self.config.return_attention_scores:
+      encoded, attn_scores = encoded
     outputs = self.decode(
         encoded=encoded,
         decoder_target_tokens=decoder_target_tokens,
@@ -1567,6 +1584,8 @@ class T5Transformer(Module):
         decoder_segment_ids=decoder_segment_ids,
         training=training)
     outputs["encoded"] = encoded
+    if self.config.return_attention_scores:
+      outputs["attention_scores"] = attn_scores
     return outputs
 
   @property

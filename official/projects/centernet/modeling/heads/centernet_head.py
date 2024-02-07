@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 
 from typing import Any, Dict, List, Mapping
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.modeling.layers import cn_nn_blocks
 
 
-class CenterNetHead(tf.keras.Model):
+class CenterNetHead(tf_keras.Model):
   """CenterNet Head."""
 
   def __init__(self,
@@ -61,7 +61,7 @@ class CenterNetHead(tf.keras.Model):
     self._heatmap_bias = heatmap_bias
     self._num_inputs = len(input_levels)
 
-    inputs = {level: tf.keras.layers.Input(shape=self._input_specs[level][1:])
+    inputs = {level: tf_keras.layers.Input(shape=self._input_specs[level][1:])
               for level in input_levels}
     outputs = {}
 

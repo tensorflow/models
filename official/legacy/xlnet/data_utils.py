@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import os
 from absl import logging
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 special_symbols = {
     "<unk>": 0,
@@ -529,7 +529,7 @@ def create_pretrain_dataset(file_names,
 
     for key in list(example.keys()):
       val = example[key]
-      if tf.keras.backend.is_sparse(val):
+      if tf_keras.backend.is_sparse(val):
         val = tf.sparse.to_dense(val)
       if val.dtype == tf.int64:
         val = tf.cast(val, tf.int32)

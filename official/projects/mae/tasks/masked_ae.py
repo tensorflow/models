@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Task for masked autoencoder pretraining."""
 
 from typing import Optional
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import input_reader
@@ -32,7 +32,7 @@ from official.vision.dataloaders import tfds_factory
 class MaskedAETask(base_task.Task):
   """Task for masked autoencoder training."""
 
-  def build_model(self) -> tf.keras.Model:
+  def build_model(self) -> tf_keras.Model:
     encoder = vit.VisionTransformer(
         self.task_config.patch_h,
         self.task_config.patch_w,
@@ -102,5 +102,5 @@ class MaskedAETask(base_task.Task):
     return dataset
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    return tf.keras.metrics.mean_squared_error(
+    return tf_keras.metrics.mean_squared_error(
         labels, model_outputs)

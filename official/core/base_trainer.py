@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ from typing import Union, Optional
 from absl import logging
 import gin
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import base_task
 from official.core import config_definitions
@@ -142,7 +142,7 @@ class Trainer(_AsyncTrainer):
       self,
       config: ExperimentConfig,
       task: base_task.Task,
-      model: tf.keras.Model,
+      model: tf_keras.Model,
       optimizer: tf.optimizers.Optimizer,
       train: bool = True,
       evaluate: bool = True,
@@ -156,7 +156,7 @@ class Trainer(_AsyncTrainer):
     Args:
       config: An `ExperimentConfig` instance specifying experiment config.
       task: A base_task.Task instance.
-      model: The model instance, e.g. a tf.keras.Model instance.
+      model: The model instance, e.g. a tf_keras.Model instance.
       optimizer: tf.optimizers.Optimizer instance.
       train: bool, whether or not this trainer will be used for training.
         default to True.
@@ -207,8 +207,8 @@ class Trainer(_AsyncTrainer):
         optimizer=self.optimizer,
         **checkpoint_items)
 
-    self._train_loss = tf.keras.metrics.Mean("training_loss", dtype=tf.float32)
-    self._validation_loss = tf.keras.metrics.Mean(
+    self._train_loss = tf_keras.metrics.Mean("training_loss", dtype=tf.float32)
+    self._validation_loss = tf_keras.metrics.Mean(
         "validation_loss", dtype=tf.float32)
     model_metrics = model.metrics if hasattr(model, "metrics") else []
 
@@ -367,7 +367,10 @@ class Trainer(_AsyncTrainer):
     This method provides a way to control how to fetch the next model input, and
     what data to send to the model.
 
-    This function runs in eager mode.
+    Note: This function runs on the host side when accelerators are used.
+
+    Note: Depending on the training setup this may or may not run in eager mode.
+    In most cases it will be run in graph mode.
 
     Args:
       iterator: Dataset iterator to generate the next inputs from.
@@ -414,7 +417,10 @@ class Trainer(_AsyncTrainer):
     processed later in `aggregate_logs`. This is useful for sending extra logs
     downstream that are not compatible with the accelerators.
 
-    This function runs in eager mode.
+    Note: This function runs on the host side when accelerators are used.
+
+    Note: Depending on the training setup this may or may not run in eager mode.
+    In most cases it will be run in graph mode.
 
     Args:
       iterator: Dataset iterator to generate the next inputs from.
@@ -454,7 +460,7 @@ class Trainer(_AsyncTrainer):
           passthrough_logs.keys(),
       )
 
-    return passthrough_logs | logs
+    return {**passthrough_logs, **logs}
 
   def eval_end(self, aggregated_logs=None):
     """Processes evaluation results."""

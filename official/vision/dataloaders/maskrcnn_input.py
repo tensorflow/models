@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 from typing import Optional
 
 # Import libraries
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.configs import common
 from official.vision.dataloaders import parser
@@ -321,7 +321,7 @@ class Parser(parser.Parser):
       data: the decoded tensor dictionary from TfExampleDecoder.
 
     Returns:
-      A dictionary of {'images': image, 'labels': labels} where
+      A tuple of (image, labels) where
         image: image tensor that is preproessed to have normalized value and
           dimension [output_size[0], output_size[1], 3]
         labels: a dictionary of tensors used for training. The following

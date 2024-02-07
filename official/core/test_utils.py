@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
 
 """Utils for testing."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class FakeKerasModel(tf.keras.Model):
+class FakeKerasModel(tf_keras.Model):
   """Fake keras model for testing."""
 
   def __init__(self):
     super().__init__()
-    self.dense = tf.keras.layers.Dense(4, activation=tf.nn.relu)
-    self.dense2 = tf.keras.layers.Dense(4, activation=tf.nn.relu)
+    self.dense = tf_keras.layers.Dense(4, activation=tf.nn.relu)
+    self.dense2 = tf_keras.layers.Dense(4, activation=tf.nn.relu)
 
   def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     return self.dense2(self.dense(inputs))

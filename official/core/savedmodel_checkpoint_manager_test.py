@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ import os
 import time
 from typing import Iterable
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import savedmodel_checkpoint_manager
 
@@ -31,10 +31,10 @@ def _models_exist(checkpoint_path: str, models: Iterable[str]) -> bool:
   return True
 
 
-class _ModelForTest(tf.keras.Model):
+class _ModelForTest(tf_keras.Model):
   def __init__(self, hidden_size: int = 8):
     super().__init__()
-    self.dense = tf.keras.layers.Dense(hidden_size)
+    self.dense = tf_keras.layers.Dense(hidden_size)
 
   @tf.function(input_signature=[tf.TensorSpec([None, 16])])
   def call(self, inputs):

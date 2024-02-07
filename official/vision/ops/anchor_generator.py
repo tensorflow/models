@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Multi scale anchor generator definition."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 # (TODO/tanzheny): consider having customized anchor offset.
@@ -81,9 +81,9 @@ class _SingleAnchorGenerator:
 
     stride = tf.cast(self.stride, tf.float32)
     # [W]
-    cx = tf.range(0.5 * stride, image_width, stride)
+    cx = tf.range(0.5 * stride, image_width + 0.5 * stride, stride)
     # [H]
-    cy = tf.range(0.5 * stride, image_height, stride)
+    cy = tf.range(0.5 * stride, image_height + 0.5 * stride, stride)
     # [H, W]
     cx_grid, cy_grid = tf.meshgrid(cx, cy)
     # [H, W, 1]

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 import math
 from typing import Optional, Sequence, Tuple, Union
 from six.moves import range
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import augment
 from official.vision.ops import box_ops
@@ -29,6 +29,7 @@ MEAN_NORM = (0.485, 0.456, 0.406)
 STDDEV_NORM = (0.229, 0.224, 0.225)
 MEAN_RGB = tuple(255 * i for i in MEAN_NORM)
 STDDEV_RGB = tuple(255 * i for i in STDDEV_NORM)
+MEDIAN_RGB = (128.0, 128.0, 128.0)
 
 # Alias for convenience. PLEASE use `box_ops.horizontal_flip_boxes` directly.
 horizontal_flip_boxes = box_ops.horizontal_flip_boxes
@@ -74,8 +75,22 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
 
 def normalize_image(image: tf.Tensor,
                     offset: Sequence[float] = MEAN_NORM,
-                    scale: Sequence[float] = STDDEV_NORM):
-  """Normalizes the image to zero mean and unit variance."""
+                    scale: Sequence[float] = STDDEV_NORM) -> tf.Tensor:
+  """Normalizes the image to zero mean and unit variance.
+
+  If the input image dtype is float, it is expected to either have values in
+  [0, 1) and offset is MEAN_NORM, or have values in [0, 255] and offset is
+  MEAN_RGB.
+
+  Args:
+    image: A tf.Tensor in either (1) float dtype with values in range [0, 1) or
+      [0, 255], or (2) int type with values in range [0, 255].
+    offset: A tuple of mean values to be subtracted from the image.
+    scale: A tuple of normalization factors.
+
+  Returns:
+    A normalized image tensor.
+  """
   with tf.name_scope('normalize_image'):
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     return normalize_scaled_float_image(image, offset, scale)
@@ -86,10 +101,11 @@ def normalize_scaled_float_image(image: tf.Tensor,
                                  scale: Sequence[float] = STDDEV_NORM):
   """Normalizes a scaled float image to zero mean and unit variance.
 
-  It assumes the input image is float dtype with values in [0, 1).
+  It assumes the input image is float dtype with values in [0, 1) if offset is
+  MEAN_NORM, values in [0, 255] if offset is MEAN_RGB.
 
   Args:
-    image: A tf.Tensor in float32 dtype with values in range [0, 1).
+    image: A tf.Tensor in float32 dtype with values in range [0, 1) or [0, 255].
     offset: A tuple of mean values to be subtracted from the image.
     scale: A tuple of normalization factors.
 
@@ -142,7 +158,8 @@ def resize_and_crop_image(image,
                           aug_scale_min=1.0,
                           aug_scale_max=1.0,
                           seed=1,
-                          method=tf.image.ResizeMethod.BILINEAR):
+                          method=tf.image.ResizeMethod.BILINEAR,
+                          keep_aspect_ratio=True):
   """Resizes the input image to output size (RetinaNet style).
 
   Resize and pad images given the desired output size of the image and
@@ -168,6 +185,7 @@ def resize_and_crop_image(image,
       random scale applied to desired_size for training scale jittering.
     seed: seed for random scale jittering.
     method: function to resize input image to scaled image.
+    keep_aspect_ratio: whether or not to keep the aspect ratio when resizing.
 
   Returns:
     output_image: `Tensor` of shape [height, width, 3] where [height, width]
@@ -197,9 +215,10 @@ def resize_and_crop_image(image,
     else:
       scaled_size = tf.cast(desired_size, tf.float32)
 
-    scale = tf.minimum(
-        scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
-    scaled_size = tf.round(image_size * scale)
+    if keep_aspect_ratio:
+      scale = tf.minimum(
+          scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
+      scaled_size = tf.round(image_size * scale)
 
     # Computes 2D image_scale.
     image_scale = scaled_size / image_size
@@ -650,14 +669,32 @@ def horizontal_flip_image(image):
 
 
 def horizontal_flip_masks(masks):
-  """Flips masks horizontally."""
-  return masks[:, :, ::-1]
+  """Flips masks horizontally. Expects rank-3 input dimensions [h, w, 1]."""
+  return masks[:, ::-1, :]
 
 
 def random_horizontal_flip(
     image, normalized_boxes=None, masks=None, seed=1, prob=0.5
 ):
-  """Randomly flips input image and bounding boxes horizontally."""
+  """Randomly flips input image and bounding boxes and/or masks horizontally.
+  
+  Expects input tensors without the batch dimension; i.e. for RGB image assume
+  rank-3 input like [h, w, 3], for masks assume [h, w, 1].
+  
+  Args:
+    image: `tf.Tensor`, the image to apply the random flip, [h, w, channels].
+    normalized_boxes: `tf.Tensor` or `None`, boxes corresponding to the image.
+    masks: `tf.Tensor` or `None`, masks corresponding to the image, [h, w, 1].
+    seed: Seed for Tensorflow's random number generator.
+    prob: A float from 0 to 1 indicating the probability of flipping the input
+      horizontally.
+
+  Returns:
+    image: `tf.Tensor`, flipped image.
+    boxes: `tf.Tensor` or `None`, flipped normalized boxes corresponding to the
+      image.
+    masks: `tf.Tensor` or `None`, flipped masks corresponding to the image.
+  """
   with tf.name_scope('random_horizontal_flip'):
     do_flip = tf.less(tf.random.uniform([], seed=seed), prob)
 

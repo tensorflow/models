@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 from typing import Dict, Tuple
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops.box_ops import bbox2mask
 
@@ -541,7 +541,7 @@ def nearest_upsampling(data: tf.Tensor,
       data.
   """
   if use_keras_layer:
-    return tf.keras.layers.UpSampling2D(size=(scale, scale),
+    return tf_keras.layers.UpSampling2D(size=(scale, scale),
                                         interpolation='nearest')(data)
   with tf.name_scope('nearest_upsampling'):
     bs, _, _, c = data.get_shape().as_list()

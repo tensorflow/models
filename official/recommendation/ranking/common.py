@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Flags and common definitions for Ranking Models."""
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import flags as tfm_flags
 
@@ -44,8 +44,8 @@ def define_flags() -> None:
       'overhead, and the output file can be gigantic if profiling many steps.')
 
 
-@tf.keras.utils.register_keras_serializable(package='RANKING')
-class WarmUpAndPolyDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+@tf_keras.utils.register_keras_serializable(package='RANKING')
+class WarmUpAndPolyDecay(tf_keras.optimizers.schedules.LearningRateSchedule):
   """Learning rate callable for the embeddings.
 
   Linear warmup on [0, warmup_steps] then

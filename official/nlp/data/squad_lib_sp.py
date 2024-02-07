@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import os
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.tools import tokenization
 
@@ -63,7 +63,7 @@ class SquadExample(object):
         tokenization.printable_text(self.question_text))
     s += ", paragraph_text: [%s]" % (" ".join(self.paragraph_text))
     if self.start_position:
-      s += ", start_position: %d" % (self.start_position)
+      s += ", start_position: %d" % (self.start_position,)
     if self.start_position:
       s += ", end_position: %d" % (self.end_position)
     if self.start_position:
@@ -776,7 +776,7 @@ def postprocess_output(all_examples,
               start_logit=pred.start_logit,
               end_logit=pred.end_logit))
 
-    # if we didn't inlude the empty option in the n-best, include it
+    # if we didn't include the empty option in the n-best, include it
     if version_2_with_negative and not xlnet_format:
       if "" not in seen_predictions:
         nbest.append(

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ class DataConfig(cfg.DataConfig):
   # If crop_size is specified, image will be resized first to
   # output_size, then crop of size crop_size will be cropped.
   crop_size: List[int] = dataclasses.field(default_factory=list)
-  input_path: Union[Sequence[str], str, hyperparams.Config] = ''
+  input_path: Union[Sequence[str], str, hyperparams.Config] = None
   weights: Optional[hyperparams.Config] = None
   global_batch_size: int = 0
   is_training: bool = True
@@ -198,6 +198,7 @@ class SemanticSegmentationTask(cfg.TaskConfig):
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder
   export_config: ExportConfig = dataclasses.field(default_factory=ExportConfig)
+  allow_image_summary: bool = True
 
 
 @exp_factory.register_config_factory('semantic_segmentation')

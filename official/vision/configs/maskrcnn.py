@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +46,18 @@ class Parser(hyperparams.Config):
   rpn_batch_size_per_im: int = 256
   rpn_fg_fraction: float = 0.5
   mask_crop_size: int = 112
+  pad: bool = True  # Only support `pad = True`.
+  keep_aspect_ratio: bool = True  # Only support `keep_aspect_ratio = True`.
+
+  def __post_init__(self, *args, **kwargs):
+    """Validates the configuration."""
+    if not self.pad:
+      raise ValueError('`maskrcnn.Parser` only supports `pad = True`.')
+    if not self.keep_aspect_ratio:
+      raise ValueError(
+          '`maskrcnn.Parser` only supports `keep_aspect_ratio = True`.'
+      )
+    super().__post_init__(*args, **kwargs)
 
 
 @dataclasses.dataclass
@@ -216,6 +228,7 @@ class Losses(hyperparams.Config):
   frcnn_class_weight: float = 1.0
   frcnn_box_weight: float = 1.0
   mask_weight: float = 1.0
+  class_weights: Optional[List[float]] = None
 
 
 @dataclasses.dataclass

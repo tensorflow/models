@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 from typing import Optional, Text
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.bert import configs
 from official.modeling.hyperparams import params_dict
@@ -47,8 +47,8 @@ def encoder_common_layers(transformer_block):
 
 
 def initialize_bert2bert_from_pretrained_bert(
-    bert_encoder: tf.keras.layers.Layer,
-    bert_decoder: tf.keras.layers.Layer,
+    bert_encoder: tf_keras.layers.Layer,
+    bert_decoder: tf_keras.layers.Layer,
     init_checkpoint: Optional[Text] = None) -> None:
   """Helper function to initialze Bert2Bert from Bert pretrained checkpoint."""
   ckpt = tf.train.Checkpoint(model=bert_encoder)

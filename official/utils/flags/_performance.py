@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 import multiprocessing
 
 from absl import flags  # pylint: disable=g-bad-import-order
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf, tf_keras  # pylint: disable=g-bad-import-order
 
 from official.utils.flags._conventions import help_wrap
 
@@ -202,7 +202,7 @@ def define_performance(num_parallel_calls=False,
           help=help_wrap(
               "When --dtype=fp16, how fp16 should be implemented. This has no "
               "impact on correctness. 'keras' uses the "
-              "tf.keras.mixed_precision API. 'graph_rewrite' uses the "
+              "tf_keras.mixed_precision API. 'graph_rewrite' uses the "
               "tf.compat.v1.mixed_precision."
               "enable_mixed_precision_graph_rewrite API."))
 

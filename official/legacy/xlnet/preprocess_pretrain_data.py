@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -614,7 +614,7 @@ def _convert_example(example, use_bfloat16):
   """Cast int64 into int32 and float32 to bfloat16 if use_bfloat16."""
   for key in list(example.keys()):
     val = example[key]
-    if tf.keras.backend.is_sparse(val):
+    if tf_keras.backend.is_sparse(val):
       val = tf.sparse.to_dense(val)
     if val.dtype == tf.int64:
       val = tf.cast(val, tf.int32)

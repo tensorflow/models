@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import json
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
@@ -90,7 +90,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     train_dataset = task.build_inputs(config.train_data)
     train_iterator = iter(train_dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(train_iterator), model, optimizer, metrics=metrics)
 
     val_dataset = task.build_inputs(config.validation_data)
@@ -101,7 +101,8 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
     logs = task.aggregate_logs(step_outputs=logs)
     metrics = task.reduce_aggregated_logs(logs)
     self.assertIn("final_f1", metrics)
-    model.save(os.path.join(self.get_temp_dir(), "saved_model"))
+    model.save(os.path.join(self.get_temp_dir(), "saved_model.keras"),
+               save_format="keras")
 
   @parameterized.parameters(
       itertools.product(
@@ -109,6 +110,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
           ("WordPiece", "SentencePiece"),
       ))
   def test_task(self, version_2_with_negative, tokenization):
+    del tokenization
     # Saves a checkpoint.
     pretrain_cfg = bert.PretrainerConfig(
         encoder=self._encoder_config,
@@ -135,7 +137,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
             bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1)))
     encoder_inputs_dict = {x.name: x for x in encoder.inputs}
     encoder_output_dict = encoder(encoder_inputs_dict)
-    core_model = tf.keras.Model(
+    core_model = tf_keras.Model(
         inputs=encoder_inputs_dict, outputs=encoder_output_dict)
     hub_destination = os.path.join(self.get_temp_dir(), "hub")
     core_model.save(hub_destination, include_optimizer=False, save_format="tf")
@@ -238,7 +240,7 @@ class XLNetQuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     train_dataset = task.build_inputs(config.train_data)
     train_iterator = iter(train_dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    optimizer = tf_keras.optimizers.SGD(lr=0.1)
     task.train_step(next(train_iterator), model, optimizer, metrics=metrics)
 
     val_dataset = task.build_inputs(config.validation_data)

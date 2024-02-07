@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
 """Custom quantize configs."""
 from typing import Sequence, Callable, Tuple, Any, Dict
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_model_optimization as tfmot
 
 
 Quantizer = tfmot.quantization.keras.quantizers.Quantizer
-Layer = tf.keras.layers.Layer
+Layer = tf_keras.layers.Layer
 Activation = Callable[[tf.Tensor], tf.Tensor]
 WeightAndQuantizer = Tuple[tf.Variable, Quantizer]
 ActivationAndQuantizer = Tuple[Activation, Quantizer]
@@ -44,12 +44,12 @@ class _QuantizeHelper(object):
 
     min_weight = layer.add_weight(
         name + '_min',
-        initializer=tf.keras.initializers.Constant(-6.0),
+        initializer=tf_keras.initializers.Constant(-6.0),
         trainable=False,
         shape=shape)
     max_weight = layer.add_weight(
         name + '_max',
-        initializer=tf.keras.initializers.Constant(6.0),
+        initializer=tf_keras.initializers.Constant(6.0),
         trainable=False,
         shape=shape)
 
@@ -220,7 +220,7 @@ class Default8BitActivationQuantizeConfig(
   """
 
   def _assert_activation_layer(self, layer: Layer):
-    if not isinstance(layer, tf.keras.layers.Activation):
+    if not isinstance(layer, tf_keras.layers.Activation):
       raise RuntimeError(
           'Default8BitActivationQuantizeConfig can only be used with '
           '`keras.layers.Activation`.')

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import os
 from typing import Optional, List, Union, Text, Dict
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
 from official.core import export_base
@@ -136,9 +136,20 @@ def export_inference_graph(
           type(params.task)))
 
   if add_tpu_function_alias:
+    if input_type == 'image_tensor':
+      inference_func = export_module.inference_from_image_tensors
+    elif input_type == 'image_bytes':
+      inference_func = export_module.inference_from_image_bytes
+    elif input_type == 'tf_example':
+      inference_func = export_module.inference_from_tf_example
+    else:
+      raise ValueError(
+          'add_tpu_function_alias is only allowed for input_type of:'
+          ' image_tensor, image_bytes, tf_example.'
+      )
     save_options = tf.saved_model.SaveOptions(
         function_aliases={
-            'tpu_candidate': export_module.inference_from_image_tensors,
+            'tpu_candidate': inference_func,
         }
     )
 

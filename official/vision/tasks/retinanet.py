@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 from typing import Any, List, Mapping, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -47,14 +47,14 @@ class RetinaNetTask(base_task.Task):
   def build_model(self):
     """Build RetinaNet model."""
 
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
+    l2_regularizer = (tf_keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     model = factory.build_retinanet(
@@ -67,7 +67,7 @@ class RetinaNetTask(base_task.Task):
 
     return model
 
-  def initialize(self, model: tf.keras.Model):
+  def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -127,12 +127,18 @@ class RetinaNetTask(base_task.Task):
         dtype=params.dtype,
         match_threshold=params.parser.match_threshold,
         unmatched_threshold=params.parser.unmatched_threshold,
+        box_coder_weights=(
+            self.task_config.model.detection_generator.box_coder_weights
+        ),
         aug_type=params.parser.aug_type,
         aug_rand_hflip=params.parser.aug_rand_hflip,
         aug_scale_min=params.parser.aug_scale_min,
         aug_scale_max=params.parser.aug_scale_max,
         skip_crowd_during_training=params.parser.skip_crowd_during_training,
-        max_num_instances=params.parser.max_num_instances)
+        max_num_instances=params.parser.max_num_instances,
+        pad=params.parser.pad,
+        keep_aspect_ratio=params.parser.keep_aspect_ratio,
+    )
 
     reader = input_reader_factory.input_reader_generator(
         params,
@@ -175,8 +181,8 @@ class RetinaNetTask(base_task.Task):
         y_pred_att = loss_utils.multi_level_flatten(
             outputs['attribute_outputs'][head.name], last_dim=head.size
         )
-        att_loss_fn = tf.keras.losses.Huber(
-            1.0, reduction=tf.keras.losses.Reduction.SUM)
+        att_loss_fn = tf_keras.losses.Huber(
+            1.0, reduction=tf_keras.losses.Reduction.SUM)
         att_loss = att_loss_fn(
             y_true=y_true_att,
             y_pred=y_pred_att,
@@ -192,7 +198,7 @@ class RetinaNetTask(base_task.Task):
         cls_loss_fn = focal_loss.FocalLoss(
             alpha=params.losses.focal_loss_alpha,
             gamma=params.losses.focal_loss_gamma,
-            reduction=tf.keras.losses.Reduction.SUM,
+            reduction=tf_keras.losses.Reduction.SUM,
         )
         att_loss = cls_loss_fn(
             y_true=y_true_att,
@@ -205,10 +211,12 @@ class RetinaNetTask(base_task.Task):
 
     return attribute_loss
 
-  def build_losses(self,
-                   outputs: Mapping[str, Any],
-                   labels: Mapping[str, Any],
-                   aux_losses: Optional[Any] = None):
+  def build_losses(
+      self,
+      outputs: Mapping[str, Any],
+      labels: Mapping[str, Any],
+      aux_losses: Optional[Any] = None,
+  ):
     """Build RetinaNet losses."""
     params = self.task_config
     attribute_heads = self.task_config.model.head.attribute_heads
@@ -216,9 +224,9 @@ class RetinaNetTask(base_task.Task):
     cls_loss_fn = focal_loss.FocalLoss(
         alpha=params.losses.focal_loss_alpha,
         gamma=params.losses.focal_loss_gamma,
-        reduction=tf.keras.losses.Reduction.SUM)
-    box_loss_fn = tf.keras.losses.Huber(
-        params.losses.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
+        reduction=tf_keras.losses.Reduction.SUM)
+    box_loss_fn = tf_keras.losses.Huber(
+        params.losses.huber_loss_delta, reduction=tf_keras.losses.Reduction.SUM)
 
     # Sums all positives in a batch for normalization and avoids zero
     # num_positives_sum, which would lead to inf loss during training
@@ -262,7 +270,7 @@ class RetinaNetTask(base_task.Task):
     metrics = []
     metric_names = ['total_loss', 'cls_loss', 'box_loss', 'model_loss']
     for name in metric_names:
-      metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
       if (
@@ -298,8 +306,8 @@ class RetinaNetTask(base_task.Task):
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf.keras.Model,
-                 optimizer: tf.keras.optimizers.Optimizer,
+                 model: tf_keras.Model,
+                 optimizer: tf_keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
@@ -321,18 +329,19 @@ class RetinaNetTask(base_task.Task):
 
       # Computes per-replica loss.
       loss, cls_loss, box_loss, model_loss = self.build_losses(
-          outputs=outputs, labels=labels, aux_losses=model.losses)
+          outputs=outputs, labels=labels, aux_losses=model.losses
+      )
       scaled_loss = loss / num_replicas
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -353,7 +362,7 @@ class RetinaNetTask(base_task.Task):
 
   def validation_step(self,
                       inputs: Tuple[Any, Any],
-                      model: tf.keras.Model,
+                      model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
     """Validatation step.
 
@@ -371,7 +380,8 @@ class RetinaNetTask(base_task.Task):
                     image_shape=labels['image_info'][:, 1, :],
                     training=False)
     loss, cls_loss, box_loss, model_loss = self.build_losses(
-        outputs=outputs, labels=labels, aux_losses=model.losses)
+        outputs=outputs, labels=labels, aux_losses=model.losses
+    )
     logs = {self.loss: loss}
 
     all_losses = {

@@ -5,7 +5,7 @@ task:
   train_data:
     drop_remainder: true
     global_batch_size: 512
-    input_path: '[Your proceed wiki data path]*,[Your proceed books data path]*'
+    input_path: '[Your processed wiki data path]*,[Your processed books data path]*'
     is_training: true
     max_predictions_per_seq: 76
     seq_length: 512
@@ -15,7 +15,7 @@ task:
   validation_data:
     drop_remainder: false
     global_batch_size: 512
-    input_path: '[Your proceed wiki data path]-00000-of-00500,[Your proceed books data path]-00000-of-00500'
+    input_path: '[Your processed wiki data path]-00000-of-00500,[Your processed books data path]-00000-of-00500'
     is_training: false
     max_predictions_per_seq: 76
     seq_length: 512

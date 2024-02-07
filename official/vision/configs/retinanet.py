@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -59,6 +59,8 @@ class Parser(hyperparams.Config):
   max_num_instances: int = 100
   # Can choose AutoAugment and RandAugment.
   aug_type: Optional[common.Augmentation] = None
+  pad: bool = True
+  keep_aspect_ratio: bool = True
 
   # Keep for backward compatibility. Not used.
   aug_policy: Optional[str] = None
@@ -152,6 +154,9 @@ class DetectionGenerator(hyperparams.Config):
   return_decoded: Optional[bool] = None
   # Only works when nms_version='v2'.
   use_class_agnostic_nms: Optional[bool] = False
+  # Weights or scales when encode and decode boxes coordinates. For Faster RCNN,
+  # the open-source implementation recommends using [10.0, 10.0, 5.0, 5.0].
+  box_coder_weights: Optional[List[float]] = None
 
 
 @dataclasses.dataclass

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import time
 from typing import Callable, List, Mapping, Optional, Union
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 SAVED_MODULES_PATH_SUFFIX = 'saved_modules'
 
@@ -227,7 +227,7 @@ class SavedModelCheckpointManager(tf.train.CheckpointManager):
     logging.info('Waiting for new savedmodel at %s', self._directory)
     stop_time = time.time() + timeout if timeout is not None else None
 
-    last_savedmodel_number = 0
+    last_savedmodel_number = -1
     if last_savedmodel:
       last_savedmodel_number = self.get_savedmodel_number_from_path(
           last_savedmodel)

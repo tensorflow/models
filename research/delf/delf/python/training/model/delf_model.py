@@ -34,7 +34,7 @@ class AttentionModel(tf.keras.Model):
 
   Uses two [kernel_size x kernel_size] convolutions and softplus as activation
   to compute an attention map with the same resolution as the featuremap.
-  Features l2-normalized and aggregated using attention probabilites as weights.
+  Features l2-normalized and aggregated using attention probabilities as weights.
   The features (targets) to be aggregated can be the input featuremap, or a
   different one with the same resolution.
   """
@@ -198,7 +198,7 @@ class Delf(tf.keras.Model):
 
     Args:
       images: Tensor containing the dataset on which to run the forward pass.
-      training: Indicator of wether the forward pass is running in training mode
+      training: Indicator of whether the forward pass is running in training mode
         or not.
 
     Returns:

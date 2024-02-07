@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.centernet.modeling.heads import centernet_head
 
@@ -30,8 +30,8 @@ class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):
         'ct_size': 2,
     }
     input_specs = {
-        '2_0': tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
-        '2': tf.keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
+        '2_0': tf_keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
+        '2': tf_keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
     }
 
     input_levels = ['2', '2_0']

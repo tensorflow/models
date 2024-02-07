@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import os
 from absl import app
 from absl import flags
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.legacy.albert import configs
 from official.modeling import tf_utils
 from official.nlp.modeling import models
@@ -94,7 +94,7 @@ def _create_albert_model(cfg):
       attention_dropout_rate=cfg.attention_probs_dropout_prob,
       max_sequence_length=cfg.max_position_embeddings,
       type_vocab_size=cfg.type_vocab_size,
-      initializer=tf.keras.initializers.TruncatedNormal(
+      initializer=tf_keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range))
   return albert_encoder
 
@@ -112,7 +112,7 @@ def _create_pretrainer_model(cfg):
   pretrainer = models.BertPretrainerV2(
       encoder_network=albert_encoder,
       mlm_activation=tf_utils.get_activation(cfg.hidden_act),
-      mlm_initializer=tf.keras.initializers.TruncatedNormal(
+      mlm_initializer=tf_keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range))
   # Makes sure masked_lm layer's variables in pretrainer are created.
   _ = pretrainer(pretrainer.inputs)

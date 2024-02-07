@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import collections
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.ops import box_ops
 
@@ -323,7 +323,7 @@ def _get_instance_class_ids(
   return tf.where(result == 0, -1, result)
 
 
-class PanopticQualityV2(tf.keras.metrics.Metric):
+class PanopticQualityV2(tf_keras.metrics.Metric):
   """Panoptic quality metrics with vectorized implementation.
 
   This implementation is supported on TPU.
@@ -364,10 +364,9 @@ class PanopticQualityV2(tf.keras.metrics.Metric):
 
     self._num_categories = num_categories
     if is_thing is not None:
-      self._is_thing = tf.convert_to_tensor(is_thing)
-      self._is_thing.set_shape([self._num_categories])
+      self._is_thing = is_thing
     else:
-      self._is_thing = tf.ones([self._num_categories], dtype=tf.bool)
+      self._is_thing = [True] * self._num_categories
     self._max_num_instances = max_num_instances
     self._ignored_label = ignored_label
     self._rescale_predictions = rescale_predictions
@@ -642,17 +641,14 @@ class PanopticQualityV2(tf.keras.metrics.Metric):
     )
     iou = tf.math.divide_no_nan(intersection, union)
 
+    is_thing = tf.constant(self._is_thing, dtype=tf.bool)
     # (batch_size, num_categories)
-    is_tp = (iou > 0.5) & ~self._is_thing
+    is_tp = (iou > 0.5) & ~is_thing
     is_fn = (
-        tf.reduce_any(gt_category_binary_mask, axis=[1, 2])
-        & ~self._is_thing
-        & ~is_tp
+        tf.reduce_any(gt_category_binary_mask, axis=[1, 2]) & ~is_thing & ~is_tp
     )
     is_fp = (
-        tf.reduce_any(category_binary_mask, axis=[1, 2])
-        & ~self._is_thing
-        & ~is_tp
+        tf.reduce_any(category_binary_mask, axis=[1, 2]) & ~is_thing & ~is_tp
     )
 
     # (batch_size, height, width, num_categories)
@@ -700,15 +696,16 @@ class PanopticQualityV2(tf.keras.metrics.Metric):
         self.tp_count, self.tp_count + 0.5 * self.fp_count + 0.5 * self.fn_count
     ) * tf.cast(~is_ignore_label, tf.float32)
     pq_per_class = sq_per_class * rq_per_class
+    is_thing = tf.constant(self._is_thing, dtype=tf.bool)
 
     result = {
         # (num_categories,)
         'valid_thing_classes': (
-            (tp_fn_fp_count > 0) & self._is_thing & ~is_ignore_label
+            (tp_fn_fp_count > 0) & is_thing & ~is_ignore_label
         ),
         # (num_categories,)
         'valid_stuff_classes': (
-            (tp_fn_fp_count > 0) & ~self._is_thing & ~is_ignore_label
+            (tp_fn_fp_count > 0) & ~is_thing & ~is_ignore_label
         ),
         # (num_categories,)
         'sq_per_class': sq_per_class,

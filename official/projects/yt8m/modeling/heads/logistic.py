@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,42 +16,51 @@
 
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-layers = tf.keras.layers
+layers = tf_keras.layers
 
 
-class LogisticModel(tf.keras.Model):
+class LogisticModel(layers.Layer):
   """Logistic prediction head model with L2 regularization."""
 
   def __init__(
       self,
-      input_specs: layers.InputSpec = layers.InputSpec(shape=[None, 128]),
       vocab_size: int = 3862,
       return_logits: bool = False,
-      l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """Creates a logistic model.
 
     Args:
-      input_specs: 'batch' x 'num_features' matrix of input features.
       vocab_size: The number of classes in the dataset.
       return_logits: if True also return logits.
       l2_regularizer: An optional L2 weight regularizer.
       **kwargs: extra key word args.
+    """
+    super().__init__(**kwargs)
+    self._return_logits = return_logits
+    self._dense = layers.Dense(vocab_size, kernel_regularizer=l2_regularizer)
+
+  def call(
+      self,
+      inputs: tf.Tensor,
+  ):
+    """Logistic model forward call.
+
+    Args:
+      inputs: 'batch' x 'num_features' matrix of input features.
 
     Returns:
       A dictionary with a tensor containing the probability predictions of the
       model in the 'predictions' key. The dimensions of the tensor are
       batch_size x num_classes.
     """
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
-    logits = layers.Dense(vocab_size, kernel_regularizer=l2_regularizer)(inputs)
 
+    logits = self._dense(inputs)
     outputs = {"predictions": tf.nn.sigmoid(logits)}
-    if return_logits:
+    if self._return_logits:
       outputs.update({"logits": logits})
-
-    super().__init__(inputs=inputs, outputs=outputs, **kwargs)
+    return outputs

@@ -1,4 +1,4 @@
-# Copyright 2023 The Orbit Authors. All Rights Reserved.
+# Copyright 2024 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ from typing import Any, Callable, Sequence, Union
 from orbit import controller
 from orbit import runner
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 Condition = Callable[[runner.Output], Union[bool, tf.Tensor]]
 

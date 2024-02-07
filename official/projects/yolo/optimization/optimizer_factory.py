@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ class OptimizerFactory(optimizer_factory.OptimizerFactory):
       bias_lr: learning rate config.
 
     Returns:
-      tf.keras.optimizers.schedules.LearningRateSchedule instance. If
+      tf_keras.optimizers.schedules.LearningRateSchedule instance. If
       learning rate type is consant, lr_config.learning_rate is returned.
     """
     if self._lr_type == 'constant':

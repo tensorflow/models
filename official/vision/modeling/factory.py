@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from typing import Optional
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.vision.configs import image_classification as classification_cfg
 from official.vision.configs import maskrcnn as maskrcnn_cfg
@@ -39,11 +39,11 @@ from official.vision.modeling.layers import roi_sampler
 
 
 def build_classification_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: classification_cfg.ImageClassificationModel,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
     skip_logits_layer: bool = False,
-    backbone: Optional[tf.keras.Model] = None) -> tf.keras.Model:
+    backbone: Optional[tf_keras.Model] = None) -> tf_keras.Model:
   """Builds the classification model."""
   norm_activation_config = model_config.norm_activation
   if not backbone:
@@ -68,12 +68,12 @@ def build_classification_model(
   return model
 
 
-def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
+def build_maskrcnn(input_specs: tf_keras.layers.InputSpec,
                    model_config: maskrcnn_cfg.MaskRCNN,
                    l2_regularizer: Optional[
-                       tf.keras.regularizers.Regularizer] = None,
-                   backbone: Optional[tf.keras.Model] = None,
-                   decoder: Optional[tf.keras.Model] = None) -> tf.keras.Model:
+                       tf_keras.regularizers.Regularizer] = None,
+                   backbone: Optional[tf_keras.Model] = None,
+                   decoder: Optional[tf_keras.Model] = None) -> tf_keras.Model:
   """Builds Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   if not backbone:
@@ -82,7 +82,7 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
         backbone_config=model_config.backbone,
         norm_activation_config=norm_activation_config,
         l2_regularizer=l2_regularizer)
-  backbone_features = backbone(tf.keras.Input(input_specs.shape[1:]))
+  backbone_features = backbone(tf_keras.Input(input_specs.shape[1:]))
 
   if not decoder:
     decoder = decoders.factory.build_decoder(
@@ -258,12 +258,12 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
 
 
 def build_retinanet(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: retinanet_cfg.RetinaNet,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-    backbone: Optional[tf.keras.Model] = None,
-    decoder: Optional[tf.keras.Model] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+    backbone: Optional[tf_keras.Model] = None,
+    decoder: Optional[tf_keras.Model] = None
+) -> tf_keras.Model:
   """Builds RetinaNet model."""
   norm_activation_config = model_config.norm_activation
   if not backbone:
@@ -272,7 +272,7 @@ def build_retinanet(
         backbone_config=model_config.backbone,
         norm_activation_config=norm_activation_config,
         l2_regularizer=l2_regularizer)
-  backbone_features = backbone(tf.keras.Input(input_specs.shape[1:]))
+  backbone_features = backbone(tf_keras.Input(input_specs.shape[1:]))
 
   if not decoder:
     decoder = decoders.factory.build_decoder(
@@ -311,10 +311,13 @@ def build_retinanet(
     _ = head(decoder_features)
 
   # Add `input_image_size` into `tflite_post_processing_config`.
-  tflite_post_processing_config = generator_config.tflite_post_processing.as_dict(
+  tflite_post_processing_config = (
+      generator_config.tflite_post_processing.as_dict()
   )
-  tflite_post_processing_config['input_image_size'] = (input_specs.shape[1],
-                                                       input_specs.shape[2])
+  tflite_post_processing_config['input_image_size'] = (
+      input_specs.shape[1],
+      input_specs.shape[2],
+  )
   detection_generator_obj = detection_generator.MultilevelDetectionGenerator(
       apply_nms=generator_config.apply_nms,
       pre_nms_top_k=generator_config.pre_nms_top_k,
@@ -327,6 +330,7 @@ def build_retinanet(
       tflite_post_processing_config=tflite_post_processing_config,
       return_decoded=generator_config.return_decoded,
       use_class_agnostic_nms=generator_config.use_class_agnostic_nms,
+      box_coder_weights=generator_config.box_coder_weights,
   )
 
   model = retinanet_model.RetinaNetModel(
@@ -343,12 +347,12 @@ def build_retinanet(
 
 
 def build_segmentation_model(
-    input_specs: tf.keras.layers.InputSpec,
+    input_specs: tf_keras.layers.InputSpec,
     model_config: segmentation_cfg.SemanticSegmentationModel,
-    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
-    backbone: Optional[tf.keras.Model] = None,
-    decoder: Optional[tf.keras.Model] = None
-) -> tf.keras.Model:
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+    backbone: Optional[tf_keras.Model] = None,
+    decoder: Optional[tf_keras.Model] = None
+) -> tf_keras.Model:
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
   if not backbone:

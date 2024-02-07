@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -119,7 +119,7 @@ class CosineLrConfig(base_config.Config):
   """Configuration for Cosine learning rate decay.
 
   This class is a containers for the cosine learning rate decay configs,
-  tf.keras.experimental.CosineDecay.
+  tf_keras.experimental.CosineDecay.
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to CosineDecay.

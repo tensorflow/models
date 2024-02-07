@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 # pylint: disable=g-bad-import-order
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.transformer import model_params
 from official.utils.flags import core as flags_core
@@ -250,7 +250,7 @@ def get_callbacks():
     callbacks.append(time_callback)
 
   if FLAGS.enable_tensorboard:
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(
+    tensorboard_callback = tf_keras.callbacks.TensorBoard(
         log_dir=FLAGS.model_dir)
     callbacks.append(tensorboard_callback)
 

@@ -47,7 +47,7 @@ py_test() {
 }
 
 py3_test() {
-  local PY_BINARY=python3.9
+  local PY_BINARY=python3.11
   py_test "$PY_BINARY"
   return $?
 }

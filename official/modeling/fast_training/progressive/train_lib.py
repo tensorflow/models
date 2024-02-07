@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ from typing import Any, Mapping, Tuple
 # Import libraries
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.core import base_task
 from official.core import config_definitions
 from official.core import train_lib as base_train_lib
@@ -39,7 +39,7 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
                    model_dir: str,
                    run_post_eval: bool = False,
                    save_summary: bool = True) \
--> Tuple[tf.keras.Model, Mapping[str, Any]]:
+-> Tuple[tf_keras.Model, Mapping[str, Any]]:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -55,7 +55,7 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
 
   Returns:
     A 2-tuple of (model, eval_logs).
-      model: `tf.keras.Model` instance.
+      model: `tf_keras.Model` instance.
       eval_logs: returns eval metrics logs when run_post_eval is set to True,
         otherwise, returns {}.
   """

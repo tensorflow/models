@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +15,17 @@
 """Tests for official.core.export_base_v2."""
 import os
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.core import export_base
 from official.vision.serving import export_base_v2
 
 
-class TestModel(tf.keras.Model):
+class TestModel(tf_keras.Model):
 
   def __init__(self):
     super().__init__()
-    self._dense = tf.keras.layers.Dense(2)
+    self._dense = tf_keras.layers.Dense(2)
 
   def call(self, inputs):
     return {'outputs': self._dense(inputs)}

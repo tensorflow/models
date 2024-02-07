@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Weighted sparse categorical cross-entropy losses."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 def _adjust_labels(labels, predictions):
@@ -61,7 +61,7 @@ def loss(labels, predictions, weights=None, from_logits=False):
   labels, predictions = _adjust_labels(labels, predictions)
   _validate_rank(labels, predictions, weights)
 
-  example_losses = tf.keras.losses.sparse_categorical_crossentropy(
+  example_losses = tf_keras.losses.sparse_categorical_crossentropy(
       labels, predictions, from_logits=from_logits)
 
   if weights is None:

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -36,37 +36,37 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
           'use_separable_conv': True,
           'build_anchor_boxes': True,
           'is_training': False,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': True,
           'is_training': False,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': False,
           'is_training': False,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': False,
           'is_training': True,
-          'has_att_heads': False
+          'has_att_heads': False,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': True,
           'is_training': True,
-          'has_att_heads': True
+          'has_att_heads': True,
       },
       {
           'use_separable_conv': False,
           'build_anchor_boxes': True,
           'is_training': False,
-          'has_att_heads': True
+          'has_att_heads': True,
       },
   )
   def test_build_model(self, use_separable_conv, build_anchor_boxes,
@@ -155,7 +155,7 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_forward(self, strategy, image_size, training, has_att_heads,
                    output_intermediate_features, soft_nms_sigma):
     """Test for creation of a R50-FPN RetinaNet."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     num_classes = 3
     min_level = 3
     max_level = 7

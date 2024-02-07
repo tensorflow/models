@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Tests for multitask.interleaving_trainer."""
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -46,7 +46,7 @@ class InterleavingTrainerTest(tf.test.TestCase, parameterized.TestCase):
           test_utils.MockBarTask(params=test_utils.BarConfig(), name="bar")
       ]
       test_multitask = multitask.MultiTask(tasks=tasks)
-      test_optimizer = tf.keras.optimizers.SGD(0.1)
+      test_optimizer = tf_keras.optimizers.SGD(0.1)
       model = test_utils.MockMultiTaskModel()
       sampler = task_sampler.UniformTaskSampler(
           task_weights=test_multitask.task_weights)
@@ -75,7 +75,7 @@ class InterleavingTrainerTest(tf.test.TestCase, parameterized.TestCase):
                            task_weight=1.0)))
     with distribution.scope():
       test_multitask = multitask.MultiTask.from_config(config)
-    test_optimizer = tf.keras.optimizers.SGD(0.1)
+    test_optimizer = tf_keras.optimizers.SGD(0.1)
     model = test_utils.MockMultiTaskModel()
     num_step = 1000
     sampler = task_sampler.AnnealingTaskSampler(

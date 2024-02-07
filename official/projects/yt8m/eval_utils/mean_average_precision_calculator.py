@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ class MeanAveragePrecisionCalculator(object):
       ValueError: An error occurred when num_class is not a positive integer;
       or the top_n_array is not a list of positive integers.
     """
-    if not isinstance(num_class, int) or num_class <= 1:
+    if not isinstance(num_class, int) or num_class < 1:
       raise ValueError("num_class must be a positive integer.")
 
     self._ap_calculators = []  # member of AveragePrecisionCalculator

@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.nlp.modeling.layers import reuse_transformer
 
@@ -27,7 +27,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(ReuseTransformerLayerTest, self).tearDown()
-    tf.keras.mixed_precision.set_global_policy('float32')
+    tf_keras.mixed_precision.set_global_policy('float32')
 
   def test_layer_creation(self, transformer_cls):
     test_layer = transformer_cls(
@@ -35,7 +35,7 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     output_tensor, _ = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
@@ -46,9 +46,9 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
     output_tensor, _ = test_layer([data_tensor, mask_tensor])
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
@@ -59,11 +59,11 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
 
     # Create a model from the test layer.
-    model = tf.keras.Model(data_tensor, output_tensor)
+    model = tf_keras.Model(data_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -78,13 +78,13 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -206,19 +206,19 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         new_output_tensor, output_tensor[:, 0:1, :], atol=0.002, rtol=0.01)
 
   def test_layer_invocation_with_float16_dtype(self, transformer_cls):
-    tf.keras.mixed_precision.set_global_policy('mixed_float16')
+    tf_keras.mixed_precision.set_global_policy('mixed_float16')
     test_layer = transformer_cls(
         num_attention_heads=10, inner_dim=2048, inner_activation='relu')
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -236,11 +236,11 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=10,
         inner_dim=2048,
         inner_activation='relu',
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02))
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     output, _ = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output.shape.as_list())
@@ -250,12 +250,12 @@ class ReuseTransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=10,
         inner_dim=2048,
         inner_activation='relu',
-        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
+        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02))
     # Create a 3-dimensional input (the first dimension is implicit).
     width = 30
-    input_tensor = tf.keras.Input(shape=(None, width))
+    input_tensor = tf_keras.Input(shape=(None, width))
     output_tensor, _ = test_layer(input_tensor)
-    model = tf.keras.Model(input_tensor, output_tensor)
+    model = tf_keras.Model(input_tensor, output_tensor)
 
     input_length = 17
     input_data = np.ones((1, input_length, width))
@@ -279,7 +279,7 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         inner_dropout=0.1,
-        attention_initializer=tf.keras.initializers.RandomUniform(
+        attention_initializer=tf_keras.initializers.RandomUniform(
             minval=0., maxval=1.))
     # Forward path.
     dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
@@ -300,7 +300,7 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         inner_dropout=0.1,
-        attention_initializer=tf.keras.initializers.RandomUniform(
+        attention_initializer=tf_keras.initializers.RandomUniform(
             minval=0., maxval=1.))
     encoder_block_config = encoder_block.get_config()
     new_encoder_block = reuse_transformer.ReuseTransformer.from_config(
@@ -325,23 +325,20 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
     num_cols = 13
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(num_rows, num_cols, width))
+    data_tensor = tf_keras.Input(shape=(num_rows, num_cols, width))
     output_tensor, _ = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
 
   @parameterized.named_parameters(
-      ('plain', False, False, False),
-      ('plain_returnscore', False, True, False),
-      ('plain_with_relative_pe', False, False, True),
-      ('reuse_all', True, False, False),
-      ('reuse_all_returnscore', True, True, False),
-      ('reuse_all_with_relative_pe', True, False, True),
-      ('reuse_5', 5, False, False),
-      ('reuse_5_returnscore', 5, True, False),
-      ('reuse_5_with_relative_pe', 5, False, True),)
-  def test_layer_invocation_with_mask(self, reuse_attention,
-                                      return_attention_scores, use_relative_pe):
+      ('plain_returnscore', False, False),
+      ('plain_with_relative_pe', False, True),
+      ('reuse_all_returnscore', True, False),
+      ('reuse_all_with_relative_pe', True, True),
+      ('reuse_5_returnscore', 5, False),
+      ('reuse_5_with_relative_pe', 5, True),
+  )
+  def test_layer_invocation_with_mask(self, reuse_attention, use_relative_pe):
     test_layer = reuse_transformer.ReuseTransformer(
         num_attention_heads=10,
         inner_dim=2048,
@@ -351,19 +348,23 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
-    return_scores_tensor = tf.keras.Input(shape=(1,))
-    reuse_attention_scores = tf.keras.Input(
+    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    reuse_attention_scores = tf_keras.Input(
         shape=(10, sequence_length, sequence_length))
     output_tensor, _ = test_layer(
         [data_tensor, mask_tensor, reuse_attention_scores])
 
     # Create a model from the test layer.
-    model = tf.keras.Model(
-        ([data_tensor, mask_tensor, reuse_attention_scores],
-         return_scores_tensor), output_tensor)
+    model = tf_keras.Model(
+        [
+            data_tensor,
+            mask_tensor,
+            reuse_attention_scores,
+        ],
+        output_tensor,
+    )
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -376,8 +377,7 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         2, size=(batch_size, sequence_length, sequence_length))
     reuse_scores = np.random.rand(
         batch_size, 10, sequence_length, sequence_length)
-    _ = model.predict([input_data, mask_data, reuse_scores],
-                      return_attention_scores)
+    _ = model.predict([input_data, mask_data, reuse_scores])
 
   @parameterized.named_parameters(
       ('without_relative_pe_with_pe_max_seq_length_10', False, 10),
@@ -386,20 +386,20 @@ class ReuseTransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
       ('with_relative_pe_with_pe_max_seq_length_100', True, 100))
   def test_layer_invocation_with_float16_with_relative_pe(
       self, use_relative_pe, pe_max_seq_length):
-    tf.keras.mixed_precision.set_global_policy('mixed_float16')
+    tf_keras.mixed_precision.set_global_policy('mixed_float16')
     test_layer = reuse_transformer.ReuseTransformer(
         num_attention_heads=10, inner_dim=2048, inner_activation='relu',
         use_relative_pe=use_relative_pe, pe_max_seq_length=pe_max_seq_length)
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.

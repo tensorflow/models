@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 import numpy as np
 from numpy import linalg
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.modeling.optimization import lamb
 
@@ -166,8 +166,8 @@ class LAMBTest(tf.test.TestCase):
 
   def test_serialization(self):
     optimizer = lamb.LAMB(1e-4)
-    config = tf.keras.optimizers.serialize(optimizer, use_legacy_format=True)
-    new_optimizer = tf.keras.optimizers.deserialize(
+    config = tf_keras.optimizers.serialize(optimizer, use_legacy_format=True)
+    new_optimizer = tf_keras.optimizers.deserialize(
         config, use_legacy_format=True
     )
     assert new_optimizer.get_config() == optimizer.get_config()

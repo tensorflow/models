@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
 """Trainer network for dual encoder style models."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 import tensorflow_models as tfm
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
-class LRADualEncoder(tf.keras.layers.Layer):
+@tf_keras.utils.register_keras_serializable(package='Text')
+class LRADualEncoder(tf_keras.layers.Layer):
   """A dual encoder model based on a transformer-based encoder.
 
   This is an implementation of the dual encoder network structure based on the

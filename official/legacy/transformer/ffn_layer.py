@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
 
 """Implementation of fully connected network."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
-class FeedForwardNetwork(tf.keras.layers.Layer):
+class FeedForwardNetwork(tf_keras.layers.Layer):
   """Fully connected feedforward network."""
 
   def __init__(self, hidden_size, filter_size, relu_dropout):
@@ -34,12 +34,12 @@ class FeedForwardNetwork(tf.keras.layers.Layer):
     self.relu_dropout = relu_dropout
 
   def build(self, input_shape):
-    self.filter_dense_layer = tf.keras.layers.Dense(
+    self.filter_dense_layer = tf_keras.layers.Dense(
         self.filter_size,
         use_bias=True,
         activation=tf.nn.relu,
         name="filter_layer")
-    self.output_dense_layer = tf.keras.layers.Dense(
+    self.output_dense_layer = tf_keras.layers.Dense(
         self.hidden_size, use_bias=True, name="output_layer")
     super(FeedForwardNetwork, self).build(input_shape)
 

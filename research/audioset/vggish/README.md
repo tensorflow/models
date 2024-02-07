@@ -57,7 +57,7 @@ Here's a sample installation and test session:
 $ sudo python -m pip install --upgrade pip wheel
 
 # Install all dependences.
-$ sudo pip install numpy resampy tensorflow tf_slim six soundfile
+$ sudo pip install -r requirements.txt
 
 # Clone TensorFlow models repo into a 'models' directory.
 $ git clone https://github.com/tensorflow/models.git

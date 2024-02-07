@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.bert import bert_models
 from official.legacy.bert import configs
@@ -36,7 +36,7 @@ flags.DEFINE_string("export_path", None,
 FLAGS = flags.FLAGS
 
 
-class BertServing(tf.keras.Model):
+class BertServing(tf_keras.Model):
   """Bert transformer encoder model for serving."""
 
   def __init__(self, bert_config, name_to_features=None, name="serving_model"):

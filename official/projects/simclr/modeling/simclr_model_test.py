@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Test for SimCLR model."""
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.simclr.heads import simclr_head
 from official.projects.simclr.modeling import simclr_model
@@ -33,10 +33,10 @@ class SimCLRModelTest(parameterized.TestCase, tf.test.TestCase):
   def test_model_creation(self, project_dim, num_proj_layers, ft_proj_idx):
     input_size = 224
     inputs = np.random.rand(2, input_size, input_size, 3)
-    input_specs = tf.keras.layers.InputSpec(
+    input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size, input_size, 3])
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
 
     backbone = backbones.ResNet(model_id=50, activation='relu',
                                 input_specs=input_specs)

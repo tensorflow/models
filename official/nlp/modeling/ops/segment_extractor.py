@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Module for extracting segments from sentences in documents."""
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 # Get a random tensor like `positions` and make some decisions
@@ -27,7 +27,7 @@ def _get_random(positions, random_fn):
   return positions.with_flat_values(flat_random)
 
 
-# For every position j in a row, sample a position preceeding j or
+# For every position j in a row, sample a position preceding j or
 # a position which is [0, j-1]
 def _random_int_up_to(maxval, random_fn):
   # Need to cast because the int kernel for uniform doesn't support bcast.
@@ -87,22 +87,22 @@ def get_sentence_order_labels(sentences,
       dtype.
     random_threshold: (optional) A float threshold between 0 and 1, used to
       determine whether to extract a random, out-of-batch sentence or a
-      suceeding sentence. Higher value favors succeeding sentence.
+      succeeding sentence. Higher value favors succeeding sentence.
     random_next_threshold: (optional) A float threshold between 0 and 1, used to
       determine whether to extract either a random, out-of-batch, or succeeding
-      sentence or a preceeding sentence. Higher value favors preceeding
+      sentence or a preceding sentence. Higher value favors preceding
       sentences.
     random_fn: (optional) An op used to generate random float values.
 
   Returns:
-    a tuple of (preceeding_or_random_next, is_suceeding_or_random) where:
-      preceeding_or_random_next: a `RaggedTensor` of strings with the same shape
-        as `sentences` and contains either a preceeding, suceeding, or random
+    a tuple of (preceding_or_random_next, is_succeeding_or_random) where:
+      preceding_or_random_next: a `RaggedTensor` of strings with the same shape
+        as `sentences` and contains either a preceding, succeeding, or random
         out-of-batch sentence respective to its counterpart in `sentences` and
-        dependent on its label in `is_preceeding_or_random_next`.
-      is_suceeding_or_random: a `RaggedTensor` of bool values with the
+        dependent on its label in `is_preceding_or_random_next`.
+      is_succeeding_or_random: a `RaggedTensor` of bool values with the
         same shape as `sentences` and is True if it's corresponding sentence in
-        `preceeding_or_random_next` is a random or suceeding sentence, False
+        `preceding_or_random_next` is a random or succeeding sentence, False
         otherwise.
   """
   # Create a RaggedTensor in the same shape as sentences ([doc, (sentences)])

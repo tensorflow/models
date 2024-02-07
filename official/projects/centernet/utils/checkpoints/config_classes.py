@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import dataclasses
 from typing import Dict, Optional
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 class Config(abc.ABC):
@@ -36,7 +36,7 @@ class Config(abc.ABC):
     """Generates the weights needed to be loaded into the layer."""
     raise NotImplementedError
 
-  def load_weights(self, layer: tf.keras.layers.Layer) -> int:
+  def load_weights(self, layer: tf_keras.layers.Layer) -> int:
     """Assign weights to layer.
 
     Given a layer, this function retrieves the weights for that layer in an
@@ -47,7 +47,7 @@ class Config(abc.ABC):
     will be raised by set_weights().
 
     Args:
-      layer: A `tf.keras.layers.Layer`.
+      layer: A `tf_keras.layers.Layer`.
 
     Returns:
 

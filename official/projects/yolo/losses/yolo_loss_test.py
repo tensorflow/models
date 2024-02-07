@@ -1,4 +1,4 @@
-# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2024 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Tests for yolo heads."""
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.projects.yolo.losses import yolo_loss
 
@@ -35,7 +35,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         inputs[key] = tf.ones(input_shape[key], dtype=dtype)
       return inputs
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf_keras.backend.set_image_data_format('channels_last')
     input_shape = {
         '3': [1, 52, 52, 255],
         '4': [1, 26, 26, 255],
