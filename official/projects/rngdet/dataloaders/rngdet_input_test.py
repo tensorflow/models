@@ -25,10 +25,6 @@ from official.vision.dataloaders import tf_example_decoder
 from absl import app  # pylint:disable=unused-import
 
 
-IMAGE_KEY = 'image/encoded'
-LABEL_KEY = 'image/object/class/label'
-
-
 def _bytes_feature(value):
   """Returns a bytes_list from a string / byte."""
   if isinstance(value, type(tf.constant(0))):
@@ -55,13 +51,13 @@ def fake_seq_example():
   with io.BytesIO() as buffer:
     random_image.save(buffer, format='JPEG')
     raw_image_bytes = buffer.getvalue()
-    
+
   segment_image = np.random.randint(0, 2, size=(2048, 2048, 1), dtype=np.uint8)
   segment_image = Image.fromarray(segment_image*255)
   with io.BytesIO() as buffer:
     segment_image.save(buffer, format='JPEG')
     raw_segment_bytes = buffer.getvalue()
-    
+
   intersec_image = np.random.randint(0, 2, size=(2048, 2048, 1), dtype=np.uint8)
   intersec_image = Image.fromarray(intersec_image*255)
   with io.BytesIO() as buffer:
@@ -181,9 +177,6 @@ class Pix2SeqParserTest(tf.test.TestCase):
     decoded_tensors = decoder.decode(input_tensor)
     output_tensor = parser(decoded_tensors)
     image = output_tensor
-    print("**********************************")
-    print(image.shape)
-    print("**********************************")
 
     self.assertAllEqual(image.shape, (640, 640, 3))
 
@@ -206,27 +199,19 @@ class Pix2SeqParserTest(tf.test.TestCase):
 
 def main(_):
   raw_dataset_train = tf.data.TFRecordDataset(
-    '/home/ghpark.epiclab/03_rngdet/models/official/projects/rngdet/train-noise-8-00000-of-00032.tfrecord')
-  
+    './train-noise-8-00000-of-00032.tfrecord')
+
   decoder = rngdet_input.Decoder()
   parser = rngdet_input.Parser(
         roi_size=128,
         num_queries=10,
     ).parse_fn(True)
-  
+
   decoded_tensors = raw_dataset_train.map(decoder.decode)
   decoded_tensors = decoded_tensors.take(10)
-  #print(decoded_tensors)
-  #print("***********************************")
   for i in decoded_tensors:
-    
-    print("***********************************")
     images, labels = parser(i)
-    #print(images)
-    #print(labels['gt_coords'])
-    #print(labels['list_len'])
-    #print(labels['gt_probs'])
-    
+
 
 if __name__ == '__main__':
   #tf.test.main()
