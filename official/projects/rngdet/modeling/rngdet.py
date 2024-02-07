@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Implements Road Network Graph Detection by Transformer in Aerial Images.
-
 Model paper: https://arxiv.org/abs/2202.07824
 This module does not support Keras de/serialization. Please use
 tf.train.Checkpoint for object based saving and loading and tf.saved_model.save
@@ -25,9 +24,7 @@ from typing import Any, List
 import tensorflow as tf
 
 from official.modeling import tf_utils
-#from official.projects.rngdet.modeling import transformer
 from official.projects.pix2seq.modeling import transformer
-from official.vision.ops import box_ops
 from official.vision.ops import spatial_transform_ops
 
 from typing import Any, Mapping, List, Union
@@ -38,7 +35,6 @@ def position_embedding_sine(attention_mask,
                             normalize=True,
                             scale=2 * math.pi):
   """Sine-based positional embeddings for 2D images.
-
   Args:
     attention_mask: a `bool` Tensor specifying the size of the input image to
       the Transformer and which elements are padded, of size [batch_size,
@@ -52,7 +48,6 @@ def position_embedding_sine(attention_mask,
       functions.
     scale: a `float` if normalize is True specifying the scale embeddings before
       application of the embedding function.
-
   Returns:
     embeddings: a `float` tensor of the same shape as input_tensor specifying
       the positional embeddings based on sine features.
@@ -94,8 +89,6 @@ def position_embedding_sine(attention_mask,
   pos_col = tf.reshape(pos_col, final_shape)
   output = tf.concat([pos_row, pos_col], -1)
 
-  # (gunho) type cast
-  #embeddings = tf.cast(output, tf.float32)
   embeddings = output
   return embeddings
 
@@ -103,7 +96,6 @@ def position_embedding_sine(attention_mask,
 
 class RNGDet(tf.keras.Model):
   """RNGDet model with Keras.
-
   RNGDet consists of two backbones, two FPN decoders, query embedding,
   RNGDetTransformer, class and box heads.
   """
@@ -134,10 +126,7 @@ class RNGDet(tf.keras.Model):
     self._transformer = transformer
 
     self._input_proj = input_proj
-    """self._build_detection_decoder()
 
-  def _build_detection_decoder(self):"""
-    
     self._query_embeddings = self.add_weight(
         "detr/query_embeddings",
         shape=[self._num_queries, self._hidden_size],
@@ -152,14 +141,6 @@ class RNGDet(tf.keras.Model):
         1, 1,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
         name="detr/keypoint_dense")
-    """self._segment_head = tf.keras.layers.Dense(
-        1,
-        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
-        name="detr/segment_dense")
-    self._keypoint_head = tf.keras.layers.Dense(
-        1,
-        kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
-        name="detr/keypoint_dense")"""
     self._class_embed = tf.keras.layers.Dense(
         self._num_classes,
         kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k),
@@ -179,21 +160,20 @@ class RNGDet(tf.keras.Model):
             2, kernel_initializer=tf.keras.initializers.RandomUniform(
                 -sqrt_k, sqrt_k),
             name="detr/box_dense_2")])
-    #self._sigmoid = tf.keras.layers.Activation("sigmoid")
     self._tanh = tf.keras.layers.Activation("tanh")
 
   @property
   def backbone(self) -> tf.keras.Model:
     return self._backbone
-  
+
   @property
   def backbone_history(self) -> tf.keras.Model:
     return self._backbone_history
-  
+
   @property
   def transformer(self) -> tf.keras.layers.Layer:
     return self._transformer
-  
+
   @property
   def input_proj(self) -> tf.keras.layers.Layer:
     return self._input_proj
@@ -201,7 +181,7 @@ class RNGDet(tf.keras.Model):
   @property
   def class_embed(self) -> tf.keras.layers.Layer:
     return self._class_embed
-  
+
   @property
   def checkpoint_items(
       self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
@@ -221,7 +201,7 @@ class RNGDet(tf.keras.Model):
         )
 
     return items
-  
+
   def get_config(self):
     return {
         "backbone": self._backbone,
@@ -263,19 +243,19 @@ class RNGDet(tf.keras.Model):
     pred_keypoint = spatial_transform_ops.nearest_upsampling(
           pred_keypoint['2'], 4, use_keras_layer=False)
     pred_keypoint = self._keypoint_head(pred_keypoint)
-    
+
     inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
     inputs_history = tf.stop_gradient(inputs_history)
     segmentation_map = tf.sigmoid((inputs_history))
-    
+
     if gt_labels is not None:
       history_samples = tf.concat([history_samples,gt_labels],-1)
     else:
       history_samples = tf.concat([history_samples,segmentation_map],-1)
-    
+
     history_outs = self._backbone_history(
         history_samples)[self._backbone_endpoint_name]
-    
+
     shape = tf.shape(history_outs)
     mask = self._generate_image_mask(inputs, shape[1: 3])
 
@@ -285,7 +265,6 @@ class RNGDet(tf.keras.Model):
 
     proj_in = tf.concat([features[self._backbone_endpoint_name],
                          history_outs], -1)
-    # (gunho) stem_ln?
     inputs = tf.reshape(
         self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
     mask = tf.reshape(mask, [batch_size, -1])
@@ -300,16 +279,7 @@ class RNGDet(tf.keras.Model):
         "pos_embed": pos_embed,
         "mask": mask,
     }, training=training)
-    
-    """out_list = []
-    for decoded in decoded_list:
-      decoded = tf.stack(decoded)
-      output_class = self._class_embed(decoded)
-      box_out = decoded
-      box_out = self._bbox_embed(box_out)
-      output_coord = self._tanh(box_out)
-      out = {"cls_outputs": output_class, "box_outputs": output_coord}
-      out_list.append(out)"""
+
     output_class = self._class_embed(decoded)
     box_out = decoded
     box_out = self._bbox_embed(box_out)
@@ -385,7 +355,7 @@ class DETRTransformer(tf.keras.layers.Layer):
         "num_decoder_layers": self._num_decoder_layers,
         "dropout_rate": self._dropout_rate,
     }
-  
+
   @classmethod
   def from_config(cls, config):
     return cls(**config)
@@ -398,7 +368,7 @@ class DETRTransformer(tf.keras.layers.Layer):
     input_shape = tf_utils.get_shape_list(sources)
     source_attention_mask = tf.tile(
         tf.expand_dims(mask, axis=1), [1, input_shape[1], 1])
-    
+
     sources = sources + pos_embed
     if self._encoder is not None:
       memory = self._encoder(
@@ -444,9 +414,7 @@ class InputProjection(tf.keras.layers.Layer):
     return {
         "hidden_size": self._hidden_size,
     }
-  
+
   @classmethod
   def from_config(cls, config):
     return cls(**config)
-
-  
