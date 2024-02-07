@@ -81,10 +81,10 @@ class RngdetTask(cfg.TaskConfig):
   per_category_metrics: bool = False
 
 
-CITYSCALE_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/cityscale'
+#CITYSCALE_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/cityscale'
 CITYSCALE_TRAIN_EXAMPLES = 420140
 #CITYSCALE_TRAIN_EXAMPLES = 10140
-#CITYSCALE_INPUT_PATH_BASE = '/home/ghpark/02_RNGDet/models/official/projects/rngdet/data/tfrecord'
+CITYSCALE_INPUT_PATH_BASE = '/data2/cityscale/tfrecord'
 #CITYSCALE_TRAIN_EXAMPLES = 1900
 CITYSCALE_VAL_EXAMPLES = 5000
 
@@ -94,7 +94,7 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
   train_batch_size = 64
   eval_batch_size = 64
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 50 * steps_per_epoch  # 50 epochs
+  train_steps = 10 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
@@ -105,14 +105,14 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
               norm_activation=common.NormActivation()),
           losses=Losses(),
           train_data=DataConfig(
-              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
+              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise*'),
               #input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise-8-00000-of-00032.tfrecord*'),
               is_training=True,
               global_batch_size=train_batch_size,
               shuffle_buffer_size=1000,
           ),
           validation_data=DataConfig(
-              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'val*'),
+              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise*'),
               is_training=False,
               global_batch_size=eval_batch_size,
               drop_remainder=False,
@@ -122,8 +122,8 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
           validation_steps=CITYSCALE_VAL_EXAMPLES // eval_batch_size,
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,
-          checkpoint_interval=5*steps_per_epoch,
-          validation_interval=5 * steps_per_epoch,
+          checkpoint_interval=1*steps_per_epoch,
+          validation_interval=1*steps_per_epoch,
           max_to_keep=1,
           best_checkpoint_export_subdir='best_ckpt',
           best_checkpoint_eval_metric='AP',
@@ -164,10 +164,10 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
 @exp_factory.register_config_factory('rngdet_cityscale_detr')
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 24
+  train_batch_size = 16
   eval_batch_size = 64
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 50 * steps_per_epoch  # 50 epochs
+  train_steps = 10 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
@@ -178,14 +178,14 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
               norm_activation=common.NormActivation()),
           losses=Losses(),
           train_data=DataConfig(
-              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train*'),
+              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise*'),
               #input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise-8-00000-of-00032.tfrecord*'),
               is_training=True,
               global_batch_size=train_batch_size,
               shuffle_buffer_size=1000,
           ),
           validation_data=DataConfig(
-              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'val*'),
+              input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train_noise*'),
               is_training=False,
               global_batch_size=eval_batch_size,
               drop_remainder=False,
@@ -195,8 +195,8 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
           validation_steps=CITYSCALE_VAL_EXAMPLES // eval_batch_size,
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,
-          checkpoint_interval=3*steps_per_epoch,
-          validation_interval=5 * steps_per_epoch,
+          checkpoint_interval=1*steps_per_epoch,
+          validation_interval=1*steps_per_epoch,
           max_to_keep=1,
           best_checkpoint_export_subdir='best_ckpt',
           best_checkpoint_eval_metric='AP',
