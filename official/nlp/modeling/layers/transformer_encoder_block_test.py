@@ -429,6 +429,28 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
     output = encoder_block(inputs)
     self.assertEqual(output.shape, (2, 4, hidden_size))
 
+  def test_use_rms_norm(self):
+    num_attention_heads = 2
+    hidden_size = 16
+    encoder_block = TransformerEncoderBlock(
+        num_attention_heads=num_attention_heads,
+        inner_dim=32,
+        inner_activation='relu',
+        output_dropout=0.1,
+        attention_dropout=0.1,
+        use_bias=False,
+        use_rms_norm=True,
+        norm_epsilon=1e-6,
+        inner_dropout=0.1,
+        attention_initializer=tf_keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_mask]
+    output = encoder_block(inputs)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+
   def test_norm_first_false_and_diff_q_kv_att_layer_norm_true_raises(self):
     some_num_attention_heads = 2
     some_inner_dim = 32
