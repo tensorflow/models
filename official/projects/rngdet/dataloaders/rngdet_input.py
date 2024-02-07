@@ -6,29 +6,24 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
+# Unless required by applsicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""COCO data loader for Pix2Seq."""
+"""Cityscale data loader for RNGDet."""
 
-from typing import Tuple
 import tensorflow as tf
-import math
 import numpy as np
 from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser
-from official.vision.ops import preprocess_ops
-from official.projects.rngdet.dataloaders import sampler as rngdet_sampler
-
 
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for RNGDet."""
 
   def __init__(self):
-    
+
     self._keys_to_features = {
     "sat_roi": tf.io.VarLenFeature(tf.int64),
     "label_masks_roi": tf.io.VarLenFeature(tf.int64),
@@ -59,7 +54,7 @@ class Decoder(decoder.Decoder):
         'list_len': parsed_tensors['list_len'],
         'gt_masks': parsed_tensors['gt_masks']
     }
-    
+
     return decoded_tensors
 
 
@@ -75,13 +70,11 @@ class Parser(parser.Parser):
     self._roi_size = roi_size
     self._num_queries = num_queries
     self._dtype = dtype
-    
+
   def parse_fn(self, is_training):
     """Returns a parse fn that reads and parses raw tensors from the decoder.
-
     Args:
       is_training: a `bool` to indicate whether it is in training mode.
-
     Returns:
       parse: a `callable` that takes the serialized example and generate the
         images, labels tuple where labels is a dict of Tensors that contains
@@ -95,7 +88,7 @@ class Parser(parser.Parser):
         return self._parse_eval_data(decoded_tensors)
 
     return parse
-  
+
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
     sat_roi = tf.reshape(data['sat_roi'], [self._roi_size, self._roi_size, 3])
@@ -105,27 +98,25 @@ class Parser(parser.Parser):
         data['historical_roi'], [self._roi_size, self._roi_size, 1])
     gt_coords = tf.reshape(data['gt_coords'], [self._num_queries, 2])
     gt_probs = tf.reshape(data['gt_probs'], [self._num_queries])
-    gt_masks = tf.reshape(
-        data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])
-    
-    #sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
+    gt_masks = tf.reshape( data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])
+
     sat_roi = tf.cast(sat_roi, tf.float32)/255
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
-    rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)
-    
-    # Define the rotation matrix
+
+    rot_index = np.random.randint(0, 4)
     cos_theta = 0 if rot_index%2 is 1 else (1 if rot_index is 0 else -1)
-    sin_theta = 0 if rot_index%2 is 0 else (1 if rot_index is 1 else -1)
-    R = tf.constant([[cos_theta, -sin_theta], [sin_theta, cos_theta]],
-                    dtype=tf.float32)
-    
-    gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True)) 
-    label_masks_roi = tf.image.rot90(label_masks_roi, rot_index)/255
-    historical_roi = tf.image.rot90(historical_roi, rot_index)/255
+    sin_theta = 0 if rot_index%2 is 0 else (1 if rot_index is 1 else -1) 
+    R = tf.constant([[cos_theta, -sin_theta], [sin_theta, cos_theta]], dtype=tf.float32) 
+
+    gt_coords = tf.reverse(gt_coords, axis=[1])
+    gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True) ) 
+    gt_coords = tf.reverse(gt_coords, axis=[1])
+
+    label_masks_roi = tf.image.rot90(label_masks_roi, rot_index)/255 #counter clock wise
+    historical_roi = tf.image.rot90(historical_roi, rot_index)/255 #counter clock wise 
     sat_roi = tf.image.rot90(sat_roi, rot_index)
     gt_masks = tf.image.rot90(gt_masks, rot_index)/255
-
     sat_roi = tf.cast(sat_roi, dtype=self._dtype)
     historical_roi = tf.cast(historical_roi, dtype=self._dtype)
     images = {
@@ -141,7 +132,7 @@ class Parser(parser.Parser):
     }
 
     return images, labels
-  
+
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
     sat_roi = tf.reshape(data['sat_roi'], [self._roi_size, self._roi_size, 3])
@@ -154,26 +145,23 @@ class Parser(parser.Parser):
     gt_probs = tf.reshape(data['gt_probs'], [self._num_queries])
     gt_masks = tf.reshape(
         data['gt_masks'], [self._roi_size, self._roi_size, self._num_queries])/255
-    
-    #sat_roi = tf.image.convert_image_dtype(sat_roi, dtype=tf.float32)
+
     sat_roi = sat_roi * (
         0.7 + 0.3 * tf.random.uniform([], minval=0, maxval=1, dtype=tf.float32))
     rot_index = tf.random.uniform(shape=(), minval=0, maxval=4, dtype=tf.int32)
-    
+
     # Define the rotation matrix
     cos_theta = 0 if rot_index%2 is 1 else (1 if rot_index is 0 else -1)
     sin_theta = 0 if rot_index%2 is 0 else (1 if rot_index is 1 else -1)
     R = tf.constant([[cos_theta, -sin_theta], [sin_theta, cos_theta]],
                     dtype=tf.float32)
-    
+
     gt_coords = tf.transpose(tf.linalg.matmul(R, gt_coords, transpose_b=True)) 
     label_masks_roi = tf.image.rot90(label_masks_roi, rot_index)
     historical_roi = tf.image.rot90(historical_roi, rot_index)
     sat_roi = tf.image.rot90(sat_roi, rot_index)
     gt_masks = tf.image.rot90(gt_masks, rot_index)
 
-    #sat_roi = tf.cast(sat_roi, dtype=self._dtype)
-    #historical_roi = tf.cast(historical_roi, dtype=self._dtype)
     images = {
         'sat_roi': sat_roi,
         'historical_roi': historical_roi,
