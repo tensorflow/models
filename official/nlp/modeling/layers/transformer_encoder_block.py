@@ -13,12 +13,56 @@
 # limitations under the License.
 
 """Keras-based TransformerEncoder block layer."""
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 from absl import logging
 import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import util
+
+
+class RMSNorm(tf_keras.layers.Layer):
+  """Root mean square layer normalization layer."""
+
+  def __init__(
+      self,
+      axis: int | Sequence[int] = -1,
+      epsilon: float = 1e-6,
+      **kwargs,
+  ):
+    """Initializes RMSNorm.
+
+    Args:
+      axis: The axis that the input is normalized over.
+      epsilon: A small value added to the mean square for numerical stability.
+      **kwargs: Keyword arguments passed to the base layer.
+    """
+    super().__init__(**kwargs)
+    self.axis = [axis] if isinstance(axis, int) else axis
+    self.epsilon = epsilon
+
+  def build(self, input_shape: tf.TensorShape | Sequence[int | None]):
+    input_shape = tf.TensorShape(input_shape)
+    scale_shape = [1] * input_shape.rank
+    for dim in self.axis:
+      scale_shape[dim] = input_shape[dim]
+    with tf.name_scope(self.name):
+      self.scale = self.add_weight(
+          name="scale",
+          shape=scale_shape,
+          initializer="ones",
+          experimental_autocast=False,
+      )
+    super().build(input_shape)
+
+  def call(self, inputs: tf.Tensor) -> tf.Tensor:
+    input_dtype = inputs.dtype
+    inputs = tf.cast(inputs, tf.float32)
+    var = tf.math.reduce_mean(
+        tf.math.square(inputs), axis=self.axis, keepdims=True
+    )
+    outputs = inputs * tf.math.rsqrt(var + self.epsilon) * self.scale
+    return tf.cast(outputs, input_dtype)
 
 
 @tf_keras.utils.register_keras_serializable(package="Text")
@@ -51,6 +95,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
                use_bias=True,
                norm_first=False,
                norm_epsilon=1e-12,
+               use_rms_norm=False,
                output_dropout=0.0,
                attention_dropout=0.0,
                inner_dropout=0.0,
@@ -76,7 +121,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     E.g. let's say input dims are `[batch_size, seq_dim, input_last_dim]`.
     Scenario 1: If `output_last_dim` is not `None`, then the output dims of this
     module would be `[batch_size, seq_dim, output_last_dim]`. Note `key_dim` is
-    overriden by `output_last_dim`.
+    overridden by `output_last_dim`.
     Scenario 2: If `output_last_dim` is `None` and `key_dim` is not `None`, then
     the output dims of this module would be `[batch_size, seq_dim, key_dim]`.
     Scenario 3: If the `output_last_dim` and `key_dim` are both `None`, the
@@ -103,6 +148,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         dense layers. If set False, output of attention and intermediate dense
         layers is normalized.
       norm_epsilon: Epsilon value to initialize normalization layers.
+      use_rms_norm: Whether to use RMSNorm instead of LayerNorm.
       output_dropout: Dropout probability for the post-attention and output
         dropout.
       attention_dropout: Dropout probability for within the attention layer.
@@ -154,6 +200,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._use_bias = use_bias
     self._norm_first = norm_first
     self._norm_epsilon = norm_epsilon
+    self._use_rms_norm = use_rms_norm
     self._inner_dropout = inner_dropout
     self._use_query_residual = use_query_residual
     self._key_dim = key_dim
@@ -213,25 +260,39 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         attention_axes=self._attention_axes,
         output_shape=self._output_last_dim,
         name="self_attention",
-        **common_kwargs)
+        **common_kwargs
+    )
     self._attention_dropout = tf_keras.layers.Dropout(
-        rate=self._attention_dropout_rate)
+        rate=self._attention_dropout_rate
+    )
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
-    self._attention_layer_norm = (
-        tf_keras.layers.LayerNormalization(
-            name="self_attention_layer_norm",
-            axis=-1,
-            epsilon=self._norm_epsilon,
-            dtype=tf.float32))
+    if self._use_rms_norm:
+      self._attention_layer_norm = RMSNorm(
+          epsilon=self._norm_epsilon,
+          name="self_attention_layer_norm",
+      )
+    else:
+      self._attention_layer_norm = tf_keras.layers.LayerNormalization(
+          name="self_attention_layer_norm",
+          axis=-1,
+          epsilon=self._norm_epsilon,
+          dtype=tf.float32,
+      )
     self._attention_layer_norm_kv = self._attention_layer_norm
     if self._diff_q_kv_att_layer_norm:
-      self._attention_layer_norm_kv = (
-          tf_keras.layers.LayerNormalization(
-              name="self_attention_layer_norm_kv",
-              axis=-1,
-              epsilon=self._norm_epsilon,
-              dtype=tf.float32))
+      if self._use_rms_norm:
+        self._attention_layer_norm_kv = RMSNorm(
+            epsilon=self._norm_epsilon,
+            name="self_attention_layer_norm_kv",
+        )
+      else:
+        self._attention_layer_norm_kv = tf_keras.layers.LayerNormalization(
+            name="self_attention_layer_norm_kv",
+            axis=-1,
+            epsilon=self._norm_epsilon,
+            dtype=tf.float32,
+        )
 
     self._intermediate_dense = tf_keras.layers.EinsumDense(
         einsum_equation,
