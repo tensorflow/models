@@ -155,6 +155,13 @@ class Parser(parser.Parser):
             translate_const=aug_type.randaug.translate_const,
             prob_to_apply=aug_type.randaug.prob_to_apply,
             exclude_ops=aug_type.randaug.exclude_ops)
+      elif aug_type.type == 'ssd_random_crop':
+        logging.info('Using SSD Random Crop.')
+        self._augmenter = augment.SSDRandomCrop(
+            params=aug_type.ssd_random_crop.ssd_random_crop_params,
+            aspect_ratio_range=aug_type.ssd_random_crop.aspect_ratio_range,
+            area_range=aug_type.ssd_random_crop.area_range,
+        )
       else:
         raise ValueError(f'Augmentation policy {aug_type.type} not supported.')
 
