@@ -19,11 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import random
+from unittest import mock
 from absl.testing import parameterized
 
 import numpy as np
 import tensorflow as tf, tf_keras
 
+from official.vision.configs import common as configs
 from official.vision.ops import augment
 
 
@@ -519,6 +521,177 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
                                1e4)  # With tolerance
     self.assertFalse(tf.math.reduce_all(images == aug_images))
 
+
+class SSDRandomCropTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='filter first one',
+          bboxes=[[0, 0, 1, 1], [0, 0, 0.5, 0.5]],
+          crop_box=[[[0, 0, 0.5, 1]]],
+          min_box_overlap=0.6,
+          expected=[[0, 0, 0, 0], [0, 0, 0.5, 0.5]],
+      ),
+      dict(
+          testcase_name='empty box list',
+          bboxes=tf.zeros([0, 4], dtype=tf.float32),
+          crop_box=[[[0, 0, 1, 1]]],
+          min_box_overlap=0.5,
+          expected=tf.zeros([0, 4], dtype=tf.float32),
+      ),
+  )
+  def test_filter_boxes_by_ioa(
+      self, bboxes, crop_box, min_box_overlap, expected
+  ):
+    new_bboxes = augment.filter_boxes_by_ioa(
+        bboxes=tf.constant(bboxes, dtype=tf.float32),
+        crop_box=tf.constant(crop_box, dtype=tf.float32),
+        min_box_overlap=min_box_overlap,
+    )
+    self.assertAllClose(expected, new_bboxes)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='whole image and box',
+          bboxes=[[0, 0, 1, 1], [0.1, 0.2, 0.8, 0.5]],
+          ori_image_size=[200, 600],
+          new_image_size=[100, 200],
+          offset=[70, 100],
+          expected=[[0, 0, 1, 1], [0, 0.1, 0.9, 1]],
+      ),
+      dict(
+          testcase_name='zero size boxes',
+          bboxes=tf.zeros([1, 4], dtype=tf.float32),
+          ori_image_size=[200, 600],
+          new_image_size=[100, 200],
+          offset=[70, 100],
+          expected=tf.zeros([1, 4], dtype=tf.float32),
+      ),
+      dict(
+          testcase_name='empty box list',
+          bboxes=tf.zeros([0, 4], dtype=tf.float32),
+          ori_image_size=[200, 600],
+          new_image_size=[100, 200],
+          offset=[70, 100],
+          expected=tf.zeros([0, 4], dtype=tf.float32),
+      ),
+  )
+  def test_crop_normalized_boxes(
+      self, bboxes, ori_image_size, new_image_size, offset, expected
+  ):
+    got = augment.crop_normalized_boxes(
+        bboxes=tf.constant(bboxes, dtype=tf.float32),
+        ori_image_size=tf.constant(ori_image_size, dtype=tf.int32),
+        new_image_size=tf.constant(new_image_size, dtype=tf.int32),
+        offset=tf.constant(offset, dtype=tf.int32),
+    )
+    self.assertAllClose(expected, got)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='uint8 image',
+          image=tf.zeros([320, 256, 3], dtype=tf.uint8),
+      ),
+      dict(
+          testcase_name='float32 image',
+          image=tf.zeros([320, 256, 3], dtype=tf.float32),
+      ),
+  )
+  def test_distort_with_boxes_output_shape(self, image):
+    bboxes = tf.constant([[0, 0, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0]])
+    augmenter = augment.SSDRandomCrop()
+    new_image, new_bboxes = augmenter.distort_with_boxes(
+        image=image,
+        bboxes=bboxes,
+    )
+    self.assertDTypeEqual(new_image, image.dtype)
+    self.assertDTypeEqual(new_bboxes, bboxes.dtype)
+    self.assertShapeEqual(new_bboxes, bboxes)
+    self.assertAllGreaterEqual(new_bboxes, 0)
+    self.assertAllLessEqual(new_bboxes, 1)
+
+  def test_distort_with_empty_bboxes(self):
+    image = tf.zeros([320, 256, 3], dtype=tf.uint8)
+    bboxes = tf.zeros([0, 4], dtype=tf.float32)
+    augmenter = augment.SSDRandomCrop()
+    new_image, new_bboxes = augmenter.distort_with_boxes(
+        image=image,
+        bboxes=bboxes,
+    )
+    self.assertDTypeEqual(new_image, image.dtype)
+    self.assertDTypeEqual(new_bboxes, bboxes.dtype)
+    self.assertShapeEqual(new_bboxes, bboxes)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='uint8 image',
+          image=tf.zeros([320, 256, 3], dtype=tf.uint8),
+      ),
+      dict(
+          testcase_name='float32 image',
+          image=tf.zeros([320, 256, 3], dtype=tf.float32),
+      ),
+  )
+  def test_distort_with_boxes_run_as_tf_function(self, image):
+    bboxes = tf.constant([[0, 0, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0]])
+    augmenter = augment.SSDRandomCrop()
+    aug_function = tf.function(augmenter.distort_with_boxes)
+    new_image, new_bboxes = aug_function(image=image, bboxes=bboxes)
+    self.assertDTypeEqual(new_image, image.dtype)
+    self.assertDTypeEqual(new_bboxes, bboxes.dtype)
+    self.assertShapeEqual(new_bboxes, bboxes)
+    self.assertAllGreaterEqual(new_bboxes, 0)
+    self.assertAllLessEqual(new_bboxes, 1)
+
+  def test_distort_with_boxes_run_as_tf_function_empty_bboxes(self):
+    image = tf.zeros([320, 256, 3], dtype=tf.uint8)
+    bboxes = tf.zeros([0, 4], dtype=tf.float32)
+    augmenter = augment.SSDRandomCrop()
+    aug_function = tf.function(augmenter.distort_with_boxes)
+    new_image, new_bboxes = aug_function(image=image, bboxes=bboxes)
+    self.assertDTypeEqual(new_image, image.dtype)
+    self.assertDTypeEqual(new_bboxes, bboxes.dtype)
+    self.assertShapeEqual(new_bboxes, bboxes)
+
+  def test_distort_with_boxes_filter_and_crop(self):
+    augmenter = augment.SSDRandomCrop(
+        params=[
+            configs.SSDRandomCropParam(
+                min_object_covered=0.0,
+                min_box_overlap=0.5,
+                prob_to_apply=1.0,
+            )
+        ],
+    )
+    image = tf.zeros([320, 256, 3], dtype=tf.uint8)
+    bboxes = tf.constant(
+        [
+            [0., 0., 1., 1.],  # filtered by low box overlap
+            [0.25, 0.75, 0.5, 2.],  # kept with box clipped
+            [0.25, 0.48, 0.5, 0.75],  # kept with box clipped
+        ],
+        dtype=tf.float32,
+    )
+    with mock.patch.object(
+        tf.image, 'sample_distorted_bounding_box', autospec=True
+    ) as mock_sample_box:
+      # crop box is an upper right box
+      offset = tf.constant([0, 128, 0], dtype=tf.int32)
+      new_image_size = tf.constant([160, 128, -1], dtype=tf.int32)
+      crop_box = tf.constant([[[0, 0.5, 0.5, 1.0]]], dtype=tf.float32)
+      mock_sample_box.return_value = offset, new_image_size, crop_box
+      new_image, new_bboxes = augmenter.distort_with_boxes(
+          image=image,
+          bboxes=bboxes,
+      )
+    self.assertAllClose(tf.zeros([160, 128, 3], dtype=tf.uint8), new_image)
+    self.assertAllClose(
+        tf.constant(
+            [[0., 0., 0., 0.], [0.5, 0.5, 1., 1.], [0.5, 0., 1., 0.5]],
+            dtype=tf.float32,
+        ),
+        new_bboxes,
+    )
 
 if __name__ == '__main__':
   tf.test.main()
