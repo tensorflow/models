@@ -13,14 +13,11 @@
 # limitations under the License.
 
 """Defines enum keys used by the keras uplift modeling library."""
+
 import enum
 
 
-class StrEnum(str, enum.Enum):
-  """An Enum represented by a string."""
-
-
-class TwoTowerOutputKeys(StrEnum):
+class TwoTowerOutputKeys(enum.StrEnum):
   """Keys for training and inference output tensors."""
 
   CONTROL_PREDICTIONS = "control_predictions"
@@ -28,3 +25,4 @@ class TwoTowerOutputKeys(StrEnum):
   UPLIFT_PREDICTIONS = "uplift_predictions"
   IS_TREATMENT = "is_treatment"
   TRUE_LOGITS = "true_logits"
+  TRUE_PREDICTIONS = "true_predictions"
