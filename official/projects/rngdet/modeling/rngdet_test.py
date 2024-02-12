@@ -71,6 +71,10 @@ class DetrTest(tf.test.TestCase):
     self.assertAllEqual(
         tf.shape(outs[0]['box_outputs']), (batch_size, num_queries, num_classes))
     self.assertAllEqual(
+        tf.shape(outs[0]['pred_masks']), (batch_size, hidden_size, hidden_size, 2))
+    self.assertAllEqual(
+        tf.shape(outs[0]['pred_instance_masks']), (batch_size, num_queries, num_classes))
+    self.assertAllEqual(
         tf.shape(outs[1]), (batch_size, hidden_size, hidden_size, 1))
     self.assertAllEqual(
         tf.shape(outs[2]), (batch_size, hidden_size, hidden_size, 1))
