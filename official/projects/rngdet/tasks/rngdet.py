@@ -364,33 +364,12 @@ class RNGDetTask(base_task.Task):
     """
     features, labels = inputs 
 
-    #======= visualize rotation for training images 
-    # before rotation
     roi_size =128 
     sat_roi = features['sat_roi']
     historical_roi =  features['historical_roi'] 
     label_masks_roi =  labels['label_masks_roi'] 
     gt_coords =  labels['gt_coords'] 
     gt_masks = labels['gt_masks']
-
-    #make image
-    dst = Image.new('RGB',(roi_size*2+5,roi_size*2+5))
-    sat_ROI_tmp = sat_roi[0]*255 
-    history_tmp = historical_roi[0, :, :, 0]*255
-    label_mask_tmp = label_masks_roi[0, :, :, 0]*255
-    gt_mask_tmp = gt_masks[0, :, :, 0]*255 
-
-    sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8)) #input
-    history = Image.fromarray(history_tmp.numpy().astype(np.uint8)) #input
-    label_mask = Image.fromarray(label_mask_tmp.numpy().astype(np.uint8)) #output
-    gt_mask = Image.fromarray(gt_mask_tmp.numpy().astype(np.uint8)) #output 
-
-    dst.paste(sat,(0,0)) #original image 
-    dst.paste(history,(0,roi_size))
-    dst.paste(label_mask,(roi_size,0))
-    dst.paste(gt_mask,(roi_size,roi_size)) 
-    draw = ImageDraw.Draw(dst)
-    dst.convert('RGB').save(f'./check_rot_before.png') 
 
     rot_index = np.random.randint(0, 4)
     cos_theta = 0 if ( rot_index%2==1 ) else (1 if (rot_index==0) else -1)
