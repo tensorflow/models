@@ -61,6 +61,9 @@ def _get_requirements(is_nightly=False):
 
 if project_name == 'tf-models-nightly':
   install_requires, dependency_links = _get_requirements(is_nightly=True)
+  version_split = version.split(".")
+  version_split[1] = str(int(version_split[1]) + 1)
+  version = ".".join(version_split)
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
   install_requires.append('tf-nightly')
   install_requires.append('tensorflow-text-nightly')
