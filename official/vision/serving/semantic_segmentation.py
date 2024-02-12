@@ -37,8 +37,11 @@ class SegmentationModule(export_base.ExportModule):
     """Builds classification model inputs for serving."""
 
     # Normalizes image with mean and std pixel values.
+    image_feature = self.params.task.train_data.image_feature
     image = preprocess_ops.normalize_image(
-        image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
+        image,
+        offset=image_feature.mean,
+        scale=image_feature.stddev)
 
     if self.params.task.train_data.preserve_aspect_ratio:
       image, image_info = preprocess_ops.resize_and_crop_image(
