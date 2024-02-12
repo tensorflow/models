@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Implements Road Network Graph Detection by Transformer in Aerial Images.
+
 Model paper: https://arxiv.org/abs/2202.07824
 This module does not support Keras de/serialization. Please use
 tf.train.Checkpoint for object based saving and loading and tf.saved_model.save
@@ -35,6 +36,7 @@ def position_embedding_sine(attention_mask,
                             normalize=True,
                             scale=2 * math.pi):
   """Sine-based positional embeddings for 2D images.
+
   Args:
     attention_mask: a `bool` Tensor specifying the size of the input image to
       the Transformer and which elements are padded, of size [batch_size,
@@ -48,6 +50,7 @@ def position_embedding_sine(attention_mask,
       functions.
     scale: a `float` if normalize is True specifying the scale embeddings before
       application of the embedding function.
+
   Returns:
     embeddings: a `float` tensor of the same shape as input_tensor specifying
       the positional embeddings based on sine features.
@@ -92,10 +95,264 @@ def position_embedding_sine(attention_mask,
   embeddings = output
   return embeddings
 
+def _expand(tensor, length: int):
+    tensor = tf.expand_dims(tensor, axis = 1) 
+ 
+    tensor = tf.tile(tensor, [1, int(length), 1, 1, 1] )
+ 
+    tensor = tf.reshape(tensor, [-1, tensor.shape[2:]])
+ 
+    return tensor
+
+class MHAttentionMap(tf.keras.layers.Layer):
+    def __init__(self, query_dim, hidden_dim, num_heads, dropout=0.0, bias=True):
+        super(MHAttentionMap, self).__init__()
+        self.num_heads = num_heads
+        self.hidden_dim = hidden_dim
+        self.dropout = tf.keras.layers.Dropout(dropout)
+
+        self.q_linear = tf.keras.layers.Dense(hidden_dim, use_bias=bias)
+        self.k_linear = tf.keras.layers.Conv2D(hidden_dim, kernel_size=1, use_bias=bias)
+        
+        self.q_linear.build((None, query_dim))
+        self.k_linear.build((None, query_dim))
+
+        self.normalize_fact = float(hidden_dim / self.num_heads) ** -0.5
+
+    def call(self, q, k, mask=None):
+
+        q = self.q_linear(q)  # pe [batch, Q, self.hidden_dim] 
+        k = self.k_linear(k)  # memory [batch, n, n, self.hidden_dim] 
+
+        qh = tf.reshape(q, (tf.shape(q)[0], tf.shape(q)[1], self.num_heads, self.hidden_dim // self.num_heads))
+        kh = tf.reshape(k, (tf.shape(k)[0], self.num_heads, self.hidden_dim // self.num_heads, tf.shape(k)[-3], tf.shape(k)[-2]))
+        weights = tf.einsum("bqnc,bnchw->bqnhw", qh * self.normalize_fact, kh) 
+        
+        if mask is not None:
+            weights = tf.where(tf.expand_dims(tf.expand_dims(mask, 1), 1), float("-inf"), weights)
+        w_shape = weights.shape
+        weights = tf.reshape( tf.nn.softmax(tf.reshape(weights, (tf.shape(weights)[0], -1)), axis=-1), w_shape )
+        weights = self.dropout(weights)
+        return weights
 
 
+class multi_scale(tf.keras.Model): 
+  
+  def __init__(self, transformer, dim, nheads, fpn_dims, output_size, **kwargs) :
+    super().__init__(**kwargs)
+    self.in_planes = 64 
+    self.dim = dim
+    self.fpn_dims = fpn_dims
+    self.output_size = output_size
+
+    #Top lyaer
+    self.transformer = transformer
+    # nn.Conv2d = [in_channels, out_channels, kernel_size, stride, padding ]
+    # tf.keras.layers.Conv2D( out_channels, kernel_size, strides=(1, 1), data_format=None,)
+    sqrt_k = math.sqrt(1.0 / dim)
+    self.input_proj_layer1 = tf.keras.layers.Conv2D(filters = dim, 
+                                                    kernel_size = 1, 
+                                                    kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k), 
+                                                    data_format = "channels_last",
+                                                    name="multi_scale/input_proj_1")
+    self.input_proj_layer2 = tf.keras.layers.Conv2D(filters = dim, 
+                                                    kernel_size = 1, 
+                                                    kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k), 
+                                                    data_format = "channels_last",
+                                                    name="multi_scale/input_proj_2")
+    self.input_proj_layer3 = tf.keras.layers.Conv2D(filters = dim, 
+                                                    kernel_size = 1, 
+                                                    kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k), 
+                                                    data_format = "channels_last",
+                                                    name="multi_scale/input_proj_3")
+    self.input_proj_layer4 = tf.keras.layers.Conv2D(filters = dim, 
+                                                    kernel_size = 1, 
+                                                    kernel_initializer=tf.keras.initializers.RandomUniform(-sqrt_k, sqrt_k), 
+                                                    data_format = "channels_last",
+                                                    name="multi_scale/input_proj_4")
+
+    self.bbox_attention_hs4 = MHAttentionMap(dim, dim, nheads, dropout=0.0) 
+    self.bbox_attention_hs3 = MHAttentionMap(dim, dim, nheads, dropout=0.0) 
+    self.bbox_attention_hs2 = MHAttentionMap(dim, dim, nheads, dropout=0.0) 
+    self.bbox_attention_hs1 = MHAttentionMap(dim, dim, nheads, dropout=0.0) 
+    
+    # padding = 1 -> padding = same
+    self.lay1 = tf.keras.layers.Conv2D( dim+nheads, 3, padding='same')
+    self.gn1 = tf.keras.layers.GroupNormalization(8) 
+    self.lay2 = tf.keras.layers.Conv2D( dim//2+nheads, 3, padding='same')
+    self.gn2 = tf.keras.layers.GroupNormalization(8 )
+    self.lay3 = tf.keras.layers.Conv2D( dim//4+nheads, 3, padding='same')
+    self.gn3 = tf.keras.layers.GroupNormalization(8 )
+    self.lay4 = tf.keras.layers.Conv2D( dim//8+nheads, 3, padding='same')
+    self.gn4 = tf.keras.layers.GroupNormalization(8 )
+    self.lay5 = tf.keras.layers.Conv2D( dim//16+nheads, 3, padding='same')
+    self.gn5 = tf.keras.layers.GroupNormalization(8 )
+    self.out_lay = tf.keras.layers.Conv2D( 1, 3, padding='same')
+
+    self.adapter1 = tf.keras.layers.Conv2D(dim//2+nheads, 1)
+    self.adapter2 = tf.keras.layers.Conv2D(dim//4+nheads, 1)
+    self.adapter3 = tf.keras.layers.Conv2D(dim//8+nheads, 1)
+    self.relu = tf.keras.layers.ReLU()
+
+  def _upsample(self, x, h, w):
+      return tf.image.resize(x, size=(h, w), method=tf.image.ResizeMethod.BILINEAR, align_corners=True)
+
+  def _upsample_add(self, x, y):
+      _, H, W, _ = y.shape
+      return tf.image.resize(x, size=(H, W), method=tf.image.ResizeMethod.BILINEAR, align_corners=True) + y
+  
+  def _generate_image_mask(self, inputs: tf.Tensor,
+                           target_shape: tf.Tensor) -> tf.Tensor:
+    """Generates image mask from input image."""
+    mask = tf.expand_dims(
+        tf.cast(tf.not_equal(tf.reduce_sum(inputs, axis=-1), 0), inputs.dtype),
+        axis=-1)
+    mask = tf.image.resize(
+        mask, target_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    return mask
+
+  def call(self, features, features2, query_embed_weight): 
+
+      # pytorch : (B, C, H, W) -> tensorflow : (B, H, W, C)
+      c2 = features['2'] + features2['2'] #(64, 32, 32, 256)
+      c3 = features['3'] + features2['3'] #(64, 16, 16, 512)
+      c4 = features['4'] + features2['4'] #(64, 8, 8, 1024)
+      c5 = features['5'] + features2['5'] #(64, 4, 4, 2048)
+      batch_size = c5.shape[0]
+      # no fuse
+      mask = tf.Variable( tf.ones((c5.shape[0],c5.shape[1],c5.shape[2]), dtype=tf.bool) )
+      shape = c5.shape
+      mask = mask[:,:].assign(False)
+      t5 = self.input_proj_layer1(c5)  
+      #print("t5 shape", t5.shape) [b, 4, 4, 128]
+      mask_for_pos = self._generate_image_mask(t5, shape[1:3] ) 
+      pos_embed_1 = position_embedding_sine(mask_for_pos[:, :, :, 0], num_pos_features = self.dim) 
+      pos_embed_1 = tf.reshape(pos_embed_1, [batch_size, -1, self.dim])
+      #print("pos embed 1 shape", pos_embed_1.shape) [b, 16, 128]
+
+      hs4, memory4 = self.transformer(
+                                      inputs = tf.reshape( t5, [batch_size, -1, self.dim]) , 
+                                      mask = tf.reshape(mask, [batch_size, -1]), 
+                                      targets = tf.tile( tf.expand_dims(query_embed_weight, axis=0) , (batch_size, 1, 1)),
+                                      pos_embed = pos_embed_1
+                                     ) 
+      memory4 = tf.reshape(memory4, [batch_size, 4, 4, self.dim])
+      bbox_mask4 = self.bbox_attention_hs4(hs4, memory4) 
+
+      # hs (predicted embedding) output size = (batch_size, num_query, hidden_dim)
+      # memory output size = (batch_size, 16 , 128 )
+
+      # (py : channel first) first fuse. (2048,H/32,W/32) + (1024,H/16,W/16) => fpn feature (1024,H/16,W/16) + transformer feature (256,H/16,W/16)
+      # (tf : channel last)
+      mask = tf.Variable( tf.ones((c4.shape[0],c4.shape[1],c4.shape[2]), dtype=tf.bool) )
+      mask = mask[:,:].assign(False)
+
+      t4 = self.input_proj_layer2(c4)
+      shape = c4.shape
+      mask_for_pos = self._generate_image_mask(t4, shape[1:3] ) 
+      pos_embed_2 = position_embedding_sine(mask_for_pos[:, :, :, 0], num_pos_features = self.dim) 
+      pos_embed_2 = tf.reshape(pos_embed_2, [batch_size, -1, self.dim])
+      hs3, memory3 = self.transformer(inputs = tf.reshape( t4, [batch_size, -1, self.dim]),  
+                                      mask = tf.reshape(mask, [batch_size, -1]), 
+                                      targets = hs4, 
+                                      pos_embed = pos_embed_2
+                                     )
+      memory3 = tf.reshape(memory3, [batch_size, 8, 8, self.dim])
+      bbox_mask3 = self.bbox_attention_hs3(hs3, memory3) 
+
+      # second fuse. (1024,H/16,W/16) + (512,H/8,W/8) => fpn feature (512,H/8,W/8) + transformer feature (256,H/8,W/8)
+      mask = tf.Variable( tf.ones((c3.shape[0],c3.shape[1],c3.shape[2]), dtype=tf.bool) )
+      mask = mask[:,:].assign(False)
+
+      t3 = self.input_proj_layer3(c3)
+      shape = c3.shape
+      mask_for_pos = self._generate_image_mask(t3, shape[1:3] ) 
+      pos_embed_3 = position_embedding_sine(mask_for_pos[:, :, :, 0], num_pos_features = self.dim) 
+      pos_embed_3 = tf.reshape(pos_embed_3, [batch_size, -1, self.dim])
+      hs2, memory2 = self.transformer(inputs = tf.reshape( t3, [batch_size, -1, self.dim] ) , 
+                                      mask = tf.reshape(mask, [batch_size, -1]), 
+                                      targets = hs3, 
+                                      pos_embed = pos_embed_3
+                                     )
+      memory2 = tf.reshape(memory2, [batch_size, 16, 16, self.dim])
+      bbox_mask2 = self.bbox_attention_hs2(hs2, memory2) 
+
+      # third fuse. (512,H/8,W/8) + (256,H/4,W/4) => fpn feature (256,H/4,W/4) + transformer feature (256,H/4,W/4)
+      mask = tf.Variable( tf.ones((c2.shape[0],c2.shape[1],c2.shape[2]), dtype=tf.bool) )
+      mask = mask[:,:].assign(False)
+
+      t2 = self.input_proj_layer4(c2)
+      shape = c2.shape
+      mask_for_pos = self._generate_image_mask(t2, shape[1:3] ) 
+      pos_embed_4 = position_embedding_sine(mask_for_pos[:, :, :, 0], num_pos_features = self.dim) 
+      pos_embed_4 = tf.reshape(pos_embed_4, [batch_size, -1, self.dim])
+
+      hs1, memory1 = self.transformer(inputs = tf.reshape( t2, [batch_size, -1, self.dim]) ,
+                                      mask = tf.reshape(mask, [batch_size, -1]), 
+                                      targets = hs2, 
+                                      pos_embed = tf.reshape( pos_embed_4, [batch_size, -1, self.dim]))
+      memory1 = tf.reshape(memory1, [batch_size, 32, 32, self.dim])
+      bbox_mask1 = self.bbox_attention_hs1(hs1, memory1) 
+
+      
+      # for instancd_segmentation
+      #c5 : [b, 4, 4, 2048] 
+      #bbox4 : [b, 10, 8, 4, 4]
+      b_shape = bbox_mask4.shape
+      bbox_mask4 = tf.reshape(bbox_mask4, [batch_size, b_shape[1]*b_shape[2], b_shape[3], b_shape[4]])
+      bbox_mask4 = tf.transpose(bbox_mask4, perm = [0, 2, 3, 1]) 
+      x = tf.concat([c5, bbox_mask4] , -1)
+      #x = tf.concat([_expand(c5, bbox_mask4.shape[3]), bbox_mask4.flatten(0, 1)], -1)' 
+      x = self.lay1(x)
+      x = self.gn1(x)
+      x = self.relu(x)
+      x = self.lay2(x)
+      x = self.gn2(x)
+      x = self.relu(x)
+      
+      b_shape = bbox_mask3.shape
+      bbox_mask3 = tf.reshape(bbox_mask3, [batch_size, b_shape[1]*b_shape[2], b_shape[3], b_shape[4]])
+      bbox_mask3 = tf.transpose(bbox_mask3, perm = [0, 2, 3, 1]) 
+      fpn1_input = tf.concat([c4, bbox_mask3] , -1)
+      # tf.concat([_expand(c4, bbox_mask3.shape[3]), bbox_mask3.flatten(0, 1)], -1
+      cur_fpn = self.adapter1(fpn1_input) # [64, 8, 8, 72]
+      x = cur_fpn + tf.image.resize(x, cur_fpn.shape[1:3], method=tf.image.ResizeMethod.BILINEAR) 
+      x = self.lay3(x)
+      x = self.gn3(x)
+      x = self.relu(x)
+
+      b_shape = bbox_mask2.shape
+      bbox_mask2 = tf.reshape(bbox_mask2, [batch_size, b_shape[1]*b_shape[2], b_shape[3], b_shape[4]])
+      bbox_mask2 = tf.transpose(bbox_mask2, perm = [0, 2, 3, 1]) 
+      fpn2_input = tf.concat([c3, bbox_mask2] , -1)
+      # tf.concat([_expand(c3, bbox_mask2.shape[3]), bbox_mask2.flatten(0, 1)], -1)
+
+      cur_fpn = self.adapter2(fpn2_input)
+      x = cur_fpn + tf.image.resize(x, cur_fpn.shape[1:3], method=tf.image.ResizeMethod.BILINEAR) 
+      x = self.lay4(x)
+      x = self.gn4(x)
+      x = self.relu(x)
+
+      b_shape = bbox_mask1.shape
+      bbox_mask1 = tf.reshape(bbox_mask1, [batch_size, b_shape[1]*b_shape[2], b_shape[3], b_shape[4]])
+      bbox_mask1 = tf.transpose(bbox_mask1, perm = [0, 2, 3, 1]) 
+      fpn3_input = tf.concat([c2, bbox_mask1] , -1)
+      #tf.concat([_expand(c2, bbox_mask1.shape[3]), bbox_mask1.flatten(0, 1)], -1)
+      cur_fpn = self.adapter3(fpn3_input)
+      x = cur_fpn + tf.image.resize(x, cur_fpn.shape[1:3], method=tf.image.ResizeMethod.BILINEAR) 
+      x = self.lay5(x)
+      x = self.gn5(x)
+      x = self.relu(x)
+
+      x = self.out_lay(x)
+      x = tf.image.resize(x, size=(self.output_size, self.output_size) , method=tf.image.ResizeMethod.BILINEAR)
+
+      return hs1, x
+
+  
 class RNGDet(tf.keras.Model):
   """RNGDet model with Keras.
+
   RNGDet consists of two backbones, two FPN decoders, query embedding,
   RNGDetTransformer, class and box heads.
   """
@@ -126,7 +383,7 @@ class RNGDet(tf.keras.Model):
     self._transformer = transformer
 
     self._input_proj = input_proj
-
+    
     self._query_embeddings = self.add_weight(
         "detr/query_embeddings",
         shape=[self._num_queries, self._hidden_size],
@@ -162,18 +419,26 @@ class RNGDet(tf.keras.Model):
             name="detr/box_dense_2")])
     self._tanh = tf.keras.layers.Activation("tanh")
 
+    self.multi_scale_head = multi_scale(transformer, 
+                                        dim=transformer._hidden_size, 
+                                        nheads=transformer._num_heads, 
+                                        fpn_dims= [2048, 1024, 512, 256], 
+                                        output_size = 128
+                                        )
+    
+
   @property
   def backbone(self) -> tf.keras.Model:
     return self._backbone
-
+  
   @property
   def backbone_history(self) -> tf.keras.Model:
     return self._backbone_history
-
+  
   @property
   def transformer(self) -> tf.keras.layers.Layer:
     return self._transformer
-
+  
   @property
   def input_proj(self) -> tf.keras.layers.Layer:
     return self._input_proj
@@ -181,7 +446,7 @@ class RNGDet(tf.keras.Model):
   @property
   def class_embed(self) -> tf.keras.layers.Layer:
     return self._class_embed
-
+  
   @property
   def checkpoint_items(
       self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
@@ -201,7 +466,7 @@ class RNGDet(tf.keras.Model):
         )
 
     return items
-
+  
   def get_config(self):
     return {
         "backbone": self._backbone,
@@ -230,62 +495,62 @@ class RNGDet(tf.keras.Model):
         mask, target_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     return mask
 
+  def _upsample_add(self, x, y):
+        _,_,H,W = y.shape
+        return tf.image.resize(x, size=(H,W), method=tf.image.ResizeMethod.BILINEAR, align_corners=True ) + y
+
   def call(self, inputs: tf.Tensor, history_samples: tf.Tensor,
            gt_labels: tf.Tensor = None, training: bool = None) -> List[Any]:
     # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
-    batch_size = tf.shape(inputs)[0]
-    features = self._backbone(inputs)
+    out = {}
+    batch_size = tf.shape(inputs)[0] # bs = features[-1].tensor.shape[0]
+    features = self._backbone(inputs) #features, pos = self.detr.backbone(samples)
+
     pred_segment = self._segment_fpn(features) # FPN
-    pred_segment = spatial_transform_ops.nearest_upsampling(
-          pred_segment['2'], 4, use_keras_layer=False)
+    pred_segment = spatial_transform_ops.nearest_upsampling(pred_segment['2'], 4, use_keras_layer=False)
     pred_segment = self._segment_head(pred_segment)
     pred_keypoint = self._keypoint_fpn(features) # FPN
-    pred_keypoint = spatial_transform_ops.nearest_upsampling(
-          pred_keypoint['2'], 4, use_keras_layer=False)
+    pred_keypoint = spatial_transform_ops.nearest_upsampling(pred_keypoint['2'], 4, use_keras_layer=False)
     pred_keypoint = self._keypoint_head(pred_keypoint)
+    
+    inputs_history = tf.concat([pred_segment, pred_keypoint], -1) #cat_tensor = torch.cat([pred_segment_mask, pred_keypoint_mask], dim=1)
+    out["pred_masks"] = inputs_history 
+    print(inputs_history.shape)
 
-    inputs_history = tf.concat([pred_segment, pred_keypoint], -1)
     inputs_history = tf.stop_gradient(inputs_history)
     segmentation_map = tf.sigmoid((inputs_history))
-
     if gt_labels is not None:
       history_samples = tf.concat([history_samples,gt_labels],-1)
     else:
       history_samples = tf.concat([history_samples,segmentation_map],-1)
-
-    history_outs = self._backbone_history(
-        history_samples)[self._backbone_endpoint_name]
-
-    shape = tf.shape(history_outs)
-    mask = self._generate_image_mask(inputs, shape[1: 3])
-
-    pos_embed = position_embedding_sine(
-        mask[:, :, :, 0], num_pos_features=self._hidden_size)
+    
+    history_outs = self._backbone_history(history_samples)
+    
+    shape = tf.shape(history_outs['5'])
+    mask = self._generate_image_mask(inputs, shape[1: 3]) #(B, H, W, C)
+    pos_embed = position_embedding_sine( mask[:, :, :, 0], num_pos_features=self._hidden_size)
     pos_embed = tf.reshape(pos_embed, [batch_size, -1, self._hidden_size])
 
-    proj_in = tf.concat([features[self._backbone_endpoint_name],
-                         history_outs], -1)
-    inputs = tf.reshape(
-        self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
-    mask = tf.reshape(mask, [batch_size, -1])
+    proj_in = tf.concat([features[self._backbone_endpoint_name], history_outs['5']], -1)
+    inputs = tf.reshape( self._input_proj(proj_in), [batch_size, -1, self._hidden_size])
+    mask = tf.reshape(mask, [batch_size, -1]) 
 
-    decoded = self._transformer({
-        "inputs":
-            inputs,
-        "targets":
-            tf.tile(
-                tf.expand_dims(self._query_embeddings, axis=0),
-                (batch_size, 1, 1)),
-        "pos_embed": pos_embed,
-        "mask": mask,
-    }, training=training)
-
+    #features = ['2' : (b, 32, 32, 256) // '3', : (b, 16, 16, 512) // '4' : (b, 8, 8, 1024) // '5' : (b, 4, 4, 2048)]
+    #history_outs = ['2' : (b, 32, 32, 256) // '3', : (b, 16, 16, 512) // '4' : (b, 8, 8, 1024) // '5' : (b, 4, 4, 2048)] 
+    #query embeddings : (10, 128)
+    decoded, seg_masks = self.multi_scale_head(features, history_outs, self._query_embeddings) 
+    #outputs_seg_masks = tf.reshape( seg_masks, [batch_size, self._num_queries, seg_masks.shape[-3], seg_masks.shape[-2] ] )
+    out["pred_instance_masks"] = seg_masks
+    
     output_class = self._class_embed(decoded)
     box_out = decoded
     box_out = self._bbox_embed(box_out)
     output_coord = self._tanh(box_out)
-    out = {"cls_outputs": output_class, "box_outputs": output_coord}
-    return out, pred_segment, pred_keypoint
+    out["cls_outputs"] = output_class #pred_logits
+    out["box_outputs"] = output_coord #pred_boxes
+
+    # in pytorch
+    return out, pred_segment, pred_keypoint 
 
 
 class DETRTransformer(tf.keras.layers.Layer):
@@ -355,20 +620,20 @@ class DETRTransformer(tf.keras.layers.Layer):
         "num_decoder_layers": self._num_decoder_layers,
         "dropout_rate": self._dropout_rate,
     }
-
+  
   @classmethod
   def from_config(cls, config):
     return cls(**config)
 
-  def call(self, inputs, training=None):
-    sources = inputs["inputs"]
-    targets = inputs["targets"]
-    pos_embed = inputs["pos_embed"]
-    mask = inputs["mask"]
+  #def call(self, inputs, targets, pos_embed,  training=None):
+  #def call (self, mask, query_embed_weight, pos)
+  def call(self, inputs, mask, targets, pos_embed, training=None):
+
+    sources = inputs
     input_shape = tf_utils.get_shape_list(sources)
     source_attention_mask = tf.tile(
         tf.expand_dims(mask, axis=1), [1, input_shape[1], 1])
-
+    
     sources = sources + pos_embed
     if self._encoder is not None:
       memory = self._encoder(
@@ -391,7 +656,7 @@ class DETRTransformer(tf.keras.layers.Layer):
         self_attention_mask,
         cross_attention_mask,
         training=training)
-    return decoded
+    return decoded, memory
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -414,7 +679,7 @@ class InputProjection(tf.keras.layers.Layer):
     return {
         "hidden_size": self._hidden_size,
     }
-
+  
   @classmethod
   def from_config(cls, config):
     return cls(**config)
