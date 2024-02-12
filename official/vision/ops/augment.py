@@ -26,14 +26,22 @@ MixupAndCutmix:
 RandomErasing, Mixup and Cutmix are inspired by
 https://github.com/rwightman/pytorch-image-models
 
+SSDRandCrop Reference:
+  - Liu et al., SSD: Single shot multibox detector:
+    https://arxiv.org/abs/1512.02325
+  - Implementation from TF Object Detection API:
+    https://github.com/tensorflow/models/
 """
+from collections.abc import Sequence
 import inspect
 import math
-from typing import Any, List, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import tensorflow as tf, tf_keras
 
+from official.vision.configs import common as configs
+from official.vision.ops import box_ops
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
@@ -184,7 +192,7 @@ def _normalize_tuple(value, n, name):
 def gaussian_filter2d(
     image: tf.Tensor,
     filter_shape: Union[List[int], Tuple[int, ...], int],
-    sigma: Union[List[float], Tuple[float], float] = 1.0,
+    sigma: Union[List[float], Tuple[float, float], float] = 1.0,
     padding: str = 'REFLECT',
     constant_values: Union[int, tf.Tensor] = 0,
     name: Optional[str] = None,
@@ -2781,3 +2789,133 @@ class MixupAndCutmix:
     labels = lam * labels_1 + (1. - lam) * labels_2
 
     return images, labels
+
+
+def filter_boxes_by_ioa(
+    bboxes: tf.Tensor, crop_box: tf.Tensor, min_box_overlap: float
+) -> tf.Tensor:
+  """Filter boxes by intersection over area (IOA).
+
+  The boxes with IOA less than min_box_overlap will be replaced by
+  (0, 0, 0, 0) so they can be filtered out later.
+
+  Args:
+    bboxes: a float tensor of shape [N, 4] representing normalized bounding box
+      coordinates.
+    crop_box: a float tensor of shape [1, 1, 4] representing the normalized crop
+      box.
+    min_box_overlap: minimum overlap of the box with the crop box to keep the
+      box.
+
+  Returns:
+    a tensor of shape [N, 4] with filtered box coordinates replaced by 0.
+  """
+  ioas = box_ops.bbox_intersection_over_area(bboxes[None, ...], crop_box)[0]
+  keep_boxes = ioas >= min_box_overlap
+  # Set coordinates to (0, 0, 0, 0) for filtered boxes
+  return bboxes * tf.cast(keep_boxes, dtype=bboxes.dtype)
+
+
+def crop_normalized_boxes(
+    bboxes: tf.Tensor,
+    ori_image_size: tf.Tensor,
+    new_image_size: tf.Tensor,
+    offset: tf.Tensor,
+) -> tf.Tensor:
+  """Crop normalized boxes.
+
+  Args:
+    bboxes: a float tensor of shape [N, 4] representing normalized box
+      coordinates.
+    ori_image_size: an int tensor of shape [2] representing the original image
+      size.
+    new_image_size: an int tensor of shape [2] representing the cropped image
+      size.
+    offset: an int tensor of shape [2] representing the offset of the crop.
+
+  Returns:
+    a tensor of shape [N, 4] representing the new normalized bounding box
+    coordinates in the new cropped image.
+  """
+  new_bboxes = box_ops.denormalize_boxes(bboxes, ori_image_size)
+  new_bboxes -= tf.tile(tf.cast(offset, dtype=tf.float32), [2])[None, ...]
+  new_bboxes = box_ops.normalize_boxes(new_bboxes, new_image_size)
+  return tf.clip_by_value(new_bboxes, 0.0, 1.0)
+
+
+class SSDRandomCrop(ImageAugment):
+  """Random crop preprocessing as in the SSD paper.
+
+  Liu et al., SSD: Single shot multibox detector
+  https://arxiv.org/abs/1512.02325.
+
+  The implementation originated from TF Object Detection API:
+  https://github.com/tensorflow/models/blob/f36581036d3346a9496de06c8fd678d23cfe2103/research/object_detection/core/preprocessor.py#L3529
+  """
+
+  def __init__(
+      self,
+      params: Sequence[configs.SSDRandomCropParam] | None = None,
+      aspect_ratio_range: tuple[float, float] = (0.5, 2.0),
+      area_range: tuple[float, float] = (0.1, 1.0),
+  ):
+    """Apply random crop to the image as in the SSD paper.
+
+    The SSD random crop will randomly select one set of the parameters.
+
+    Args:
+      params: a sequence of SSDRandomCropParam that contains:
+        min_object_covered - a float representing minimum the cropped image
+          must cover at least this fraction with at least one of the input
+          bounding boxes.
+        min_box_overlap - a float representing minimum overlap of the bounding
+          box with the cropped image to keep the box.
+        prob_to_apply - a float representing the probability to crop.
+      aspect_ratio_range: allowed range for aspect ratio of the cropped image.
+      area_range: allowed range for area ratio between cropped image and the
+        original image.
+    """
+    if params is None:
+      params = configs.SSDRandomCrop().ssd_random_crop_params
+    self.num_cases = len(params)
+    self.min_object_covered = tf.constant(
+        [param.min_object_covered for param in params], dtype=tf.float32,
+    )
+    self.min_box_overlap = tf.constant(
+        [param.min_box_overlap for param in params], dtype=tf.float32,
+    )
+    self.prob_to_apply = tf.constant(
+        [param.prob_to_apply for param in params], dtype=tf.float32,
+    )
+    self.aspect_ratio_range = aspect_ratio_range
+    self.area_range = area_range
+
+  def distort_with_boxes(
+      self, image: tf.Tensor, bboxes: tf.Tensor
+  ) -> tuple[tf.Tensor, tf.Tensor]:
+    """See base class."""
+    i_params = tf.random.uniform([], maxval=self.num_cases, dtype=tf.int32)
+
+    if tf.random.uniform(shape=[], maxval=1.0) > self.prob_to_apply[i_params]:
+      return image, bboxes
+
+    image_size = tf.shape(image)
+    bboxes = tf.clip_by_value(bboxes, 0., 1.)
+    offset, new_image_size, crop_box = tf.image.sample_distorted_bounding_box(
+        image_size=image_size,
+        bounding_boxes=bboxes[None, ...],
+        min_object_covered=self.min_object_covered[i_params],
+        aspect_ratio_range=self.aspect_ratio_range,
+        area_range=self.area_range,
+        max_attempts=100,
+        use_image_if_no_bounding_boxes=True,
+    )
+    new_image = tf.slice(image, offset, new_image_size)
+
+    new_bboxes = filter_boxes_by_ioa(
+        bboxes, crop_box, self.min_box_overlap[i_params]
+    )
+    new_bboxes = crop_normalized_boxes(
+        new_bboxes, image_size[:2], new_image_size[:2], offset[:2]
+    )
+    return new_image, new_bboxes

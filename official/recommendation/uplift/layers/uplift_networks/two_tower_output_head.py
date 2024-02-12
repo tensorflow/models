@@ -121,6 +121,9 @@ class TwoTowerOutputHead(tf_keras.layers.Layer):
     true_logits = tf.where(
         is_treatment, outputs.treatment_logits, outputs.control_logits
     )
+    true_predictions = tf.where(
+        is_treatment, treatment_predictions, control_predictions
+    )
 
     # Create a new tensor since ExtensionTypes are immutable.
     return types.TwoTowerTrainingOutputs(
@@ -131,6 +134,7 @@ class TwoTowerOutputHead(tf_keras.layers.Layer):
         treatment_predictions=treatment_predictions,
         uplift=uplift,
         true_logits=true_logits,
+        true_predictions=true_predictions,
         is_treatment=is_treatment,
     )
 

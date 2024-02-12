@@ -38,6 +38,7 @@ class TreatmentFractionTest(
         control_logits=tf.ones_like(is_treatment),
         treatment_logits=tf.ones_like(is_treatment),
         true_logits=tf.ones_like(is_treatment),
+        true_predictions=tf.ones_like(is_treatment),
         is_treatment=is_treatment,
     )
 
