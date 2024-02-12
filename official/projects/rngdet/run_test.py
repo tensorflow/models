@@ -7,6 +7,7 @@ sys.path.append("/home/mjyun/01_ghpark/models")
 
 import tensorflow as tf
 import numpy as np
+import argparse 
 
 from official.projects.rngdet.tasks import rngdet
 from official.core import exp_factory
@@ -14,6 +15,9 @@ exp_config = exp_factory.get_exp_config('rngdet_cityscale')
 task_obj = rngdet.RNGDetTask(exp_config.task)
 model = task_obj.build_model()
 #task_obj.initialize(model)
+
+parser = argparse.ArgumentParser() 
+parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')  
 
 class Vertex():
     def __init__(self,v,id):
@@ -53,7 +57,7 @@ class Graph():
             v1 = Vertex(v1_coord,self.vertex_num)
             self.vertex_num += 1
             self.vertices[f'{v1.x}_{v1.y}'] = v1
-        
+
         v2 = self.find_v(v2_coord)
         if v2 is None:
             v2 = Vertex(v2_coord,self.vertex_num)
@@ -71,9 +75,8 @@ class Graph():
             self.edges[f'{v2.id}_{v1.id}'] = Edge(v2,v1,self.edge_num)
             self.edge_num += 1
 
-ckpt_dir_or_file = '/home/mjyun/01_ghpark/ckpt/06_test_please_final/'
-#ckpt_dir_or_file = '/home/mjyun/01_ghpark/test_06_100epoch_fix_rot/'
-#ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/test_05_100epoch_no_rot/'
+ckpt_dir_or_file = parser.parse_args().ckpt_dir[0] 
+
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
     backbone_history=model.backbone_history,
@@ -98,7 +101,7 @@ from PIL import Image, ImageDraw
 from official.projects.rngdet.eval import agent
 
 pad_size = 128
-sat_image = np.array(Image.open(os.path.join('/home/mjyun/01_ghpark/models/official/projects/rngdet/data/dataset/20cities/region_9_sat.png')))
+sat_image = np.array(Image.open(os.path.join('./data/dataset/20cities/region_9_sat.png')))
 
 print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
 sat_image = tf.cast(sat_image, tf.float32)
@@ -130,11 +133,11 @@ while 1:
     #(mj) added from torch code (movement vector)
     alignment_vertices = [[v[0]-agent.current_coord[0]+agent.crop_size//2, v[1]-agent.current_coord[1]+agent.crop_size//2] for v in agent.historical_vertices]
     pred_coords_ROI = agent.step(pred_probs,pred_coords,thr=logit_threshold)
- 
+
     if agent.step_counter%100==0:
         if agent.step_counter%500==0:
             print(f'Iteration {agent.step_counter}...')
-            Image.fromarray(agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/segment_please_final/skeleton_result_{agent.step_counter}.png')
+            Image.fromarray(agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/skeleton_result_{agent.step_counter}.png')
             # visualize current step's result
         pred_binary = tf.math.sigmoid(pred_segment[0, :, :, 0]) * 255 #output['pred_masks'] -> pred_segment
         pred_keypoints = tf.math.sigmoid(pred_keypoint[0, :, :, 0]) * 255 #output['pred_masks'] -> pred_keypoint
@@ -144,43 +147,43 @@ while 1:
         sat_ROI_tmp = sat_ROI[0]*255 
         history_tmp = historical_ROI[0, :, :, 0]*255
 
-        sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8)) #input
-        history = Image.fromarray(history_tmp.numpy().astype(np.uint8)) #input
-        pred_binary = Image.fromarray(pred_binary.numpy().astype(np.uint8)) #output
-        pred_keypoint = Image.fromarray(pred_keypoints.numpy().astype(np.uint8)) #output
+        sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8))  
+        history = Image.fromarray(history_tmp.numpy().astype(np.uint8))  
+        pred_binary = Image.fromarray(pred_binary.numpy().astype(np.uint8))  
+        pred_keypoint = Image.fromarray(pred_keypoints.numpy().astype(np.uint8))  
 
-        dst.paste(sat,(0,0)) #original image 
+        dst.paste(sat,(0,0))  
         dst.paste(history,(0,roi_size))
         dst.paste(pred_binary,(roi_size,0))
         dst.paste(pred_keypoint,(roi_size,roi_size)) 
         draw = ImageDraw.Draw(dst)
 
-        for ii in range(3): #ii=0, 1, 2
-            for kk in range(2): #kk= 0, 1
+        for ii in range(3):  
+            for kk in range(2):  
                 delta_x = ii*roi_size
                 delta_y = kk*roi_size
-                if len(alignment_vertices): # from historical vertices
+                if len(alignment_vertices):  
                     for v in alignment_vertices:
                         if v[0]>=0 and v[0]<agent.crop_size and v[1]>=0 and v[1]<agent.crop_size:
                             v = [delta_x+(v[0]),delta_y+(v[1])]
                             draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='cyan',outline='cyan')
 
-                if pred_coords_ROI: #from predicted coordinates (agent step)
+                if pred_coords_ROI: 
                     for jj in range(len(pred_coords_ROI)):
                         v = pred_coords_ROI[jj]
                         v = [delta_x+(v[0]),delta_y+(v[1])]
                         draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='pink',outline='pink')
-                
+
                 draw.ellipse([delta_x-1+roi_size//2,delta_y-1+roi_size//2,delta_x+1+roi_size//2,delta_y+1+roi_size//2],fill='orange')
-        dst.convert('RGB').save(f'./segmentation/segment_please_final/vis_result_{agent.step_counter}.png') 
+        dst.convert('RGB').save(f'./segmentation/vis_result_{agent.step_counter}.png') 
         #exit()
-    
+
     if agent.finish_current_image:
         print(f'STEP 3: Finsh exploration. Save visualization and graph...')
         #save historical map
         Image.fromarray(
             agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)
-            ).convert('RGB').save(f'./segmentation/segment_please_final/0_result.png')
-       
+            ).convert('RGB').save(f'./segmentation/9_result.png')
+
         break
     # stop action

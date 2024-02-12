@@ -8,13 +8,16 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="7"
 
 import sys
-sys.path.append("/home/mjyun/01_ghpark/models")
 
 import tensorflow as tf
 import numpy as np
 
 from official.projects.rngdet.tasks import rngdet
 from official.core import exp_factory
+
+parser = argparse.ArgumentParser() 
+parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')  
+
 exp_config = exp_factory.get_exp_config('rngdet_cityscale')
 task_obj = rngdet.RNGDetTask(exp_config.task)
 model = task_obj.build_model()
@@ -62,7 +65,7 @@ class Graph():
             v1 = Vertex(v1_coord,self.vertex_num)
             self.vertex_num += 1
             self.vertices[f'{v1.x}_{v1.y}'] = v1
-        
+
         v2 = self.find_v(v2_coord)
         if v2 is None:
             v2 = Vertex(v2_coord,self.vertex_num)
@@ -105,7 +108,8 @@ def pixel_eval_metric(pred_mask,gt_mask):
 
     return calculate_scores(gt_points,pred_points)
 
-ckpt_dir_or_file = 'dir_for_ckpt'
+ckpt_dir_or_file = parser.parse_args().ckpt_dir[0] 
+
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
     backbone_history=model.backbone_history,
@@ -128,7 +132,7 @@ print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
 from PIL import Image, ImageDraw
 from official.projects.rngdet.eval import agent
- 
+
 pad_size = 128
 logit_threshold = 0.75
 roi_size = 128
@@ -139,22 +143,15 @@ with open('./data/dataset/data_split.json','r') as jf:
 time_start = time.time()
 
 create_directory(f'./segmentation/tests/graph',delete=True)
-create_directory(f'./segmentation/tests/segmentation',delete=True)
 create_directory(f'./segmentation/tests/skeleton',delete=True)
-create_directory(f'./segmentation/tests/vis',delete=True)
-create_directory(f'./segmentation/tests/score',delete=True)
 create_directory(f'./segmentation/tests/json',delete=True)
-create_directory(f'./segmentation/tests/results/apls',delete=True)
-create_directory(f'./segmentation/tests/results/topo',delete=True)
-
 
 for i, tile_name in enumerate(tile_list):
     print('====================================================')
-    print(tile_name)
     print(f'{i}/{len(tile_list)}: Start processing {tile_name}')
 
     #initialize an agent for current image 
-    
+
     sat_image = np.array(Image.open(os.path.join('./data/dataset/20cities/region_'+str(tile_name)+'_sat.png')))
     print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
     sat_image = tf.cast(sat_image, tf.float32)
@@ -181,50 +178,6 @@ for i, tile_name in enumerate(tile_list):
 
         alignment_vertices = [[v[0]-agent_new.current_coord[0]+agent_new.crop_size//2, v[1]-agent_new.current_coord[1]+agent_new.crop_size//2] for v in agent_new.historical_vertices]
         pred_coords_ROI = agent_new.step(pred_probs,pred_coords,thr=logit_threshold)
-        
-        '''#visualize internel step result
-        if agent_new.step_counter%100==0:
-            if agent_new.step_counter%1000==0:
-                print(f'Iteration {agent_new.step_counter}...')
-                Image.fromarray(agent_new.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/tests/skeleton/{tile_name}_{agent_new.step_counter}.png')
-                # visualize current step's result
-            pred_binary = tf.math.sigmoid(pred_segment[0, :, :, 0]) * 255 
-            pred_keypoints = tf.math.sigmoid(pred_keypoint[0, :, :, 0]) * 255 
-            # vis
-            dst = Image.new('RGB',(roi_size*2+5,roi_size*2+5))
-
-            sat_ROI_tmp = sat_ROI[0]*255 
-            history_tmp = historical_ROI[0, :, :, 0]*255
-
-            sat = Image.fromarray(sat_ROI_tmp.numpy().astype(np.uint8)) 
-            history = Image.fromarray(history_tmp.numpy().astype(np.uint8)) 
-            pred_binary = Image.fromarray(pred_binary.numpy().astype(np.uint8)) 
-            pred_keypoint = Image.fromarray(pred_keypoints.numpy().astype(np.uint8)) 
-
-            dst.paste(sat,(0,0)) #original image 
-            dst.paste(history,(0,roi_size))
-            dst.paste(pred_binary,(roi_size,0))
-            dst.paste(pred_keypoint,(roi_size,roi_size)) 
-            draw = ImageDraw.Draw(dst)
-
-            for ii in range(3): #ii=0, 1, 2
-                for kk in range(2): #kk= 0, 1
-                    delta_x = ii*roi_size
-                    delta_y = kk*roi_size
-                    if len(alignment_vertices): # from historical vertices
-                        for v in alignment_vertices:
-                            if v[0]>=0 and v[0]<agent_new.crop_size and v[1]>=0 and v[1]<agent_new.crop_size:
-                                v = [delta_x+(v[0]),delta_y+(v[1])]
-                                draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='cyan',outline='cyan')
-
-                    if pred_coords_ROI: #from predicted coordinates (agent_new step)
-                        for jj in range(len(pred_coords_ROI)):
-                            v = pred_coords_ROI[jj]
-                            v = [delta_x+(v[0]),delta_y+(v[1])]
-                            draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='pink',outline='pink')
-                    
-                    draw.ellipse([delta_x-1+roi_size//2,delta_y-1+roi_size//2,delta_x+1+roi_size//2,delta_y+1+roi_size//2],fill='orange')
-            dst.convert('RGB').save(f'./segmentation/tests/vis/{tile_name}_{agent_new.step_counter}.png') '''
 
         # stop action 
         if agent_new.finish_current_image:
@@ -244,7 +197,7 @@ for i, tile_name in enumerate(tile_list):
 
             for e in agent_new.historical_edges:
                 graph.add(e)
-            
+
             output_graph = {}
 
             for k, v in graph.vertices.items():
@@ -253,14 +206,14 @@ for i, tile_name in enumerate(tile_list):
             pickle.dump(output_graph,open(f'./segmentation/tests/graph/{tile_name}.p','wb'),protocol=2)
             pred_graph = np.array(Image.open(f'./segmentation/tests/skeleton/{tile_name}.png'))
             gt_graph = np.array(Image.open(f'./data/dataset/segment/{tile_name}.png'))
-            
+
             #print score
             print(pixel_eval_metric(pred_graph,gt_graph))
-            
+
             break
- 
+
     time2 = time.time()
     print(f'{i}/{len(tile_list)}: Finish processing {tile_name}, time usage {round((time2-time1)/3600,3)}h')
-            
+
 time_end = time.time()
 print(f'Finish inference, time usage {round((time_end-time_start)/3600,3)}h')    
