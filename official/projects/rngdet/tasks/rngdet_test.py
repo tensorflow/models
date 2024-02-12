@@ -28,7 +28,7 @@ import sys
 import pdb;
 _NUM_EXAMPLES = 10
 
-CITYSCALE_INPUT_PATH_BASE = 'FIX_ME'
+CITYSCALE_INPUT_PATH_BASE = '/home/mjyun/01_ghpark/tfrecord/'
 
 def _gen_fn():
   h = 128
