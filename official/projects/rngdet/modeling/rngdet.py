@@ -207,15 +207,14 @@ class multi_scale(tf.keras.Model):
   def call(self, features, features2, query_embed_weight): 
 
       # pytorch : (B, C, H, W) -> tensorflow : (B, H, W, C)
-      c2 = features['2'] + features2['2'] #(64, 32, 32, 256)
-      c3 = features['3'] + features2['3'] #(64, 16, 16, 512)
-      c4 = features['4'] + features2['4'] #(64, 8, 8, 1024)
-      c5 = features['5'] + features2['5'] #(64, 4, 4, 2048)
+      c2 = features['2'] + features2['2'] #(b, 32, 32, 256)
+      c3 = features['3'] + features2['3'] #(b, 16, 16, 512)
+      c4 = features['4'] + features2['4'] #(b, 8, 8, 1024)
+      c5 = features['5'] + features2['5'] #(b, 4, 4, 2048)
       
       batch_size = tf.shape(c5)[0]
-      # no fuse
       mask_4= self._generate_image_mask(c5, tf.shape(features2['5'])[1:3])
-      t5 = self.input_proj_layer1(c5)  
+      t5 = self.input_proj_layer1(c5)  # (b, 4, 4, 2048) -> (b, 4, 4, 128)
       pos_embed_1 = position_embedding_sine(mask_4[:, :, :, 0], num_pos_features = self.dim) 
       pos_embed_1 = tf.reshape(pos_embed_1, [batch_size, -1, self.dim])
 
@@ -225,7 +224,7 @@ class multi_scale(tf.keras.Model):
                                       targets = tf.tile( tf.expand_dims(query_embed_weight, axis=0) , (batch_size, 1, 1)),
                                       pos_embed = pos_embed_1
                                      ) 
-      
+
       mask_3 = self._generate_image_mask(c4, tf.shape(features2['4'])[1:3])
       t4 = self.input_proj_layer2(c4)
       pos_embed_2 = position_embedding_sine(mask_3[:, :, :, 0], num_pos_features = self.dim) 
@@ -236,7 +235,6 @@ class multi_scale(tf.keras.Model):
                                       pos_embed = pos_embed_2
                                      )
 
-      # second fuse. (1024,H/16,W/16) + (512,H/8,W/8) => fpn feature (512,H/8,W/8) + transformer feature (256,H/8,W/8)
       mask_2 = self._generate_image_mask(c3, tf.shape(features2['3'])[1:3])
       t3 = self.input_proj_layer3(c3)
       pos_embed_3 = position_embedding_sine(mask_2[:, :, :, 0], num_pos_features = self.dim) 
@@ -247,7 +245,6 @@ class multi_scale(tf.keras.Model):
                                       pos_embed = pos_embed_3
                                      )
 
-      # third fuse. (512,H/8,W/8) + (256,H/4,W/4) => fpn feature (256,H/4,W/4) + transformer feature (256,H/4,W/4)
       mask_1 = self._generate_image_mask(c2, tf.shape(features2['2'])[1:3])
       t2 = self.input_proj_layer4(c2)
       pos_embed_4 = position_embedding_sine(mask_1[:, :, :, 0], num_pos_features = self.dim) 
@@ -256,9 +253,10 @@ class multi_scale(tf.keras.Model):
       hs1, memory1 = self.transformer(inputs = tf.reshape( t2, [batch_size, -1, self.dim]) ,
                                       mask = tf.reshape(mask_1, [batch_size, -1]), 
                                       targets = hs2, 
-                                      pos_embed = tf.reshape( pos_embed_4, [batch_size, -1, self.dim]))
+                                      pos_embed = pos_embed_4)
 
       '''
+      # for instance segmentation
       memory4 = tf.reshape(memory4, [batch_size, 4, 4, self.dim])
       bbox_mask4 = self.bbox_attention_hs4(hs4, memory4) 
 
@@ -598,8 +596,6 @@ class DETRTransformer(tf.keras.layers.Layer):
   def from_config(cls, config):
     return cls(**config)
 
-  #def call(self, inputs, targets, pos_embed,  training=None):
-  #def call (self, mask, query_embed_weight, pos)
   def call(self, inputs, mask, targets, pos_embed, training=None):
 
     sources = inputs
