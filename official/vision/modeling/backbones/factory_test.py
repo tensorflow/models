@@ -84,11 +84,21 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(
       combinations.combine(
-          model_id=['MobileNetV1', 'MobileNetV2',
-                    'MobileNetV3Large', 'MobileNetV3Small',
-                    'MobileNetV3EdgeTPU'],
+          model_id=[
+              'MobileNetV1',
+              'MobileNetV2',
+              'MobileNetV3Large',
+              'MobileNetV3Small',
+              'MobileNetV3EdgeTPU',
+              'MobileNetV4ConvSmall',
+              'MobileNetV4ConvMedium',
+              'MobileNetV4ConvLarge',
+              'MobileNetV4HybridMedium',
+              'MobileNetV4HybridLarge',
+          ],
           filter_size_scale=[1.0, 0.75],
-      ))
+      )
+  )
   def test_mobilenet_creation(self, model_id, filter_size_scale):
     """Test creation of Mobilenet models."""
 
