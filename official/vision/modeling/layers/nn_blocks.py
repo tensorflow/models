@@ -612,33 +612,33 @@ class InvertedBottleneckBlock(tf_keras.layers.Layer):
       self._depthsize_regularizer = None
 
   def build(self, input_shape):
-    expand_filters = self._in_filters
-    if self._expand_ratio > 1:
-      # First 1x1 conv for channel expansion.
-      expand_filters = nn_layers.make_divisible(
-          self._in_filters * self._expand_ratio, self._divisible_by)
+    # First 1x1 conv for channel expansion.
+    expand_filters = nn_layers.make_divisible(
+        self._in_filters * self._expand_ratio, self._divisible_by
+    )
 
-      expand_kernel = 1 if self._use_depthwise else self._kernel_size
-      expand_stride = 1 if self._use_depthwise else self._strides
+    expand_kernel = 1 if self._use_depthwise else self._kernel_size
+    expand_stride = 1 if self._use_depthwise else self._strides
 
-      self._conv0 = tf_keras.layers.Conv2D(
-          filters=expand_filters,
-          kernel_size=expand_kernel,
-          strides=expand_stride,
-          padding='same',
-          use_bias=False,
-          kernel_initializer=tf_utils.clone_initializer(
-              self._kernel_initializer),
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)
-      self._norm0 = self._norm(
-          axis=self._bn_axis,
-          momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon,
-          synchronized=self._use_sync_bn,
-      )
-      self._activation_layer = tf_utils.get_activation(
-          self._activation, use_keras_layer=True)
+    self._conv0 = tf_keras.layers.Conv2D(
+        filters=expand_filters,
+        kernel_size=expand_kernel,
+        strides=expand_stride,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer,
+    )
+    self._norm0 = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon,
+        synchronized=self._use_sync_bn,
+    )
+    self._activation_layer = tf_utils.get_activation(
+        self._activation, use_keras_layer=True
+    )
 
     if self._use_depthwise:
       # Depthwise conv.
@@ -771,6 +771,967 @@ class InvertedBottleneckBlock(tf_keras.layers.Layer):
 
     if self._output_intermediate_endpoints:
       return x, endpoints
+    return x
+
+
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class UniversalInvertedBottleneckBlock(tf_keras.layers.Layer):
+  """An inverted bottleneck block with optional depthwises."""
+
+  def __init__(
+      self,
+      in_filters: int,
+      out_filters: int,
+      expand_ratio: float,
+      strides: int,
+      middle_dw_downsample: bool = True,
+      start_dw_kernel_size: int = 0,
+      middle_dw_kernel_size: int = 3,
+      end_dw_kernel_size: int = 0,
+      stochastic_depth_drop_rate: float | None = None,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: tf_keras.regularizers.Regularizer | None = None,
+      bias_regularizer: tf_keras.regularizers.Regularizer | None = None,
+      activation: str = 'relu',
+      depthwise_activation: str | None = None,
+      use_sync_bn: bool = False,
+      dilation_rate: int = 1,
+      divisible_by: int = 1,
+      regularize_depthwise: bool = False,
+      use_residual: bool = True,
+      use_layer_scale: bool = False,
+      layer_scale_init_value: float = 1e-5,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      output_intermediate_endpoints: bool = False,
+      **kwargs,
+  ):
+    """Initializes a UniversalInvertedBottleneckBlock.
+
+    This is an extension of IB with optional depthwise convs before expansion (
+    "starting" conv) and after projection ("ending" conv). Both of these convs
+    are executed without activation. The standard depthwise conv of IB ("middle"
+    conv) is optional too. This last one is followed by an activation, as in
+    standard IBs. Squeeze-and-Excite or fused types of IBs are not supported.
+
+    Args:
+      in_filters: The number of filters of the input tensor.
+      out_filters: The number of filters of the output tensor.
+      expand_ratio: The filter multiplier for the first inverted bottleneck
+        stage.
+      strides: The block stride. If greater than 1, this block will ultimately
+        downsample the input.
+      middle_dw_downsample: If True, downsample in the middle depthwise
+        otherwise downsample in the starting one.
+      start_dw_kernel_size: The kernel size of the starting depthwise. A value
+        of zero means that no starting depthwise will be added.
+      middle_dw_kernel_size: The kernel size of the middle depthwise. A value of
+        zero means that no middle depthwise will be added.
+      end_dw_kernel_size: The kernel size of the ending depthwise. A value of
+        zero means that no ending depthwise will be added.
+      stochastic_depth_drop_rate: If not None, drop rate for the stochastic
+        depth layer.
+      kernel_initializer: The name of the convolutional layer
+        kernel_initializer.
+      kernel_regularizer: An optional kernel regularizer for the Conv2ds.
+      bias_regularizer: An optional bias regularizer for the Conv2ds.
+      activation: The name of the activation function.
+      depthwise_activation: The name of the depthwise-only activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      dilation_rate: The dilation rate to use for convolutions.
+      divisible_by: Ensures all inner dimensions are divisible by this number.
+      regularize_depthwise: If True, apply regularization on depthwise.
+      use_residual: If True, include residual connection between input and
+        output.
+      use_layer_scale: If True, use layer scale.
+      layer_scale_init_value: The initial layer scale value.
+      norm_momentum: Momentum value for the moving average in normalization.
+      norm_epsilon: Value added to variance to avoid dividing by zero in
+        normalization.
+      output_intermediate_endpoints: This block does not output any intermediate
+        endpoint, but this argument is included for compatibility with other
+        blocks.
+      **kwargs: Additional keyword arguments to be passed.
+    """
+    super().__init__(**kwargs)
+    logging.info(
+        'UniversalInvertedBottleneckBlock with depthwise kernel sizes '
+        '{%d, %d, %d}, strides=%d, and middle downsampling: %s',
+        start_dw_kernel_size,
+        middle_dw_kernel_size,
+        end_dw_kernel_size,
+        strides,
+        middle_dw_downsample,
+    )
+
+    self._in_filters = in_filters
+    self._out_filters = out_filters
+    self._expand_ratio = expand_ratio
+    self._strides = strides
+    self._middle_dw_downsample = middle_dw_downsample
+    self._start_dw_kernel_size = start_dw_kernel_size
+    self._middle_dw_kernel_size = middle_dw_kernel_size
+    self._end_dw_kernel_size = end_dw_kernel_size
+    self._divisible_by = divisible_by
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._dilation_rate = dilation_rate
+    self._use_sync_bn = use_sync_bn
+    self._regularize_depthwise = regularize_depthwise
+    self._use_residual = use_residual
+    self._activation = activation
+    self._depthwise_activation = depthwise_activation
+    self._kernel_initializer = kernel_initializer
+    self._use_layer_scale = use_layer_scale
+    self._layer_scale_init_value = layer_scale_init_value
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_regularizer = bias_regularizer
+    self._output_intermediate_endpoints = output_intermediate_endpoints
+
+    if strides > 1:
+      if middle_dw_downsample and not middle_dw_kernel_size:
+        raise ValueError(
+            'Requested downsampling at a non-existing middle depthwise.'
+        )
+      if not middle_dw_downsample and not start_dw_kernel_size:
+        raise ValueError(
+            'Requested downsampling at a non-existing starting depthwise.'
+        )
+
+    if use_sync_bn:
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+    if not depthwise_activation:
+      self._depthwise_activation = activation
+    if regularize_depthwise:
+      self._depthsize_regularizer = kernel_regularizer
+    else:
+      self._depthsize_regularizer = None
+
+  def build(self, input_shape):
+    # Starting depthwise conv.
+    if self._start_dw_kernel_size:
+      self._start_dw_conv = tf_keras.layers.DepthwiseConv2D(
+          kernel_size=self._start_dw_kernel_size,
+          strides=self._strides if not self._middle_dw_downsample else 1,
+          padding='same',
+          depth_multiplier=1,
+          dilation_rate=self._dilation_rate,
+          use_bias=False,
+          depthwise_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer
+          ),
+          depthwise_regularizer=self._depthsize_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )
+      self._start_dw_norm = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+      )
+
+    # Expansion with 1x1 convs.
+    expand_filters = nn_layers.make_divisible(
+        self._in_filters * self._expand_ratio, self._divisible_by
+    )
+
+    self._expand_conv = tf_keras.layers.Conv2D(
+        filters=expand_filters,
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer,
+    )
+    self._expand_norm = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon,
+    )
+    self._expand_act = tf_utils.get_activation(
+        self._activation, use_keras_layer=True
+    )
+
+    # Middle depthwise conv.
+    if self._middle_dw_kernel_size:
+      self._middle_dw_conv = tf_keras.layers.DepthwiseConv2D(
+          kernel_size=self._middle_dw_kernel_size,
+          strides=self._strides if self._middle_dw_downsample else 1,
+          padding='same',
+          depth_multiplier=1,
+          dilation_rate=self._dilation_rate,
+          use_bias=False,
+          depthwise_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer
+          ),
+          depthwise_regularizer=self._depthsize_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )
+      self._middle_dw_norm = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+      )
+      self._middle_dw_act = tf_utils.get_activation(
+          self._depthwise_activation, use_keras_layer=True
+      )
+
+    # Projection with 1x1 convs.
+    self._proj_conv = tf_keras.layers.Conv2D(
+        filters=self._out_filters,
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer,
+    )
+    self._proj_norm = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon,
+    )
+
+    # Ending depthwise conv.
+    if self._end_dw_kernel_size:
+      self._end_dw_conv = tf_keras.layers.DepthwiseConv2D(
+          kernel_size=self._end_dw_kernel_size,
+          strides=1,
+          padding='same',
+          depth_multiplier=1,
+          dilation_rate=self._dilation_rate,
+          use_bias=False,
+          depthwise_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer
+          ),
+          depthwise_regularizer=self._depthsize_regularizer,
+          bias_regularizer=self._bias_regularizer,
+      )
+      self._end_dw_norm = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+      )
+
+    if self._use_layer_scale:
+      self._layer_scale = MNV4LayerScale(self._layer_scale_init_value)
+
+    if self._stochastic_depth_drop_rate:
+      self._stochastic_depth = nn_layers.StochasticDepth(
+          self._stochastic_depth_drop_rate
+      )
+    else:
+      self._stochastic_depth = None
+
+    super().build(input_shape)
+
+  def get_config(self) -> dict[str, Any]:
+    """Return a Python dict containing this layer's configuration data."""
+    config = {
+        'in_filters': self._in_filters,
+        'out_filters': self._out_filters,
+        'expand_ratio': self._expand_ratio,
+        'strides': self._strides,
+        'middle_dw_downsample': self._middle_dw_downsample,
+        'start_dw_kernel_size': self._start_dw_kernel_size,
+        'middle_dw_kernel_size': self._middle_dw_kernel_size,
+        'end_dw_kernel_size': self._end_dw_kernel_size,
+        'divisible_by': self._divisible_by,
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'kernel_initializer': self._kernel_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'bias_regularizer': self._bias_regularizer,
+        'activation': self._activation,
+        'depthwise_activation': self._depthwise_activation,
+        'dilation_rate': self._dilation_rate,
+        'use_sync_bn': self._use_sync_bn,
+        'regularize_depthwise': self._regularize_depthwise,
+        'use_residual': self._use_residual,
+        'use_layer_scale': self._use_layer_scale,
+        'layer_scale_init_value': self._layer_scale_init_value,
+        'norm_momentum': self._norm_momentum,
+        'norm_epsilon': self._norm_epsilon,
+        'output_intermediate_endpoints': self._output_intermediate_endpoints,
+    }
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def call(self, inputs, training=None):
+    """Run layer computation."""
+    endpoints = {}
+    shortcut = inputs
+    x = inputs
+    if self._start_dw_kernel_size:
+      x = self._start_dw_conv(x)
+      x = self._start_dw_norm(x)
+
+    x = self._expand_conv(x)
+    x = self._expand_norm(x)
+    x = self._expand_act(x)
+
+    if self._middle_dw_kernel_size:
+      x = self._middle_dw_conv(x)
+      x = self._middle_dw_norm(x)
+      x = self._middle_dw_act(x)
+
+    x = self._proj_conv(x)
+    x = self._proj_norm(x)
+
+    if self._end_dw_kernel_size:
+      x = self._end_dw_conv(x)
+      x = self._end_dw_norm(x)
+
+    if self._use_layer_scale:
+      x = self._layer_scale(x)
+
+    if (
+        self._use_residual
+        and self._in_filters == self._out_filters
+        and self._strides == 1
+    ):
+      if self._stochastic_depth:
+        x = self._stochastic_depth(x, training=training)
+      x = x + shortcut
+
+    if self._output_intermediate_endpoints:
+      return x, endpoints
+    return x
+
+
+class MultiQueryAttentionLayerV1(tf_keras.layers.Layer):
+  """Multi Query Attention.
+
+  Fast Transformer Decoding: One Write-Head is All You Need
+  https://arxiv.org/pdf/1911.02150.pdf
+
+  This gives 2x speed up compared to vanilla multihead attention at the cost
+  of negligible precision drop.
+  """
+
+  def __init__(self, num_heads, key_dim, value_dim, dropout=0):
+    """Initializer."""
+    super().__init__()
+    self._num_heads = num_heads
+    self._key_dim = key_dim
+    self._value_dim = value_dim
+    self._dropout = dropout
+
+  def build(self, input_shape):
+    """Create layer state."""
+    x_shape, m_shape = input_shape
+    self._channel_dim = x_shape[-1]
+    assert self._channel_dim == m_shape[-1], f'x={x_shape}, m={m_shape}'
+    # Note: weight initializers are left to default
+    self._query_proj = self.add_weight(
+        'query', [self._num_heads, self._channel_dim, self._key_dim]
+    )
+    self._key_proj = self.add_weight('key', [self._channel_dim, self._key_dim])
+    self._value_proj = self.add_weight(
+        'value', [self._channel_dim, self._value_dim]
+    )
+    self._output_proj = self.add_weight(
+        'output', [self._num_heads, self._channel_dim, self._value_dim]
+    )
+    self._dropout_layer = tf_keras.layers.Dropout(rate=self._dropout)
+
+  def _reshape_input(self, t):
+    """Reshapes a tensor to three dimensions, keeping the first and last."""
+    s = tf.shape(t)
+    # Propagate the shape statically where possible.
+    static_num = t.shape[1:-1].num_elements()
+    num = static_num or tf.math.reduce_prod(s[1:-1])
+    return tf.ensure_shape(
+        tf.reshape(t, [s[0], num, s[-1]]), [t.shape[0], static_num, t.shape[-1]]
+    )
+
+  def call(self, inputs, optimize_einsum=False):
+    """Run layer computation."""
+    x, m = inputs
+
+    reshaped_x = self._reshape_input(x)
+    reshaped_m = self._reshape_input(m)
+
+    if optimize_einsum:
+      logits = tf.einsum(
+          'bnd,bme,hdk,ek->bhnm',
+          reshaped_x,
+          reshaped_m,
+          self._query_proj,
+          self._key_proj,
+          optimize='optimal',
+      )
+    else:
+      q = tf.einsum('bnd,hdk->bhnk', reshaped_x, self._query_proj)
+      k = tf.einsum('bmd,dk->bmk', reshaped_m, self._key_proj)
+      logits = tf.einsum('bhnk,bmk->bhnm', q, k)
+
+    logits = logits / tf.math.sqrt(tf.cast(self._key_dim, x.dtype))
+    attention_scores = self._dropout_layer(tf.nn.softmax(logits))
+
+    if optimize_einsum:
+      result = tf.einsum(
+          'bhnm,bmd,dv,hev->bne',
+          attention_scores,
+          reshaped_m,
+          self._value_proj,
+          self._output_proj,
+          optimize='optimal',
+      )
+    else:
+      v = tf.einsum('bmd,dv->bmv', reshaped_m, self._value_proj)
+      o = tf.einsum('bhnm,bmv->bhnv', attention_scores, v)
+      result = tf.einsum('bhnv,hdv->bnd', o, self._output_proj)
+
+    return tf.ensure_shape(tf.reshape(result, tf.shape(x)), x.shape)
+
+
+class MultiQueryAttentionLayerV2(tf_keras.layers.Layer):
+  """Multi Query Attention.
+
+  Fast Transformer Decoding: One Write-Head is All You Need
+  https://arxiv.org/pdf/1911.02150.pdf
+
+  This is an acceletor optimized version - removing multiple unneccessary
+  tensor transpose by re-arranging indices according to the following rules: 1)
+  contracted indices are at the end, 2) other indices have the same order in the
+  input and output tensores.
+
+  Compared to V1, this gives 3x speed up.
+  """
+
+  def __init__(self, num_heads, key_dim, value_dim, dropout=0):
+    """Initializer."""
+    super().__init__()
+    self._num_heads = num_heads
+    self._key_dim = key_dim
+    self._value_dim = value_dim
+    self._dropout = dropout
+
+  def build(self, input_shape):
+    """Create layer state."""
+    x_shape, m_shape = input_shape
+    self._channel_dim = x_shape[-1]
+    assert self._channel_dim == m_shape[-1], f'x={x_shape}, m={m_shape}'
+    self._query_proj = self.add_weight(
+        'query', [self._num_heads, self._key_dim, self._channel_dim]
+    )
+    self._key_proj = self.add_weight('key', [self._channel_dim, self._key_dim])
+    self._value_proj = self.add_weight(
+        'value', [self._channel_dim, self._value_dim]
+    )
+    self._output_proj = self.add_weight(
+        'output', [self._channel_dim, self._num_heads, self._value_dim]
+    )
+    self._dropout_layer = tf_keras.layers.Dropout(rate=self._dropout)
+
+  def _reshape_input(self, t):
+    """Reshapes a tensor to three dimensions, keeping the first and last."""
+    s = tf.shape(t)
+    # Propagate the shape statically where possible.
+    static_num = t.shape[1:-1].num_elements()
+    num = static_num or tf.math.reduce_prod(s[1:-1])
+    return tf.ensure_shape(
+        tf.reshape(t, [s[0], num, s[-1]]), [t.shape[0], static_num, t.shape[-1]]
+    )
+
+  def call(self, inputs):
+    """Run layer computation."""
+    x, m = inputs
+
+    reshaped_x = self._reshape_input(x)
+    reshaped_m = self._reshape_input(m)
+
+    q = tf.einsum('bnd,hkd->bnhk', reshaped_x, self._query_proj)
+    k = tf.einsum('bmd,dk->bmk', reshaped_m, self._key_proj)
+    logits = tf.einsum('bnhk,bmk->bnhm', q, k)
+
+    logits = logits / tf.math.sqrt(tf.cast(self._key_dim, x.dtype))
+    attention_scores = self._dropout_layer(tf.nn.softmax(logits))
+
+    v = tf.einsum('bmd,dv->bmv', reshaped_m, self._value_proj)
+    o = tf.einsum('bnhm,bmv->bnhv', attention_scores, v)
+    result = tf.einsum('bnhv,dhv->bnd', o, self._output_proj)
+
+    return tf.ensure_shape(tf.reshape(result, tf.shape(x)), x.shape)
+
+
+class OptimizedMultiQueryAttentionLayerWithDownSampling(tf_keras.layers.Layer):
+  """Multi Query Attention with spatial downsampling.
+
+   3 parameters are introduced for the spatial downsampling:
+   1. kv_strides: downsampling factor on Key and Values only.
+   2. query_h_strides: vertical strides on Query only.
+   3. query_w_strides: horizontal strides on Query only.
+
+  This is an optimized version.
+  1. Projections in Attention is explict written out as 1x1 Conv2D.
+  2. Additional reshapes are introduced to bring a up to 3x speed up.
+  """
+
+  def __init__(
+      self,
+      num_heads: int,
+      key_dim: int,
+      value_dim: int,
+      query_h_strides: int = 1,
+      query_w_strides: int = 1,
+      kv_strides: int = 1,
+      dropout: float = 0,
+      dw_kernel_size: int = 3,
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+  ):
+    """Initializer.
+
+    Args:
+      num_heads: Number of attention heads.
+      key_dim: Size of the attention key dimension.
+      value_dim: Size of the attention value dimension.
+      query_h_strides: Vertical stride size for query only.
+      query_w_strides: Horizontal stride size for query only.
+      kv_strides: Key and value stride size.
+      dropout: Dropout probability (between 0 and 1).
+      dw_kernel_size: Spatial dimension of the depthwise kernel.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: Momentum value for use with normalization moving average.
+      norm_epsilon: Small float added to norm variance to avoid dividing by
+        zero.
+    """
+    super().__init__()
+    self._num_heads = num_heads
+    self._key_dim = key_dim
+    self._value_dim = value_dim
+    self._query_h_strides = query_h_strides
+    self._query_w_strides = query_w_strides
+    self._kv_strides = kv_strides
+    self._dw_kernel_size = dw_kernel_size
+    self._dropout = dropout
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+
+    if use_sync_bn:
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+
+  def build(self, input_shape):
+    """Create layer state."""
+    self._channel_dim = input_shape[-1]
+
+    if self._query_h_strides > 1 or self._query_w_strides > 1:
+      self._query_downsampling = tf_keras.layers.AvgPool2D(
+          pool_size=(self._query_h_strides, self._query_w_strides),
+          padding='same',
+      )
+      self._query_downsampling_norm = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+      )
+
+    self._query_proj = tf_keras.layers.Conv2D(
+        filters=self._num_heads * self._key_dim,
+        kernel_size=1,
+        strides=1,
+        padding='valid',
+        use_bias=False,
+    )
+
+    if self._kv_strides > 1:
+      self._key_dw_conv = tf_keras.layers.DepthwiseConv2D(
+          kernel_size=self._dw_kernel_size,
+          strides=self._kv_strides,
+          padding='same',
+          depth_multiplier=1,
+          use_bias=False,
+      )
+      self._key_dw_norm = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+      )
+    self._key_proj = tf_keras.layers.Conv2D(
+        filters=self._key_dim,
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+    )
+
+    if self._kv_strides > 1:
+      self._value_dw_conv = tf_keras.layers.DepthwiseConv2D(
+          kernel_size=self._dw_kernel_size,
+          strides=self._kv_strides,
+          padding='same',
+          depth_multiplier=1,
+          use_bias=False,
+      )
+      self._value_dw_norm = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon,
+      )
+    self._value_proj = tf_keras.layers.Conv2D(
+        filters=self._value_dim,
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+    )
+
+    self._output_proj = tf_keras.layers.Conv2D(
+        filters=self._channel_dim,
+        kernel_size=1,
+        strides=1,
+        padding='valid',
+        use_bias=False,
+    )
+    if self._query_h_strides > 1 or self._query_w_strides > 1:
+      self._upsampling = tf_keras.layers.UpSampling2D(
+          size=(self._query_h_strides, self._query_w_strides),
+          interpolation='bilinear',
+      )
+    self._dropout_layer = tf_keras.layers.Dropout(rate=self._dropout)
+
+  def _reshape_input(self, t):
+    """Reshapes a tensor to three dimensions, keeping the first and last."""
+    s = tf.shape(t)
+    # Propagate the shape statically where possible.
+    static_num = t.shape[1:-1].num_elements()
+    num = static_num or tf.math.reduce_prod(s[1:-1])
+    return tf.ensure_shape(
+        tf.reshape(t, [s[0], num, s[-1]]), [t.shape[0], static_num, t.shape[-1]]
+    )
+
+  def _reshape_projected_query(self, t, num_heads, h_px, w_px, key_dim):
+    """Reshapes projected query: [b, n, n, h x k] -> [b, n x n, h, k]."""
+    s = tf.shape(t)
+    return tf.reshape(t, [s[0], h_px * w_px, num_heads, key_dim])
+
+  def _get_pixels(self, t):
+    s = tf.shape(t)
+    static_num = t.shape[1]
+    px = static_num or s[1]
+    return px
+
+  def _reshape_output(self, t, num_heads, h_px, w_px):
+    """Reshape output:[b, n x n x h, k] -> [b, n, n, hk]."""
+    s = tf.shape(t)
+    # Propagate the shape statically where possible.
+    static_last_dim = t.shape[-1]
+    last_dim = (static_last_dim or s[-1]) * num_heads
+    return tf.reshape(t, [t.shape[0] or s[0], h_px, w_px, last_dim])
+
+  def call(self, inputs):
+    """Run layer computation."""
+    x = inputs
+    px = self._get_pixels(x)
+
+    if self._query_h_strides > 1 or self._query_w_strides > 1:
+      q = self._query_downsampling(x)
+      q = self._query_downsampling_norm(q)
+      q = self._query_proj(q)
+    else:
+      q = self._query_proj(x)
+
+    # desired q shape: [b, n x n, h, k] - [b, l, h, k]
+    q = self._reshape_projected_query(
+        q,
+        self._num_heads,
+        px // self._query_h_strides,
+        px // self._query_w_strides,
+        self._key_dim,
+    )
+
+    if self._kv_strides > 1:
+      k = self._key_dw_conv(x)
+      k = self._key_dw_norm(k)
+      k = self._key_proj(k)
+    else:
+      k = self._key_proj(x)
+    # output shape of k: [b, k, p], p = m x m
+    k = self._reshape_input(k)
+
+    # desired q shape: [b, n x n, h, k]
+    # desired k shape: [b, m x m, k]
+    # desired logits shape: [b, n x n, h, m x m]
+    logits = tf.einsum('blhk,bpk->blhp', q, k)
+
+    logits = logits / tf.math.sqrt(tf.cast(self._key_dim, x.dtype))
+
+    attention_scores = self._dropout_layer(tf.nn.softmax(logits))
+
+    if self._kv_strides > 1:
+      v = self._value_dw_conv(x)
+      v = self._value_dw_norm(v)
+      v = self._value_proj(v)
+    else:
+      v = self._value_proj(x)
+
+    # output shape of v: [ b, p, k], p = m x m
+    v = self._reshape_input(v)
+    o = tf.einsum('blhp,bpk->blhk', attention_scores, v)
+    # reshape o into [b, n, n, hk]
+    o = self._reshape_output(
+        o,
+        self._num_heads,
+        px // self._query_h_strides,
+        px // self._query_w_strides,
+    )
+    if self._query_h_strides > 1 or self._query_w_strides > 1:
+      o = self._upsampling(o)
+
+    result = self._output_proj(o)
+
+    return tf.ensure_shape(tf.reshape(result, tf.shape(x)), x.shape)
+
+
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MultiHeadSelfAttentionBlock(tf_keras.layers.Layer):
+  """A Multi Head Self Attention block."""
+
+  def __init__(
+      self,
+      input_dim,
+      num_heads=8,
+      key_dim=64,
+      value_dim=64,
+      use_multi_query=False,
+      query_h_strides=1,
+      query_w_strides=1,
+      kv_strides=1,
+      downsampling_dw_kernel_size=3,
+      dropout=0.0,
+      use_bias=False,
+      use_cpe=False,
+      cpe_dw_kernel_size=7,
+      stochastic_depth_drop_rate=None,
+      use_residual=True,
+      use_sync_bn=False,
+      use_layer_scale=True,
+      layer_scale_init_value=1e-5,
+      norm_momentum=0.99,
+      norm_epsilon=0.001,
+      output_intermediate_endpoints=False,
+      **kwargs,
+  ):
+    """Initializes a MultiHeadSelfAttentionBlock.
+
+    A Self-Attention block mixing tokens spatially and globally.
+
+    Args:
+      input_dim: dimension of the channels of the input feature.
+      num_heads: number of heads. Default is 8. If None, num_heads are computed
+        automatically as input_dim // key_dim.
+      key_dim: Number of projected key and query dimension per head. Default is
+        64.
+      value_dim: Number of projected value dimension per head. Default is 64.
+      use_multi_query: If true, use MultiQueryAttention.
+      query_h_strides: Spatial downsampling strides on vertical axis on query.
+      query_w_strides: Spatial downsampling strides on horizontal axis on query.
+      kv_strides: Spatial downsampling strides on key and values.
+      downsampling_dw_kernel_size: The sise of DW kernel in the downsampling
+        layer.
+      dropout: Dropout rate for the attention score layer and projection layer.
+      use_bias: whether to use bias.
+      use_cpe: A 'bool'. If True, add Conditional Position Encoding.
+      cpe_dw_kernel_size: An `int` kernel size of the CPE depthwise.
+      stochastic_depth_drop_rate: A `float` or None. if not None, drop rate for
+        the stochastic depth layer.
+      use_residual: A `bool` of whether to include residual connection between
+        input and output.
+      use_sync_bn: A `bool`. If True, use synchronized batch normalization.
+      use_layer_scale: A 'bool'. If True, scale the output of MHSA.
+      layer_scale_init_value: A 'float' of initial value of layer scale.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      output_intermediate_endpoints: A `bool` of whether or not output the
+        intermediate endpoints. For the moment, this block does not output any
+        intermediate endpoint.
+      **kwargs: Additional keyword arguments to be passed.
+    """
+    super().__init__(**kwargs)
+
+    self._input_dim = input_dim
+    self._num_heads = num_heads
+    self._key_dim = key_dim
+    self._value_dim = value_dim
+    self._use_multi_query = use_multi_query
+    self._query_h_strides = query_h_strides
+    self._query_w_strides = query_w_strides
+    self._kv_strides = kv_strides
+    self._downsampling_dw_kernel_size = downsampling_dw_kernel_size
+    self._dropout = dropout
+    self._use_bias = use_bias
+    self._use_cpe = use_cpe
+    self._cpe_dw_kernel_size = cpe_dw_kernel_size
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._use_residual = use_residual
+    self._use_sync_bn = use_sync_bn
+    self._use_layer_scale = use_layer_scale
+    self._layer_scale_init_value = layer_scale_init_value
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+    self._output_intermediate_endpoints = output_intermediate_endpoints
+
+    if use_sync_bn:
+      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = tf_keras.layers.BatchNormalization
+    if tf_keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+
+  def build(self, input_shape):
+    """Create layer state."""
+    self._input_norm = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon,
+    )
+
+    # This CPE is different than the one suggested in the original paper.
+    # https://arxiv.org/abs/2102.10882
+    # 1. Rather than adding one CPE before the attention blocks, we add a CPE
+    #    into every attention block.
+    # 2. We replace the expensive Conv2D by a Seperable DW Conv.
+    if self._use_cpe:
+      self._cpe_dw_conv = tf_keras.layers.DepthwiseConv2D(
+          kernel_size=self._cpe_dw_kernel_size,
+          strides=1,
+          padding='same',
+          depth_multiplier=1,
+          use_bias=True,
+      )
+
+    # TODO(qind): assert feature dim dividable by 32
+    if self._num_heads is None:
+      num_heads = self._input_dim // self._key_dim
+    else:
+      num_heads = self._num_heads
+    if self._use_multi_query:
+      if (
+          self._query_h_strides > 1
+          or self._query_w_strides > 1
+          or self._kv_strides > 1
+      ):
+        self._multi_query_attention = (
+            OptimizedMultiQueryAttentionLayerWithDownSampling(
+                num_heads=num_heads,
+                key_dim=self._key_dim,
+                value_dim=self._value_dim,
+                query_h_strides=self._query_h_strides,
+                query_w_strides=self._query_w_strides,
+                kv_strides=self._kv_strides,
+                dw_kernel_size=self._downsampling_dw_kernel_size,
+                dropout=self._dropout,
+            )
+        )
+      else:
+        self._multi_query_attention = MultiQueryAttentionLayerV2(
+            num_heads=num_heads,
+            key_dim=self._key_dim,
+            value_dim=self._value_dim,
+            dropout=self._dropout,
+        )
+    else:
+      self._multi_head_attention = tf_keras.layers.MultiHeadAttention(
+          num_heads=num_heads,
+          key_dim=self._key_dim,
+          dropout=self._dropout,
+          use_bias=self._use_bias,
+      )
+
+    if self._use_layer_scale:
+      self._layer_scale = MNV4LayerScale(self._layer_scale_init_value)
+
+    if self._stochastic_depth_drop_rate:
+      self._stochastic_depth = nn_layers.StochasticDepth(
+          self._stochastic_depth_drop_rate
+      )
+    else:
+      self._stochastic_depth = None
+
+    super().build(input_shape)
+
+  def get_config(self) -> dict[str, Any]:
+    """Return a Python dict containing this layer's configuration data."""
+    config = {
+        'input_dim': self._input_dim,
+        'num_heads': self._num_heads,
+        'key_dim': self._key_dim,
+        'value_dim': self._value_dim,
+        'use_multi_query': self._use_multi_query,
+        'kv_strides': self._kv_strides,
+        'query_h_strides': self._query_h_strides,
+        'query_w_strides': self._query_w_strides,
+        'downsampling_dw_kernel_size': self._downsampling_dw_kernel_size,
+        'dropout': self._dropout,
+        'use_bias': self._use_bias,
+        'cpe_dw_kernel_size': self._cpe_dw_kernel_size,
+        'use_cpe': self._use_cpe,
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'use_sync_bn': self._use_sync_bn,
+        'use_residual': self._use_residual,
+        'use_layer_scale': self._use_layer_scale,
+        'layer_scale_init_value': self._layer_scale_init_value,
+        'norm_momentum': self._norm_momentum,
+        'norm_epsilon': self._norm_epsilon,
+        'output_intermediate_endpoints': self._output_intermediate_endpoints,
+    }
+    base_config = super().get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def call(self, inputs):
+    """Run layer computation."""
+    if self._use_cpe:
+      x = self._cpe_dw_conv(inputs)
+      x = x + inputs
+      cpe_outputs = x
+    else:
+      cpe_outputs = inputs
+
+    shortcut = cpe_outputs
+    x = self._input_norm(cpe_outputs)
+
+    if self._use_multi_query:
+      if (
+          self._query_h_strides > 1
+          or self._query_w_strides > 1
+          or self._kv_strides > 1
+      ):
+        x = self._multi_query_attention(x)
+      else:
+        x = self._multi_query_attention((x, x))
+    else:
+      x = self._multi_head_attention(x, x)
+
+    if self._use_layer_scale:
+      x = self._layer_scale(x)
+
+    if self._use_residual:
+      if self._stochastic_depth:
+        x = self._stochastic_depth(x)
+      x = x + shortcut
+
+    # Return empty intermediate endpoints to be compatible with other blocks.
+    if self._output_intermediate_endpoints:
+      return x, {}
     return x
 
 
@@ -1565,6 +2526,28 @@ class LayerScale(tf_keras.layers.Layer):
   def call(self, inputs, inputs_positions=None):
     del inputs_positions
     return tf.cast(self.gamma, inputs.dtype) * inputs
+
+
+@tf_keras.utils.register_keras_serializable(package='Vision')
+class MNV4LayerScale(tf_keras.layers.Layer):
+  """LayerScale as introduced in CaiT: https://arxiv.org/abs/2103.17239.
+
+  As used in MobileNetV4.
+
+  Attributes:
+      init_value (float): value to initialize the diagonal matrix of LayerScale.
+  """
+
+  def __init__(self, init_value: float, **kwargs):
+    super().__init__(**kwargs)
+    self._init_value = init_value
+
+  def build(self, inputs_shape):
+    embedding_dim = inputs_shape[-1]
+    self._gamma = tf.Variable(self._init_value * tf.ones((embedding_dim,)))
+
+  def call(self, x, training=None):
+    return x * tf.cast(self._gamma, x.dtype)
 
 
 @tf_keras.utils.register_keras_serializable(package='Vision')

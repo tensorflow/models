@@ -165,6 +165,105 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
         features.shape.as_list())
 
   @parameterized.parameters(
+      (2, True, 0, 5, 0, 12, 12, 2),
+      (2, False, 5, 0, 0, 12, 18, 4),
+      (1, True, 0, 0, 0, 12, 12, 6),
+      (1, True, 3, 0, 0, 12, 18, 2),
+      (1, True, 3, 3, 0, 12, 12, 4),
+      (1, True, 3, 3, 3, 12, 18, 6),
+      (1, True, 0, 3, 3, 12, 12, 2),
+      (1, True, 0, 0, 3, 12, 18, 4),
+      (1, True, 3, 0, 3, 12, 12, 6),
+  )
+  def test_universalinvertedbottleneck_block_creation(
+      self,
+      strides,
+      middle_dw_downsample,
+      start_dw_kernel_size,
+      middle_dw_kernel_size,
+      end_dw_kernel_size,
+      in_filters,
+      out_filters,
+      expand_ratio,
+  ):
+    input_size = 128
+    inputs = tf_keras.Input(
+        shape=(input_size, input_size, in_filters), batch_size=1
+    )
+    block = nn_blocks.UniversalInvertedBottleneckBlock(
+        in_filters=in_filters,
+        out_filters=out_filters,
+        expand_ratio=expand_ratio,
+        strides=strides,
+        middle_dw_downsample=middle_dw_downsample,
+        start_dw_kernel_size=start_dw_kernel_size,
+        middle_dw_kernel_size=middle_dw_kernel_size,
+        end_dw_kernel_size=end_dw_kernel_size,
+    )
+
+    features = block(inputs)
+
+    self.assertAllEqual(
+        [1, input_size // strides, input_size // strides, out_filters],
+        features.shape.as_list(),
+    )
+
+  @parameterized.parameters(
+      (2, True, 0, 5, 0, 12, 12, 2, True, 0.1),
+  )
+  def test_universalinvertedbottleneck_block_layer_scale_creation(
+      self,
+      strides,
+      middle_dw_downsample,
+      start_dw_kernel_size,
+      middle_dw_kernel_size,
+      end_dw_kernel_size,
+      in_filters,
+      out_filters,
+      expand_ratio,
+      use_layer_scale,
+      layer_scale_init_value,
+  ):
+    input_size = 128
+    inputs = tf_keras.Input(
+        shape=(input_size, input_size, in_filters), batch_size=1
+    )
+    block = nn_blocks.UniversalInvertedBottleneckBlock(
+        in_filters=in_filters,
+        out_filters=out_filters,
+        expand_ratio=expand_ratio,
+        strides=strides,
+        middle_dw_downsample=middle_dw_downsample,
+        start_dw_kernel_size=start_dw_kernel_size,
+        middle_dw_kernel_size=middle_dw_kernel_size,
+        end_dw_kernel_size=end_dw_kernel_size,
+        use_layer_scale=use_layer_scale,
+        layer_scale_init_value=layer_scale_init_value,
+    )
+
+    features = block(inputs)
+
+    self.assertAllEqual(
+        [1, input_size // strides, input_size // strides, out_filters],
+        features.shape.as_list(),
+    )
+
+  @parameterized.parameters((False, 0, 3), (True, 3, 0))
+  def test_universalinvertedbottleneck_inconsistent_downsampling(
+      self, middle_dw_downsample, start_dw_kernel_size, middle_dw_kernel_size
+  ):
+    with self.assertRaises(ValueError):
+      _ = nn_blocks.UniversalInvertedBottleneckBlock(
+          in_filters=24,
+          out_filters=24,
+          expand_ratio=4,
+          strides=2,
+          middle_dw_downsample=middle_dw_downsample,
+          start_dw_kernel_size=start_dw_kernel_size,
+          middle_dw_kernel_size=middle_dw_kernel_size,
+      )
+
+  @parameterized.parameters(
       (nn_blocks.TuckerConvBlock, 1, 0.25, 0.25),
       (nn_blocks.TuckerConvBlock, 2, 0.25, 0.25),
   )
@@ -880,6 +979,136 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEmpty(new_feedforward_call_list)
     self.assertTrue(new_feedforward_call_list[0],
                     "The passed layer class wasn't instantiated.")
+
+  @parameterized.parameters(
+      (4, 64, 7, 8, 64, 64, 1, 1, 1),
+      (4, 64, 7, None, 64, 64, 1, 1, 1),
+      (4, 64, 7, 8, 64, 64, 2, 1, 1),
+      (4, 64, 7, 8, 64, 32, 1, 2, 1),
+      (4, 64, 7, 8, 64, 32, 1, 1, 2),
+  )
+  def test_multi_head_self_attention(
+      self,
+      batch_size,
+      in_filters,
+      cpe_dw_kernel_size,
+      num_heads,
+      key_dim,
+      value_dim,
+      query_h_strides,
+      query_w_strides,
+      kv_strides,
+  ):
+    input_size = 128
+    inputs = tf_keras.Input(
+        shape=(input_size, input_size, in_filters), batch_size=batch_size
+    )
+    features = nn_blocks.MultiHeadSelfAttentionBlock(
+        input_dim=in_filters,
+        cpe_dw_kernel_size=cpe_dw_kernel_size,
+        num_heads=num_heads,
+        key_dim=key_dim,
+        value_dim=value_dim,
+        query_h_strides=query_h_strides,
+        query_w_strides=query_w_strides,
+        kv_strides=kv_strides,
+    )(inputs)
+
+    self.assertAllEqual(
+        [batch_size, input_size, input_size, in_filters],
+        features.shape.as_list(),
+    )
+
+  @parameterized.parameters(
+      (10, 64, 48, 256, 8, 32, 16),
+      (5, 32, 48, 8, 16, 16, 64),
+  )
+  def test_multi_query_attention_v1(
+      self,
+      batch_size,
+      x_size,
+      m_size,
+      channel_dim,
+      num_heads,
+      key_dim,
+      value_dim,
+  ):
+    layer = nn_blocks.MultiQueryAttentionLayerV1(num_heads, key_dim, value_dim)
+
+    x_inputs = tf.random.uniform([batch_size, x_size, channel_dim])
+    m_inputs = tf.random.uniform([batch_size, m_size, channel_dim])
+
+    outputs = layer((x_inputs, m_inputs))
+    self.assertAllEqual(
+        [batch_size, x_size, channel_dim], outputs.shape.as_list()
+    )
+
+    opt_outputs = layer((x_inputs, m_inputs), optimize_einsum=True)
+    self.assertAllEqual(
+        [batch_size, x_size, channel_dim], opt_outputs.shape.as_list()
+    )
+    self.assertAllClose(outputs, opt_outputs)
+
+  @parameterized.parameters(
+      (10, 64, 48, 256, 8, 32, 16),
+      (5, 32, 48, 8, 16, 16, 64),
+  )
+  def test_multi_query_attention_v2(
+      self,
+      batch_size,
+      x_size,
+      m_size,
+      channel_dim,
+      num_heads,
+      key_dim,
+      value_dim,
+  ):
+    layer = nn_blocks.MultiQueryAttentionLayerV2(num_heads, key_dim, value_dim)
+
+    x_inputs = tf.random.uniform([batch_size, x_size, channel_dim])
+    m_inputs = tf.random.uniform([batch_size, m_size, channel_dim])
+
+    outputs = layer((x_inputs, m_inputs))
+    self.assertAllEqual(
+        [batch_size, x_size, channel_dim], outputs.shape.as_list()
+    )
+
+  @parameterized.parameters(
+      (10, 32, 48, 8, 32, 16, 1, 1, 1),
+      (10, 32, 48, 8, 32, 16, 1, 1, 2),
+      (10, 32, 24, 8, 32, 16, 2, 1, 2),
+      (10, 32, 24, 8, 32, 16, 2, 1, 1),
+      (10, 32, 24, 8, 32, 16, 2, 2, 2),
+  )
+  def test_multi_query_attention_with_downsampling(
+      self,
+      batch_size,
+      input_size,
+      channel_dim,
+      num_heads,
+      key_dim,
+      value_dim,
+      query_h_strides,
+      query_w_strides,
+      kv_strides,
+  ):
+    inputs = tf.random.uniform(
+        [batch_size, input_size, input_size, channel_dim]
+    )
+
+    layer = nn_blocks.OptimizedMultiQueryAttentionLayerWithDownSampling(
+        num_heads=num_heads,
+        key_dim=key_dim,
+        value_dim=value_dim,
+        query_h_strides=query_h_strides,
+        query_w_strides=query_w_strides,
+        kv_strides=kv_strides,
+    )
+    outputs = layer(inputs)
+    self.assertAllEqual(
+        [batch_size, input_size, input_size, channel_dim],
+        outputs.shape.as_list(),
+    )
 
 
 if __name__ == '__main__':
