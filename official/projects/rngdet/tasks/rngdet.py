@@ -288,6 +288,7 @@ class RNGDetTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+
     with tf.GradientTape() as tape:
       outputs, pred_segment, pred_keypoint = model(features['sat_roi'],
                                                    features['historical_roi'],

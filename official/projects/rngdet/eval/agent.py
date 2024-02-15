@@ -105,16 +105,14 @@ class Agent(FrozenClass):
                         self.crop_size//2+j*self.crop_size:self.crop_size//2+(j+1)*self.crop_size] = tf.squeeze(pred_mask).numpy()
                 point_mask[self.crop_size//2+i*self.crop_size:self.crop_size//2+(i+1)*self.crop_size,\
                         self.crop_size//2+j*self.crop_size:self.crop_size//2+(j+1)*self.crop_size] = tf.squeeze(pred_point).numpy()
-        Image.fromarray(binary_mask.astype(np.uint8)).convert('RGB').save(f'./segmentation/8_segment.png')
-        Image.fromarray(point_mask.astype(np.uint8)).convert('RGB').save(f'./segmentation/8_point.png')
         self.extract_initial_candidates(point_mask[self.pad_size:-self.pad_size,self.pad_size:-self.pad_size],thr=self.extract_candidate_threshold)
 
         image = Image.fromarray(point_mask[self.pad_size:-self.pad_size,self.pad_size:-self.pad_size].astype(np.uint8)).convert('RGB')
         draw = ImageDraw.Draw(image)
         for v in self.extracted_candidate_initial_vertices:
             draw.ellipse([v[0]-5,v[1]-5,v[0]+5,v[1]+5],fill='red')
-        image.save(f'./segmentation/segment_1129_fix_rot_test/init_point_vis.png')
-        with open(f'./segmentation/segment_1129_fix_rot_test/init_result.json','w') as jf:
+        image.convert('RGB').save(f'./segmentation/initialized.png') 
+        with open(f'./segmentation/init_result.json','w') as jf:
             json.dump(self.extracted_candidate_initial_vertices,jf)
 
         print(f'{len(self.extracted_candidate_initial_vertices)} initial candidates extracted from the segmentation map...')
@@ -218,7 +216,6 @@ class Agent(FrozenClass):
 
         # find valid coords
         pred_logits = softmax_fn(pred_logits[0])
-        '''print("probability", pred_logits)''' 
 
         temp_pred_coords_ROI = []
         for ii, coord in enumerate(pred_coords_ROI):

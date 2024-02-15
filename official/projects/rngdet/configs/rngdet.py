@@ -81,18 +81,15 @@ class RngdetTask(cfg.TaskConfig):
   per_category_metrics: bool = False
 
 
-#CITYSCALE_INPUT_PATH_BASE = 'gs://ghpark-tfrecords/cityscale'
 CITYSCALE_TRAIN_EXAMPLES = 420140
-#CITYSCALE_TRAIN_EXAMPLES = 10140
-CITYSCALE_INPUT_PATH_BASE = '/data2/cityscale/tfrecord'
-#CITYSCALE_TRAIN_EXAMPLES = 1900
+CITYSCALE_INPUT_PATH_BASE = '/home/mjyun/01_ghpark/tfrecord/'
 CITYSCALE_VAL_EXAMPLES = 5000
 
 @exp_factory.register_config_factory('rngdet_cityscale')
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 64
-  eval_batch_size = 64
+  train_batch_size = 16
+  eval_batch_size = 16
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
   train_steps = 50 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
@@ -106,7 +103,6 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
           losses=Losses(),
           train_data=DataConfig(
               input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise*'),
-              #input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise-8-00000-of-00032.tfrecord*'),
               is_training=True,
               global_batch_size=train_batch_size,
               shuffle_buffer_size=1000,
@@ -165,7 +161,7 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
   train_batch_size = 16
-  eval_batch_size = 64
+  eval_batch_size = 16
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
   train_steps = 50 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
@@ -179,7 +175,6 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
           losses=Losses(),
           train_data=DataConfig(
               input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise*'),
-              #input_path=os.path.join(CITYSCALE_INPUT_PATH_BASE, 'train-noise-8-00000-of-00032.tfrecord*'),
               is_training=True,
               global_batch_size=train_batch_size,
               shuffle_buffer_size=1000,

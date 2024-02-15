@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="4"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 import sys
 sys.path.append("/home/mjyun/01_ghpark/models")
@@ -16,8 +16,8 @@ task_obj = rngdet.RNGDetTask(exp_config.task)
 model = task_obj.build_model()
 #task_obj.initialize(model)
 
-parser = argparse.ArgumentParser() 
-parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')  
+'''parser = argparse.ArgumentParser() 
+parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')''' 
 
 class Vertex():
     def __init__(self,v,id):
@@ -75,7 +75,7 @@ class Graph():
             self.edges[f'{v2.id}_{v1.id}'] = Edge(v2,v1,self.edge_num)
             self.edge_num += 1
 
-ckpt_dir_or_file = parser.parse_args().ckpt_dir[0] 
+ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/ckpt/01_mask_change/'
 
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
@@ -101,13 +101,13 @@ from PIL import Image, ImageDraw
 from official.projects.rngdet.eval import agent
 
 pad_size = 128
-sat_image = np.array(Image.open(os.path.join('./data/dataset/20cities/region_9_sat.png')))
+sat_image = np.array(Image.open(os.path.join('/home/mjyun/01_ghpark/data/20cities/region_9_sat.png')))
 
 print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
 sat_image = tf.cast(sat_image, tf.float32)
 agent = agent.Agent(model, sat_image)
 
-logit_threshold = 0.75
+logit_threshold = 0.5
 roi_size = 128
 
 print(f'STEP 2: Interative graph detection...')
@@ -135,7 +135,7 @@ while 1:
     pred_coords_ROI = agent.step(pred_probs,pred_coords,thr=logit_threshold)
 
     if agent.step_counter%100==0:
-        if agent.step_counter%500==0:
+        if agent.step_counter%100==0:
             print(f'Iteration {agent.step_counter}...')
             Image.fromarray(agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/skeleton_result_{agent.step_counter}.png')
             # visualize current step's result
