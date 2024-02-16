@@ -35,6 +35,9 @@ class SegmentationModule(export_base.ExportModule):
 
   def _build_inputs(self, image):
     """Builds classification model inputs for serving."""
+    if isinstance(image, tf.RaggedTensor):
+      image = image.to_tensor()
+    image = tf.cast(image, dtype=tf.float32)
 
     # Normalizes image with mean and std pixel values.
     image_feature = self.params.task.train_data.image_feature
@@ -68,7 +71,6 @@ class SegmentationModule(export_base.ExportModule):
     image_info = None
     if self._input_type != 'tflite':
       with tf.device('cpu:0'):
-        images = tf.cast(images, dtype=tf.float32)
         images_spec = tf.TensorSpec(
             shape=self._input_image_size + [3], dtype=tf.float32)
         image_info_spec = tf.TensorSpec(shape=[4, 2], dtype=tf.float32)
