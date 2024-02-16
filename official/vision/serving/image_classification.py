@@ -36,6 +36,9 @@ class ClassificationModule(export_base.ExportModule):
   def _build_inputs(self, image):
     """Builds classification model inputs for serving."""
     # Center crops and resizes image.
+    if isinstance(image, tf.RaggedTensor):
+      image = image.to_tensor()
+    image = tf.cast(image, dtype=tf.float32)
     if self.params.task.train_data.aug_crop:
       image = preprocess_ops.center_crop_image(image)
 
@@ -62,8 +65,6 @@ class ClassificationModule(export_base.ExportModule):
     # with TFLite quantization.
     if self._input_type != 'tflite':
       with tf.device('cpu:0'):
-        images = tf.cast(images, dtype=tf.float32)
-
         images = tf.nest.map_structure(
             tf.identity,
             tf.map_fn(
