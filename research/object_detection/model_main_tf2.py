@@ -68,6 +68,8 @@ flags.DEFINE_boolean('record_summaries', True,
                       ' or the training pipeline. This does not impact the'
                       ' summaries of the loss values which are always'
                       ' recorded.'))
+flags.DEFINE_integer(
+    'checkpoint_max_to_keep', 7, 'The number of most recent checkpoints to keep in the model directory.')
 
 FLAGS = flags.FLAGS
 
@@ -108,6 +110,7 @@ def main(unused_argv):
           train_steps=FLAGS.num_train_steps,
           use_tpu=FLAGS.use_tpu,
           checkpoint_every_n=FLAGS.checkpoint_every_n,
+          checkpoint_max_to_keep=FLAGS.checkpoint_max_to_keep,
           record_summaries=FLAGS.record_summaries)
 
 if __name__ == '__main__':
