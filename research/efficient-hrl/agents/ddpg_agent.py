@@ -189,7 +189,7 @@ class DdpgAgent(object):
     Args:
       states: A [batch_size, num_state_dims] tensor representing a batch
         of states.
-      stop_gradients: (boolean) if true, gradients cannot be propogated through
+      stop_gradients: (boolean) if true, gradients cannot be propagated through
         this operation.
     Returns:
       A [batch_size, num_action_dims] tensor of actions.
