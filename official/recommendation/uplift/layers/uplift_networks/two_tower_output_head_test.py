@@ -207,6 +207,16 @@ class TwoTowerOutputHeadTest(
     outputs = layer(inputs)
     self.assertAllEqual(tf.constant([True, True, False]), outputs.is_treatment)
 
+  def test_true_logits_correctness_with_logits_rank_mismatch(self):
+    layer = self._get_layer()
+    inputs = self._get_inputs(
+        control_logits=tf.constant([[2], [0], [3]]),
+        treatment_logits=tf.constant([[-1], [2], [1]]),
+        is_treatment=tf.constant([1, 1, 0]),
+    )
+    outputs = layer(inputs)
+    self.assertAllEqual(tf.constant([[-1], [2], [3]]), outputs.true_predictions)
+
   @parameterized.product(
       (dict(is_treatment=None), dict(is_treatment=_DEFAULT_IS_TREATMENT)),
       (dict(inverse_link_fn=None), dict(inverse_link_fn=tf.math.sigmoid)),
