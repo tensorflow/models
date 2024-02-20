@@ -18,6 +18,23 @@ from typing import Tuple
 import tensorflow as tf, tf_keras
 
 
+def expand_to_match_rank(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
+  """Expands tensor a to match the rank of tensor b.
+
+  Args:
+    a: a `tf.Tensor` of shape (D0, D1, ..., Dn).
+    b: a `tf.Tensor` of shape (D0, D1, ..., Dn, Dn+1, ... Dn+m).
+
+  Returns:
+    A `tf.Tensor` of shape (D0, D1, ..., DN, 1, ..., 1) if b has a higher rank
+    than a, otherwise a `tf.Tensor` of shape (D0, D1, ..., Dn)
+  """
+  rank_deficit = b.shape.rank - a.shape.rank
+  if rank_deficit > 0:
+    return tf.reshape(a, a.shape + [1] * rank_deficit)
+  return a
+
+
 def split_by_treatment(
     values: tf.Tensor, is_treatment: tf.Tensor
 ) -> Tuple[tf.Tensor, tf.Tensor]:
