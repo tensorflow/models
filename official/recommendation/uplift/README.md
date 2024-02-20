@@ -23,7 +23,7 @@ related works in the field of treatment effect estimation [^1] [^2] [^3] [^4]
 
 
 
-<img src="two_tower_uplift_network_architecture.svg" width="600"/>
+<img src="two_tower_uplift_network.svg" width="600"/>
 
 - **Inputs**: a mapping from feature names to feature tensors. The tensors can
 be of different types, eg `tf.Tensor`, `tf.SparseTensor` and `tf.RaggedTensor`.
