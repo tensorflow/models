@@ -116,13 +116,38 @@ class TwoTowerLogitsHead(tf_keras.layers.Layer):
     self._treatment_head = treatment_head
     self._layering_config = layering_config
 
-    if layering_config.layering_method == LayeringMethod.LINEAR_LAYERING:
-      raise NotImplementedError("Linear layering is not implemented yet.")
+  def build(self, input_shapes: tuple[tf.TensorShape, tf.TensorShape]):
+    if self._layering_config.layering_method == LayeringMethod.LINEAR_LAYERING:
+      if self._layering_config.linear_layering_config is None:
+        raise ValueError(
+            "The linear layering config cannot be `None` when using the linear"
+            " layering method."
+        )
+      # Build a learnable weight matrix that projects from the control embedding
+      # space to the treatment embedding space.
+      _, treatment_embedding_shape = input_shapes
+      self._linear_layering = tf_keras.layers.Dense(
+          units=treatment_embedding_shape[-1],
+          activation=None,
+          use_bias=True,
+          kernel_initializer=(
+              self._layering_config.linear_layering_config.kernel_initializer
+          ),
+          kernel_regularizer=(
+              self._layering_config.linear_layering_config.kernel_regularizer
+          ),
+      )
+    super().build(input_shapes)
 
   def call(
       self, inputs: tuple[tf.Tensor, tf.Tensor]
   ) -> tuple[tf.Tensor, tf.Tensor]:
     control_embedding, treatment_embedding = inputs
+
+    if self._layering_config.layering_method == LayeringMethod.LINEAR_LAYERING:
+      treatment_embedding += self._linear_layering(
+          tf.stop_gradient(control_embedding)
+      )
 
     control_logits = self._control_head(control_embedding)
     treatment_logits = self._treatment_head(treatment_embedding)
