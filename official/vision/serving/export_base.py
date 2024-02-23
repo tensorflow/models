@@ -125,28 +125,20 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
   @tf.function
   def inference_from_image_bytes(self, inputs: tf.Tensor):
     with tf.device('cpu:0'):
-      if len(inputs) == 1:
-        images = tf.nest.map_structure(
-            tf.identity,
-            tf.map_fn(
-                self._decode_image,
-                elems=inputs,
-                fn_output_signature=tf.TensorSpec(
-                    shape=[None] * len(self._input_image_size)
-                    + [self._num_channels],
-                    dtype=tf.uint8,
-                ),
-                parallel_iterations=32,
-            ),
-        )
-        images = tf.stack(images)
-      else:
-        images = []
-        # Need to use for loop instead of enumerate as enumerate is not well
-        # supported in the exported savedmodel.
-        for i in range(len(inputs)):  # pylint: disable=range-len-with-index-access
-          images.append(tf.cast(self._decode_image(inputs[i]), tf.uint8))
-        images = tf.ragged.stack(images)
+      images = tf.nest.map_structure(
+          tf.identity,
+          tf.map_fn(
+              self._decode_image,
+              elems=inputs,
+              fn_output_signature=tf.TensorSpec(
+                  shape=[None] * len(self._input_image_size)
+                  + [self._num_channels],
+                  dtype=tf.uint8,
+              ),
+              parallel_iterations=32,
+          ),
+      )
+      images = tf.stack(images)
     return self.serve(images)
 
   @tf.function
@@ -154,28 +146,20 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
       self, inputs: tf.Tensor
   ) -> Mapping[str, tf.Tensor]:
     with tf.device('cpu:0'):
-      if len(inputs) == 1:
-        images = tf.nest.map_structure(
-            tf.identity,
-            tf.map_fn(
-                self._decode_tf_example,
-                elems=inputs,
-                fn_output_signature=tf.TensorSpec(
-                    shape=[None] * len(self._input_image_size)
-                    + [self._num_channels],
-                    dtype=tf.uint8,
-                ),
-                parallel_iterations=32,
-            ),
-        )
-        images = tf.stack(images)
-      else:
-        images = []
-        # Need to use for loop instead of enumerate as enumerate is not well
-        # supported in the exported savedmodel.
-        for i in range(len(inputs)):  # pylint: disable=range-len-with-index-access
-          images.append(tf.cast(self._decode_tf_example(inputs[i]), tf.uint8))
-        images = tf.ragged.stack(images)
+      images = tf.nest.map_structure(
+          tf.identity,
+          tf.map_fn(
+              self._decode_tf_example,
+              elems=inputs,
+              fn_output_signature=tf.TensorSpec(
+                  shape=[None] * len(self._input_image_size)
+                  + [self._num_channels],
+                  dtype=tf.uint8,
+              ),
+              parallel_iterations=32,
+          ),
+      )
+      images = tf.stack(images)
     return self.serve(images)
 
   def get_inference_signatures(self, function_keys: Dict[Text, Text]):
