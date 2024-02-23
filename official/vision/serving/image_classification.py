@@ -53,6 +53,41 @@ class ClassificationModule(export_base.ExportModule):
         image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
     return image
 
+  def _decode_image(self, encoded_image_bytes: str) -> tf.Tensor:
+    """Decodes an image bytes to an image tensor.
+
+    Use `tf.image.decode_image` to decode an image if input is expected to be 2D
+    image; otherwise use `tf.io.decode_raw` to convert the raw bytes to tensor
+    and reshape it to desire shape.
+
+    Args:
+      encoded_image_bytes: An encoded image string to be decoded.
+
+    Returns:
+      A decoded image tensor.
+    """
+    if len(self._input_image_size) == 2:
+      # Decode an image if 2D input is expected.
+      image_tensor = tf.image.decode_image(
+          encoded_image_bytes, channels=self._num_channels
+      )
+      image_tensor.set_shape((None, None, self._num_channels))
+      # Resize image to input_size to support varible image resolutions in a
+      # batch for tf_example and image_bytes input type.
+      image_tensor = tf.image.resize(
+          tf.cast(image_tensor, tf.float32),
+          self._input_image_size,
+          method=tf.image.ResizeMethod.BILINEAR,
+      )
+      image_tensor = tf.cast(image_tensor, tf.uint8)
+    else:
+      # Convert raw bytes into a tensor and reshape it, if not 2D input.
+      image_tensor = tf.io.decode_raw(encoded_image_bytes, out_type=tf.uint8)
+      image_tensor = tf.reshape(
+          image_tensor, self._input_image_size + [self._num_channels]
+      )
+    return image_tensor
+
   def serve(self, images):
     """Cast image to float and run inference.
 
