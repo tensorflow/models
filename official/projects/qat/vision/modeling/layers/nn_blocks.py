@@ -719,7 +719,7 @@ class InvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
 
 
 @tf_keras.utils.register_keras_serializable(package='Vision')
-class MaybeDwInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
+class UniversalInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
   """A quantized inverted bottleneck block with optional depthwise convs."""
 
   def __init__(
@@ -750,7 +750,7 @@ class MaybeDwInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
       output_intermediate_endpoints: bool = False,
       **kwargs,
   ):
-    """Initializes a MaybeDwInvertedBottleneckBlockQuantized.
+    """Initializes a UniversalInvertedBottleneckBlockQuantized.
 
     This is an extension of IB with optional depthwise convs before expansion (
     "starting" conv) and after projection ("ending" conv). Both of these convs
@@ -800,7 +800,7 @@ class MaybeDwInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
     """
     super().__init__(**kwargs)
     logging.info(
-        'MaybeDwInvertedBottleneckBlockQuantized with depthwise kernel sizes '
+        'UniversalInvertedBottleneckBlockQuantized with depthwise kernel sizes '
         '{%d, %d, %d}, strides=%d, and middle downsampling: %s',
         start_dw_kernel_size,
         middle_dw_kernel_size,
@@ -1061,3 +1061,8 @@ class MaybeDwInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
     if self._output_intermediate_endpoints:
       return x, {}
     return x
+
+
+MaybeDwInvertedBottleneckBlockQuantized = (
+    UniversalInvertedBottleneckBlockQuantized
+)
