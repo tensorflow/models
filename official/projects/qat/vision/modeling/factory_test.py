@@ -35,22 +35,32 @@ from official.vision.modeling.heads import dense_prediction_heads
 class ClassificationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ('resnet', (224, 224), 5e-5),
-      ('resnet', (224, 224), None),
-      ('resnet', (None, None), 5e-5),
-      ('resnet', (None, None), None),
-      ('mobilenet', (224, 224), 5e-5),
-      ('mobilenet', (224, 224), None),
-      ('mobilenet', (None, None), 5e-5),
-      ('mobilenet', (None, None), None),
+      ('resnet', 50, (224, 224), 5e-5),
+      ('resnet', 50, (224, 224), None),
+      ('resnet', 50, (None, None), 5e-5),
+      ('resnet', 50, (None, None), None),
+      ('mobilenet', 'MobileNetV2', (224, 224), 5e-5),
+      ('mobilenet', 'MobileNetV2', (224, 224), None),
+      ('mobilenet', 'MobileNetV2', (None, None), 5e-5),
+      ('mobilenet', 'MobileNetV2', (None, None), None),
+      ('mobilenet', 'MobileNetV4ConvLarge', (224, 224), 5e-5),
   )
-  def test_builder(self, backbone_type, input_size, weight_decay):
+  def test_builder(self, backbone_type, model_id, input_size, weight_decay):
     num_classes = 2
     input_specs = tf_keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], 3])
+
+    backbone = backbones.Backbone(type=backbone_type)
+    if backbone_type == 'resnet':
+      backbone.resnet.model_id = model_id
+    elif backbone_type == 'mobilenet':
+      backbone.mobilenet.model_id = model_id
+    else:
+      raise ValueError('Unexpected backbone_type', backbone_type)
+
     model_config = classification_cfg.ImageClassificationModel(
-        num_classes=num_classes,
-        backbone=backbones.Backbone(type=backbone_type))
+        num_classes=num_classes, backbone=backbone
+    )
     l2_regularizer = (
         tf_keras.regularizers.l2(weight_decay) if weight_decay else None)
     model = factory.build_classification_model(
