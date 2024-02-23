@@ -669,22 +669,27 @@ def horizontal_flip_image(image):
 
 
 def horizontal_flip_masks(masks):
-  """Flips masks horizontally. Expects rank-3 input dimensions [h, w, 1]."""
-  return masks[:, ::-1, :]
+  """Flips masks horizontally. Expects rank-3 input dimensions."""
+  # For masks shape of [h, w, 1].
+  if masks.shape[-1] == 1:
+    return masks[:, ::-1, :]
+  else:
+    return masks[:, :, ::-1]
 
 
 def random_horizontal_flip(
     image, normalized_boxes=None, masks=None, seed=1, prob=0.5
 ):
   """Randomly flips input image and bounding boxes and/or masks horizontally.
-  
+
   Expects input tensors without the batch dimension; i.e. for RGB image assume
-  rank-3 input like [h, w, 3], for masks assume [h, w, 1].
-  
+  rank-3 input like [h, w, 3], for masks assume either [h, w, 1] or [1, h, w].
+
   Args:
     image: `tf.Tensor`, the image to apply the random flip, [h, w, channels].
     normalized_boxes: `tf.Tensor` or `None`, boxes corresponding to the image.
-    masks: `tf.Tensor` or `None`, masks corresponding to the image, [h, w, 1].
+    masks: `tf.Tensor` or `None`, masks corresponding to the image, [h, w, 1] or
+      [1, h, w].
     seed: Seed for Tensorflow's random number generator.
     prob: A float from 0 to 1 indicating the probability of flipping the input
       horizontally.
