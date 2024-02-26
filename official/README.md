@@ -165,8 +165,12 @@ release with the latest changes.
 
 Get started with TensorFlow Model Garden by exploring the provided examples and tutorials:
 
-[NLP](https://www.tensorflow.org/tfmodels/nlp)
-[Vision](https://www.tensorflow.org/tfmodels/vision/image_classification)
+* [NLP](https://www.tensorflow.org/tfmodels/nlp)
+* [Image classification](https://www.tensorflow.org/tfmodels/vision/image_classification)
+* [Object detection](https://www.tensorflow.org/tfmodels/vision/object_detection)
+* [Semantic Segmentation](https://www.tensorflow.org/tfmodels/vision/semantic_segmentation)
+* [Instance Segmentation](https://www.tensorflow.org/tfmodels/vision/instance_segmentation)
+
 
 ## Contributions
 
