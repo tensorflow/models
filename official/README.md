@@ -161,6 +161,13 @@ release with the latest changes.
 * [tf-models-no-deps](https://pypi.org/project/tf-models-no-deps/): without
 `tensorflow` and `tensorflow-text` in the `install_requires` list.
 
+### Examples and Tutorials
+
+Get started with TensorFlow Model Garden by exploring the provided examples and tutorials:
+
+[NLP](https://www.tensorflow.org/tfmodels/nlp)
+[Vision](https://www.tensorflow.org/tfmodels/vision/image_classification)
+
 ## Contributions
 
 If you want to contribute, please review the [contribution guidelines](https://github.com/tensorflow/models/wiki/How-to-contribute).
