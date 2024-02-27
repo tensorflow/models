@@ -84,6 +84,10 @@ class ModelConfig(hyperparams.Config):
     num_dense_features: Number of dense features.
     vocab_sizes: Vocab sizes for each of the sparse features. The order agrees
       with the order of the input data.
+    use_multi_hot: Flag to determine if enabling multi-hot data loading and 
+      training used for DLRM V2
+    multi_hot_sizes: List to pass in the multi hot size of each sparse embedding
+      feature
     embedding_dim: An integer or a list of embedding table dimensions.
       If it's an integer then all tables will have the same embedding dimension.
       If it's a list then the length should match with `vocab_sizes`.
@@ -95,15 +99,35 @@ class ModelConfig(hyperparams.Config):
       features.
     top_mlp: The sizes of hidden layers for top MLP.
     interaction: Interaction can be on of the following:
-     'dot', 'cross'.
+     'dot', 'cross', 'multi_layer_dcn'.
+    concat_dense: Weather to concatenate output from interaction module with 
+      dense output again
+    dcn_num_layers: Number of Stacked DCN layers used in the dcn interaction 
+      module
+    dcn_low_rank_dim: Project dimension in stacked DCN layers for dcn
+      interaction module
+    dcn_kernel_initializer: the kernel initializer used for the dcn interaction
+      module
+    dcn_bias_initializer: the bias initializer used for the dcn interaction
+      module
+    dcn_use_bias: Flag to determine whether to use bias for the dcn interaction
+      module
   """
   num_dense_features: int = 13
   vocab_sizes: List[int] = dataclasses.field(default_factory=list)
+  use_multi_hot: bool = False
+  multi_hot_sizes: List[int] = dataclasses.field(default_factory=list)
   embedding_dim: Union[int, List[int]] = 8
   size_threshold: int = 50_000
   bottom_mlp: List[int] = dataclasses.field(default_factory=list)
   top_mlp: List[int] = dataclasses.field(default_factory=list)
   interaction: str = 'dot'
+  concat_dense: bool = True
+  dcn_num_layers: int = 3
+  dcn_low_rank_dim: int = 512
+  dcn_kernel_initializer: str = 'truncated_normal'
+  dcn_bias_initializer: str = 'zeros'
+  dcn_use_bias: bool = True
 
 
 @dataclasses.dataclass
@@ -130,6 +154,7 @@ class Task(hyperparams.Config):
   )
   loss: Loss = dataclasses.field(default_factory=Loss)
   use_synthetic_data: bool = False
+  use_tf_record_reader: bool = False
 
 
 @dataclasses.dataclass
@@ -186,10 +211,61 @@ train_batch_size = 16384
 eval_batch_size = 16384
 steps_per_epoch = NUM_TRAIN_EXAMPLES // train_batch_size
 vocab_sizes = [
-        39884406, 39043, 17289, 7420, 20263, 3, 7120, 1543, 63, 38532951,
-        2953546, 403346, 10, 2208, 11938, 155, 4, 976, 14, 39979771, 25641295,
-        39664984, 585935, 12972, 108, 36
-    ]
+    39884406,
+    39043,
+    17289,
+    7420,
+    20263,
+    3,
+    7120,
+    1543,
+    63,
+    38532951,
+    2953546,
+    403346,
+    10,
+    2208,
+    11938,
+    155,
+    4,
+    976,
+    14,
+    39979771,
+    25641295,
+    39664984,
+    585935,
+    12972,
+    108,
+    36,
+]
+multi_hot_sizes = [
+    3,
+    2,
+    1,
+    2,
+    6,
+    1,
+    1,
+    1,
+    1,
+    7,
+    3,
+    8,
+    1,
+    6,
+    9,
+    5,
+    1,
+    1,
+    1,
+    12,
+    100,
+    27,
+    10,
+    3,
+    1,
+    1,
+]
 
 
 @dataclasses.dataclass
@@ -310,6 +386,46 @@ def dcn_criteo_tb_config() -> Config:
               embedding_dim=64,
               top_mlp=[1024, 1024, 512, 256, 1],
               interaction='cross'),
+          loss=Loss(label_smoothing=0.0),
+          train_data=DataConfig(
+              global_batch_size=train_batch_size,
+              is_training=True,
+              sharding=True),
+          validation_data=DataConfig(
+              global_batch_size=eval_batch_size,
+              is_training=False,
+              sharding=False)),
+      trainer=TrainerConfig(
+          train_steps=steps_per_epoch,
+          validation_interval=steps_per_epoch // 2,
+          validation_steps=NUM_EVAL_EXAMPLES // eval_batch_size,
+          enable_metrics_in_training=True,
+          optimizer_config=OptimizationConfig()),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+      ])
+
+
+@exp_factory.register_config_factory('dlrm_dcn_v2_criteo')
+def dlrm_dcn_v2_criteo_tb_config() -> Config:
+  return Config(
+      runtime=cfg.RuntimeConfig(),
+      task=Task(
+          model=ModelConfig(
+              num_dense_features=13,
+              vocab_sizes=vocab_sizes,
+              bottom_mlp=[512, 256, 64],
+              embedding_dim=64,
+              top_mlp=[1024, 1024, 512, 256, 1],
+              interaction='multi_layer_dcn',
+              dcn_num_layers=3,
+              dcn_low_rank_dim=512,
+              dcn_use_bias=True,
+              concat_dense=False,
+              use_multi_hot=True,
+              multi_hot_sizes=multi_hot_sizes,
+              ),
           loss=Loss(label_smoothing=0.0),
           train_data=DataConfig(
               global_batch_size=train_batch_size,
