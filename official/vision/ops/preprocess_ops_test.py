@@ -395,6 +395,31 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     # the normalized image data will contain very large values (e.g. 500).
     tf.assert_greater(2.0, max_val)
 
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='numbers',
+          min_quality=20,
+          max_quality=80,
+          prob_to_apply=1.0,
+      ),
+      dict(
+          testcase_name='tensors',
+          min_quality=tf.constant(20),
+          max_quality=tf.constant(80),
+          prob_to_apply=tf.constant(1.0),
+      ),
+  )
+  def test_random_jpeg_quality(self, min_quality, max_quality, prob_to_apply):
+    input_image = np.random.randint(0, 255, (640, 320, 3), dtype=np.uint8)
+    aug_image = preprocess_ops.random_jpeg_quality(
+        input_image,
+        min_quality=min_quality,
+        max_quality=max_quality,
+        prob_to_apply=prob_to_apply,
+    )
+    self.assertShapeEqual(input_image, aug_image)
+    self.assertDTypeEqual(aug_image, np.uint8)
+
 
 if __name__ == '__main__':
   tf.test.main()
