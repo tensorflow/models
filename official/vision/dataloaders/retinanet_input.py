@@ -25,6 +25,7 @@ from typing import Optional
 from absl import logging
 import tensorflow as tf, tf_keras
 
+from official.vision.configs import common as cfg
 from official.vision.dataloaders import parser
 from official.vision.dataloaders import utils
 from official.vision.ops import anchor
@@ -48,6 +49,7 @@ class Parser(parser.Parser):
                box_coder_weights=None,
                aug_type=None,
                aug_rand_hflip=False,
+               aug_rand_jpeg: cfg.RandJpegQuality | None = None,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
                use_autoaugment=False,
@@ -89,6 +91,7 @@ class Parser(parser.Parser):
         RandAugment.
       aug_rand_hflip: `bool`, if True, augment training with random horizontal
         flip.
+      aug_rand_jpeg: if not None, apply random JPEG quality change augmentation.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
@@ -134,6 +137,7 @@ class Parser(parser.Parser):
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
+    self._aug_rand_jpeg = aug_rand_jpeg
     self._aug_scale_min = aug_scale_min
     self._aug_scale_max = aug_scale_max
 
@@ -249,6 +253,16 @@ class Parser(parser.Parser):
     # Apply autoaug or randaug.
     if self._augmenter is not None:
       image, boxes = self._augmenter.distort_with_boxes(image, boxes)
+
+    # Apply random jpeg quality change.
+    if self._aug_rand_jpeg is not None:
+      image = preprocess_ops.random_jpeg_quality(
+          image,
+          min_quality=self._aug_rand_jpeg.min_quality,
+          max_quality=self._aug_rand_jpeg.max_quality,
+          prob_to_apply=self._aug_rand_jpeg.prob_to_apply,
+      )
+
     image_shape = tf.shape(input=image)[0:2]
 
     # Normalizes image with mean and std pixel values.

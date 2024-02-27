@@ -1076,3 +1076,29 @@ def random_crop(image,
                                                      max_retry)
     else:
       return image, boxes, labels
+
+
+def random_jpeg_quality(
+    image: tf.Tensor,
+    min_quality: int | tf.Tensor = 20,
+    max_quality: int | tf.Tensor = 100,
+    prob_to_apply: float | tf.Tensor = 0.6,
+) -> tf.Tensor:
+  """Randomly encode the image as jpeg and decode it.
+
+  Args:
+    image: a uint8 'Tensor' of shape [height, width, 3] representing the input
+      image.
+    min_quality: minimum jpeg quality in range of [0, 100].
+    max_quality: maximum jpeg quality in range of [0, 100].
+    prob_to_apply: probability to apply this augmentation.
+
+  Returns:
+    image with jpeg quality changed
+  """
+  if tf.random.uniform(shape=[], maxval=1.0) > prob_to_apply:
+    return image
+  quality = tf.random.uniform(
+      [], minval=min_quality, maxval=max_quality, dtype=tf.int32
+  )
+  return tf.image.adjust_jpeg_quality(image, quality)
