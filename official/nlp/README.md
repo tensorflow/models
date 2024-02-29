@@ -55,8 +55,7 @@ Layers are the fundamental building blocks for NLP models. They can be used to a
 ### Networks
 
 Networks are combinations of `tf.keras` layers (and possibly other networks).
-They are `tf.keras` models that would not be trained alone.
-They are `tf.keras` models that would not be trained alone.It encapsulates common network structures like a transformer encoder into an easily handled object with a standardized configuration.
+They are `tf.keras` models that would not be trained alone. It encapsulates common network structures like a transformer encoder into an easily handled object with a standardized configuration.
 
 | Networks       |
 | -------------- |
@@ -66,7 +65,7 @@ They are `tf.keras` models that would not be trained alone.It encapsulates commo
 
 ### Models
 
-Models are combinations of `tf.keras` layers and models that can be trained.Several pre-built canned models are provided to train encoder networks. These models are intended as both convenience functions and canonical examples.
+Models are combinations of `tf.keras` layers and models that can be trained. Several pre-built canned models are provided to train encoder networks. These models are intended as both convenience functions and canonical examples.
 
 | Models       |
 | ------------ |
