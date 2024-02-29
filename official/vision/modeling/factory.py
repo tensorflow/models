@@ -14,7 +14,7 @@
 
 """Factory methods to build models."""
 
-from typing import Optional
+from typing import Mapping, Optional
 
 import tensorflow as tf, tf_keras
 
@@ -262,9 +262,28 @@ def build_retinanet(
     model_config: retinanet_cfg.RetinaNet,
     l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
     backbone: Optional[tf_keras.Model] = None,
-    decoder: Optional[tf_keras.Model] = None
+    decoder: Optional[tf_keras.Model] = None,
+    num_anchors_per_location: int | dict[str, int] | None = None,
+    anchor_boxes: Mapping[str, tf.Tensor] | None = None,
 ) -> tf_keras.Model:
-  """Builds RetinaNet model."""
+  """Builds a RetinaNet model.
+
+  Args:
+    input_specs: The InputSpec of the input image tensor to the model.
+    model_config: The RetinaNet model configuration to build from.
+    l2_regularizer: Optional l2 regularizer to use for building the backbone, 
+      decorder, and head.
+    backbone: Optional instance of the backbone model.
+    decoder: Optional instance of the decoder model.
+    num_anchors_per_location: Optional number of anchors per pixel location for
+      building the RetinaNetHead. If an `int`, the same number is used for all
+      levels. If a `dict`, it specifies the number at each level. If `none`, it
+      uses `len(aspect_ratios) * num_scales` from the anchor config by default.
+    anchor_boxes: Optional fixed multilevel anchor boxes for inference.
+
+  Returns:
+    RetinaNet model.
+  """
   norm_activation_config = model_config.norm_activation
   if not backbone:
     backbone = backbones.factory.build_backbone(
@@ -282,7 +301,7 @@ def build_retinanet(
 
   head_config = model_config.head
   generator_config = model_config.detection_generator
-  num_anchors_per_location = (
+  num_anchors_per_location = num_anchors_per_location or (
       len(model_config.anchor.aspect_ratios) * model_config.anchor.num_scales)
 
   head = dense_prediction_heads.RetinaNetHead(
@@ -333,16 +352,26 @@ def build_retinanet(
       box_coder_weights=generator_config.box_coder_weights,
   )
 
+  num_scales = None
+  aspect_ratios = None
+  anchor_size = None
+  if anchor_boxes is None:
+    num_scales = model_config.anchor.num_scales
+    aspect_ratios = model_config.anchor.aspect_ratios
+    anchor_size = model_config.anchor.anchor_size
+
   model = retinanet_model.RetinaNetModel(
       backbone,
       decoder,
       head,
       detection_generator_obj,
+      anchor_boxes=anchor_boxes,
       min_level=model_config.min_level,
       max_level=model_config.max_level,
-      num_scales=model_config.anchor.num_scales,
-      aspect_ratios=model_config.anchor.aspect_ratios,
-      anchor_size=model_config.anchor.anchor_size)
+      num_scales=num_scales,
+      aspect_ratios=aspect_ratios,
+      anchor_size=anchor_size,
+  )
   return model
 
 

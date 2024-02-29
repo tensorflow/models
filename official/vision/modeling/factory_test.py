@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for factory.py."""
+import collections
 
 # Import libraries
 from absl.testing import parameterized
@@ -20,6 +21,7 @@ import tensorflow as tf, tf_keras
 
 from official.vision.configs import backbones
 from official.vision.configs import backbones_3d
+from official.vision.configs import decoders
 from official.vision.configs import image_classification as classification_cfg
 from official.vision.configs import maskrcnn as maskrcnn_cfg
 from official.vision.configs import retinanet as retinanet_cfg
@@ -122,6 +124,47 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
               num_filters=None,
           ),
       )
+
+  def test_build_model_with_custom_anchors_can_run(self):
+    image_size = (16, 16)
+    input_specs = tf_keras.layers.InputSpec(shape=[None, *image_size, 3])
+    model_config = retinanet_cfg.RetinaNet(
+        num_classes=5,
+        min_level=3,
+        max_level=4,
+        decoder=decoders.Decoder(type='identity'),
+        head=retinanet_cfg.RetinaNetHead(
+            num_convs=0, share_level_convs=False,
+        )
+    )
+    anchor_boxes = collections.OrderedDict()
+    anchor_boxes['3'] = tf.constant(
+        [
+            [[3, 4, 5, 6], [3, 4, 5, 6]],
+            [[3, 4, 5, 6], [3, 4, 5, 6]],
+        ],
+        dtype=tf.float32,
+    )
+    anchor_boxes['4'] = tf.constant(
+        [[[3, 4, 5, 6, 3, 4, 5, 6]]], dtype=tf.float32
+    )
+    model = factory.build_retinanet(
+        input_specs=input_specs,
+        model_config=model_config,
+        anchor_boxes=anchor_boxes,
+        num_anchors_per_location={'3': 1, '4': 2},
+    )
+    test_input = tf.zeros([2, *image_size, 3])
+    outputs = model.call(test_input)
+    self.assertIn('box_outputs', outputs)
+    self.assertIn('3', outputs['box_outputs'])
+    self.assertIn('4', outputs['box_outputs'])
+    self.assertAllEqual(
+        outputs['box_outputs']['3'].numpy().shape, [2, 2, 2, 4 * 1]
+    )
+    self.assertAllEqual(
+        outputs['box_outputs']['4'].numpy().shape, [2, 1, 1, 4 * 2]
+    )
 
 
 class VideoClassificationModelBuilderTest(parameterized.TestCase,
