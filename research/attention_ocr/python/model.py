@@ -579,7 +579,7 @@ class Model(object):
     Uses the same method as in https://arxiv.org/abs/1512.00567.
 
     Args:
-      chars_labels: ground truth ids of charactes, shape=[batch_size,
+      chars_labels: ground truth ids of characters, shape=[batch_size,
         seq_length];
       weight: label-smoothing regularization weight.
 

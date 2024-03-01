@@ -47,7 +47,7 @@ class ConditionalAction:
     """Initializes the instance.
 
     Args:
-      condition: A callable accepting train or eval outputs and returing a bool.
+      condition: A callable accepting train or eval outputs and returning a bool.
       action: The action (or optionally sequence of actions) to perform when
         `condition` is met.
     """
