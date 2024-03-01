@@ -25,7 +25,7 @@ from official.projects.lra.mega_encoder import MegaEncoder
 
 @dataclasses.dataclass
 class MegaEncoderConfig(encoders.BertEncoderConfig):
-  """Extra paramerters for Mega configs.
+  """Extra parameters for Mega configs.
 
   Attributes:
     pad_token_id: the token id for the pad token

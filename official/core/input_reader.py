@@ -334,7 +334,7 @@ class InputReader:
       # service doesn't reuse the previous state if TPU worker gets preempted.
       # It's necessary to add global batch size into the tf data service job
       # name because when tuning batch size with vizier and tf data service is
-      # also enable, the tf data servce job name should be different for
+      # also enable, the tf data service job name should be different for
       # different vizier trials since once batch size is changed, from the
       # tf.data perspective, the dataset is a different instance, and a
       # different job name should be used for tf data service. Otherwise, the

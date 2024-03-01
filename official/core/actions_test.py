@@ -55,7 +55,7 @@ class ActionsTest(tf.test.TestCase, parameterized.TestCase):
       optimizer = optimization.ExponentialMovingAverage(
           optimizer, trainable_weights_only=False)
 
-      # Creats average weights for the model variables. Average weights are
+      # Creates average weights for the model variables. Average weights are
       # initialized to zero.
       optimizer.shadow_copy(model)
       checkpoint = tf.train.Checkpoint(model=model)

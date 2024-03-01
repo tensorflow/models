@@ -271,12 +271,12 @@ def assign_centernet_targets(labels: Dict[str, tf.Tensor],
         corresponding to the center location and class of the object
       'ct_offset': `Tensor` of shape [max_num_instances, 2], where the first
         num_boxes entries contain the x-offset and y-offset of the center of
-        an object. All other entires are 0
+        an object. All other entries are 0
       'size': `Tensor` of shape [max_num_instances, 2], where the first
         num_boxes entries contain the width and height of an object. All
-        other entires are 0
+        other entries are 0
       'box_mask': `Tensor` of shape [max_num_instances], where the first
-        num_boxes entries are 1. All other entires are 0
+        num_boxes entries are 1. All other entries are 0
       'box_indices': `Tensor` of shape [max_num_instances, 2], where the first
         num_boxes entries contain the y-center and x-center of a valid box.
         These are used to extract the regressed box features from the

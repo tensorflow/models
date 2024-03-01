@@ -23,7 +23,7 @@ box_list_ops.py for common box related operations (such as area, iou, etc).
 Optionally, users can add additional related fields (such as weights).
 We assume the following things to be true about fields:
 * they correspond to boxes in the box_list along the 0th dimension
-* they have inferrable rank at graph construction time
+* they have inferable rank at graph construction time
 * all dimensions except for possibly the 0th can be inferred
   (i.e., not None) at graph construction time.
 
@@ -86,7 +86,7 @@ class BoxList(object):
 
     Returns:
       Number of boxes held in collection (integer) or None if this is not
-        inferrable at graph construction time.
+        inferable at graph construction time.
     """
     return _get_dim_as_int(self.data['boxes'].get_shape()[0])
 

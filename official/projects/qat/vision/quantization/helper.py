@@ -84,12 +84,12 @@ def copy_original_weights(original_model: tf_keras.Model,
   for idx, weight in enumerate(quantized_model.weights):
     if not is_quantization_weight_name(weight.name):
       if original_idx >= len(original_weight_value):
-        raise ValueError('Not enought original model weights.')
+        raise ValueError('Not enough original model weights.')
       weight_values[idx] = original_weight_value[original_idx]
       original_idx = original_idx + 1
 
   if original_idx < len(original_weight_value):
-    raise ValueError('Not enought quantized model weights.')
+    raise ValueError('Not enough quantized model weights.')
 
   quantized_model.set_weights(weight_values)
 
@@ -168,7 +168,7 @@ def norm_by_activation(activation, norm_quantized, norm_no_quantized):
 
 
 class SeparableConv2DQuantized(tf_keras.layers.Layer):
-  """Quantized SeperableConv2D."""
+  """Quantized SeparableConv2D."""
 
   def __init__(
       self,

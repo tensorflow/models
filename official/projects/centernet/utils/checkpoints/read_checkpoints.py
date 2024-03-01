@@ -27,8 +27,8 @@ def update_weights_dict(weights_dict, variable_key, value):
 
   Args:
     weights_dict: Dictionary to store weights.
-    variable_key: String, name of the variable assocaited with the value.
-    value: An ndarray that stores the weights assocaited to the variable key.
+    variable_key: String, name of the variable associated with the value.
+    value: An ndarray that stores the weights associated to the variable key.
   """
   current_dict = weights_dict
   variable_key_list = variable_key.split("/")

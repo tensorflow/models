@@ -39,7 +39,7 @@ from official.vision.utils import summary_manager
 FLAGS = flags.FLAGS
 
 
-# Note: we overrided the `build_trainer` due to the customized `build_model`
+# Note: we overridded the `build_trainer` due to the customized `build_model`
 # methods in `MosaicSemanticSegmentationTask.
 def _build_mosaic_trainer(params: config_definitions.ExperimentConfig,
                           task: mosaic_tasks.MosaicSemanticSegmentationTask,

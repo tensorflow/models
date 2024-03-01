@@ -16,7 +16,7 @@
 
 The base trainer implements the Orbit `StandardTrainable` and
 `StandardEvaluable` interfaces. Trainers inside this project should be
-interchangable and independent on model architectures and tasks.
+interchangeable and independent on model architectures and tasks.
 """
 import functools
 from typing import Union, Optional
@@ -57,7 +57,7 @@ class _AsyncTrainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     return self._coordinator
 
   def join(self):
-    """Join all async steps. Only useful in aysnc training."""
+    """Join all async steps. Only useful in async training."""
     if getattr(self, "_is_async", False):
       self.coordinator_for_async().join()
 
@@ -426,7 +426,7 @@ class Trainer(_AsyncTrainer):
       iterator: Dataset iterator to generate the next inputs from.
 
     Returns:
-      The inputs to the model, and an additional logs dictionnary. The logs
+      The inputs to the model, and an additional logs dictionary. The logs
       are not passed to the model, instead they are merged with model output
       logs.
     """

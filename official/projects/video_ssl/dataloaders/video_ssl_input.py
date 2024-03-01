@@ -178,12 +178,12 @@ def _postprocess_image(image: tf.Tensor,
   """
   if is_ssl and is_training:
     # In this case, two clips of self-supervised pre-training are merged
-    # together in batch dimenstion which will be 2 * batch.
+    # together in batch dimension which will be 2 * batch.
     image = tf.concat(tf.split(image, num_or_size_splits=2, axis=1), axis=0)
 
   num_views = num_test_clips * num_test_crops
   if num_views > 1 and not is_training:
-    # In this case, multiple views are merged together in batch dimenstion which
+    # In this case, multiple views are merged together in batch dimension which
     # will be batch * num_views.
     image = tf.reshape(image, [-1, num_frames] + image.shape[2:].as_list())
 
@@ -286,7 +286,7 @@ class Parser(video_input.Parser):
       is_training: a `bool` to indicate whether it is in training mode.
 
     Returns:
-      parse: a `callable` that takes the serialized examle and generate the
+      parse: a `callable` that takes the serialized example and generate the
         images, labels tuple where labels is a dict of Tensors that contains
         labels.
     """

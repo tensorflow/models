@@ -139,7 +139,7 @@ def _calculate_area_bounds(
   Args:
     elements: A list of elements containing the specified key.
     upper_multiplier: Multiplier to calculate the upper bound of IQR.
-    lower_multiplier: Mulitplier to calculate the lower bound of IQR.
+    lower_multiplier: Multiplier to calculate the lower bound of IQR.
 
   Returns:
     A tuple containing the upper and lower bounds.
@@ -166,7 +166,7 @@ def filter_masks(
     image: Original image
     elements: List of elements with multiple attributes.
     upper_multiplier: Multiplier to calculate the upper bound of IQR.
-    lower_multiplier: Mulitplier to calculate the lower bound of IQR.
+    lower_multiplier: Multiplier to calculate the lower bound of IQR.
     area_ratio_threshold: Threshold for the ratio of mask area to image area.
 
   Returns:

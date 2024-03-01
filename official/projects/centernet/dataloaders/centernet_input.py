@@ -71,7 +71,7 @@ class CenterNetParser(parser.Parser):
         brightness.
       aug_rand_hue: `bool`, if True, augment training with random hue.
       aug_rand_contrast: `bool`, if True, augment training with random contrast.
-      odapi_augmentation: `bool`, if Ture, use OD API preprocessing.
+      odapi_augmentation: `bool`, if True, use OD API preprocessing.
       channel_means: A tuple of floats, denoting the mean of each channel
         which will be subtracted from it.
       channel_stds: A tuple of floats, denoting the standard deviation of each

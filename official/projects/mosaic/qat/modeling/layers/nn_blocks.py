@@ -185,7 +185,7 @@ class MosaicEncoderBlockQuantized(mosaic_blocks.MosaicEncoderBlock):
           raise ValueError('The number of pooling bins must be smaller than '
                            'input sizes.')
         assert pyramid_pool_bin_num >= 2, (
-            'Except for the gloabl pooling, the number of bins in pyramid '
+            'Except for the global pooling, the number of bins in pyramid '
             'pooling must be at least two.')
         pool_height, stride_height = self._get_bin_pool_kernel_and_stride(
             height, pyramid_pool_bin_num)

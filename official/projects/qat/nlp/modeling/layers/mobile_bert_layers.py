@@ -48,12 +48,12 @@ class NoNormQuantized(tf_keras.layers.Layer):
     super().__init__(name=name)
 
   def build(self, shape):
-    kernal_size = shape[-1]
+    kernel_size = shape[-1]
     self.bias = self.add_weight('beta',
-                                shape=[kernal_size],
+                                shape=[kernel_size],
                                 initializer='zeros')
     self.scale = self.add_weight('gamma',
-                                 shape=[kernal_size],
+                                 shape=[kernel_size],
                                  initializer='ones')
     self.multiply = _output_quantize(
         tf_keras.layers.Multiply())
@@ -398,7 +398,7 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
            input_tensor,
            attention_mask=None,
            return_attention_scores=False):
-    """Implementes the forward pass.
+    """Implements the forward pass.
 
     Args:
       input_tensor: Float tensor of shape `(batch_size, seq_length,

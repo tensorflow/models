@@ -56,7 +56,7 @@ class VideoSSLModel(tf_keras.Model):
       projection_dim: `int` number of output dimension for MLP.
       input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
       dropout_rate: `float` rate for dropout regularization.
-      aggregate_endpoints: `bool` aggregate all end ponits or only use the
+      aggregate_endpoints: `bool` aggregate all end points or only use the
         final end point.
       kernel_initializer: kernel initializer for the dense layer.
       kernel_regularizer: tf_keras.regularizers.Regularizer object. Default to

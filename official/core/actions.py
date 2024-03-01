@@ -30,7 +30,7 @@ from official.modeling import optimization
 class PruningAction:
   """Train action to updates pruning related information.
 
-  This action updates pruning steps at the end of trainig loop, and log
+  This action updates pruning steps at the end of training loop, and log
     pruning metrics to tensorboard.
 
   This action must be used when training a pruned model to avoid pruning error.
@@ -93,7 +93,7 @@ class EMACheckpointing:
       export_dir: `str` for the export directory of the EMA average weights.
       optimizer: `tf_keras.optimizers.Optimizer` optimizer instance used for
         training. This will be used to swap the model weights with the average
-        weigths.
+        weights.
       checkpoint: `tf.train.Checkpoint` instance.
       max_to_keep: `int` for max checkpoints to keep in ema_checkpoints subdir.
     """

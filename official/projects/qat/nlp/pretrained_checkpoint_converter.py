@@ -63,7 +63,7 @@ _PRETRAINED_CHECKPOINT = flags.DEFINE_string(
     default=None,
     help='The path of pretrained checkpoint for the original bert model.')
 
-_EXPERIEMNT_QAT = flags.DEFINE_string(
+_EXPERIMENT_QAT = flags.DEFINE_string(
     'experiment_qat', default=None,
     help='The experiment type registered for the pretrained model.')
 
@@ -122,7 +122,7 @@ def main(_):
     status.expect_partial().assert_existing_objects_matched()
 
   model_qat = _build_model(
-      _EXPERIEMNT_QAT.value, _CONFIG_FILE_QAT.value, _PARAMS_OVERRIDE_QAT.value)
+      _EXPERIMENT_QAT.value, _CONFIG_FILE_QAT.value, _PARAMS_OVERRIDE_QAT.value)
 
   _set_weights_to_qat(model, model_qat)
 

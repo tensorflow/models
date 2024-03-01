@@ -22,7 +22,7 @@ import pandas as pd
 
 
 def data_creation(path: str) -> pd.DataFrame:
-  """Create a dataframe with the occurences of images and categories.
+  """Create a dataframe with the occurrences of images and categories.
 
   Args:
     path: path to the annotated JSON file.
@@ -34,7 +34,7 @@ def data_creation(path: str) -> pd.DataFrame:
   with open(path) as json_file:
     data = json.load(json_file)
 
-  # count the occurance of each category and an image in the annotation file
+  # count the occurrence of each category and an image in the annotation file
   category_names = [i['name'] for i in data['categories']]
   category_ids = [i['category_id'] for i in data['annotations']]
   image_ids = [i['image_id'] for i in data['annotations']]

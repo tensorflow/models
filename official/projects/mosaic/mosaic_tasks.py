@@ -27,7 +27,7 @@ from official.vision.tasks import semantic_segmentation as seg_tasks
 class MosaicSemanticSegmentationTask(seg_tasks.SemanticSegmentationTask):
   """A task for semantic segmentation using MOSAIC model."""
 
-  # Note: the `build_model` is overrided to add an additional `train` flag
+  # Note: the `build_model` is overridded to add an additional `train` flag
   # for the purpose of indicating the model is built for performing `training`
   # or `eval`. This is to make sure the model is initialized with proper
   # `input_shape` if the model will be trained and evaluated in different

@@ -40,7 +40,7 @@ def get_backbone_layer_cfgs(weights_dict, backbone_name):
     backbone_name: String, indicating the desired backbone configuration.
 
   Returns:
-    A list containing the config classe of the backbone building block
+    A list containing the config classes of the backbone building block
   """
 
   print("Fetching backbone config classes for {}\n".format(backbone_name))

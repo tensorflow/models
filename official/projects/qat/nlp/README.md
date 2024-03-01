@@ -37,7 +37,7 @@ to try exported models.
 It can run on Google Cloud Platform using Cloud TPU.
 [Here](https://cloud.google.com/tpu/docs/how-to) is the instruction of using
 Cloud TPU. Follow the below instructions to set up Cloud TPU and launch
-training, using mobilebert as an exmaple:
+training, using mobilebert as an example:
 
 ```shell
 

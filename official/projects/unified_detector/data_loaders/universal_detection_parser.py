@@ -50,7 +50,7 @@ def _erase(mask: tf.Tensor,
   noise. The mask can have different size from the feature maps.
 
   Args:
-    mask: an (h, w) binay mask for pixels to erase with. Value 1 represents
+    mask: an (h, w) binary mask for pixels to erase with. Value 1 represents
       pixels to erase.
     feature: the (H, W, C) feature maps to erase from.
     min_val: The minimum value of random noise.

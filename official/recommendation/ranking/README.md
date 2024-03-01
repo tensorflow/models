@@ -37,7 +37,7 @@ We also need to install
 If you are using [tf-nightly](https://pypi.org/project/tf-nightly/) make
 sure to install
 [tensorflow-recommenders](https://pypi.org/project/tensorflow-recommenders/)
-without its dependancies by passing `--no-deps` argument.
+without its dependencies by passing `--no-deps` argument.
 
 For tf-nightly:
 ```bash
@@ -94,7 +94,7 @@ The full dataset is composed of 24 directories. Partition the data into training
 and eval sets, for example days 1-23 for training and day 24 for evaluation.
 
 Training and eval datasets are expected to be saved in many tab-separated values
-(TSV) files in the following format: numberical fetures, categorical features
+(TSV) files in the following format: numberical features, categorical features
 and label.
 
 On each row of the TSV file, the first one is the label

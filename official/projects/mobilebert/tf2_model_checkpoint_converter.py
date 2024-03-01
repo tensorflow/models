@@ -144,7 +144,7 @@ def convert(checkpoint_from_path,
         new_shape = _get_new_shape(new_var_name, tensor.shape,
                                    bert_config.num_attention_heads)
       if new_shape:
-        logging.info("Veriable %s has a shape change from %s to %s",
+        logging.info("Variable %s has a shape change from %s to %s",
                      var_name, tensor.shape, new_shape)
         tensor = np.reshape(tensor, new_shape)
 

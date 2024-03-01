@@ -80,7 +80,7 @@ def get_max_deep_lab_backbone(num_slots: int = 128):
 
 @gin.configurable
 class UniversalDetector(tf_keras.layers.Layer):
-  """Univeral Detector."""
+  """Universal Detector."""
   loss_items = ("loss_pq", "loss_inst_dist", "loss_para", "loss_mask_id",
                 "loss_segmentation_word")
 

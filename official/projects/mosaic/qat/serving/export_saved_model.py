@@ -63,7 +63,7 @@ _CONFIG_FILE = flags.DEFINE_multi_string(
     'first, followed by params_override.')
 _PARAMS_OVERRIDE = flags.DEFINE_string(
     'params_override', '',
-    'The JSON/YAML file or string which specifies the parameter to be overriden'
+    'The JSON/YAML file or string which specifies the parameter to be overridden'
     ' on top of `config_file` template.')
 _BATCH_SIZE = flags.DEFINE_integer('batch_size', None, 'The batch size.')
 _IMAGE_TYPE = flags.DEFINE_string(

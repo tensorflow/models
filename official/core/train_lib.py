@@ -48,7 +48,7 @@ class OrbitExperimentRunner:
       # Replaces the default CheckpointManger with a customized one.
       return MyCheckpointManager(*args)
 
-  # In user code, instead of the orginal
+  # In user code, instead of the original
   # `OrbitExperimentRunner(..).run(mode)`, now user can do:
   MyExpRunnerWithExporter(**needed_kwargs).run(mode)
   ```
@@ -202,7 +202,7 @@ class OrbitExperimentRunner:
       controller_cls=orbit.Controller,
       enable_async_checkpointing: bool = False,
   ) -> orbit.Controller:
-    """Builds a Orbit controler."""
+    """Builds a Orbit controller."""
     train_actions = [] if not train_actions else train_actions
     if trainer:
       checkpoint_manager = self.checkpoint_manager

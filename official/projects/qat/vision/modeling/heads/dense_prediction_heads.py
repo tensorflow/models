@@ -351,11 +351,11 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
         for att_config in self._config_dict['attribute_heads']:
           att_name = att_config['name']
 
-          def build_prediction_tower(atttribute_name, features, feature_level):
+          def build_prediction_tower(attribute_name, features, feature_level):
             x = features
             for conv, norm in zip(
-                self._att_convs[atttribute_name],
-                self._att_norms[atttribute_name][feature_level]):
+                self._att_convs[attribute_name],
+                self._att_norms[attribute_name][feature_level]):
               x = conv(x)
               x = norm(x)
               x = self._activation(x)

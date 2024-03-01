@@ -31,7 +31,7 @@ def contrastive_loss(hidden,
     hidden: embedding of video clips after projection head.
     num_replicas: number of distributed replicas.
     normalize_hidden: whether or not to l2 normalize the hidden vector.
-    temperature: temperature in the InfoNCE contrastive loss.
+    temperature: temperature in the infonce contrastive loss.
     model: keras model for calculating weight decay.
     weight_decay: weight decay parameter.
 

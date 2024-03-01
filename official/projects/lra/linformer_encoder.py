@@ -53,7 +53,7 @@ class LinformerEncoder(tf_keras.layers.Layer):
       dropout.
     attention_dropout: The dropout rate to use for the attention layers within
       the transformer layers.
-    initializer: The initialzer to use for all weights in this encoder.
+    initializer: The initializer to use for all weights in this encoder.
     output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yields the full
@@ -274,7 +274,7 @@ class LinformerEncoder(tf_keras.layers.Layer):
     if 'embedding_layer' in config and config['embedding_layer'] is not None:
       warn_string = (
           'You are reloading a model that was saved with a '
-          'potentially-shared embedding layer object. If you contine to '
+          'potentially-shared embedding layer object. If you continue to '
           'train this model, the embedding layer will no longer be shared. '
           'To work around this, load the model outside of the Keras API.'
       )

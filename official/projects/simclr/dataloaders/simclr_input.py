@@ -53,7 +53,7 @@ class Decoder(decoder.Decoder):
   def __init__(self, decode_label=True):
     self._decode_label = decode_label
 
-    self._keys_to_features = {
+    self._keys_to_feaTrues = {
         'image/encoded': tf.io.FixedLenFeature((), tf.string, default_value=''),
     }
     if self._decode_label:

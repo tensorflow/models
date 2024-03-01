@@ -72,8 +72,8 @@ class SavedModelCheckpointManager(tf.train.CheckpointManager):
 
     # Save the models for the checkpoint that just got written.
     saved_modules_directory = make_saved_modules_directory_name(checkpoint_path)
-    # Atomic export of SavedModel. Write into a temporary direcotory and then
-    # rename as the final direcotory after finishing the writing.
+    # Atomic export of SavedModel. Write into a temporary directory and then
+    # rename as the final directory after finishing the writing.
     # This can avoid trying to read an unfinished savedmodel.
     saved_modules_directory_tmp = saved_modules_directory + '_temp'
     for model_name, model in self._modules_to_export.items():

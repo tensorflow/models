@@ -112,7 +112,7 @@ class TfExampleBuilderTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('multiple_bytes', [b'Hello World!', b'Good Morning!'
                          ], [b'Hello World!', b'Good Morning!']),
-      ('multiple_sring', ['Hello World!', 'Good Morning!'
+      ('multiple_string', ['Hello World!', 'Good Morning!'
                          ], [b'Hello World!', b'Good Morning!']))
   def test_add_multiple_bytes_feature(self, values, expected_values):
     example_builder = tf_example_builder.TfExampleBuilder()

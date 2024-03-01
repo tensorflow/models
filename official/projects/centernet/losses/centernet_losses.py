@@ -59,7 +59,7 @@ class PenaltyReducedLogisticFocalLoss(object):
         the target is bounded between [0, 1].
       weights: a float tensor of shape, either [batch_size, num_anchors,
         num_classes] or [batch_size, num_anchors, 1]. If the shape is
-        [batch_size, num_anchors, 1], all the classses are equally weighted.
+        [batch_size, num_anchors, 1], all the classes are equally weighted.
 
     Returns:
       loss: a float tensor of shape [batch_size, num_anchors, num_classes]

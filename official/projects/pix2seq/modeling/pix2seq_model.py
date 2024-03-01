@@ -570,9 +570,9 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       temperature: `float` scalar for scaling the logits before sampling.
       top_k: `int` scalar for truncating top-k tokens according to logits before
         token sampling.
-      top_p: `float` scalar specifying the threshold of cumulative probablity
+      top_p: `float` scalar specifying the threshold of cumulative probability
         for truncating tokens before token sampling.
-      sampling_callback: a callbak `function` that take `next_logits`, and
+      sampling_callback: a callback `function` that take `next_logits`, and
         return `next_token`. This is used when users need a specific logic for
         sampling. Default to `None` with standard free-form sampling.
       eos_token: if not None, stop inference early based on this end-of-sequence
@@ -643,7 +643,7 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       if self._output_bias:
         next_logits = tf.nn.bias_add(next_logits, self.outp_bias)
 
-      # Scale and trunctate logits and sample next token.
+      # Scale and truncate logits and sample next token.
       if sampling_callback:
         next_token = sampling_callback(
             next_logits, step, temperature, top_k, top_p

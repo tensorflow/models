@@ -105,7 +105,7 @@ def get_oracle_score(ground_truth,
   for qid in qid_list:
     if qid not in predicted_answers:
       if not mute:
-        message = 'Irrelavant question {} will receive score 0.'.format(qid)
+        message = 'Irrelevant question {} will receive score 0.'.format(qid)
         print(message, file=sys.stderr)
       continue
     common += 1
@@ -140,7 +140,7 @@ def evaluate_triviaqa(ground_truth,
       continue
     if qid not in ground_truth:
       if not mute:
-        message = 'Irrelavant question {} will receive score 0.'.format(qid)
+        message = 'Irrelevant question {} will receive score 0.'.format(qid)
         print(message, file=sys.stderr)
       continue
     common += 1

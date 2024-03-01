@@ -144,7 +144,7 @@ class BestCheckpointExporter:
       export_dir: The directory that will contain exported checkpoints.
       metric_name: Indicates which metric to look at, when determining which
         result is better. If eval_logs being passed to maybe_export_checkpoint
-        is a nested dictionary, use `|` as a seperator for different layers.
+        is a nested dictionary, use `|` as a separator for different layers.
       metric_comp: Indicates how to compare results. Either `lower` or `higher`.
     """
     self._export_dir = export_dir
@@ -244,7 +244,7 @@ class BestCheckpointExporter:
 def create_optimizer(task: base_task.Task,
                      params: config_definitions.ExperimentConfig
                      ) -> tf_keras.optimizers.Optimizer:
-  """A create optimizer util to be backward compatability with new args."""
+  """A create optimizer util to be backward compatibility with new args."""
   if 'dp_config' in inspect.signature(task.create_optimizer).parameters:
     dp_config = None
     if hasattr(params.task, 'differential_privacy_config'):

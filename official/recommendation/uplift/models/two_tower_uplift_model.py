@@ -47,7 +47,7 @@ class TwoTowerUpliftModel(tf_keras.Model):
         loss computation.
       uplift_network: a layer for computing control and treatment logits. Its
         input is expected to be a dictionary of feature tensors and its output
-        is exptected to be a `TwoTowerNetworkOutputs` instance.
+        is expected to be a `TwoTowerNetworkOutputs` instance.
       inverse_link_fn: a function for computing the control and treatment
         predictions from their respective logits. If left as `None` it is
         functionally equivalent to the identity function.

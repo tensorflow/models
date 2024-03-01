@@ -25,7 +25,7 @@ class LRADualEncoder(tf_keras.layers.Layer):
   """A dual encoder model based on a transformer-based encoder.
 
   This is an implementation of the dual encoder network structure based on the
-  transfomer stack, as described in ["Language-agnostic BERT Sentence
+  transformer stack, as described in ["Language-agnostic BERT Sentence
   Embedding"](https://arxiv.org/abs/2007.01852)
 
   The DualEncoder allows a user to pass in a transformer stack, and build a dual
@@ -34,7 +34,7 @@ class LRADualEncoder(tf_keras.layers.Layer):
   Args:
     network: A transformer network which should output an encoding output.
     max_seq_length: The maximum allowed sequence length for transformer.
-    normalize: If set to True, normalize the encoding produced by transfomer.
+    normalize: If set to True, normalize the encoding produced by transformer.
     logit_scale: The scaling factor of dot products when doing training.
     logit_margin: The margin between positive and negative when doing training.
     output: The output style for this network. Can be either `logits` or

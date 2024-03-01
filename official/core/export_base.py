@@ -56,7 +56,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
       params: A dataclass for parameters to the module.
       model: A model instance which contains weights and forward computation.
       inference_step: An optional callable to forward-pass the model. If not
-        specified, it creates a parital function with `model` as an required
+        specified, it creates a partial function with `model` as an required
         kwarg.
       preprocessor: An optional callable to preprocess the inputs.
       postprocessor: An optional callable to postprocess the model outputs.

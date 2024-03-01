@@ -25,7 +25,7 @@ from official.projects.lra.linformer_encoder import LinformerEncoder
 
 @dataclasses.dataclass
 class LinformerEncoderConfig(encoders.BertEncoderConfig):
-  """Extra paramerters for Linformer configs.
+  """Extra parameters for Linformer configs.
 
   Attributes:
     pad_token_id: the token id for the pad token

@@ -60,7 +60,7 @@ class MultiKernelGroupConvBlock(tf_keras.layers.Layer):
         0.99.
       batchnorm_epsilon: A float for the epsilon value in BatchNorm. Defaults to
         0.001.
-      activation: A `str` for the activation fuction type. Defaults to 'relu'.
+      activation: A `str` for the activation function type. Defaults to 'relu'.
       kernel_initializer: Kernel initializer for conv layers. Defaults to
         `glorot_uniform`.
       kernel_regularizer: Kernel regularizer for conv layers. Defaults to None.
@@ -367,7 +367,7 @@ class MosaicEncoderBlock(tf_keras.layers.Layer):
           raise ValueError('The number of pooling bins must be smaller than '
                            'input sizes.')
         assert pyramid_pool_bin_num >= 2, (
-            'Except for the gloabl pooling, the number of bins in pyramid '
+            'Except for the global pooling, the number of bins in pyramid '
             'pooling must be at least two.')
         pool_height, stride_height = self._get_bin_pool_kernel_and_stride(
             height, pyramid_pool_bin_num)

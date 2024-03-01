@@ -319,7 +319,7 @@ class BaseTest(tf.test.TestCase):
     # approximate this behavior sufficiently for heuristic testing.
     e_sample = len(self.seen_pairs) * NUM_NEG / neg_pair_cardinality
 
-    # The frequency of occurance of a given negative pair should follow an
+    # The frequency of occurrence of a given negative pair should follow an
     # approximately binomial distribution in the limit that the cardinality of
     # the negative pair set >> number of samples per epoch.
     approx_pdf = scipy.stats.binom.pmf(

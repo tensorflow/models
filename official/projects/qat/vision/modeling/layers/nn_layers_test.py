@@ -34,10 +34,10 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
   def test_segmentation_head_creation(self, feature_fusion, upsample_factor,
                                       low_level_num_filters, expected_shape):
     input_size = 128
-    decoder_outupt_size = input_size // 2
+    decoder_output_size = input_size // 2
 
     decoder_output = tf.random.uniform(
-        (2, decoder_outupt_size, decoder_outupt_size, 64), dtype=tf.float32)
+        (2, decoder_output_size, decoder_output_size, 64), dtype=tf.float32)
     backbone_output = tf.random.uniform((2, input_size, input_size, 32),
                                         dtype=tf.float32)
     segmentation_head = nn_layers.SegmentationHeadQuantized(

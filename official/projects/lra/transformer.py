@@ -24,7 +24,7 @@ from official.projects.lra.transformer_encoder import TransformerEncoder
 
 @dataclasses.dataclass
 class TransformerEncoderConfig(encoders.BertEncoderConfig):
-  """Extra paramerters for Transformer configs.
+  """Extra parameters for Transformer configs.
 
   Attributes: For in-place usage only
   """

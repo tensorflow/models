@@ -925,7 +925,7 @@ class BisectionDataConstructor(BaseDataConstructor):
     # For points where the negative is greater than or equal to the tally before
     # the last positive point there is no need to bisect. Instead the item id
     # corresponding to the negative item choice is simply:
-    #   last_postive_index + 1 + (neg_choice - last_negative_tally)
+    #   last_positive_index + 1 + (neg_choice - last_negative_tally)
     # Similarly, if the selection is less than the tally at the first positive
     # then the item_id is simply the selection.
     #

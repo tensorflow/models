@@ -30,7 +30,7 @@ be of different types, eg `tf.Tensor`, `tf.SparseTensor` and `tf.RaggedTensor`.
 - **Backbone**: a trainable network that computes an embedding from the inputs
 shared between the control and treatment arms.
 - **Control & Treatment Feature Encoders**: trainable networks that compute
-embeddings from control and treatment speficic features.
+embeddings from control and treatment specific features.
 - **Control & Treatment Feature Combiners**: methods to combine the backbone's
 shared embedding with the control/treatment specific embeddings.
 - **Control Tower**: trainable network with zero or more hidden layers that

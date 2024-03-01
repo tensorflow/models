@@ -173,7 +173,7 @@ def construct_model(user_input: tf.Tensor, item_input: tf.Tensor,
     x = tf.squeeze(x, [1])
     return x[:, mf_dim:]
 
-  # It turns out to be significantly more effecient to store the MF and MLP
+  # It turns out to be significantly more efficient to store the MF and MLP
   # embedding portions in the same table, and then slice as needed.
   embedding_user = tf_keras.layers.Embedding(
       num_users,

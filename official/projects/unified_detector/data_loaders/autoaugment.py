@@ -601,7 +601,7 @@ def build_and_apply_nas_policy(policies, image, augmentation_hparams):
       policy_info = list(policy_info) + [replace_value, augmentation_hparams]
 
       tf_policy.append(_parse_policy_info(*policy_info))
-    # Now build the tf policy that will apply the augmentation procedue
+    # Now build the tf policy that will apply the augmentation procedure
     # on image.
     def make_final_policy(tf_policy_):
 

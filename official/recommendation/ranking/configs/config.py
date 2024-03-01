@@ -183,7 +183,7 @@ class TrainerConfig(cfg.TrainerConfig):
     time_history: Config of TimeHistory callback.
     optimizer_config: An `OptimizerConfig` instance for embedding optimizer.
        Defaults to None.
-    pipeline_sparse_and_dense_exeuction: Whether to pipeline embedding and
+    pipeline_sparse_and_dense_execution: Whether to pipeline embedding and
       dense execution. This is a performance optimization.
   """
   train_steps: int = 0

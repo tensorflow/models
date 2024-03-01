@@ -282,7 +282,7 @@ class TransformerEncoderBlockQuantized(tf_keras.layers.Layer):
         set the `output_range` for serving.
 
     Returns:
-      An ouput tensor with the same dimensions as input/query tensor.
+      An output tensor with the same dimensions as input/query tensor.
     """
     if isinstance(inputs, (list, tuple)):
       if len(inputs) == 2:

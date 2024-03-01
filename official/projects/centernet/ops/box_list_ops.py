@@ -142,7 +142,7 @@ def gather(boxlist, indices, fields=None, use_static_shapes=False):
       all fields are gathered from.  Pass an empty fields list to only gather
       the box coordinates.
     use_static_shapes: Whether to use an implementation with static shape
-      gurantees.
+      guarantees.
 
   Returns:
     subboxlist: a BoxList corresponding to the subset of the input BoxList

@@ -218,7 +218,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_base_async_trainer(self):
     if TPU_TEST or GPU_TEST:
-      self.skipTest('Aysnc training is not available on GPU/GPU.')
+      self.skipTest('Async training is not available on GPU/GPU.')
     num_workers = 3
     num_ps = 2
     cluster_resolver = create_in_process_cluster(num_workers, num_ps)
@@ -235,7 +235,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_async_trainer_train(self):
     if TPU_TEST or GPU_TEST:
-      self.skipTest('Aysnc training is not available on GPU/TPU.')
+      self.skipTest('Async training is not available on GPU/TPU.')
     num_workers = 3
     num_ps = 2
     cluster_resolver = create_in_process_cluster(num_workers, num_ps)
@@ -251,7 +251,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_async_trainer_validate(self):
     if TPU_TEST or GPU_TEST:
-      self.skipTest('Aysnc training is not available on GPU/GPU.')
+      self.skipTest('Async training is not available on GPU/GPU.')
     num_workers = 3
     num_ps = 2
     cluster_resolver = create_in_process_cluster(num_workers, num_ps)

@@ -103,7 +103,7 @@ class Backbone(backbones.Backbone):
 
 @dataclasses.dataclass
 class Pix2Seq(hyperparams.Config):
-  """Pix2Seq model definations."""
+  """Pix2Seq model definitions."""
 
   max_num_instances: int = 100
   hidden_size: int = 256

@@ -143,7 +143,7 @@ class MosaicDecoderHead(tf_keras.layers.Layer):
             'A stage merge style in MOSAIC Decoder can only be concat_merge '
             'or sum_merge.')
 
-    # Concat merge or sum merge does not require an additional classifer layer
+    # Concat merge or sum merge does not require an additional classifier layer
     # unless the final decoder projected filter does not match num_classes.
     final_decoder_projected_filter = decoder_projected_filters[-1]
     if (final_decoder_projected_filter != num_classes and
