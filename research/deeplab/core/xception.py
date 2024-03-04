@@ -901,7 +901,7 @@ def xception_arg_scope(weight_decay=0.00004,
       normalizing activations by their variance in batch normalization.
     batch_norm_scale: If True, uses an explicit `gamma` multiplier to scale the
       activations in the batch normalization layer.
-    weights_initializer_stddev: The standard deviation of the trunctated normal
+    weights_initializer_stddev: The standard deviation of the truncated normal
       weight initializer.
     regularize_depthwise: Whether or not apply L2-norm regularization on the
       depthwise convolution weights.
