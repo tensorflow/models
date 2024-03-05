@@ -16,9 +16,6 @@ task_obj = rngdet.RNGDetTask(exp_config.task)
 model = task_obj.build_model()
 #task_obj.initialize(model)
 
-'''parser = argparse.ArgumentParser() 
-parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')''' 
-
 class Vertex():
     def __init__(self,v,id):
         self.x = v[0]
@@ -75,7 +72,21 @@ class Graph():
             self.edges[f'{v2.id}_{v1.id}'] = Edge(v2,v1,self.edge_num)
             self.edge_num += 1
 
-ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/ckpt/01_mask_change/'
+ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/ckpt/09_test_level_4/'
+#ckpt_dir_or_file = '/home/mjyun/01_ghpark/ckpt/06_test_please_final/'
+
+'''ckpt = tf.train.Checkpoint(
+    backbone=model.backbone,
+    backbone_history=model.backbone_history,
+    transformer=model.transformer,
+    segment_fpn=model._segment_fpn,
+    keypoint_fpn=model._keypoint_fpn,
+    query_embeddings=model._query_embeddings,
+    segment_head=model._segment_head,
+    keypoint_head=model._keypoint_head,
+    class_embed=model._class_embed,
+    bbox_embed=model._bbox_embed,
+    input_proj=model.input_proj)'''
 
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
@@ -88,7 +99,11 @@ ckpt = tf.train.Checkpoint(
     keypoint_head=model._keypoint_head,
     class_embed=model._class_embed,
     bbox_embed=model._bbox_embed,
-    input_proj=model.input_proj)
+    input_proj_1=model.input_proj_1, 
+    input_proj_2=model.input_proj_2,
+    input_proj_3=model.input_proj_3,
+    input_proj_4=model.input_proj_4)
+
 status = ckpt.restore(tf.train.latest_checkpoint(ckpt_dir_or_file))
 status.expect_partial().assert_existing_objects_matched()
 print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -107,7 +122,7 @@ print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
 sat_image = tf.cast(sat_image, tf.float32)
 agent = agent.Agent(model, sat_image)
 
-logit_threshold = 0.5
+logit_threshold = 0.7
 roi_size = 128
 
 print(f'STEP 2: Interative graph detection...')
@@ -134,10 +149,10 @@ while 1:
     alignment_vertices = [[v[0]-agent.current_coord[0]+agent.crop_size//2, v[1]-agent.current_coord[1]+agent.crop_size//2] for v in agent.historical_vertices]
     pred_coords_ROI = agent.step(pred_probs,pred_coords,thr=logit_threshold)
 
-    if agent.step_counter%100==0:
-        if agent.step_counter%100==0:
+    if agent.step_counter%500==0:
+        if agent.step_counter%200==0:
             print(f'Iteration {agent.step_counter}...')
-            Image.fromarray(agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/skeleton_result_{agent.step_counter}.png')
+            Image.fromarray(agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)).convert('RGB').save(f'./segmentation/ckpt_09/skeleton_result_{agent.step_counter}.png')
             # visualize current step's result
         pred_binary = tf.math.sigmoid(pred_segment[0, :, :, 0]) * 255 #output['pred_masks'] -> pred_segment
         pred_keypoints = tf.math.sigmoid(pred_keypoint[0, :, :, 0]) * 255 #output['pred_masks'] -> pred_keypoint
@@ -175,7 +190,7 @@ while 1:
                         draw.ellipse((v[0]-1,v[1]-1,v[0]+1,v[1]+1),fill='pink',outline='pink')
 
                 draw.ellipse([delta_x-1+roi_size//2,delta_y-1+roi_size//2,delta_x+1+roi_size//2,delta_y+1+roi_size//2],fill='orange')
-        dst.convert('RGB').save(f'./segmentation/vis_result_{agent.step_counter}.png') 
+        dst.convert('RGB').save(f'./segmentation/ckpt_09/vis_result_{agent.step_counter}.png') 
         #exit()
 
     if agent.finish_current_image:
@@ -183,7 +198,7 @@ while 1:
         #save historical map
         Image.fromarray(
             agent.historical_map[roi_size:-roi_size,roi_size:-roi_size].astype(np.uint8)
-            ).convert('RGB').save(f'./segmentation/9_result.png')
+            ).convert('RGB').save(f'./segmentation/ckpt_09/9_result_th07.png')
 
         break
     # stop action

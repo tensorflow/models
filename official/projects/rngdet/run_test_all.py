@@ -15,8 +15,8 @@ import numpy as np
 from official.projects.rngdet.tasks import rngdet
 from official.core import exp_factory
 
-parser = argparse.ArgumentParser() 
-parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')  
+#parser = argparse.ArgumentParser() 
+#parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default=[], dest='ckpt_dir')  
 
 exp_config = exp_factory.get_exp_config('rngdet_cityscale')
 task_obj = rngdet.RNGDetTask(exp_config.task)
@@ -108,7 +108,8 @@ def pixel_eval_metric(pred_mask,gt_mask):
 
     return calculate_scores(gt_points,pred_points)
 
-ckpt_dir_or_file = parser.parse_args().ckpt_dir[0] 
+#ckpt_dir_or_file = parser.parse_args().ckpt_dir[0] 
+ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/ckpt/09_test_level_4/'
 
 ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
@@ -121,7 +122,11 @@ ckpt = tf.train.Checkpoint(
     keypoint_head=model._keypoint_head,
     class_embed=model._class_embed,
     bbox_embed=model._bbox_embed,
-    input_proj=model.input_proj)
+    input_proj_1=model.input_proj_1, 
+    input_proj_2=model.input_proj_2,
+    input_proj_3=model.input_proj_3,
+    input_proj_4=model.input_proj_4)
+    
 status = ckpt.restore(tf.train.latest_checkpoint(ckpt_dir_or_file))
 status.expect_partial().assert_existing_objects_matched()
 print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -137,7 +142,7 @@ pad_size = 128
 logit_threshold = 0.75
 roi_size = 128
 
-with open('./data/dataset/data_split.json','r') as jf:
+with open('/home/mjyun/01_ghpark/dataset/data_split.json','r') as jf:
     tile_list = json.load(jf)['test']
 
 time_start = time.time()
@@ -152,7 +157,7 @@ for i, tile_name in enumerate(tile_list):
 
     #initialize an agent for current image 
 
-    sat_image = np.array(Image.open(os.path.join('./data/dataset/20cities/region_'+str(tile_name)+'_sat.png')))
+    sat_image = np.array(Image.open(os.path.join('/home/mjyun/01_ghpark/dataset/20cities/region_'+str(tile_name)+'_sat.png')))
     print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
     sat_image = tf.cast(sat_image, tf.float32)
     time1 = time.time()
@@ -205,7 +210,7 @@ for i, tile_name in enumerate(tile_list):
 
             pickle.dump(output_graph,open(f'./segmentation/tests/graph/{tile_name}.p','wb'),protocol=2)
             pred_graph = np.array(Image.open(f'./segmentation/tests/skeleton/{tile_name}.png'))
-            gt_graph = np.array(Image.open(f'./data/dataset/segment/{tile_name}.png'))
+            gt_graph = np.array(Image.open(f'/home/mjyun/01_ghpark/dataset/segment/{tile_name}.png'))
 
             #print score
             print(pixel_eval_metric(pred_graph,gt_graph))

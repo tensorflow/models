@@ -91,7 +91,7 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
   train_batch_size = 16
   eval_batch_size = 16
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 50 * steps_per_epoch  # 50 epochs
+  train_steps = 10 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
@@ -163,7 +163,7 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
   train_batch_size = 16
   eval_batch_size = 16
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 50 * steps_per_epoch  # 50 epochs
+  train_steps = 10 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',

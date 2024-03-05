@@ -42,7 +42,10 @@ class DetrTest(tf.test.TestCase):
                            min_level=2,
                            max_level=5)
 
-    input_proj = rngdet.InputProjection(hidden_size)
+    input_proj_1 = rngdet.InputProjection(hidden_size)
+    input_proj_2 = rngdet.InputProjection(hidden_size)
+    input_proj_3 = rngdet.InputProjection(hidden_size)
+    input_proj_4 = rngdet.InputProjection(hidden_size)
 
     transformer = rngdet.DETRTransformer(
         hidden_size= hidden_size,
@@ -55,7 +58,10 @@ class DetrTest(tf.test.TestCase):
                       segment_fpn,
                       keypoint_fpn,
                       transformer,
-                      input_proj,
+                      input_proj_1,
+                      input_proj_2,
+                      input_proj_3,
+                      input_proj_4,
                       num_queries,
                       hidden_size,
                       num_classes) 

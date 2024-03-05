@@ -68,8 +68,11 @@ class RNGDetTask(base_task.Task):
         num_encoder_layers=self._task_config.model.num_encoder_layers,
         num_decoder_layers=self._task_config.model.num_decoder_layers)
 
-    input_proj = rngdet.InputProjection(
-        self._task_config.model.hidden_size)
+    #input_proj = rngdet.InputProjection( self._task_config.model.hidden_size)
+    input_proj_1 = rngdet.InputProjection( self._task_config.model.hidden_size)
+    input_proj_2 = rngdet.InputProjection( self._task_config.model.hidden_size)
+    input_proj_3 = rngdet.InputProjection( self._task_config.model.hidden_size)
+    input_proj_4 = rngdet.InputProjection( self._task_config.model.hidden_size)
 
     model = rngdet.RNGDet(backbone,
                       backbone_history,
@@ -77,10 +80,24 @@ class RNGDetTask(base_task.Task):
                       segment_fpn,
                       keypoint_fpn,
                       transformer,
-                      input_proj,
+                      input_proj_1,
+                      input_proj_2,
+                      input_proj_3,
+                      input_proj_4,
                       self._task_config.model.num_queries,
                       self._task_config.model.hidden_size,
                       self._task_config.model.num_classes)
+    '''model = rngdet.RNGDet(backbone,
+                  backbone_history,
+                  self._task_config.model.backbone_endpoint_name,
+                  segment_fpn,
+                  keypoint_fpn,
+                  transformer,
+                  input_proj,
+                  self._task_config.model.num_queries,
+                  self._task_config.model.hidden_size,
+                  self._task_config.model.num_classes)'''
+        
 
     # Builds the model through warm-up call.
     dummy_images = tf.keras.Input(self.task_config.model.input_size)
