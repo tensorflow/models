@@ -29,10 +29,6 @@ from official.modeling.optimization.configs import optimization_config as opt_cf
 
 # Optimizer CLS to be used in both legacy and new path.
 SHARED_OPTIMIZERS = {
-    'sgd_experimental': tf.keras.optimizers.experimental.SGD,
-    'adam_experimental': tf.keras.optimizers.experimental.Adam,
-    'adamw': legacy_adamw.AdamWeightDecay,
-    'adamw_experimental': tf.keras.optimizers.experimental.AdamW,
     'lamb': lamb.LAMB,
     'lars': lars.LARS,
     'slide': slide_optimizer.SLIDE,
@@ -41,6 +37,7 @@ SHARED_OPTIMIZERS = {
 }
 
 LEGACY_OPTIMIZERS_CLS = {
+    'legacy_adamw': legacy_adamw.AdamWeightDecay,
     'sgd': tf.keras.optimizers.legacy.SGD,
     'adam': tf.keras.optimizers.legacy.Adam,
     'rmsprop': tf.keras.optimizers.legacy.RMSprop,
@@ -49,10 +46,10 @@ LEGACY_OPTIMIZERS_CLS = {
 LEGACY_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
 NEW_OPTIMIZERS_CLS = {
-    'sgd': tf.keras.optimizers.experimental.SGD,
-    'adam': tf.keras.optimizers.experimental.Adam,
-    'rmsprop': tf.keras.optimizers.experimental.RMSprop,
-    'adagrad': tf.keras.optimizers.experimental.Adagrad,
+    'sgd': tf.keras.optimizers.SGD,
+    'adam': tf.keras.optimizers.Adam,
+    'rmsprop': tf.keras.optimizers.RMSprop,
+    'adagrad': tf.keras.optimizers.Adagrad,
 }
 NEW_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
@@ -77,7 +74,6 @@ def register_optimizer_cls(key: str,
                            optimizer_config_cls: Union[
                                tf.keras.optimizers.Optimizer,
                                tf.keras.optimizers.legacy.Optimizer,
-                               tf.keras.optimizers.experimental.Optimizer
                            ],
                            use_legacy_optimizer: bool = True):
   """Register customize optimizer cls.
@@ -216,7 +212,7 @@ class OptimizerFactory:
 
     Returns:
       `tf.keras.optimizers.legacy.Optimizer` or
-      `tf.keras.optimizers.experimental.Optimizer` instance.
+      `tf.keras.optimizers.Optimizer` instance.
     """
 
     optimizer_dict = self._optimizer_config.as_dict()
@@ -258,7 +254,7 @@ class OptimizerFactory:
     # The following check makes sure the function won't break in older TF
     # version because of missing the experimental/legacy package.
     if hasattr(tf.keras.optimizers, 'experimental'):
-      if isinstance(optimizer, tf.keras.optimizers.experimental.Optimizer):
+      if isinstance(optimizer, tf.keras.optimizers.Optimizer):
         return optimizer
     if hasattr(tf.keras.optimizers, 'legacy'):
       if isinstance(optimizer, tf.keras.optimizers.legacy.Optimizer):
