@@ -19,7 +19,7 @@ from typing import Any, Callable, Sequence, Union
 from orbit import controller
 from orbit import runner
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 Condition = Callable[[runner.Output], Union[bool, tf.Tensor]]
 

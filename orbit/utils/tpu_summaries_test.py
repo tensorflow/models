@@ -20,7 +20,7 @@ import os
 from orbit.utils import common
 from orbit.utils import tpu_summaries
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class TrainFunctionWithSummaries(tpu_summaries.OptionalSummariesFunction):

@@ -19,7 +19,7 @@ import re
 
 from typing import Callable, Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 _GS_PREFIX = r'gs://'  # Google Cloud Storage Prefix

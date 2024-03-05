@@ -19,7 +19,7 @@ import abc
 from typing import Dict, Optional, Union
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 Output = Dict[str, Union[tf.Tensor, float, np.number, np.ndarray, 'Output']]  # pytype: disable=not-supported-yet
