@@ -1243,8 +1243,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
   def call(self,
            inputs: tf.Tensor,
            training: Optional[bool] = None) -> tf.Tensor:
-    if training is None:
-      training = tf.keras.backend.learning_phase()
+
     result = []
     for i, layers in enumerate(self.aspp_layers):
       x = inputs
