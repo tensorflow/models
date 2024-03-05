@@ -108,6 +108,7 @@ class SequenceBeamSearch(tf.Module):
       max_decode_length,
       eos_id,
       padded_decode,
+      pad_id,
       dtype=tf.float32,
       noise_multiplier: float = 0.0,
       decoding_name=None,
@@ -131,6 +132,7 @@ class SequenceBeamSearch(tf.Module):
       eos_id: An integer or a list. ID of end of sentence token.
       padded_decode: A bool, indicating if max_sequence_length padding is used
         for beam search.
+      pad_id: An integer, ID to be used to pad predictions.
       dtype: A tensorflow data type used for score computation. The default is
         tf.float32.
       noise_multiplier: The amount of noise.
@@ -146,6 +148,7 @@ class SequenceBeamSearch(tf.Module):
     else:
       self.eos_id = [eos_id]
     self.padded_decode = padded_decode
+    self.pad_id = pad_id
     self.dtype = tf.as_dtype(dtype)
     self.decoding_name = decoding_name
     self.noise_multiplier = noise_multiplier
@@ -431,8 +434,8 @@ class SequenceBeamSearch(tf.Module):
     # Create alive sequence with shape [batch_size, beam_size, 1]
     alive_seq = expand_to_beam_size(initial_ids, self.beam_size)
     alive_seq = tf.expand_dims(alive_seq, axis=2)
-    if self.padded_decode:
-      alive_seq = tf.tile(alive_seq, [1, 1, self.max_decode_length + 1])
+    alive_seq = tf.pad(alive_seq, [[0, 0], [0, 0], [0, self.max_decode_length]],
+                      constant_values=self.pad_id)
 
     # Create tensor for storing initial log probabilities.
     # Assume initial_ids are prob 1.0
@@ -611,6 +614,7 @@ def sequence_beam_search(
     max_decode_length,
     eos_id,
     padded_decode=False,
+    pad_id=0,
     dtype="float32",
     noise_multiplier: float = 0.0,
     decoding_name=None,
@@ -637,6 +641,7 @@ def sequence_beam_search(
       finished.
     padded_decode: A bool, indicating if max_sequence_length padding is used for
       beam search.
+    pad_id: An integer, ID to be used to pad predictions.
     dtype: A tensorflow data type used for score computation. The default is
       tf.float32.
     noise_multiplier: The amount of noise.
@@ -654,6 +659,7 @@ def sequence_beam_search(
       max_decode_length,
       eos_id,
       padded_decode,
+      pad_id,
       dtype,
       noise_multiplier,
       decoding_name,
