@@ -15,7 +15,7 @@
 """Tests for two_tower_logits_head."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift.layers.heads import two_tower_logits_head
@@ -27,8 +27,8 @@ class TwoTowerLogitsHeadTest(
 
   def _get_layer(
       self,
-      control_head=tf_keras.layers.Dense(1),
-      treatment_head=tf_keras.layers.Dense(1),
+      control_head=tf.keras.layers.Dense(1),
+      treatment_head=tf.keras.layers.Dense(1),
       layering_method=two_tower_logits_head.LayeringMethod.NONE,
       linear_layering_config=two_tower_logits_head.LinearLayeringConfig(),
       **kwargs
@@ -42,7 +42,7 @@ class TwoTowerLogitsHeadTest(
         ),
         **kwargs
     )
-    return tf_keras.models.clone_model(logits_head)
+    return tf.keras.models.clone_model(logits_head)
 
   @parameterized.named_parameters(
       {
@@ -76,8 +76,8 @@ class TwoTowerLogitsHeadTest(
     treatment_embedding = tf.ones((5, 6))
     inputs = (control_embedding, treatment_embedding)
     layer = self._get_layer(
-        control_head=tf_keras.layers.Dense(1, kernel_initializer="ones"),
-        treatment_head=tf_keras.layers.Dense(1, kernel_initializer="ones"),
+        control_head=tf.keras.layers.Dense(1, kernel_initializer="ones"),
+        treatment_head=tf.keras.layers.Dense(1, kernel_initializer="ones"),
         layering_method=layering_method,
         linear_layering_config=linear_layering_config,
     )
@@ -115,18 +115,18 @@ class TwoTowerLogitsHeadTest(
       linear_layering_config = two_tower_logits_head.LinearLayeringConfig()
 
     # Build dummy model.
-    inputs = tf_keras.Input(shape=(1,))
-    control_embedding = tf_keras.layers.Dense(
+    inputs = tf.keras.Input(shape=(1,))
+    control_embedding = tf.keras.layers.Dense(
         10, use_bias=False, kernel_initializer="ones", name="control_tower"
     )(inputs)
-    treatment_embedding = tf_keras.layers.Dense(
+    treatment_embedding = tf.keras.layers.Dense(
         6, use_bias=False, kernel_initializer="ones", name="treatment_tower"
     )(inputs)
     logits = two_tower_logits_head.TwoTowerLogitsHead(
-        control_head=tf_keras.layers.Dense(
+        control_head=tf.keras.layers.Dense(
             1, use_bias=False, kernel_initializer="ones", name="control_head"
         ),
-        treatment_head=tf_keras.layers.Dense(
+        treatment_head=tf.keras.layers.Dense(
             1, use_bias=False, kernel_initializer="ones", name="treatment_head"
         ),
         layering_config=two_tower_logits_head.LayeringConfig(
@@ -135,7 +135,7 @@ class TwoTowerLogitsHeadTest(
         ),
         name="logits_head",
     )((control_embedding, treatment_embedding))
-    model = tf_keras.Model(inputs=inputs, outputs=logits)
+    model = tf.keras.Model(inputs=inputs, outputs=logits)
 
     def _get_kernel(name: str):
       if name == "control_head":
@@ -154,9 +154,9 @@ class TwoTowerLogitsHeadTest(
     with tf.GradientTape() as tape:
       _, treatment_logits = model(tf.ones((3, 1)), training=True)
       loss = tf.reduce_mean(
-          tf_keras.losses.mse(tf.ones((3, 1)), treatment_logits)
+          tf.keras.losses.mse(tf.ones((3, 1)), treatment_logits)
       )
-    optimizer = tf_keras.optimizers.SGD(learning_rate=0.1)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     grads = tape.gradient(loss, model.trainable_weights)
     optimizer.apply_gradients(zip(grads, model.trainable_weights))
 
@@ -176,8 +176,8 @@ class TwoTowerLogitsHeadTest(
 
   def test_different_logit_shapes_raises_error(self):
     layer = two_tower_logits_head.TwoTowerLogitsHead(
-        control_head=tf_keras.layers.Dense(1),
-        treatment_head=tf_keras.layers.Dense(2),
+        control_head=tf.keras.layers.Dense(1),
+        treatment_head=tf.keras.layers.Dense(2),
     )
     inputs = (tf.zeros(3, 1), tf.ones(3, 1))
     with self.assertRaises(ValueError):

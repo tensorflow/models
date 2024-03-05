@@ -17,7 +17,7 @@ import json
 import sys
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.pixel.tasks import classification
 

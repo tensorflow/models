@@ -14,7 +14,7 @@
 
 """Tests for registry."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.core import registry
 
 

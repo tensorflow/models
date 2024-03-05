@@ -14,7 +14,7 @@
 
 """Tests for head."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.projects.const_cl.configs import head as head_cfg
 
 

@@ -15,7 +15,7 @@
 """Flags related to distributed execution."""
 
 from absl import flags
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.utils.flags._conventions import help_wrap
 

@@ -16,7 +16,7 @@
 
 # Import libraries
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.vision.ops import mask_ops
 
 

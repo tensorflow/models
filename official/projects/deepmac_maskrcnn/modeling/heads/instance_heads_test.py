@@ -17,7 +17,7 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.deepmac_maskrcnn.modeling.heads import instance_heads as deep_instance_heads
 

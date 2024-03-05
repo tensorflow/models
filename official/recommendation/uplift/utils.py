@@ -15,7 +15,7 @@
 """Common utilities for the Keras uplift library."""
 
 from typing import Tuple
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def expand_to_match_rank(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:

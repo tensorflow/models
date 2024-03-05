@@ -15,13 +15,13 @@
 """Contains definitions of box sampler."""
 
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.ops import sampling_ops
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class BoxSampler(tf_keras.layers.Layer):
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class BoxSampler(tf.keras.layers.Layer):
   """Creates a BoxSampler to sample positive and negative boxes."""
 
   def __init__(self,

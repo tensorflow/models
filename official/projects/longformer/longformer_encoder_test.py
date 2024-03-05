@@ -16,7 +16,7 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from official.projects.longformer.longformer_encoder import LongformerEncoder

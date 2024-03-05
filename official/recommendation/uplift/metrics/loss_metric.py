@@ -19,14 +19,14 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class LossMetric(tf_keras.metrics.Metric):
+@tf.keras.utils.register_keras_serializable(package="Uplift")
+class LossMetric(tf.keras.metrics.Metric):
   """Computes a loss sliced by treatment group.
 
   Note that the prediction tensor is expected to be of type
@@ -34,7 +34,7 @@ class LossMetric(tf_keras.metrics.Metric):
 
   Example standalone usage:
 
-  >>> sliced_loss = LossMetric(tf_keras.losses.mean_squared_error)
+  >>> sliced_loss = LossMetric(tf.keras.losses.mean_squared_error)
   >>> y_true = tf.constant([0, 0, 2, 2])
   >>> y_pred = types.TwoTowerTrainingOutputs(
   ...     true_logits=tf.constant([1, 2, 3, 4])
@@ -51,8 +51,8 @@ class LossMetric(tf_keras.metrics.Metric):
 
   >>> model.compile(
   ...     optimizer="sgd",
-  ...     loss=TrueLogitsLoss(tf_keras.losses.mean_squared_error),
-  ...     metrics=[LossMetric(tf_keras.losses.mean_squared_error)]
+  ...     loss=TrueLogitsLoss(tf.keras.losses.mean_squared_error),
+  ...     metrics=[LossMetric(tf.keras.losses.mean_squared_error)]
   ... )
   """
 
@@ -86,7 +86,7 @@ class LossMetric(tf_keras.metrics.Metric):
       self._loss_fn_kwargs.update({"from_logits": from_logits})
 
     self._treatment_sliced_loss = treatment_sliced_metric.TreatmentSlicedMetric(
-        tf_keras.metrics.Mean(name=name, dtype=dtype)
+        tf.keras.metrics.Mean(name=name, dtype=dtype)
     )
 
   def update_state(
@@ -131,14 +131,14 @@ class LossMetric(tf_keras.metrics.Metric):
 
   def get_config(self) -> dict[str, Any]:
     config = super().get_config()
-    config["loss_fn"] = tf_keras.utils.serialize_keras_object(self._loss_fn)
+    config["loss_fn"] = tf.keras.utils.serialize_keras_object(self._loss_fn)
     config["from_logits"] = self._from_logits
     config.update(self._loss_fn_kwargs)
     return config
 
   @classmethod
   def from_config(cls, config: dict[str, Any]) -> LossMetric:
-    config["loss_fn"] = tf_keras.utils.deserialize_keras_object(
+    config["loss_fn"] = tf.keras.utils.deserialize_keras_object(
         config["loss_fn"]
     )
     return LossMetric(**config)

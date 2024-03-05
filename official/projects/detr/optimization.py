@@ -15,7 +15,7 @@
 """Customized optimizer to match paper results."""
 
 import dataclasses
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.modeling import optimization
 from official.nlp import optimization as nlp_optimization
 

@@ -17,7 +17,7 @@ import os
 import random
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.nlp.data import tagging_data_lib
 from official.nlp.tools import tokenization

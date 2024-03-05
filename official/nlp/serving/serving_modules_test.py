@@ -17,7 +17,7 @@
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from sentencepiece import SentencePieceTrainer
 from official.core import export_base

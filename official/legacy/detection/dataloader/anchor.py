@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import collections
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.legacy.detection.utils import box_utils
 from official.vision.ops import iou_similarity
 from official.vision.utils.object_detection import argmax_matcher

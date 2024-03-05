@@ -14,7 +14,7 @@
 
 """Tests for utils."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.perceiver.modeling.layers import utils
 

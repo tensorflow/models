@@ -21,7 +21,7 @@ from __future__ import print_function
 import functools
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations

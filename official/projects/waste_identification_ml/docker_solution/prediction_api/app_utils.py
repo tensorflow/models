@@ -21,7 +21,7 @@ import sys
 import types
 from typing import Any, Callable
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 # sys.path.append is used as preprocessing.py. Will be imported after cloning.
 # 'tensorflow_models' project from github

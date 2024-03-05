@@ -17,7 +17,7 @@ from typing import Any, Mapping, Optional
 
 from absl import flags
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.projects.videoglue.datasets import action_localization

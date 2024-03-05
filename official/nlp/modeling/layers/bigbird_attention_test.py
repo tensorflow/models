@@ -14,7 +14,7 @@
 
 """Tests for official.nlp.projects.bigbird.attention."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.nlp.modeling.layers import bigbird_attention as attention
 

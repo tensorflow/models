@@ -17,7 +17,7 @@ import os
 from typing import Any, Mapping, Optional
 
 from dmvr import video_dataset
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.videoglue.datasets.common import utils
 from official.vision.ops import augment

@@ -14,7 +14,7 @@
 
 """BERT model input pipelines."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def decode_record(record, name_to_features):

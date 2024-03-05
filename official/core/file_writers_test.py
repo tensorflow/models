@@ -16,7 +16,7 @@
 
 import os
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.core import file_writers
 from official.core import tf_example_builder

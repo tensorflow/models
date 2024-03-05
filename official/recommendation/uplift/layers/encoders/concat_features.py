@@ -16,13 +16,13 @@
 
 from typing import Mapping, Sequence
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import types
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class ConcatFeatures(tf_keras.layers.Layer):
+@tf.keras.utils.register_keras_serializable(package="Uplift")
+class ConcatFeatures(tf.keras.layers.Layer):
   """Concatenates features into a single dense tensor.
 
   Takes a dictionary of feature tensors as input and concatenates the specified

@@ -15,7 +15,7 @@
 """Tests for true_logits_loss."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift.losses import true_logits_loss
@@ -38,32 +38,32 @@ class TrueLogitsLossTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.product(
       (
           dict(
-              reduction_strategy=tf_keras.losses.Reduction.NONE,
+              reduction_strategy=tf.keras.losses.Reduction.NONE,
               reduction_op=tf.identity,
           ),
           dict(
-              reduction_strategy=tf_keras.losses.Reduction.SUM,
+              reduction_strategy=tf.keras.losses.Reduction.SUM,
               reduction_op=tf.reduce_sum,
           ),
           dict(
-              reduction_strategy=tf_keras.losses.Reduction.SUM_OVER_BATCH_SIZE,
+              reduction_strategy=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE,
               reduction_op=tf.reduce_mean,
           ),
       ),
       (
           dict(
-              loss_fn=tf_keras.losses.mean_squared_error, loss_fn_kwargs=dict()
+              loss_fn=tf.keras.losses.mean_squared_error, loss_fn_kwargs=dict()
           ),
           dict(
-              loss_fn=tf_keras.losses.mean_absolute_percentage_error,
+              loss_fn=tf.keras.losses.mean_absolute_percentage_error,
               loss_fn_kwargs=dict(),
           ),
           dict(
-              loss_fn=tf_keras.losses.huber,
+              loss_fn=tf.keras.losses.huber,
               loss_fn_kwargs=dict(delta=0.2),
           ),
           dict(
-              loss_fn=tf_keras.losses.categorical_crossentropy,
+              loss_fn=tf.keras.losses.categorical_crossentropy,
               loss_fn_kwargs=dict(from_logits=True),
           ),
       ),

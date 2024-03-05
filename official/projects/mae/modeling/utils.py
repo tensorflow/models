@@ -15,7 +15,7 @@
 """Utils for MAE."""
 
 import math
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.modeling import tf_utils
 
 

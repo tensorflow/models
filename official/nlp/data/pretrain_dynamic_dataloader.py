@@ -16,7 +16,7 @@
 from typing import Optional, Tuple
 
 import dataclasses
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.core import config_definitions as cfg
 from official.core import input_reader

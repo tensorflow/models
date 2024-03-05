@@ -15,7 +15,7 @@
 """Video SSL datasets."""
 
 from typing import Dict, Tuple, Optional
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.video_ssl.dataloaders import video_ssl_input
 

@@ -20,7 +20,7 @@ from typing import Any, Iterable, Tuple
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -48,7 +48,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
                                    stochastic_depth_drop_rate, se_ratio):
     input_size = 128
     filter_size = 256
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, filter_size), batch_size=1)
     block = block_fn(
         filter_size,
@@ -98,8 +98,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     layer_scale = nn_blocks.LayerScale(init_values)
 
     # Define optimizer and loss function
-    optimizer = tf_keras.optimizers.Adam()
-    loss_fn = tf_keras.losses.MeanSquaredError()
+    optimizer = tf.keras.optimizers.Adam()
+    loss_fn = tf.keras.losses.MeanSquaredError()
 
     # Train the model for one step
     with tf.GradientTape() as tape:
@@ -120,7 +120,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
                                      stochastic_depth_drop_rate, se_ratio):
     input_size = 128
     filter_size = 256
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, filter_size * 4), batch_size=1)
     block = block_fn(
         filter_size,
@@ -148,7 +148,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     input_size = 128
     in_filters = 24
     out_filters = 40
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1)
     block = block_fn(
         in_filters=in_filters,
@@ -187,7 +187,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
       expand_ratio,
   ):
     input_size = 128
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1
     )
     block = nn_blocks.UniversalInvertedBottleneckBlock(
@@ -225,7 +225,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
       layer_scale_init_value,
   ):
     input_size = 128
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1
     )
     block = nn_blocks.UniversalInvertedBottleneckBlock(
@@ -272,7 +272,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     input_size = 128
     in_filters = 24
     out_filters = 24
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1)
     block = block_fn(
         in_filters=in_filters,
@@ -364,7 +364,7 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
           filters=filters // 2, strides=1, batch_norm_first=True)
       test_layer = nn_blocks.ReversibleLayer(f, g)
       test_layer.build(input_tensor.shape)
-      optimizer = tf_keras.optimizers.SGD(learning_rate=0.01)
+      optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 
     @tf.function
     def step_fn():
@@ -399,7 +399,7 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
           filters=filters // 2, strides=1, batch_norm_first=False)
       test_layer = nn_blocks.ReversibleLayer(f, g)
       test_layer(input_tensor, training=False)  # init weights
-      optimizer = tf_keras.optimizers.SGD(learning_rate=0.01)
+      optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 
     @tf.function
     def step_fn():
@@ -451,7 +451,7 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
       auto_grad_layer = nn_blocks.ReversibleLayer(
           f_auto, g_auto, manual_grads=False)
       auto_grad_layer(input_tensor)  # init weights
-      # Clone all weights (tf_keras.layers.Layer has no .clone())
+      # Clone all weights (tf.keras.layers.Layer has no .clone())
       auto_grad_layer._f.set_weights(manual_grad_layer._f.get_weights())
       auto_grad_layer._g.set_weights(manual_grad_layer._g.get_weights())
 
@@ -490,7 +490,7 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
 # at any point, the list passed to the config object will be filled with a
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
-@tf_keras.utils.register_keras_serializable(package='TestOnlyAttention')
+@tf.keras.utils.register_keras_serializable(package='TestOnlyAttention')
 class ValidatedAttentionLayer(nn_layers.MultiHeadAttention):
 
   def __init__(self, call_list, **kwargs):
@@ -521,8 +521,8 @@ class ValidatedAttentionLayer(nn_layers.MultiHeadAttention):
 # at any point, the list passed to the config object will be filled with a
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
-@tf_keras.utils.register_keras_serializable(package='TestOnlyFeedforward')
-class ValidatedFeedforwardLayer(tf_keras.layers.Layer):
+@tf.keras.utils.register_keras_serializable(package='TestOnlyFeedforward')
+class ValidatedFeedforwardLayer(tf.keras.layers.Layer):
 
   def __init__(self, call_list, activation, **kwargs):
     super(ValidatedFeedforwardLayer, self).__init__(**kwargs)
@@ -531,7 +531,7 @@ class ValidatedFeedforwardLayer(tf_keras.layers.Layer):
 
   def build(self, input_shape):
     hidden_size = input_shape[-1]
-    self._feedforward_dense = tf_keras.layers.EinsumDense(
+    self._feedforward_dense = tf.keras.layers.EinsumDense(
         '...x,xy->...y',
         output_shape=hidden_size,
         bias_axes='y',
@@ -553,7 +553,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerLayerTest, self).tearDown()
-    tf_keras.mixed_precision.set_global_policy('float32')
+    tf.keras.mixed_precision.set_global_policy('float32')
 
   @parameterized.parameters(None, 2)
   def test_layer_creation(self, max_attention_inference_parallelism):
@@ -575,7 +575,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
@@ -611,7 +611,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation=None)
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
@@ -642,9 +642,9 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
@@ -672,11 +672,11 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         max_attention_inference_parallelism=max_attention_inference_parallelism)
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(data_tensor, output_tensor)
+    model = tf.keras.Model(data_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -716,13 +716,13 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation=None)
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -760,13 +760,13 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -784,7 +784,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
   def test_layer_invocation_with_float16_dtype(self):
-    tf_keras.mixed_precision.set_global_policy('mixed_float16')
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     sequence_length = 21
     width = 80
 
@@ -802,13 +802,13 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -841,10 +841,10 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=10,
         inner_dim=2048,
         inner_activation='relu',
-        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02))
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     output = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output.shape.as_list())
@@ -872,13 +872,13 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -897,7 +897,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
 
     # Create a new model from the old config, and copy the weights. These models
     # should have identical outputs.
-    new_model = tf_keras.Model.from_config(serialized_data)
+    new_model = tf.keras.Model.from_config(serialized_data)
     new_model.set_weights(model.get_weights())
     output = new_model.predict([input_data, mask_data])
 
@@ -938,13 +938,13 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation=None)
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -960,7 +960,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     serialized_data = model.get_config()
     # Create a new model from the old config, and copy the weights. These models
     # should have identical outputs.
-    new_model = tf_keras.Model.from_config(serialized_data)
+    new_model = tf.keras.Model.from_config(serialized_data)
     new_model.set_weights(model.get_weights())
     output = new_model.predict([input_data, mask_data])
 
@@ -1000,7 +1000,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
       kv_strides,
   ):
     input_size = 128
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=batch_size
     )
     features = nn_blocks.MultiHeadSelfAttentionBlock(

@@ -14,7 +14,7 @@
 
 """Tests for transformer."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.detr.modeling import transformer
 

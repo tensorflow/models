@@ -16,7 +16,7 @@
 
 import gin
 import gin.tf.external_configurables
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 # Tensorflow.
-gin.external_configurable(tf_keras.layers.experimental.SyncBatchNormalization)
+gin.external_configurable(tf.keras.layers.experimental.SyncBatchNormalization)

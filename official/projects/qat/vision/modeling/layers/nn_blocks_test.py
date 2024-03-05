@@ -17,7 +17,7 @@
 from typing import Any, Iterable, Tuple
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -45,7 +45,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
                                      stochastic_depth_drop_rate, se_ratio):
     input_size = 128
     filter_size = 256
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, filter_size * 4), batch_size=1)
     block = block_fn(
         filter_size,
@@ -73,7 +73,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     input_size = 128
     in_filters = 24
     out_filters = 40
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1)
     block = block_fn(
         in_filters=in_filters,
@@ -113,7 +113,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
       expand_ratio,
   ):
     input_size = 128
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1
     )
     block = nn_blocks.MaybeDwInvertedBottleneckBlockQuantized(
@@ -166,7 +166,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
         input_size // strides,
         out_filters,
     ]
-    inputs = tf_keras.Input(shape=input_shape, batch_size=1)
+    inputs = tf.keras.Input(shape=input_shape, batch_size=1)
     block = nn_blocks.MaybeDwInvertedBottleneckBlockQuantized(
         in_filters=in_filters,
         out_filters=out_filters,
@@ -180,7 +180,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
     self.assertAllEqual(features.shape.as_list(), output_shape)
 
-    model = tf_keras.Model(inputs=inputs, outputs=features)
+    model = tf.keras.Model(inputs=inputs, outputs=features)
     input_data = tf.random.uniform(
         (1, input_size, input_size, in_filters), minval=-1.0, maxval=1.0
     )
@@ -215,7 +215,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     tf.random.set_seed(42)
 
     input_size = 128
-    inputs = tf_keras.Input(
+    inputs = tf.keras.Input(
         shape=(input_size, input_size, in_filters), batch_size=1
     )
     output_shape = [
@@ -236,11 +236,11 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     )
     features = block(inputs)
     self.assertAllEqual(features.shape.as_list(), output_shape)
-    model = tf_keras.Model(inputs=inputs, outputs=features)
+    model = tf.keras.Model(inputs=inputs, outputs=features)
     model.compile(
-        optimizer=tf_keras.optimizers.Adam(),
-        loss=tf_keras.losses.MeanSquaredError(),
-        metrics=[tf_keras.metrics.MeanSquaredError()],
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[tf.keras.metrics.MeanSquaredError()],
     )
     input_train = tf.random.uniform(
         (1, input_size, input_size, in_filters), minval=-1.0, maxval=1.0

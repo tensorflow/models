@@ -18,7 +18,7 @@ This module defines various input datasets for the Ranking model.
 """
 
 from typing import List
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.ranking.configs import config
 

@@ -15,7 +15,7 @@
 """Tests classification_input.py."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.projects.edgetpu.vision.dataloaders import classification_input
 from official.vision.configs import common
 from official.vision.dataloaders import tfexample_utils

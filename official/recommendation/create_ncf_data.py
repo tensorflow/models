@@ -20,7 +20,7 @@ import json
 # Import libraries
 from absl import app
 from absl import flags
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.recommendation import movielens

@@ -14,15 +14,15 @@
 
 """Keras metric for computing the label variance sliced by treatment group."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 from official.recommendation.uplift.metrics import variance
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class LabelVariance(tf_keras.metrics.Metric):
+@tf.keras.utils.register_keras_serializable(package="Uplift")
+class LabelVariance(tf.keras.metrics.Metric):
   """Computes the overall and treatment sliced label variance.
 
   Note that the prediction tensor is expected to be of type
@@ -49,7 +49,7 @@ class LabelVariance(tf_keras.metrics.Metric):
 
   >>> model.compile(
   ...     optimizer="sgd",
-  ...     loss=TrueLogitsLoss(tf_keras.losses.mean_squared_error),
+  ...     loss=TrueLogitsLoss(tf.keras.losses.mean_squared_error),
   ...     metrics=[LabelVariance()]
   ... )
   """

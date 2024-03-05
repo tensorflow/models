@@ -14,7 +14,7 @@
 
 """Tests for lr_schedule."""
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.modeling.optimization import lr_schedule
 

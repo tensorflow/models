@@ -24,7 +24,7 @@ from typing import Any, Callable, List, Optional, Sequence, Union
 
 import gin
 from six.moves import map
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.common import dataset_fn
 from research.object_detection.utils import label_map_util

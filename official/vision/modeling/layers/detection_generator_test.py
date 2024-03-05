@@ -19,7 +19,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.vision.configs import common
 from official.vision.modeling.layers import detection_generator

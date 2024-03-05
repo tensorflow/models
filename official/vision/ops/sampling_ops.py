@@ -32,7 +32,7 @@ This is originally implemented in TensorFlow Object Detection API.
 """
 
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 def combined_static_and_dynamic_shape(tensor):

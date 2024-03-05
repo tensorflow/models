@@ -15,7 +15,7 @@
 """Define losses."""
 
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from tensorflow.compiler.tf2xla.python import xla
 
 

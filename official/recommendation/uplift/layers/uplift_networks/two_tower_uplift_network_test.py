@@ -15,7 +15,7 @@
 """Tests for two_tower_uplift_network."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift.layers.uplift_networks import two_tower_uplift_network
 
@@ -26,30 +26,30 @@ class TwoTowerUpliftNetworkTest(
 
   def _get_full_layer(self, **kwargs):
     layer = two_tower_uplift_network.TwoTowerUpliftNetwork(
-        backbone=tf_keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
-        control_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(-1.0)
+        backbone=tf.keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
+        control_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(-1.0)
         ),
-        treatment_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(2.0)
+        treatment_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(2.0)
         ),
-        logits_head=tf_keras.layers.Identity(),
+        logits_head=tf.keras.layers.Identity(),
         control_feature_encoder=kwargs.get(
             "control_feature_encoder",
-            tf_keras.layers.Lambda(lambda inputs: inputs["control_inputs"]),
+            tf.keras.layers.Lambda(lambda inputs: inputs["control_inputs"]),
         ),
         control_input_combiner=kwargs.get(
-            "control_input_combiner", tf_keras.layers.Concatenate()
+            "control_input_combiner", tf.keras.layers.Concatenate()
         ),
         treatment_feature_encoder=kwargs.get(
             "treatment_feature_encoder",
-            tf_keras.layers.Lambda(lambda inputs: inputs["treatment_inputs"]),
+            tf.keras.layers.Lambda(lambda inputs: inputs["treatment_inputs"]),
         ),
         treatment_input_combiner=kwargs.get(
-            "treatment_input_combiner", tf_keras.layers.Concatenate()
+            "treatment_input_combiner", tf.keras.layers.Concatenate()
         ),
     )
-    return tf_keras.models.clone_model(layer)
+    return tf.keras.models.clone_model(layer)
 
   def _get_full_layer_inputs(self):
     return {
@@ -60,14 +60,14 @@ class TwoTowerUpliftNetworkTest(
 
   def test_forward_pass_no_control_or_treatment_encoders(self):
     layer = two_tower_uplift_network.TwoTowerUpliftNetwork(
-        backbone=tf_keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
-        control_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(-1.0)
+        backbone=tf.keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
+        control_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(-1.0)
         ),
-        treatment_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(2.0)
+        treatment_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(2.0)
         ),
-        logits_head=tf_keras.layers.Identity(),
+        logits_head=tf.keras.layers.Identity(),
     )
     inputs = {"shared_inputs": tf.ones((3, 3))}
     outputs = layer(inputs)
@@ -78,18 +78,18 @@ class TwoTowerUpliftNetworkTest(
 
   def test_forward_pass_only_control_encoder(self):
     layer = two_tower_uplift_network.TwoTowerUpliftNetwork(
-        backbone=tf_keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
-        control_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(-1.0)
+        backbone=tf.keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
+        control_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(-1.0)
         ),
-        treatment_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(2.0)
+        treatment_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(2.0)
         ),
-        logits_head=tf_keras.layers.Identity(),
-        control_feature_encoder=tf_keras.layers.Lambda(
+        logits_head=tf.keras.layers.Identity(),
+        control_feature_encoder=tf.keras.layers.Lambda(
             lambda inputs: inputs["control_inputs"]
         ),
-        control_input_combiner=tf_keras.layers.Concatenate(),
+        control_input_combiner=tf.keras.layers.Concatenate(),
     )
     inputs = {
         "shared_inputs": tf.ones((3, 3)),
@@ -103,18 +103,18 @@ class TwoTowerUpliftNetworkTest(
 
   def test_forward_pass_only_treatment_encoder(self):
     layer = two_tower_uplift_network.TwoTowerUpliftNetwork(
-        backbone=tf_keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
-        control_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(-1.0)
+        backbone=tf.keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
+        control_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(-1.0)
         ),
-        treatment_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(2.0)
+        treatment_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(2.0)
         ),
-        logits_head=tf_keras.layers.Identity(),
-        treatment_feature_encoder=tf_keras.layers.Lambda(
+        logits_head=tf.keras.layers.Identity(),
+        treatment_feature_encoder=tf.keras.layers.Lambda(
             lambda inputs: inputs["treatment_inputs"]
         ),
-        treatment_input_combiner=tf_keras.layers.Concatenate(),
+        treatment_input_combiner=tf.keras.layers.Concatenate(),
     )
     inputs = {
         "shared_inputs": tf.ones((3, 3)),
@@ -130,22 +130,22 @@ class TwoTowerUpliftNetworkTest(
 
   def test_forward_pass_both_control_and_treatment_encoders(self):
     layer = two_tower_uplift_network.TwoTowerUpliftNetwork(
-        backbone=tf_keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
-        control_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(-1.0)
+        backbone=tf.keras.layers.Lambda(lambda inputs: inputs["shared_inputs"]),
+        control_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(-1.0)
         ),
-        treatment_tower=tf_keras.layers.Dense(
-            1, kernel_initializer=tf_keras.initializers.Constant(2.0)
+        treatment_tower=tf.keras.layers.Dense(
+            1, kernel_initializer=tf.keras.initializers.Constant(2.0)
         ),
-        logits_head=tf_keras.layers.Identity(),
-        control_feature_encoder=tf_keras.layers.Lambda(
+        logits_head=tf.keras.layers.Identity(),
+        control_feature_encoder=tf.keras.layers.Lambda(
             lambda inputs: inputs["control_inputs"]
         ),
-        control_input_combiner=tf_keras.layers.Concatenate(),
-        treatment_feature_encoder=tf_keras.layers.Lambda(
+        control_input_combiner=tf.keras.layers.Concatenate(),
+        treatment_feature_encoder=tf.keras.layers.Lambda(
             lambda inputs: inputs["treatment_inputs"]
         ),
-        treatment_input_combiner=tf_keras.layers.Concatenate(),
+        treatment_input_combiner=tf.keras.layers.Concatenate(),
     )
     inputs = {
         "shared_inputs": tf.ones((3, 3)),
@@ -163,7 +163,7 @@ class TwoTowerUpliftNetworkTest(
   @parameterized.named_parameters(
       {
           "testcase_name": "encoder_without_combiner",
-          "control_feature_encoder": tf_keras.layers.Lambda(
+          "control_feature_encoder": tf.keras.layers.Lambda(
               lambda inputs: inputs["control_inputs"]
           ),
           "control_input_combiner": None,
@@ -171,7 +171,7 @@ class TwoTowerUpliftNetworkTest(
       {
           "testcase_name": "combiner_without_encoder",
           "control_feature_encoder": None,
-          "control_input_combiner": tf_keras.layers.Concatenate(),
+          "control_input_combiner": tf.keras.layers.Concatenate(),
       },
   )
   def test_invalid_control_encoder_combiner_combination_raises_error(
@@ -186,7 +186,7 @@ class TwoTowerUpliftNetworkTest(
   @parameterized.named_parameters(
       {
           "testcase_name": "encoder_without_combiner",
-          "treatment_feature_encoder": tf_keras.layers.Lambda(
+          "treatment_feature_encoder": tf.keras.layers.Lambda(
               lambda inputs: inputs["treatment_inputs"]
           ),
           "treatment_input_combiner": None,
@@ -194,7 +194,7 @@ class TwoTowerUpliftNetworkTest(
       {
           "testcase_name": "combiner_without_encoder",
           "treatment_feature_encoder": None,
-          "treatment_input_combiner": tf_keras.layers.Concatenate(),
+          "treatment_input_combiner": tf.keras.layers.Concatenate(),
       },
   )
   def test_invalid_treatment_encoder_combiner_combination_raises_error(
@@ -223,5 +223,5 @@ class TwoTowerUpliftNetworkTest(
 
 
 if __name__ == "__main__":
-  tf_keras.__internal__.enable_unsafe_deserialization()
+  tf.keras.__internal__.enable_unsafe_deserialization()
   tf.test.main()

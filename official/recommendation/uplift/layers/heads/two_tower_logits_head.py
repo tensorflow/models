@@ -20,7 +20,7 @@ import dataclasses
 import enum
 from typing import Any
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 @enum.unique
@@ -82,8 +82,8 @@ class LayeringConfig:
     )
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class TwoTowerLogitsHead(tf_keras.layers.Layer):
+@tf.keras.utils.register_keras_serializable(package="Uplift")
+class TwoTowerLogitsHead(tf.keras.layers.Layer):
   """Computes control and treatment logits from their respective embeddings.
 
   Takes as input a tuple of control and treatment embeddings and computes
@@ -92,8 +92,8 @@ class TwoTowerLogitsHead(tf_keras.layers.Layer):
 
   def __init__(
       self,
-      control_head: tf_keras.layers.Layer,
-      treatment_head: tf_keras.layers.Layer,
+      control_head: tf.keras.layers.Layer,
+      treatment_head: tf.keras.layers.Layer,
       layering_config: LayeringConfig = LayeringConfig(),
       **kwargs,
   ):
@@ -126,7 +126,7 @@ class TwoTowerLogitsHead(tf_keras.layers.Layer):
       # Build a learnable weight matrix that projects from the control embedding
       # space to the treatment embedding space.
       _, treatment_embedding_shape = input_shapes
-      self._linear_layering = tf_keras.layers.Dense(
+      self._linear_layering = tf.keras.layers.Dense(
           units=treatment_embedding_shape[-1],
           activation=None,
           use_bias=True,
@@ -173,7 +173,7 @@ class TwoTowerLogitsHead(tf_keras.layers.Layer):
         ("control_head", self._control_head),
         ("treatment_head", self._treatment_head),
     ):
-      config[layer_name] = tf_keras.utils.serialize_keras_object(layer)
+      config[layer_name] = tf.keras.utils.serialize_keras_object(layer)
 
     return config
 
@@ -183,6 +183,6 @@ class TwoTowerLogitsHead(tf_keras.layers.Layer):
         config["layering_config"]
     )
     for layer_name in ("control_head", "treatment_head"):
-      config[layer_name] = tf_keras.layers.deserialize(config[layer_name])
+      config[layer_name] = tf.keras.layers.deserialize(config[layer_name])
 
     return cls(**config)

@@ -15,7 +15,7 @@
 """Tests for concat_feature_encoder."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift.layers.encoders import concat_features
 
@@ -92,17 +92,17 @@ class ConcatFeaturesTest(keras_test_case.KerasTestCase, parameterized.TestCase):
       {
           "testcase_name": "none_dimensions",
           "inputs": {
-              "x1": tf_keras.Input(shape=(2, None, 1, 3)),
-              "x2": tf_keras.Input(shape=(2, None, 1, None)),
+              "x1": tf.keras.Input(shape=(2, None, 1, 3)),
+              "x2": tf.keras.Input(shape=(2, None, 1, None)),
           },
           "expected_shape": [None, 2, None, 1, None],
       },
       {
           "testcase_name": "dense_sparse_ragged",
           "inputs": {
-              "dense": tf_keras.Input(shape=(2, None, 1, 3), batch_size=10),
-              "sparse": tf_keras.Input(shape=(2, None, 1, 3), sparse=True),
-              "ragged": tf_keras.Input(shape=(2, None, None, 1), ragged=True),
+              "dense": tf.keras.Input(shape=(2, None, 1, 3), batch_size=10),
+              "sparse": tf.keras.Input(shape=(2, None, 1, 3), sparse=True),
+              "ragged": tf.keras.Input(shape=(2, None, None, 1), ragged=True),
           },
           "expected_shape": [10, 2, None, 1, None],
       },
@@ -111,7 +111,7 @@ class ConcatFeaturesTest(keras_test_case.KerasTestCase, parameterized.TestCase):
     layer = concat_features.ConcatFeatures(feature_names=list(inputs.keys()))
     output = layer(inputs)
 
-    KerasTensor = tf_keras.Input(shape=(1,)).__class__  # pylint: disable=invalid-name
+    KerasTensor = tf.keras.Input(shape=(1,)).__class__  # pylint: disable=invalid-name
     self.assertIsInstance(output, KerasTensor)
     self.assertEqual(tf.TensorShape(expected_shape), output.shape)
 
@@ -205,8 +205,8 @@ class ConcatFeaturesTest(keras_test_case.KerasTestCase, parameterized.TestCase):
       {
           "testcase_name": "keras_input_batch_size",
           "inputs": {
-              "x1": tf_keras.Input(shape=(2, 3), batch_size=10),
-              "x2": tf_keras.Input(shape=(2, 3), batch_size=4),
+              "x1": tf.keras.Input(shape=(2, 3), batch_size=10),
+              "x2": tf.keras.Input(shape=(2, 3), batch_size=4),
           },
       },
   )
@@ -248,8 +248,8 @@ class ConcatFeaturesTest(keras_test_case.KerasTestCase, parameterized.TestCase):
       {
           "testcase_name": "keras_input",
           "inputs": {
-              "x1": tf_keras.Input(shape=(2, 3, 4), batch_size=4),
-              "x2": tf_keras.Input(shape=(2, 3), batch_size=4),
+              "x1": tf.keras.Input(shape=(2, 3, 4), batch_size=4),
+              "x2": tf.keras.Input(shape=(2, 3), batch_size=4),
           },
       },
   )

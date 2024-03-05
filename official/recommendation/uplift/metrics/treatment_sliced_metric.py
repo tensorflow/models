@@ -16,12 +16,12 @@
 
 from typing import Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.recommendation.uplift.metrics import sliced_metric
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
+@tf.keras.utils.register_keras_serializable(package="Uplift")
 class TreatmentSlicedMetric(sliced_metric.SlicedMetric):
   """Computes (weighted) sliced metric values based on treatment group.
 
@@ -34,7 +34,7 @@ class TreatmentSlicedMetric(sliced_metric.SlicedMetric):
   Example usage:
 
   >>> sliced_metric = TreatmentSlicedMetric(
-  ...     metric=tf_keras.metrics.Mean(name="example/mean")
+  ...     metric=tf.keras.metrics.Mean(name="example/mean")
   ... )
   >>> sliced_metric.update_state(
   ...     values=tf.constant([[0], [1], [5]]),
@@ -48,7 +48,7 @@ class TreatmentSlicedMetric(sliced_metric.SlicedMetric):
   }
   """
 
-  def __init__(self, metric: tf_keras.metrics.Metric):
+  def __init__(self, metric: tf.keras.metrics.Metric):
     """Initializes a `TreatmentSlicedMetric` instance.
 
     Args:
@@ -95,9 +95,9 @@ class TreatmentSlicedMetric(sliced_metric.SlicedMetric):
     )
 
   def get_config(self):
-    return {"metric": tf_keras.metrics.serialize(self._metric)}
+    return {"metric": tf.keras.metrics.serialize(self._metric)}
 
   @classmethod
   def from_config(cls, config):
-    config["metric"] = tf_keras.metrics.deserialize(config["metric"])
+    config["metric"] = tf.keras.metrics.deserialize(config["metric"])
     return cls(**config)

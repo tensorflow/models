@@ -15,7 +15,7 @@
 """Util classes and functions."""
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.trackable import autotrackable

@@ -16,7 +16,7 @@
 
 import numpy as np
 from scipy import optimize
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.projects.detr.ops import matchers
 

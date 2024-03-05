@@ -21,7 +21,7 @@ from __future__ import print_function
 import abc
 import re
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.legacy.detection.modeling import checkpoint_utils
 from official.legacy.detection.modeling import learning_rates
 from official.legacy.detection.modeling import optimizers

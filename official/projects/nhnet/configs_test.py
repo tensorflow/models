@@ -14,7 +14,7 @@
 
 """Tests for configs."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.projects.nhnet import configs
 
 BERT2BERT_CONFIG = {

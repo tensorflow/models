@@ -14,7 +14,7 @@
 
 """Test Transformer model."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.legacy.transformer import model_params
 from official.legacy.transformer import transformer

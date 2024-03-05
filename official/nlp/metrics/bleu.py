@@ -25,7 +25,7 @@ import sys
 import unicodedata
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 
 class UnicodeRegex(object):

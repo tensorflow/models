@@ -19,7 +19,7 @@ import tempfile
 
 from absl import app
 from absl import flags
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 
 from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory

@@ -15,7 +15,7 @@
 """Tests for simple."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf
 from official.projects.const_cl.modeling.heads import simple
 
 
