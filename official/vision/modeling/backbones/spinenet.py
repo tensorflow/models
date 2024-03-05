@@ -223,7 +223,7 @@ class SpineNet(tf.keras.Model):
     net = self._build_scale_permuted_network(net=net, input_width=input_width)
     endpoints = self._build_endpoints(net=net)
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     super(SpineNet, self).__init__(inputs=inputs, outputs=endpoints)
 
   def _set_activation_fn(self, activation):
@@ -248,7 +248,7 @@ class SpineNet(tf.keras.Model):
         'residual': nn_blocks.ResidualBlock,
     }
     block_fn = block_fn_candidates[block_fn_cand]
-    _, _, _, num_filters = inputs.get_shape().as_list()
+    _, _, _, num_filters = inputs.shape
 
     if block_fn_cand == 'bottleneck':
       use_projection = not (num_filters == (filters * 4) and strides == 1)
@@ -447,7 +447,7 @@ class SpineNet(tf.keras.Model):
                            target_block_fn,
                            alpha=0.5):
     """Matches resolution and feature dimension."""
-    _, _, _, input_num_filters = inputs.get_shape().as_list()
+    _, _, _, input_num_filters = inputs.shape
     if input_block_fn == 'bottleneck':
       input_num_filters /= 4
     new_num_filters = int(input_num_filters * alpha)

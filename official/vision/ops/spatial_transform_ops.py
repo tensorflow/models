@@ -186,7 +186,7 @@ def multilevel_crop_and_resize(features: Dict[str, tf.Tensor],
     feature_heights = []
     feature_widths = []
     for level in range(min_level, max_level + 1):
-      shape = features[str(level)].get_shape().as_list()
+      shape = features[str(level)].shape
       feature_heights.append(shape[1])
       feature_widths.append(shape[2])
       # Concat tensor of [batch_size, height_l * width_l, num_filters] for each
@@ -357,10 +357,10 @@ def _selective_crop_and_resize(features: tf.Tensor,
       representing the cropped features.
   """
   (batch_size, num_levels, max_feature_height, max_feature_width,
-   num_filters) = features.get_shape().as_list()
+   num_filters) = features.shape
   if batch_size is None:
     batch_size = tf.shape(features)[0]
-  _, num_boxes, _ = boxes.get_shape().as_list()
+  _, num_boxes, _ = boxes.shape
 
   kernel_y, kernel_x, box_gridy0y1, box_gridx0x1 = _compute_grid_positions(
       boxes, boundaries, output_size, sample_offset)
@@ -477,7 +477,7 @@ def crop_mask_in_target_box(masks: tf.Tensor,
     boxes = tf.cast(boxes, tf.float32)
     target_boxes = tf.cast(target_boxes, tf.float32)
 
-    batch_size, num_masks, height, width = masks.get_shape().as_list()
+    batch_size, num_masks, height, width = masks.shape
     if batch_size is None:
       batch_size = tf.shape(masks)[0]
     masks = tf.reshape(masks, [batch_size * num_masks, height, width, 1])
@@ -544,7 +544,7 @@ def nearest_upsampling(data: tf.Tensor,
     return tf.keras.layers.UpSampling2D(size=(scale, scale),
                                         interpolation='nearest')(data)
   with tf.name_scope('nearest_upsampling'):
-    bs, _, _, c = data.get_shape().as_list()
+    bs, _, _, c = data.shape
     shape = tf.shape(input=data)
     h = shape[1]
     w = shape[2]
@@ -573,12 +573,12 @@ def _gather_rows_from_matrix(input_matrix: tf.Tensor,
   Returns:
     A tensor in shape (output_h, input_w) which stores the gathered rows.
   """
-  input_matrix_shape = input_matrix.get_shape().as_list()
+  input_matrix_shape = input_matrix.shape
   if len(input_matrix_shape) != 2:
     raise ValueError(
         'Expected the input_matrix tensor (input_h, input_w) has rank == 2, '
         'was: %s' % input_matrix_shape)
-  row_indices_shape = row_indices.get_shape().as_list()
+  row_indices_shape = row_indices.shape
   if len(row_indices_shape) != 1:
     raise ValueError(
         'Expected the row_indices tensor (output_h) has rank == 1, was: %s' %
@@ -609,13 +609,13 @@ def bilinear_resize_to_bbox(
     same dtype as the input if it's float32, float16, bfloat16, otherwise the
     result is float32.
   """
-  images_shape = images.get_shape().as_list()
+  images_shape = images.shape
   images_rank = len(images_shape)
   if images_rank < 3:
     raise ValueError(
         'Expected the input images (batch_size, height, width, ...) '
         'has rank >= 3, was: %s' % images_shape)
-  bbox_shape = bbox.get_shape().as_list()
+  bbox_shape = bbox.shape
   if bbox_shape[-1] != 4:
     raise ValueError(
         'Expected the last dimension of `bbox` has size == 4, but the shape '
@@ -828,7 +828,7 @@ def bilinear_resize_with_crop_and_pad(images: tf.Tensor,
     same dtype as the input if it's float32, float16, bfloat16, otherwise the
     result is float32.
   """
-  images_shape = images.get_shape().as_list()
+  images_shape = images.shape
   images_rank = len(images_shape)
   if images_rank < 3:
     raise ValueError(
@@ -881,7 +881,7 @@ def bilinear_resize_with_pad(
     same dtype as the input if it's float32, float16, bfloat16, otherwise the
     result is float32.
   """
-  images_shape = images.get_shape().as_list()
+  images_shape = images.shape
   images_rank = len(images_shape)
   if images_rank < 3:
     raise ValueError(
@@ -890,7 +890,7 @@ def bilinear_resize_with_pad(
     )
   batch_size = tf.shape(images)[0]
   rescale_size = tf.convert_to_tensor(rescale_size)
-  if len(rescale_size.get_shape().as_list()) == 1:
+  if len(rescale_size.shape) == 1:
     rescale_size = tf.broadcast_to(rescale_size, [batch_size, 2])
 
   # Rescales the images, applies the offset and pastes to the output canvas.

@@ -448,7 +448,7 @@ def _mean_image_subtraction(image, means, num_channels):
       than three or if the number of channels in `image` doesn't match the
       number of values in `means`.
   """
-  if image.get_shape().ndims != 3:
+  if image.shape.ndims != 3:
     raise ValueError('Input must be of size [height, width, C>0]')
 
   if len(means) != num_channels:

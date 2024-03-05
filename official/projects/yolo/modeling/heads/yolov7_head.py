@@ -133,7 +133,7 @@ class YoloV7DetectionHead(tf.keras.layers.Layer):
       x = self._implicit_adds[i] + x
       x = self._convs[i](x)
       x = self._implicit_muls[i] * x
-      _, h, w, _ = x.get_shape().as_list()
+      _, h, w, _ = x.shape
       x = tf.reshape(x, [-1, h, w, self._num_anchors, self._num_classes + 5])
       outputs[str(level)] = x
     return outputs

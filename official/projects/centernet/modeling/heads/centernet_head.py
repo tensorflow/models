@@ -77,7 +77,7 @@ class CenterNetHead(tf.keras.Model):
       ]
 
     self._output_specs = {
-        key: [value[i].get_shape() for i in range(self._num_inputs)]
+        key: [value[i].shape for i in range(self._num_inputs)]
         for key, value in outputs.items()
     }
 

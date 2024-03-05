@@ -425,7 +425,7 @@ class PanopticQualityV2(tf.keras.metrics.Metric):
     gt_instance_mask = tf.convert_to_tensor(y_true['instance_mask'], tf.int32)
 
     if self._rescale_predictions:
-      _, height, width = gt_category_mask.get_shape().as_list()
+      _, height, width = gt_category_mask.shape
       # Instead of cropping the masks to the original image shape (dynamic),
       # here we keep the mask shape (fixed) and ignore the pixels outside the
       # original image shape.
@@ -465,7 +465,7 @@ class PanopticQualityV2(tf.keras.metrics.Metric):
       gt_category_mask: tf.Tensor,
       gt_instance_mask: tf.Tensor,
   ):
-    _, height, width = category_mask.get_shape().as_list()
+    _, height, width = category_mask.shape
 
     # (batch_size, num_detections + 1)
     instance_class_ids = _get_instance_class_ids(

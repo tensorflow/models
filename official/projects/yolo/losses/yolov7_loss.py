@@ -282,7 +282,7 @@ class YoloV7Loss(tf.keras.losses.Loss):
 
     for i in range(self._num_layers):
       anchors = self._anchors[i]
-      _, _, h, w, _ = predictions[str(i + 3)].get_shape().as_list()
+      _, _, h, w, _ = predictions[str(i + 3)].shape
       gain = tf.constant([1, w, h, w, h, 1], dtype=tf.float32)
 
       t = labels * gain
@@ -836,7 +836,7 @@ class YoloV7LossOTA(tf.keras.losses.Loss):
 
     for i in range(self._num_layers):
       anchors = self._anchors[i]
-      _, _, h, w, _ = predictions[str(i + 3)].get_shape().as_list()
+      _, _, h, w, _ = predictions[str(i + 3)].shape
       gain = tf.constant([1, w, h, w, h, 1], dtype=tf.float32)
 
       t = labels * gain

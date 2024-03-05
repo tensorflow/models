@@ -35,7 +35,7 @@ def _batch_count_ones(masks: tf.Tensor,
     A tensor which contains the count of non-zero elements for each mask in the
     batch. The rank of the resulting tensor is equal to rank(masks) - 2.
   """
-  masks_shape = masks.get_shape().as_list()
+  masks_shape = masks.shape
   if len(masks_shape) < 2:
     raise ValueError(
         'Expected the input masks (..., height, width) has rank >= 2, was: %s' %

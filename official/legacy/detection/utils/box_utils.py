@@ -90,7 +90,7 @@ def jitter_boxes(boxes, noise_scale=0.025):
         boxes.shape[-1]))
 
   with tf.name_scope('jitter_boxes'):
-    bbox_jitters = tf.random.normal(boxes.get_shape(), stddev=noise_scale)
+    bbox_jitters = tf.random.normal(boxes.shape, stddev=noise_scale)
     ymin = boxes[..., 0:1]
     xmin = boxes[..., 1:2]
     ymax = boxes[..., 2:3]
@@ -625,7 +625,7 @@ def top_k_boxes(boxes, scores, k):
   with tf.name_scope('top_k_boxes'):
     selected_scores, top_k_indices = tf.nn.top_k(scores, k=k, sorted=True)
 
-    batch_size, _ = scores.get_shape().as_list()
+    batch_size, _ = scores.shape
     if batch_size == 1:
       selected_boxes = tf.squeeze(
           tf.gather(boxes, top_k_indices, axis=1), axis=1)

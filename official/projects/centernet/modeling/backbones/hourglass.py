@@ -219,7 +219,7 @@ class Hourglass(tf.keras.Model):
             norm_epsilon=self._norm_epsilon
         )(x_downsampled)
 
-    self._output_specs = {l: all_heatmaps[l].get_shape() for l in all_heatmaps}
+    self._output_specs = {l: all_heatmaps[l].shape for l in all_heatmaps}
 
     super().__init__(inputs=inputs, outputs=all_heatmaps, **kwargs)
 

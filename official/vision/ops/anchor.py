@@ -243,7 +243,7 @@ class AnchorLabeler(object):
     att_targets = {}
     if gt_attributes:
       for k, v in gt_attributes.items():
-        att_size = v.get_shape().as_list()[-1]
+        att_size = v.shape[-1]
         att_mask = tf.tile(cls_mask, [1, att_size])
         att_targets[k] = self.target_gather(v, match_indices, att_mask, 0.0)
 

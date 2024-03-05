@@ -72,9 +72,9 @@ class SegmentationLoss:
     Returns:
        A 0-D float which stores the overall loss of the batch.
     """
-    _, height, width, num_classes = logits.get_shape().as_list()
+    _, height, width, num_classes = logits.shape
     output_dtype = logits.dtype
-    num_layers = labels.get_shape().as_list()[-1]
+    num_layers = labels.shape[-1]
     if not self._use_binary_cross_entropy:
       if num_layers > 1:
         raise ValueError(
@@ -171,7 +171,7 @@ class SegmentationLoss:
     Returns:
        A float tensor in shape (batch_size, height, width, num_classes).
     """
-    num_classes = logits.get_shape().as_list()[-1]
+    num_classes = logits.shape[-1]
 
     if self._gt_is_matting_map:
       # (batch_size, height, width, num_classes=2)
@@ -235,7 +235,7 @@ class SegmentationLoss:
 
 def get_actual_mask_scores(logits, labels, ignore_label):
   """Gets actual mask scores."""
-  _, height, width, num_classes = logits.get_shape().as_list()
+  _, height, width, num_classes = logits.shape
   batch_size = tf.shape(logits)[0]
   logits = tf.stop_gradient(logits)
   labels = tf.image.resize(

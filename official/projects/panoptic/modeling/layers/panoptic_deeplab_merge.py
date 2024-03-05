@@ -298,7 +298,7 @@ def _merge_semantic_and_instance_maps(
   Returns:
     panoptic_prediction: A tf.Tensor with shape [batch, height, width].
   """
-  prediction_shape = semantic_prediction.get_shape().as_list()
+  prediction_shape = semantic_prediction.shape
   # This implementation only supports batch size of 1. Since model construction
   # might lose batch size information (and leave it to None), override it here.
   prediction_shape[0] = 1

@@ -103,7 +103,7 @@ class UNet3DDecoder(tf.keras.Model):
       # Apply deconvolution or upsampling.
       if use_deconvolution:
         x = layers.Conv3DTranspose(
-            filters=x.get_shape().as_list()[channel_dim],
+            filters=x.shape[channel_dim],
             kernel_size=pool_size,
             strides=(2, 2, 2))(
                 x)
@@ -113,7 +113,7 @@ class UNet3DDecoder(tf.keras.Model):
       # Concatenate upsampled features with input features from one layer up.
       x = tf.concat([x, tf.cast(inputs[str(layer_depth)], dtype=x.dtype)],
                     axis=channel_dim)
-      filter_num = inputs[str(layer_depth)].get_shape().as_list()[channel_dim]
+      filter_num = inputs[str(layer_depth)].shape[channel_dim]
       x = nn_blocks_3d.BasicBlock3DVolume(
           filters=[filter_num, filter_num],
           strides=(1, 1, 1),
@@ -127,7 +127,7 @@ class UNet3DDecoder(tf.keras.Model):
               x)
 
     feats = {'1': x}
-    self._output_specs = {l: feats[l].get_shape() for l in feats}
+    self._output_specs = {l: feats[l].shape for l in feats}
 
     super(UNet3DDecoder, self).__init__(inputs=inputs, outputs=feats, **kwargs)
 

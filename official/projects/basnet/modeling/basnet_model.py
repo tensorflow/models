@@ -197,7 +197,7 @@ class BASNetEncoder(tf.keras.Model):
       endpoints[str(i)] = x
       if spec[3]:
         x = tf.keras.layers.MaxPool2D(pool_size=2, strides=2, padding='same')(x)
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     super(BASNetEncoder, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
 
@@ -423,7 +423,7 @@ class BASNetDecoder(tf.keras.layers.Layer):
       sup[str(i)] = self._sigmoid(usmp(conv(sup[str(i)])))
 
     self._output_specs = {
-        str(order): sup[str(order)].get_shape()
+        str(order): sup[str(order)].shape
         for order in range(0, len(BASNET_DECODER_SPECS))
     }
 

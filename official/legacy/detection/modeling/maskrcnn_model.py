@@ -78,7 +78,7 @@ class MaskrcnnModel(base_model.Model):
     model_outputs = {}
 
     image = inputs['image']
-    _, image_height, image_width, _ = image.get_shape().as_list()
+    _, image_height, image_width, _ = image.shape
     backbone_features = self._backbone_fn(image, is_training)
     fpn_features = self._fpn_fn(backbone_features, is_training)
 

@@ -151,7 +151,7 @@ class Featurizer(tf.keras.layers.Layer):
         batch_indices,
         x,
         shape=[batch_size] + self._image_shape)
-    self._output_specs = image.get_shape()
+    self._output_specs = image.shape
     return image
 
   def get_config(self) -> Mapping[str, Any]:

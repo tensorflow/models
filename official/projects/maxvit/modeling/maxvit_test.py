@@ -40,7 +40,7 @@ class MaxViTBlockTest(tf.test.TestCase):
     )
     out = model(inp, training=False)
 
-    self.assertAllEqual([2, 64, 64, 8], out.get_shape().as_list())
+    self.assertAllEqual([2, 64, 64, 8], out.shape)
     self.assertDTypeEqual(tf.reduce_mean(out).numpy(), np.float32)
 
 
@@ -114,12 +114,12 @@ class MaxViTTest(tf.test.TestCase, parameterized.TestCase):
     add_gap_layer_norm = kwargs.get('add_gap_layer_norm', False)
     if add_gap_layer_norm:
       self.assertAllEqual([input_shape[0], kwargs['representation_size']],
-                          out['pre_logits'].get_shape().as_list())
+                          out['pre_logits'].shape)
 
     # Remove `pre_logits` if exists.
     out.pop('pre_logits', None)
     out = out[max(out.keys())]
-    self.assertAllEqual(kwargs['expected_shape'], out.get_shape().as_list())
+    self.assertAllEqual(kwargs['expected_shape'], out.shape)
     self.assertDTypeEqual(tf.reduce_mean(out).numpy(), np.float32)
 
   def testBuildMaxViTWithConfig(self):

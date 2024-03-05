@@ -71,10 +71,10 @@ class MobilenetEdgeTPU(tf.keras.Model):
     if not isinstance(output, dict):
       # Cast to float32 in case we have a different model dtype
       output = tf.cast(output, tf.float32)
-      self._output_specs = output.get_shape()
+      self._output_specs = output.shape
     else:
       self._output_specs = {
-          feature: output[feature].get_shape() for feature in output
+          feature: output[feature].shape for feature in output
       }
 
     logging.info('Building model %s with params %s',

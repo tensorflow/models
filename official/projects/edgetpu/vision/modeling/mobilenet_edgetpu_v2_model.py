@@ -94,17 +94,17 @@ class MobilenetEdgeTPUV2(tf.keras.Model):
     if not isinstance(output, list):
       # Cast to float32 in case we have a different model dtype
       output = tf.cast(output, tf.float32)
-      self._output_specs = output.get_shape()
+      self._output_specs = output.shape
     else:
       if self.config.features_as_dict:
         # Dict output is required for the decoder ASPP module.
         self._output_specs = {
-            str(i): output[i].get_shape() for i in range(len(output))
+            str(i): output[i].shape for i in range(len(output))
         }
         output = {str(i): output[i] for i in range(len(output))}
       else:
         # edgetpu/tasks/segmentation assumes features as list.
-        self._output_specs = [feat.get_shape() for feat in output]
+        self._output_specs = [feat.shape for feat in output]
 
     logging.info('Building model %s with params %s',
                  model_name,

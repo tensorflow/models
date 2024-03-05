@@ -58,7 +58,7 @@ def _select_top_k_scores(scores_in, pre_nms_num_detections):
     scores and indices: Tensors with shape [batch_size, pre_nms_num_detections,
       num_classes].
   """
-  batch_size, num_anchors, num_class = scores_in.get_shape().as_list()
+  batch_size, num_anchors, num_class = scores_in.shape
   scores_trans = tf.transpose(scores_in, perm=[0, 2, 1])
   scores_trans = tf.reshape(scores_trans, [-1, num_anchors])
 
@@ -118,8 +118,8 @@ def _generate_detections(boxes,
     nmsed_classes = []
     nmsed_scores = []
     valid_detections = []
-    batch_size, _, num_classes_for_box, _ = boxes.get_shape().as_list()
-    _, total_anchors, num_classes = scores.get_shape().as_list()
+    batch_size, _, num_classes_for_box, _ = boxes.shape
+    _, total_anchors, num_classes = scores.shape
     # Selects top pre_nms_num scores and indices before NMS.
     scores, indices = _select_top_k_scores(
         scores, min(total_anchors, pre_nms_num_boxes))
@@ -192,8 +192,8 @@ def _generate_detections_per_image(boxes,
   nmsed_boxes = []
   nmsed_scores = []
   nmsed_classes = []
-  num_classes_for_box = boxes.get_shape().as_list()[1]
-  num_classes = scores.get_shape().as_list()[1]
+  num_classes_for_box = boxes.shape[1]
+  num_classes = scores.shape[1]
   for i in range(num_classes):
     boxes_i = boxes[:, min(num_classes_for_box - 1, i)]
     scores_i = scores[:, i]

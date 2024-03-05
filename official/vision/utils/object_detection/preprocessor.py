@@ -270,7 +270,7 @@ def random_horizontal_flip(image,
 
 def _compute_new_static_size(image, min_dimension, max_dimension):
   """Compute new static shape for resize_to_range method."""
-  image_shape = image.get_shape().as_list()
+  image_shape = image.shape
   orig_height = image_shape[0]
   orig_width = image_shape[1]
   num_channels = image_shape[2]
@@ -394,11 +394,11 @@ def resize_to_range(image,
   Raises:
     ValueError: if the image is not a 3D tensor.
   """
-  if len(image.get_shape()) != 3:
+  if len(image.shape) != 3:
     raise ValueError('Image should be 3D tensor')
 
   with tf.name_scope('ResizeToRange'):
-    if image.get_shape().is_fully_defined():
+    if image.shape.is_fully_defined():
       new_size = _compute_new_static_size(image, min_dimension, max_dimension)
     else:
       new_size = _compute_new_dynamic_size(image, min_dimension, max_dimension)

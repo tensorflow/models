@@ -70,7 +70,7 @@ class GroupConv2DTest(tf.test.TestCase, parameterized.TestCase):
                                int(output_channel / groups))
                               for _ in range(groups)]
     kernel_shapes = [
-        l.trainable_weights[i].get_shape()
+        l.trainable_weights[i].shape
         for i in range(len(l.trainable_weights))
     ]
     self.assertListEqual(kernel_shapes, expected_kernel_shapes)
@@ -81,7 +81,7 @@ class GroupConv2DTest(tf.test.TestCase, parameterized.TestCase):
     l = custom_layers.GroupConv2D(
         output_channel, 3, groups=groups, use_bias=False, padding='same')
     outputs = l(_get_random_inputs(input_shape=[2, 32, 32, input_channel]))
-    self.assertListEqual(outputs.get_shape().as_list(),
+    self.assertListEqual(outputs.shape,
                          [2, 32, 32, output_channel])
 
   @parameterized.parameters(

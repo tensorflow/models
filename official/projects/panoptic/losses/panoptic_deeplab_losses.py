@@ -33,7 +33,7 @@ class WeightedBootstrappedCrossEntropyLoss:
     self._label_smoothing = label_smoothing
 
   def __call__(self, logits, labels, sample_weight=None):
-    _, _, _, num_classes = logits.get_shape().as_list()
+    _, _, _, num_classes = logits.shape
 
     logits = tf.image.resize(
         logits, tf.shape(labels)[1:3],
@@ -115,7 +115,7 @@ class CenterHeatmapLoss:
     self._loss_fn = tf.losses.mean_squared_error
 
   def __call__(self, logits, labels, sample_weight=None):
-    _, height, width, _ = labels.get_shape().as_list()
+    _, height, width, _ = labels.shape
     logits = tf.image.resize(
         logits,
         size=[height, width],
@@ -136,7 +136,7 @@ class CenterOffsetLoss:
     self._loss_fn = tf.losses.mean_absolute_error
 
   def __call__(self, logits, labels, sample_weight=None):
-    _, height, width, _ = labels.get_shape().as_list()
+    _, height, width, _ = labels.shape
     logits = mask_ops.resize_and_rescale_offsets(
         logits, target_size=[height, width])
 

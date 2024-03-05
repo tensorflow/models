@@ -267,7 +267,7 @@ def resize_to_range(image,
   Raises:
     ValueError: if the image is not a 3D tensor.
   """
-  if len(image.get_shape()) != 3:
+  if len(image.shape) != 3:
     raise ValueError('Image should be 3D tensor')
 
   def _resize_landscape_image(image):
@@ -283,12 +283,12 @@ def resize_to_range(image,
         preserve_aspect_ratio=True)
 
   with tf.name_scope('ResizeToRange'):
-    if image.get_shape().is_fully_defined():
-      if image.get_shape()[0] < image.get_shape()[1]:
+    if image.shape.is_fully_defined():
+      if image.shape[0] < image.shape[1]:
         new_image = _resize_landscape_image(image)
       else:
         new_image = _resize_portrait_image(image)
-      new_size = tf.constant(new_image.get_shape().as_list())
+      new_size = tf.constant(new_image.shape)
     else:
       new_image = tf.cond(
           tf.less(tf.shape(image)[0], tf.shape(image)[1]),

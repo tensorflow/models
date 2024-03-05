@@ -299,7 +299,7 @@ class Parser(parser.Parser):
     """Calls set shape for all input objects."""
     if inds is not None:
       values = tf.gather(values, inds)
-    vshape = values.get_shape().as_list()
+    vshape = values.shape
 
     values = preprocessing_ops.pad_max_instances(
         values, self._max_num_instances, pad_axis=pad_axis, pad_value=pad_value)
@@ -321,7 +321,7 @@ class Parser(parser.Parser):
     height = self._image_h
 
     # Set the image shape.
-    imshape = image.get_shape().as_list()
+    imshape = image.shape
     imshape[-1] = 3
     image.set_shape(imshape)
 

@@ -87,9 +87,9 @@ class PositionEmbedding(tf.keras.layers.Layer):
     input_shape = tf.shape(inputs)
     actual_seq_len = input_shape[self._seq_axis]
     position_embeddings = self._position_embeddings[:actual_seq_len, :]
-    new_shape = [1 for _ in inputs.get_shape().as_list()]
+    new_shape = [1 for _ in inputs.shape]
     new_shape[self._seq_axis] = actual_seq_len
-    new_shape[-1] = position_embeddings.get_shape().as_list()[-1]
+    new_shape[-1] = position_embeddings.shape[-1]
     position_embeddings = tf.reshape(position_embeddings, new_shape)
     return tf.broadcast_to(position_embeddings, input_shape)
 

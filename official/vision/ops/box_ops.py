@@ -895,7 +895,7 @@ def bbox2mask(bbox: tf.Tensor,
             [0, 0, 1, 1, 0],
             [0, 0, 0, 0, 0]]], dtype=int32)>
   """
-  bbox_shape = bbox.get_shape().as_list()
+  bbox_shape = bbox.shape
   if bbox_shape[-1] != 4:
     raise ValueError(
         'Expected the last dimension of `bbox` has size == 4, but the shape '

@@ -482,7 +482,7 @@ class SequenceBeamSearch(tf.Module):
           _StateKeys.ALIVE_LOG_PROBS:
               tf.TensorShape([batch_size, self.beam_size]),
           _StateKeys.ALIVE_CACHE:
-              tf.nest.map_structure(lambda state: state.get_shape(),
+              tf.nest.map_structure(lambda state: state.shape,
                                     alive_cache),
           _StateKeys.FINISHED_SEQ:
               tf.TensorShape(
@@ -705,7 +705,7 @@ def flatten_beam_dim(tensor):
 def _shape_list(tensor):
   """Return a list of the tensor's shape, and ensure no None values in list."""
   # Get statically known shape (may contain None's for unknown dimensions)
-  shape = tensor.get_shape().as_list()
+  shape = tensor.shape
 
   # Ensure that the shape values are not None
   dynamic_shape = tf.shape(tensor)

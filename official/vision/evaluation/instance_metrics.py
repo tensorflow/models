@@ -158,7 +158,7 @@ class VOC2010AveragePrecision(AveragePrecision):
       p = tf.reverse(p, axis=[-1])
       r = tf.reverse(r, axis=[-1])
 
-    axis_indices = list(range(len(p.get_shape())))
+    axis_indices = list(range(len(p.shape)))
 
     # Transpose to (num_confidences, ...), because tf.scan only applies to the
     # first dimension.
@@ -247,8 +247,8 @@ class COCOMatchingAlgorithm(MatchingAlgorithm):
       different IoU thresholds.
     """
     batch_size = tf.shape(detection_classes)[0]
-    num_detections = detection_classes.get_shape()[1]
-    num_gts = gt_classes.get_shape()[1]
+    num_detections = detection_classes.shape[1]
+    num_gts = gt_classes.shape[1]
     num_iou_thresholds = len(self._iou_thresholds)
 
     # (batch_size, num_detections)
@@ -431,7 +431,7 @@ def _count_detection_type(
     num_confidence_bins + 1) which stores the count grouped by IoU thresholds,
     classes and confidence bins.
   """
-  num_iou_thresholds = detection_type_mask.get_shape()[-1]
+  num_iou_thresholds = detection_type_mask.shape[-1]
 
   # (batch_size, num_detections, num_iou_thresholds)
   masked_classes = tf.where(
@@ -619,7 +619,7 @@ class InstanceMetrics(tf.keras.metrics.Metric):
       # (batch_size, num_gts, gt_mask_height, gt_mask_width)
       gt_masks = tf.cast(y_true['masks'], tf.float32)
 
-      num_detections = detection_boxes.get_shape()[1]
+      num_detections = detection_boxes.shape[1]
       # (batch_size, num_detections + num_gts, 4)
       all_boxes = _shift_and_rescale_boxes(
           tf.concat([detection_boxes, gt_boxes], axis=1),

@@ -220,8 +220,8 @@ def instance_masks_overlap(
   Returns:
     iou: a tensor with as a shape of [batch_size, N, M].
   """
-  _, num_detections, mask_height, mask_width = masks.get_shape().as_list()
-  _, num_gts, gt_mask_height, gt_mask_width = gt_masks.get_shape().as_list()
+  _, num_detections, mask_height, mask_width = masks.shape
+  _, num_gts, gt_mask_height, gt_mask_width = gt_masks.shape
   output_height, output_width = output_size
 
   masks = tf.where(masks < 0, tf.zeros_like(masks), masks)

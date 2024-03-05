@@ -32,7 +32,7 @@ class SimpleTest(tf.test.TestCase):
     outputs = mlp_head(inputs, training=False)
 
     num_params = np.sum(
-        [np.prod(v.get_shape()) for v in mlp_head.trainable_weights])
+        [np.prod(v.shape) for v in mlp_head.trainable_weights])
     self.assertEqual(num_params, 106296)
     self.assertAllEqual(outputs.shape, [2, 56])
 

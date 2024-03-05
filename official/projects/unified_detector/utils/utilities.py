@@ -36,7 +36,7 @@ def resolve_shape(
     dimension otherwise.
   """
   with tf.name_scope('resolve_shape'):
-    shape = tensor.get_shape().as_list()
+    shape = tensor.shape
     if None in shape:
       shape_dynamic = tf.shape(tensor)
       if shape[0] is None:
@@ -49,7 +49,7 @@ def resolve_shape(
 
 def set_shape_dim(tensor: tf.Tensor, index: int, size: int) -> None:
   """Set value of index-th element of tensor shape to size."""
-  shape = tensor.get_shape().as_list()
+  shape = tensor.shape
   if len(shape) <= index:
     raise ValueError(
         'Tensor rank must be at least %d. Got %d' % (index + 1, len(shape)))

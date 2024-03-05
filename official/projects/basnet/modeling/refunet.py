@@ -150,7 +150,7 @@ class RefUnet(tf.keras.layers.Layer):
     residual = tf.cast(residual, dtype=x.dtype)
     output = self._sigmoid(x + residual)
 
-    self._output_specs = output.get_shape()
+    self._output_specs = output.shape
     return output
 
   def get_config(self):

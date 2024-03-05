@@ -138,7 +138,7 @@ def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
   value = tf.concat([value, pad_tensor], axis=pad_axis)
 
   if isinstance(instances, int):
-    vshape = value.get_shape().as_list()
+    vshape = value.shape
     vshape[pad_axis] = instances
     value.set_shape(vshape)
   return value
@@ -158,7 +158,7 @@ def get_image_shape(image):
     and width is the width of the image.
   """
   shape = tf.shape(image)
-  if shape.get_shape().as_list()[0] == 4:
+  if shape.shape[0] == 4:
     width = shape[2]
     height = shape[1]
   else:

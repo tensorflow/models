@@ -78,7 +78,7 @@ class ShapeMaskModel(base_model.Model):
           self._params.architecture.min_level,
           self._params.architecture.max_level, self._params.anchor.num_scales,
           self._params.anchor.aspect_ratios, self._params.anchor.anchor_size,
-          images.get_shape().as_list()[1:3]).multilevel_boxes
+          images.shape[1:3]).multilevel_boxes
 
       batch_size = tf.shape(images)[0]
       for level in anchor_boxes:
@@ -94,7 +94,7 @@ class ShapeMaskModel(base_model.Model):
         self._generate_detections_fn(box_outputs, cls_outputs, anchor_boxes,
                                      inputs['image_info'][:, 1:2, :]))
 
-    image_size = images.get_shape().as_list()[1:3]
+    image_size = images.shape[1:3]
     valid_outer_boxes = box_utils.compute_outer_boxes(
         tf.reshape(valid_boxes, [-1, 4]),
         image_size,
