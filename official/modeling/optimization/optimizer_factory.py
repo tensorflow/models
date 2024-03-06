@@ -32,24 +32,16 @@ SHARED_OPTIMIZERS = {
     'lamb': lamb.LAMB,
     'lars': lars.LARS,
     'slide': slide_optimizer.SLIDE,
-    'adafactor': adafactor_optimizer.Adafactor,
-    'adafactor_keras': tf.keras.optimizers.Adafactor,
 }
 
-LEGACY_OPTIMIZERS_CLS = {
-    'legacy_adamw': legacy_adamw.AdamWeightDecay,
-    'sgd': tf.keras.optimizers.legacy.SGD,
-    'adam': tf.keras.optimizers.legacy.Adam,
-    'rmsprop': tf.keras.optimizers.legacy.RMSprop,
-    'adagrad': tf.keras.optimizers.legacy.Adagrad,
-}
-LEGACY_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
 NEW_OPTIMIZERS_CLS = {
     'sgd': tf.keras.optimizers.SGD,
     'adam': tf.keras.optimizers.Adam,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'adagrad': tf.keras.optimizers.Adagrad,
+    'adafactor_keras': tf.keras.optimizers.Adafactor,
+    'adamw': tf.keras.optimizers.AdamW,
 }
 NEW_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
@@ -75,7 +67,7 @@ def register_optimizer_cls(key: str,
                                tf.keras.optimizers.Optimizer,
                                tf.keras.optimizers.legacy.Optimizer,
                            ],
-                           use_legacy_optimizer: bool = True):
+                           use_legacy_optimizer: bool = False):
   """Register customize optimizer cls.
 
   The user will still need to subclass data classes in
@@ -86,14 +78,9 @@ def register_optimizer_cls(key: str,
     optimizer_config_cls: A class which inherits tf.keras.optimizers.Optimizer.
     use_legacy_optimizer: A boolean that indicates if using legacy optimizers.
   """
-  if use_legacy_optimizer:
-    if key in LEGACY_OPTIMIZERS_CLS:
-      raise ValueError('%s already registered in LEGACY_OPTIMIZERS_CLS.' % key)
-    LEGACY_OPTIMIZERS_CLS[key] = optimizer_config_cls
-  else:
-    if key in NEW_OPTIMIZERS_CLS:
-      raise ValueError('%s already registered in NEW_OPTIMIZERS_CLS.' % key)
-    NEW_OPTIMIZERS_CLS[key] = optimizer_config_cls
+  if key in NEW_OPTIMIZERS_CLS:
+    raise ValueError('%s already registered in NEW_OPTIMIZERS_CLS.' % key)
+  NEW_OPTIMIZERS_CLS[key] = optimizer_config_cls
 
 
 class OptimizerFactory:
@@ -190,7 +177,7 @@ class OptimizerFactory:
                                                           tf.Tensor]]]]] = None,
       postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
                                        tf.keras.optimizers.Optimizer]] = None,
-      use_legacy_optimizer: bool = True):
+      use_legacy_optimizer: bool = False):
     """Build optimizer.
 
     Builds optimizer from config. It takes learning rate as input, and builds
@@ -230,15 +217,12 @@ class OptimizerFactory:
     if gradient_transformers is not None:
       optimizer_dict['gradient_transformers'] = gradient_transformers
 
-    if use_legacy_optimizer:
-      optimizer = LEGACY_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
-    else:
-      if 'decay' in optimizer_dict:
-        raise ValueError(
-            '`decay` is deprecated in new Keras optimizer, please reflect the '
-            'decay logic in `lr` or set `use_legacy_optimizer=True` to use the '
-            'legacy optimizer.')
-      optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
+    if 'decay' in optimizer_dict:
+      raise ValueError(
+          '`decay` is deprecated in new Keras optimizer, please reflect the '
+          'decay logic in `lr` or set `use_legacy_optimizer=True` to use the '
+          'legacy optimizer.')
+    optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
 
     if self._use_ema:
       if not use_legacy_optimizer:
@@ -251,13 +235,5 @@ class OptimizerFactory:
       optimizer = postprocessor(optimizer)
     if isinstance(optimizer, tf.keras.optimizers.Optimizer):
       return optimizer
-    # The following check makes sure the function won't break in older TF
-    # version because of missing the experimental/legacy package.
-    if hasattr(tf.keras.optimizers, 'experimental'):
-      if isinstance(optimizer, tf.keras.optimizers.Optimizer):
-        return optimizer
-    if hasattr(tf.keras.optimizers, 'legacy'):
-      if isinstance(optimizer, tf.keras.optimizers.legacy.Optimizer):
-        return optimizer
     raise TypeError('OptimizerFactory.build_optimizer returning a '
                     'non-optimizer object: {}'.format(optimizer))
