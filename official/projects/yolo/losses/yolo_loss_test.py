@@ -15,7 +15,8 @@
 """Tests for yolo heads."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.yolo.losses import yolo_loss
 
@@ -35,7 +36,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         inputs[key] = tf.ones(input_shape[key], dtype=dtype)
       return inputs
 
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
     input_shape = {
         '3': [1, 52, 52, 255],
         '4': [1, 26, 26, 255],

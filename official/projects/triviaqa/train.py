@@ -24,7 +24,8 @@ from absl import app
 from absl import flags
 from absl import logging
 import gin
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_datasets as tfds
 
 import sentencepiece as spm
@@ -180,7 +181,7 @@ def fit(model,
   logging.info(hparams)
   learning_rate_schedule = nlp_optimization.WarmUp(
       learning_rate,
-      tf_keras.optimizers.schedules.PolynomialDecay(
+      keras.optimizers.schedules.PolynomialDecay(
           learning_rate,
           num_decay_steps,
           end_learning_rate=0.,
@@ -213,7 +214,7 @@ def fit(model,
       model.fit(
           train_dataset,
           callbacks=[
-              tf_keras.callbacks.TensorBoard(model_dir, write_graph=False),
+              keras.callbacks.TensorBoard(model_dir, write_graph=False),
           ])
       ckpt_path = ckpt_manager.save()
       if evaluate_fn is None:
@@ -233,12 +234,12 @@ def evaluate(sp_processor, features_map_fn, labels_map_fn, logits_fn,
              decode_logits_fn, split_and_pad_fn, distribute_strategy,
              validation_dataset, ground_truth):
   """Run evaluation."""
-  loss_metric = tf_keras.metrics.Mean()
+  loss_metric = keras.metrics.Mean()
 
   @tf.function
   def update_loss(y, logits):
     loss_fn = modeling.SpanOrCrossEntropyLoss(
-        reduction=tf_keras.losses.Reduction.NONE)
+        reduction=keras.losses.Reduction.NONE)
     return loss_metric(loss_fn(y, logits))
 
   predictions = collections.defaultdict(list)

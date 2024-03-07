@@ -15,7 +15,8 @@
 """Question/Answering configuration definition."""
 import dataclasses
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 import tensorflow_model_optimization as tfmot
 from official.core import task_factory
@@ -45,7 +46,7 @@ class QuantizedModelQATask(question_answering.QuestionAnsweringTask):
 
     with tfmot.quantization.keras.quantize_scope({
         'TruncatedNormal':
-            tf_keras.initializers.TruncatedNormal,
+            keras.initializers.TruncatedNormal,
         'MobileBertTransformerQuantized':
             mobile_bert_layers.MobileBertTransformerQuantized,
         'MobileBertEmbeddingQuantized':
@@ -56,11 +57,11 @@ class QuantizedModelQATask(question_answering.QuestionAnsweringTask):
             configs.NoQuantizeConfig,
     }):
       def quantize_annotate_layer(layer):
-        if isinstance(layer, (tf_keras.layers.LayerNormalization)):
+        if isinstance(layer, (keras.layers.LayerNormalization)):
           return tfmot.quantization.keras.quantize_annotate_layer(
               layer, configs.Default8BitOutputQuantizeConfig())
-        if isinstance(layer, (tf_keras.layers.Dense,
-                              tf_keras.layers.Dropout)):
+        if isinstance(layer, (keras.layers.Dense,
+                              keras.layers.Dropout)):
           return tfmot.quantization.keras.quantize_annotate_layer(layer)
         if isinstance(layer, (modeling.layers.TransformerEncoderBlock,
                               modeling.layers.MobileBertTransformer,
@@ -69,7 +70,7 @@ class QuantizedModelQATask(question_answering.QuestionAnsweringTask):
               layer, configs.NoQuantizeConfig())
         return layer
 
-      annotated_encoder_network = tf_keras.models.clone_model(
+      annotated_encoder_network = keras.models.clone_model(
           encoder_network,
           clone_function=quantize_annotate_layer,
       )
@@ -79,6 +80,6 @@ class QuantizedModelQATask(question_answering.QuestionAnsweringTask):
     encoder_cfg = self.task_config.model.encoder.get()
     model = bert_span_labeler.BertSpanLabelerQuantized(
         network=quantized_encoder_network,
-        initializer=tf_keras.initializers.TruncatedNormal(
+        initializer=keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range))
     return model

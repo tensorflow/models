@@ -17,7 +17,8 @@
 # Import libraries
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.edgetpu.vision.modeling.backbones import mobilenet_edgetpu
 
@@ -50,7 +51,7 @@ class MobileNetEdgeTPUTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_mobilenet_creation(self, model_id, input_shape):
     """Test creation of MobileNet family models."""
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
 
     test_model = mobilenet_edgetpu.build_mobilenet_edgetpu(
         input_specs=TestInputSpec(input_shape),

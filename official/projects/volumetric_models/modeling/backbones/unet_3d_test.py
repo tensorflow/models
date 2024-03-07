@@ -16,7 +16,8 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.volumetric_models.modeling.backbones import unet_3d
 
@@ -29,9 +30,9 @@ class UNet3DTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_network_creation(self, input_size, model_id):
     """Test creation of UNet3D family models."""
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
     network = unet_3d.UNet3D(model_id=model_id)
-    inputs = tf_keras.Input(
+    inputs = keras.Input(
         shape=(input_size[0], input_size[0], input_size[1], 3), batch_size=1)
     endpoints = network(inputs)
 

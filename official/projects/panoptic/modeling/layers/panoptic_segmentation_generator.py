@@ -16,7 +16,8 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.panoptic.modeling.layers import paste_masks
 from official.vision.ops import spatial_transform_ops
@@ -43,7 +44,7 @@ def _batch_count_ones(masks: tf.Tensor,
   return tf.reduce_sum(tf.cast(masks, dtype), axis=[-2, -1])
 
 
-class PanopticSegmentationGenerator(tf_keras.layers.Layer):
+class PanopticSegmentationGenerator(keras.layers.Layer):
   """Panoptic segmentation generator layer."""
 
   def __init__(
@@ -349,7 +350,7 @@ class PanopticSegmentationGenerator(tf_keras.layers.Layer):
     return cls(**config)
 
 
-class PanopticSegmentationGeneratorV2(tf_keras.layers.Layer):
+class PanopticSegmentationGeneratorV2(keras.layers.Layer):
   """Panoptic segmentation generator layer V2."""
 
   def __init__(self,

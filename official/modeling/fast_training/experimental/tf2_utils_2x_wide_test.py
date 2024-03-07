@@ -15,7 +15,8 @@
 """Tests for tf2_utils_2x_wide."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling.fast_training.experimental import tf2_utils_2x_wide
 
@@ -98,17 +99,17 @@ class Tf2Utils2XWideTest(tf.test.TestCase):
 
   def test_end_to_end(self):
     """Covers expand_vector, expand_2_axes, and expand_1_axis."""
-    model_narrow = tf_keras.Sequential()
-    model_narrow.add(tf_keras.Input(shape=(3,)))
-    model_narrow.add(tf_keras.layers.Dense(4))
-    model_narrow.add(tf_keras.layers.Dense(4))
-    model_narrow.add(tf_keras.layers.Dense(1))
+    model_narrow = keras.Sequential()
+    model_narrow.add(keras.Input(shape=(3,)))
+    model_narrow.add(keras.layers.Dense(4))
+    model_narrow.add(keras.layers.Dense(4))
+    model_narrow.add(keras.layers.Dense(1))
 
-    model_wide = tf_keras.Sequential()
-    model_wide.add(tf_keras.Input(shape=(6,)))
-    model_wide.add(tf_keras.layers.Dense(8))
-    model_wide.add(tf_keras.layers.Dense(8))
-    model_wide.add(tf_keras.layers.Dense(1))
+    model_wide = keras.Sequential()
+    model_wide.add(keras.Input(shape=(6,)))
+    model_wide.add(keras.layers.Dense(8))
+    model_wide.add(keras.layers.Dense(8))
+    model_wide.add(keras.layers.Dense(1))
 
     x0 = np.array([[1, 2, 3]])
     x1 = np.array([[1, 1, 2, 2, 3, 3]])

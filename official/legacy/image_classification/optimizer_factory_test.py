@@ -20,17 +20,18 @@ from __future__ import print_function
 
 from absl.testing import parameterized
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.legacy.image_classification import optimizer_factory
 from official.legacy.image_classification.configs import base_configs
 
 
 class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
-  def build_toy_model(self) -> tf_keras.Model:
+  def build_toy_model(self) -> keras.Model:
     """Creates a toy `tf.Keras.Model`."""
-    model = tf_keras.Sequential()
-    model.add(tf_keras.layers.Dense(1, input_shape=(1,)))
+    model = keras.Sequential()
+    model.add(keras.layers.Dense(1, input_shape=(1,)))
     return model
 
   @parameterized.named_parameters(
@@ -58,7 +59,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
         params=params,
         model=model)
     self.assertTrue(
-        issubclass(type(optimizer), tf_keras.optimizers.legacy.Optimizer)
+        issubclass(type(optimizer), keras.optimizers.legacy.Optimizer)
     )
 
   def test_unknown_optimizer(self):
@@ -86,7 +87,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
         params=params, batch_size=batch_size, train_steps=train_steps)
     self.assertTrue(
         issubclass(
-            type(lr), tf_keras.optimizers.schedules.LearningRateSchedule))
+            type(lr), keras.optimizers.schedules.LearningRateSchedule))
 
   @parameterized.named_parameters(('exponential', 'exponential'),
                                   ('cosine_with_warmup', 'cosine_with_warmup'))
@@ -113,7 +114,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
         train_steps=train_steps)
     self.assertTrue(
         issubclass(
-            type(lr), tf_keras.optimizers.schedules.LearningRateSchedule))
+            type(lr), keras.optimizers.schedules.LearningRateSchedule))
 
 
 if __name__ == '__main__':

@@ -17,7 +17,8 @@
 from typing import Optional
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -48,7 +49,7 @@ class Pix2SeqTask(base_task.Task):
     """Build Pix2Seq model."""
     config: pix2seq_cfg.Pix2Seq = self._task_config.model
 
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[None] + config.input_size
     )
 
@@ -77,7 +78,7 @@ class Pix2SeqTask(base_task.Task):
     )
     return model
 
-  def initialize(self, model: tf_keras.Model):
+  def initialize(self, model: keras.Model):
     """Loading pretrained checkpoint."""
     if not self._task_config.init_checkpoint:
       return
@@ -164,8 +165,8 @@ class Pix2SeqTask(base_task.Task):
 
     targets = tf.one_hot(targets, self._task_config.model.vocab_size)
 
-    loss = tf_keras.losses.CategoricalCrossentropy(
-        from_logits=True, reduction=tf_keras.losses.Reduction.NONE
+    loss = keras.losses.CategoricalCrossentropy(
+        from_logits=True, reduction=keras.losses.Reduction.NONE
     )(targets, outputs)
 
     weights = tf.cast(weights, loss.dtype)
@@ -181,7 +182,7 @@ class Pix2SeqTask(base_task.Task):
     metrics = []
     metric_names = ['loss']
     for name in metric_names:
-      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
       self.coco_metric = coco_evaluator.COCOEvaluator(
@@ -218,13 +219,13 @@ class Pix2SeqTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 

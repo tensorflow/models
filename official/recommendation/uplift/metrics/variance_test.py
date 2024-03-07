@@ -18,7 +18,8 @@ from typing import Optional
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift.metrics import variance

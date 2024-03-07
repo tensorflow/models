@@ -17,7 +17,8 @@ from typing import List, Optional
 
 # Import libraries
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import config_definitions as cfg
 from official.vision import configs
@@ -28,7 +29,7 @@ def build_model(batch_size: Optional[int],
                 input_image_size: List[int],
                 params: cfg.ExperimentConfig,
                 num_channels: int = 3,
-                skip_logits_layer: bool = False) -> tf_keras.Model:
+                skip_logits_layer: bool = False) -> keras.Model:
   """Builds a model for TF Hub export.
 
   Args:
@@ -40,12 +41,12 @@ def build_model(batch_size: Optional[int],
       model. Default is False.
 
   Returns:
-    A tf_keras.Model instance.
+    A keras.Model instance.
 
   Raises:
     ValueError: If the task is not supported.
   """
-  input_specs = tf_keras.layers.InputSpec(shape=[batch_size] +
+  input_specs = keras.layers.InputSpec(shape=[batch_size] +
                                           input_image_size + [num_channels])
   if isinstance(params.task,
                 configs.image_classification.ImageClassificationTask):

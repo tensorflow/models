@@ -14,13 +14,14 @@
 
 """Models for MAE."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.mae.modeling import utils
 from official.vision.modeling.backbones import vit
 
 
-class MaskedAE(tf_keras.Model):
+class MaskedAE(keras.Model):
   """MAE model."""
 
   def __init__(self,
@@ -42,9 +43,9 @@ class MaskedAE(tf_keras.Model):
         )
     self.mask = self.add_weight(
         'mask', (1, 1, 512),
-        initializer=tf_keras.initializers.RandomNormal(stddev=0.02))
-    self.to_pixels = tf_keras.layers.Dense(self.pixels_per_patch)
-    self.linear = tf_keras.layers.Dense(512)
+        initializer=keras.initializers.RandomNormal(stddev=0.02))
+    self.to_pixels = keras.layers.Dense(self.pixels_per_patch)
+    self.linear = keras.layers.Dense(512)
     super().build(input_shape)
 
   def add_position_embed(self, patch_embeds, num_rows, num_cols):

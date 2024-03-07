@@ -19,7 +19,8 @@ from typing import Any, Optional, Tuple, Union
 
 # Import libraries
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
@@ -150,7 +151,7 @@ def conv2d_block(inputs: tf.Tensor,
   batch_norm = common_modules.get_batch_norm(config.batch_norm)
   bn_momentum = config.bn_momentum
   bn_epsilon = config.bn_epsilon
-  data_format = tf_keras.backend.image_data_format()
+  data_format = keras.backend.image_data_format()
   weight_decay = config.weight_decay
 
   name = name or ''
@@ -162,15 +163,15 @@ def conv2d_block(inputs: tf.Tensor,
       'use_bias': use_bias,
       'padding': 'same',
       'name': name + '_conv2d',
-      'kernel_regularizer': tf_keras.regularizers.l2(weight_decay),
-      'bias_regularizer': tf_keras.regularizers.l2(weight_decay),
+      'kernel_regularizer': keras.regularizers.l2(weight_decay),
+      'bias_regularizer': keras.regularizers.l2(weight_decay),
   }
 
   if depthwise:
-    conv2d = tf_keras.layers.DepthwiseConv2D
+    conv2d = keras.layers.DepthwiseConv2D
     init_kwargs.update({'depthwise_initializer': CONV_KERNEL_INITIALIZER})
   else:
-    conv2d = tf_keras.layers.Conv2D
+    conv2d = keras.layers.Conv2D
     init_kwargs.update({'filters': conv_filters,
                         'kernel_initializer': CONV_KERNEL_INITIALIZER})
 
@@ -184,7 +185,7 @@ def conv2d_block(inputs: tf.Tensor,
                    name=name + '_bn')(x)
 
   if activation is not None:
-    x = tf_keras.layers.Activation(activation,
+    x = keras.layers.Activation(activation,
                                    name=name + '_activation')(x)
   return x
 
@@ -207,7 +208,7 @@ def mb_conv_block(inputs: tf.Tensor,
   use_se = config.use_se
   activation = tf_utils.get_activation(config.activation)
   drop_connect_rate = config.drop_connect_rate
-  data_format = tf_keras.backend.image_data_format()
+  data_format = keras.backend.image_data_format()
   use_depthwise = block.conv_type == 'depthwise'
   prefix = prefix or ''
 
@@ -259,8 +260,8 @@ def mb_conv_block(inputs: tf.Tensor,
     else:
       se_shape = (1, 1, filters)
 
-    se = tf_keras.layers.GlobalAveragePooling2D(name=prefix + 'se_squeeze')(x)
-    se = tf_keras.layers.Reshape(se_shape, name=prefix + 'se_reshape')(se)
+    se = keras.layers.GlobalAveragePooling2D(name=prefix + 'se_squeeze')(x)
+    se = keras.layers.Reshape(se_shape, name=prefix + 'se_reshape')(se)
 
     se = conv2d_block(se,
                       num_reduced_filters,
@@ -276,7 +277,7 @@ def mb_conv_block(inputs: tf.Tensor,
                       use_batch_norm=False,
                       activation='sigmoid',
                       name=prefix + 'se_expand')
-    x = tf_keras.layers.multiply([x, se], name=prefix + 'se_excite')
+    x = keras.layers.multiply([x, se], name=prefix + 'se_excite')
 
   # Output phase
   x = conv2d_block(x,
@@ -287,7 +288,7 @@ def mb_conv_block(inputs: tf.Tensor,
 
   # Add identity so that quantization-aware training can insert quantization
   # ops correctly.
-  x = tf_keras.layers.Activation('linear', name=prefix + 'id')(x)
+  x = keras.layers.Activation('linear', name=prefix + 'id')(x)
 
   if (block.id_skip
       and all(s == 1 for s in block.strides)
@@ -297,20 +298,20 @@ def mb_conv_block(inputs: tf.Tensor,
       # The only difference between dropout and dropconnect in TF is scaling by
       # drop_connect_rate during training. See:
       # https://github.com/keras-team/keras/pull/9898#issuecomment-380577612
-      x = tf_keras.layers.Dropout(drop_connect_rate,
+      x = keras.layers.Dropout(drop_connect_rate,
                                   noise_shape=(None, 1, 1, 1),
                                   name=prefix + 'drop')(x)
 
-    x = tf_keras.layers.add([x, inputs], name=prefix + 'add')
+    x = keras.layers.add([x, inputs], name=prefix + 'add')
 
   return x
 
 
-def mobilenet_edgetpu(image_input: tf_keras.layers.Input, config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
+def mobilenet_edgetpu(image_input: keras.layers.Input, config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
   """Creates a MobilenetEdgeTPU graph given the model parameters.
 
   This function is wrapped by the `MobilenetEdgeTPU` class to make a
-  tf_keras.Model.
+  keras.Model.
 
   Args:
     image_input: the input batch of images
@@ -330,14 +331,14 @@ def mobilenet_edgetpu(image_input: tf_keras.layers.Input, config: ModelConfig): 
   num_classes = config.num_classes
   input_channels = config.input_channels
   rescale_input = config.rescale_input
-  data_format = tf_keras.backend.image_data_format()
+  data_format = keras.backend.image_data_format()
   dtype = config.dtype
   weight_decay = config.weight_decay
 
   x = image_input
   if data_format == 'channels_first':
     # Happens on GPU/TPU if available.
-    x = tf_keras.layers.Permute((3, 1, 2))(x)
+    x = keras.layers.Permute((3, 1, 2))(x)
   if rescale_input:
     x = common_modules.normalize_images(
         x, num_channels=input_channels, dtype=dtype, data_format=data_format)
@@ -396,18 +397,18 @@ def mobilenet_edgetpu(image_input: tf_keras.layers.Input, config: ModelConfig): 
 
   # Build classifier
   pool_size = (x.shape.as_list()[1], x.shape.as_list()[2])
-  x = tf_keras.layers.AveragePooling2D(pool_size, name='top_pool')(x)
+  x = keras.layers.AveragePooling2D(pool_size, name='top_pool')(x)
   if dropout_rate and dropout_rate > 0:
-    x = tf_keras.layers.Dropout(dropout_rate, name='top_dropout')(x)
-  x = tf_keras.layers.Conv2D(
+    x = keras.layers.Dropout(dropout_rate, name='top_dropout')(x)
+  x = keras.layers.Conv2D(
       num_classes,
       1,
       kernel_initializer=DENSE_KERNEL_INITIALIZER,
-      kernel_regularizer=tf_keras.regularizers.l2(weight_decay),
-      bias_regularizer=tf_keras.regularizers.l2(weight_decay),
+      kernel_regularizer=keras.regularizers.l2(weight_decay),
+      bias_regularizer=keras.regularizers.l2(weight_decay),
       name='logits')(
           x)
-  x = tf_keras.layers.Activation('softmax', name='probs')(x)
+  x = keras.layers.Activation('softmax', name='probs')(x)
   x = tf.squeeze(x, axis=[1, 2])
 
   return x

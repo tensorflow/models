@@ -16,25 +16,26 @@
 
 from typing import Any, Mapping, Optional
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
-layers = tf_keras.layers
+layers = keras.layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class ClassificationModel(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Vision')
+class ClassificationModel(keras.Model):
   """A classification class builder."""
 
   def __init__(
       self,
-      backbone: tf_keras.Model,
+      backbone: keras.Model,
       num_classes: int,
-      input_specs: tf_keras.layers.InputSpec = layers.InputSpec(
+      input_specs: keras.layers.InputSpec = layers.InputSpec(
           shape=[None, None, None, 3]),
       dropout_rate: float = 0.0,
       kernel_initializer: str = 'random_uniform',
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       add_head_batch_norm: bool = False,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -46,12 +47,12 @@ class ClassificationModel(tf_keras.Model):
     Args:
       backbone: a backbone network.
       num_classes: `int` number of classes in classification task.
-      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `keras.layers.InputSpec` specs of the input tensor.
       dropout_rate: `float` rate for dropout regularization.
       kernel_initializer: kernel initializer for the dense layer.
-      kernel_regularizer: tf_keras.regularizers.Regularizer object. Default to
+      kernel_regularizer: keras.regularizers.Regularizer object. Default to
                           None.
-      bias_regularizer: tf_keras.regularizers.Regularizer object. Default to
+      bias_regularizer: keras.regularizers.Regularizer object. Default to
                           None.
       add_head_batch_norm: `bool` whether to add a batch normalization layer
         before pool.
@@ -62,10 +63,10 @@ class ClassificationModel(tf_keras.Model):
       skip_logits_layer: `bool`, whether to skip the prediction layer.
       **kwargs: keyword arguments to be passed.
     """
-    norm = tf_keras.layers.BatchNormalization
-    axis = -1 if tf_keras.backend.image_data_format() == 'channels_last' else 1
+    norm = keras.layers.BatchNormalization
+    axis = -1 if keras.backend.image_data_format() == 'channels_last' else 1
 
-    inputs = tf_keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
+    inputs = keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
     endpoints = backbone(inputs)
     x = endpoints[max(endpoints.keys())]
 
@@ -81,13 +82,13 @@ class ClassificationModel(tf_keras.Model):
     # [batch_size, height, weight, channel_size] or
     # [batch_size, token_size, hidden_size].
     if len(x.shape) == 4:
-      x = tf_keras.layers.GlobalAveragePooling2D()(x)
+      x = keras.layers.GlobalAveragePooling2D()(x)
     elif len(x.shape) == 3:
-      x = tf_keras.layers.GlobalAveragePooling1D()(x)
+      x = keras.layers.GlobalAveragePooling1D()(x)
 
     if not skip_logits_layer:
-      x = tf_keras.layers.Dropout(dropout_rate)(x)
-      x = tf_keras.layers.Dense(
+      x = keras.layers.Dropout(dropout_rate)(x)
+      x = keras.layers.Dense(
           num_classes,
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
@@ -116,12 +117,12 @@ class ClassificationModel(tf_keras.Model):
     self._norm = norm
 
   @property
-  def checkpoint_items(self) -> Mapping[str, tf_keras.Model]:
+  def checkpoint_items(self) -> Mapping[str, keras.Model]:
     """Returns a dictionary of items to be additionally checkpointed."""
     return dict(backbone=self.backbone)
 
   @property
-  def backbone(self) -> tf_keras.Model:
+  def backbone(self) -> keras.Model:
     return self._backbone
 
   def get_config(self) -> Mapping[str, Any]:

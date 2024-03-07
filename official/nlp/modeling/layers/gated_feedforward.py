@@ -16,15 +16,16 @@
 # pylint: disable=g-classes-have-attributes
 
 import gin
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import util
 
 
-@tf_keras.utils.register_keras_serializable(package="Text")
+@keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
-class GatedFeedforward(tf_keras.layers.Layer):
+class GatedFeedforward(keras.layers.Layer):
   """Gated linear feedforward layer.
 
   This layer follows the paper "GLU Variants Improve Transformer"
@@ -89,13 +90,13 @@ class GatedFeedforward(tf_keras.layers.Layer):
           "The dropout_position should be either `before_residual` or"
           "`after_residual`, got: %s" % self._dropout_position)
 
-    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
-    self._activity_regularizer = tf_keras.regularizers.get(activity_regularizer)
-    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
+    self._kernel_initializer = keras.initializers.get(kernel_initializer)
+    self._bias_initializer = keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = keras.regularizers.get(bias_regularizer)
+    self._activity_regularizer = keras.regularizers.get(activity_regularizer)
+    self._kernel_constraint = keras.constraints.get(kernel_constraint)
+    self._bias_constraint = keras.constraints.get(bias_constraint)
 
   def build(self, input_shape):
     hidden_size = input_shape.as_list()[-1]
@@ -112,7 +113,7 @@ class GatedFeedforward(tf_keras.layers.Layer):
     self._output_dense = []
     self._output_dropout = []
     self._output_layer_norm = []
-    activation_policy = tf_keras.mixed_precision.global_policy()
+    activation_policy = keras.mixed_precision.global_policy()
     if activation_policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.
@@ -120,7 +121,7 @@ class GatedFeedforward(tf_keras.layers.Layer):
       activation_policy = tf.float32
     for i in range(self._num_blocks):
       self._intermediate_dense.append(
-          tf_keras.layers.EinsumDense(
+          keras.layers.EinsumDense(
               "abc,cd->abd",
               output_shape=(None, self._inner_dim),
               bias_axes="d",
@@ -131,11 +132,11 @@ class GatedFeedforward(tf_keras.layers.Layer):
                   self._bias_initializer),
               **common_kwargs))
       self._inner_activation_layers.append(
-          tf_keras.layers.Activation(
+          keras.layers.Activation(
               self._inner_activation, dtype=activation_policy))
       if self._use_gate:
         self._gate_dense.append(
-            tf_keras.layers.EinsumDense(
+            keras.layers.EinsumDense(
                 "abc,cd->abd",
                 output_shape=(None, self._inner_dim),
                 bias_axes="d",
@@ -146,7 +147,7 @@ class GatedFeedforward(tf_keras.layers.Layer):
                     self._bias_initializer),
                 **common_kwargs))
       self._output_dense.append(
-          tf_keras.layers.EinsumDense(
+          keras.layers.EinsumDense(
               "abc,cd->abd",
               output_shape=(None, hidden_size),
               bias_axes="d",
@@ -156,11 +157,11 @@ class GatedFeedforward(tf_keras.layers.Layer):
               bias_initializer=tf_utils.clone_initializer(
                   self._bias_initializer),
               **common_kwargs))
-      self._output_dropout.append(tf_keras.layers.Dropout(rate=self._dropout))
+      self._output_dropout.append(keras.layers.Dropout(rate=self._dropout))
       # Use float32 in layernorm for numeric stability.
       if self._apply_output_layer_norm:
         self._output_layer_norm.append(
-            tf_keras.layers.LayerNormalization(
+            keras.layers.LayerNormalization(
                 name="output_layer_norm_%d" % i,
                 axis=-1,
                 epsilon=1e-12,
@@ -181,19 +182,19 @@ class GatedFeedforward(tf_keras.layers.Layer):
         "dropout_position":
             self._dropout_position,
         "kernel_initializer":
-            tf_keras.initializers.serialize(self._kernel_initializer),
+            keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
-            tf_keras.initializers.serialize(self._bias_initializer),
+            keras.initializers.serialize(self._bias_initializer),
         "kernel_regularizer":
-            tf_keras.regularizers.serialize(self._kernel_regularizer),
+            keras.regularizers.serialize(self._kernel_regularizer),
         "bias_regularizer":
-            tf_keras.regularizers.serialize(self._bias_regularizer),
+            keras.regularizers.serialize(self._bias_regularizer),
         "activity_regularizer":
-            tf_keras.regularizers.serialize(self._activity_regularizer),
+            keras.regularizers.serialize(self._activity_regularizer),
         "kernel_constraint":
-            tf_keras.constraints.serialize(self._kernel_constraint),
+            keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
-            tf_keras.constraints.serialize(self._bias_constraint)
+            keras.constraints.serialize(self._bias_constraint)
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

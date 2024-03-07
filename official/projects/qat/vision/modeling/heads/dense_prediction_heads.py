@@ -18,7 +18,8 @@ from typing import List, Mapping, Union, Optional, Any, Dict
 # Import libraries
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
@@ -26,8 +27,8 @@ from official.projects.qat.vision.quantization import configs
 from official.projects.qat.vision.quantization import helper
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class RetinaNetHeadQuantized(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class RetinaNetHeadQuantized(keras.layers.Layer):
   """Creates a RetinaNet quantized head."""
 
   def __init__(
@@ -44,8 +45,8 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       num_params_per_anchor: int = 4,
       share_classification_heads: bool = False,
       share_level_convs: bool = True,
@@ -75,9 +76,9 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2D.
       num_params_per_anchor: Number of parameters required to specify an anchor
         box. For example, `num_params_per_anchor` would be 4 for axis-aligned
         anchor boxes specified by their y-centers, x-centers, heights, and
@@ -113,7 +114,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
         'num_params_per_anchor': num_params_per_anchor,
     }
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -127,7 +128,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
       conv_op = helper.SeparableConv2DQuantized
     else:
       conv_op = helper.quantize_wrapped_layer(
-          tf_keras.layers.Conv2D,
+          keras.layers.Conv2D,
           configs.Default8BitConvQuantizeConfig(
               ['kernel'], ['activation'], False))
     conv_kwargs = {
@@ -139,14 +140,14 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
     }
     if not self._config_dict['use_separable_conv']:
       conv_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(
+          'kernel_initializer': keras.initializers.RandomNormal(
               stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
 
-    base_bn_op = (tf_keras.layers.experimental.SyncBatchNormalization
+    base_bn_op = (keras.layers.experimental.SyncBatchNormalization
                   if self._config_dict['use_sync_bn']
-                  else tf_keras.layers.BatchNormalization)
+                  else keras.layers.BatchNormalization)
     bn_op = helper.norm_by_activation(
         self._config_dict['activation'],
         helper.quantize_wrapped_layer(
@@ -185,7 +186,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
     }
     if not self._config_dict['use_separable_conv']:
       classifier_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
+          'kernel_initializer': keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
     self._classifier = conv_op(
@@ -215,7 +216,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
     }
     if not self._config_dict['use_separable_conv']:
       box_regressor_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(
+          'kernel_initializer': keras.initializers.RandomNormal(
               stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
@@ -273,7 +274,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
         if not self._config_dict['use_separable_conv']:
           att_predictor_kwargs.update({
               'kernel_initializer':
-                  tf_keras.initializers.RandomNormal(stddev=1e-5),
+                  keras.initializers.RandomNormal(stddev=1e-5),
               'kernel_regularizer':
                   self._config_dict['kernel_regularizer'],
           })

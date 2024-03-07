@@ -17,7 +17,8 @@
 from typing import Callable, Dict, Optional, Sequence, Tuple, Union
 
 import gin
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -28,7 +29,7 @@ from official.projects.unified_detector.tasks import all_models  # pylint: disab
 from official.projects.unified_detector.utils import typing
 
 NestedTensorDict = typing.NestedTensorDict
-ModelType = Union[tf_keras.layers.Layer, tf_keras.Model]
+ModelType = Union[keras.layers.Layer, keras.Model]
 
 
 @task_factory.register_task_cls(ocr_config.OcrTaskConfig)
@@ -62,13 +63,13 @@ class OcrTask(base_task.Task):
                                                                 input_context)
 
   def build_metrics(self,
-                    training: bool = True) -> Sequence[tf_keras.metrics.Metric]:
+                    training: bool = True) -> Sequence[keras.metrics.Metric]:
     """Build the metrics (currently, only for loss summaries in TensorBoard)."""
     del training
     metrics = []
     # Add loss items
     for name in self._loss_items:
-      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(keras.metrics.Mean(name, dtype=tf.float32))
     # TODO(longshangbang): add evaluation metrics
     return metrics
 
@@ -76,8 +77,8 @@ class OcrTask(base_task.Task):
       self,
       inputs: Tuple[NestedTensorDict, NestedTensorDict],
       model: ModelType,
-      optimizer: tf_keras.optimizers.Optimizer,
-      metrics: Optional[Sequence[tf_keras.metrics.Metric]] = None
+      optimizer: keras.optimizers.Optimizer,
+      metrics: Optional[Sequence[keras.metrics.Metric]] = None
   ) -> Dict[str, tf.Tensor]:
     features, labels = inputs
     input_dict = {"features": features}
@@ -85,7 +86,7 @@ class OcrTask(base_task.Task):
       input_dict["labels"] = labels
 
     is_mixed_precision = isinstance(optimizer,
-                                    tf_keras.mixed_precision.LossScaleOptimizer)
+                                    keras.mixed_precision.LossScaleOptimizer)
 
     with tf.GradientTape() as tape:
       outputs = model(**input_dict, training=True)

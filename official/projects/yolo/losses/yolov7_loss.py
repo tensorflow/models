@@ -14,7 +14,8 @@
 
 """YOLOv7 loss function."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.yolo.ops import box_ops
 from official.vision.losses import focal_loss
@@ -46,7 +47,7 @@ def merge_labels(labels):
   return tf.concat([classes[..., None], boxes], axis=-1)
 
 
-class YoloV7Loss(tf_keras.losses.Loss):
+class YoloV7Loss(keras.losses.Loss):
   """YOLOv7 loss function."""
 
   def __init__(
@@ -64,7 +65,7 @@ class YoloV7Loss(tf_keras.losses.Loss):
       iou_mix_ratio=1.0,
       num_classes=80,
       auto_balance=False,
-      reduction=tf_keras.losses.Reduction.NONE,
+      reduction=keras.losses.Reduction.NONE,
       name=None,
   ):
     """Constructor for YOLOv7 loss.
@@ -404,7 +405,7 @@ class YoloV7Loss(tf_keras.losses.Loss):
     return dict(list(base_config.items()) + list(config.items()))
 
 
-class YoloV7LossOTA(tf_keras.losses.Loss):
+class YoloV7LossOTA(keras.losses.Loss):
   """YOLOv7 loss function with OTA.
 
   OTA (Optimal Transport Assignment) uses Sinkhorn-Knopp algorithm to copmute
@@ -429,7 +430,7 @@ class YoloV7LossOTA(tf_keras.losses.Loss):
       iou_mix_ratio=1.0,
       num_classes=80,
       auto_balance=False,
-      reduction=tf_keras.losses.Reduction.NONE,
+      reduction=keras.losses.Reduction.NONE,
       name=None,
   ):
     """Constructor for YOLOv7 loss OTA.

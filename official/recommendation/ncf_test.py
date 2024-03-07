@@ -20,7 +20,8 @@ from __future__ import print_function
 
 import unittest
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from tensorflow.python.eager import context  # pylint: disable=ungrouped-imports
 from official.recommendation import constants as rconst
 from official.recommendation import ncf_common

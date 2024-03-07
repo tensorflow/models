@@ -15,25 +15,26 @@
 """Build video classification models."""
 from typing import Any, Mapping, Optional, Union, List, Text
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
-layers = tf_keras.layers
+layers = keras.layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class VideoClassificationModel(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Vision')
+class VideoClassificationModel(keras.Model):
   """A video classification class builder."""
 
   def __init__(
       self,
-      backbone: tf_keras.Model,
+      backbone: keras.Model,
       num_classes: int,
-      input_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
+      input_specs: Optional[Mapping[str, keras.layers.InputSpec]] = None,
       dropout_rate: float = 0.0,
       aggregate_endpoints: bool = False,
       kernel_initializer: str = 'random_uniform',
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       require_endpoints: Optional[List[Text]] = None,
       **kwargs):
     """Video Classification initialization function.
@@ -41,14 +42,14 @@ class VideoClassificationModel(tf_keras.Model):
     Args:
       backbone: a 3d backbone network.
       num_classes: `int` number of classes in classification task.
-      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `keras.layers.InputSpec` specs of the input tensor.
       dropout_rate: `float` rate for dropout regularization.
       aggregate_endpoints: `bool` aggregate all end ponits or only use the
         final end point.
       kernel_initializer: kernel initializer for the dense layer.
-      kernel_regularizer: tf_keras.regularizers.Regularizer object. Default to
+      kernel_regularizer: keras.regularizers.Regularizer object. Default to
         None.
-      bias_regularizer: tf_keras.regularizers.Regularizer object. Default to
+      bias_regularizer: keras.regularizers.Regularizer object. Default to
         None.
       require_endpoints: the required endpoints for prediction. If None or
         empty, then only uses the final endpoint.
@@ -76,32 +77,32 @@ class VideoClassificationModel(tf_keras.Model):
     self._backbone = backbone
 
     inputs = {
-        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
     endpoints = backbone(inputs['image'])
 
     if aggregate_endpoints:
       pooled_feats = []
       for endpoint in endpoints.values():
-        x_pool = tf_keras.layers.GlobalAveragePooling3D()(endpoint)
+        x_pool = keras.layers.GlobalAveragePooling3D()(endpoint)
         pooled_feats.append(x_pool)
       x = tf.concat(pooled_feats, axis=1)
     else:
       if not require_endpoints:
         # Uses the last endpoint for prediction.
         x = endpoints[max(endpoints.keys())]
-        x = tf_keras.layers.GlobalAveragePooling3D()(x)
+        x = keras.layers.GlobalAveragePooling3D()(x)
       else:
         # Concats all the required endpoints for prediction.
         outputs = []
         for name in require_endpoints:
           x = endpoints[name]
-          x = tf_keras.layers.GlobalAveragePooling3D()(x)
+          x = keras.layers.GlobalAveragePooling3D()(x)
           outputs.append(x)
         x = tf.concat(outputs, axis=1)
 
-    x = tf_keras.layers.Dropout(dropout_rate)(x)
-    x = tf_keras.layers.Dense(
+    x = keras.layers.Dropout(dropout_rate)(x)
+    x = keras.layers.Dense(
         num_classes, kernel_initializer=kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)(
@@ -112,12 +113,12 @@ class VideoClassificationModel(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self) -> Mapping[str, Union[keras.Model, keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     return dict(backbone=self.backbone)
 
   @property
-  def backbone(self) -> tf_keras.Model:
+  def backbone(self) -> keras.Model:
     return self._backbone
 
   def get_config(self) -> Mapping[str, Any]:

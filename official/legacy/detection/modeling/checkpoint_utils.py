@@ -26,7 +26,8 @@ import re
 
 from absl import logging
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 def _build_assignment_map(keras_model,
@@ -40,7 +41,7 @@ def _build_assignment_map(keras_model,
   the new Keras name.
 
   Args:
-    keras_model: tf_keras.Model object to provide variables to assign.
+    keras_model: keras.Model object to provide variables to assign.
     prefix: prefix in the variable name to be remove for alignment with names in
       the checkpoint.
     skip_variables_regex: regular expression to math the names of variables that

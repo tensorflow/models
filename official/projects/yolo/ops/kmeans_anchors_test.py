@@ -15,7 +15,8 @@
 """kmeans_test tests."""
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.yolo.ops import kmeans_anchors
 

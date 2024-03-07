@@ -20,7 +20,8 @@ between the boxes in two BoxLists.
 from abc import ABCMeta
 from abc import abstractmethod
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 def area(boxlist, scope=None):

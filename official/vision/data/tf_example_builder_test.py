@@ -15,7 +15,8 @@
 """Tests for tf_example_builder."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.vision.data import fake_feature_generator
 from official.vision.data import image_utils
 from official.vision.data import tf_example_builder

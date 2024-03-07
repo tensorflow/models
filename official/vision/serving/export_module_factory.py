@@ -16,7 +16,8 @@
 
 from typing import List, Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import config_definitions as cfg
 from official.vision import configs
@@ -34,7 +35,7 @@ def create_classification_export_module(params: cfg.ExperimentConfig,
   """Creats classification export module."""
   input_signature = export_utils.get_image_input_signatures(
       input_type, batch_size, input_image_size, num_channels)
-  input_specs = tf_keras.layers.InputSpec(
+  input_specs = keras.layers.InputSpec(
       shape=[batch_size] + input_image_size + [num_channels])
 
   model = factory.build_classification_model(

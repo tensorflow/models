@@ -18,7 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.legacy.detection.ops import spatial_transform_ops
 from official.legacy.detection.utils import box_utils
@@ -292,7 +293,7 @@ def sample_and_crop_foreground_masks(candidate_rois,
     return foreground_rois, foreground_classes, cropped_foreground_masks
 
 
-class ROISampler(tf_keras.layers.Layer):
+class ROISampler(keras.layers.Layer):
   """Samples RoIs and creates training targets."""
 
   def __init__(self, params):
@@ -517,7 +518,7 @@ class ROIScoreSampler(ROISampler):
               sampled_gt_classes, sampled_gt_indices)
 
 
-class MaskSampler(tf_keras.layers.Layer):
+class MaskSampler(keras.layers.Layer):
   """Samples and creates mask training targets."""
 
   def __init__(self, mask_target_size, num_mask_samples_per_image):

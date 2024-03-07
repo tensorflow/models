@@ -16,7 +16,8 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.modeling.backbones import resnet_3d
 
@@ -31,7 +32,7 @@ class ResNet3DTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, input_size, model_id, endpoint_filter_scale,
                             stem_type, se_ratio, init_stochastic_depth_rate):
     """Test creation of ResNet3D family models."""
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
     temporal_strides = [1, 1, 1, 1]
     temporal_kernel_sizes = [(3, 3, 3), (3, 1, 3, 1), (3, 1, 3, 1, 3, 1),
                              (1, 3, 1)]
@@ -45,7 +46,7 @@ class ResNet3DTest(parameterized.TestCase, tf.test.TestCase):
         stem_type=stem_type,
         se_ratio=se_ratio,
         init_stochastic_depth_rate=init_stochastic_depth_rate)
-    inputs = tf_keras.Input(shape=(8, input_size, input_size, 3), batch_size=1)
+    inputs = keras.Input(shape=(8, input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
     self.assertAllEqual([

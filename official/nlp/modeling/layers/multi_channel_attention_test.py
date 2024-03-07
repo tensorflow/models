@@ -15,7 +15,8 @@
 """Tests for projects.nhnet.multi_channel_attention."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import multi_channel_attention
 

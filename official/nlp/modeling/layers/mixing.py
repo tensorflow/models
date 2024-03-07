@@ -33,13 +33,14 @@ from typing import Callable, Tuple, Union
 import gin
 import numpy as np
 from scipy import linalg
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
-_Initializer = Union[str, tf_keras.initializers.Initializer]
+_Initializer = Union[str, keras.initializers.Initializer]
 
-default_kernel_initializer = tf_keras.initializers.TruncatedNormal(stddev=2e-2)
+default_kernel_initializer = keras.initializers.TruncatedNormal(stddev=2e-2)
 
 
 @gin.constants_from_enum
@@ -56,7 +57,7 @@ class MixingMechanism(enum.Enum):
   LINEAR = "linear"
 
 
-class MixingLayer(tf_keras.layers.Layer):
+class MixingLayer(keras.layers.Layer):
   """Mixing layer base class.
 
   This class cannot be used directly. It just specifies the API for mixing

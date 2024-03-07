@@ -15,7 +15,8 @@
 """Tests for official.nlp.projects.fffner.fffner_encoder."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.fffner import fffner_encoder
 

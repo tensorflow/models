@@ -20,7 +20,8 @@ format can be supported by implementing proper decoder and parser.
 """
 from typing import Mapping, List, Tuple
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.dataloaders import decoder
 from official.vision.dataloaders import parser

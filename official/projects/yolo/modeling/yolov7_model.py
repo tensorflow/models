@@ -16,19 +16,20 @@
 
 from typing import Mapping, Union, Any, Dict
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.projects.yolo.modeling.layers import nn_blocks
 
 
-class YoloV7(tf_keras.Model):
+class YoloV7(keras.Model):
   """The YOLOv7 model class."""
 
   def __init__(self, backbone, decoder, head, detection_generator, **kwargs):
     """Detection initialization function.
 
     Args:
-      backbone: `tf_keras.Model` a backbone network.
-      decoder: `tf_keras.Model` a decoder network.
+      backbone: `keras.Model` a backbone network.
+      decoder: `keras.Model` a decoder network.
       head: `RetinaNetHead`, the RetinaNet head.
       detection_generator: the detection generator.
       **kwargs: keyword arguments to be passed.
@@ -90,7 +91,7 @@ class YoloV7(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self) -> Mapping[str, Union[keras.Model, keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:

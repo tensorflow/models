@@ -14,7 +14,8 @@
 
 """Pack sequence optimization on accelerators."""
 from typing import Dict
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import rezero_transformer
 from official.nlp.modeling.layers import self_attention_mask
@@ -22,8 +23,8 @@ from official.nlp.modeling.layers import transformer_encoder_block
 from official.nlp.modeling.layers import transformer_scaffold
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class PackBertEmbeddings(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class PackBertEmbeddings(keras.layers.Layer):
   """Performs packing tricks for BERT inputs to improve TPU utilization."""
 
   def __init__(self, pack_sequences: int, **kwargs):
@@ -62,7 +63,7 @@ class PackBertEmbeddings(tf_keras.layers.Layer):
         combined_attention_mask=combined_attention_mask)
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 class StridedTransformerEncoderBlock(
     transformer_encoder_block.TransformerEncoderBlock):
   """Transformer layer for packing optimization to stride over inputs."""
@@ -128,7 +129,7 @@ class StridedTransformerEncoderBlock(
     return self._output_layer_norm(layer_output + attention_output)
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 class StridedReZeroTransformer(rezero_transformer.ReZeroTransformer):
   """ReZeroTransformer for packing optimization to stride over inputs."""
 
@@ -179,7 +180,7 @@ class StridedReZeroTransformer(rezero_transformer.ReZeroTransformer):
     return layer_output
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 class StridedTransformerScaffold(transformer_scaffold.TransformerScaffold):
   """TransformerScaffold for packing optimization to stride over inputs."""
 

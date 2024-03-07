@@ -16,13 +16,14 @@
 import re
 from typing import Text, List, Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 # pylint: disable=protected-access
 
 
-class LARS(tf_keras.optimizers.legacy.Optimizer):
+class LARS(keras.optimizers.legacy.Optimizer):
   """Layer-wise Adaptive Rate Scaling for large batch training.
 
   Introduced by "Large Batch Training of Convolutional Networks" by Y. You,

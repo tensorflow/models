@@ -18,7 +18,8 @@ import os
 import pprint
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import exp_factory
 from official.core import test_utils

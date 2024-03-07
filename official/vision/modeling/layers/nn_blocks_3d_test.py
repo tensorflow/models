@@ -16,7 +16,8 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.modeling.layers import nn_blocks_3d
 
@@ -34,7 +35,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     temporal_size = 16
     spatial_size = 128
     filters = 256
-    inputs = tf_keras.Input(
+    inputs = keras.Input(
         shape=(temporal_size, spatial_size, spatial_size, filters * 4),
         batch_size=1)
     block = block_fn(

@@ -17,7 +17,8 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfexample_utils

@@ -45,7 +45,8 @@ from typing import Sequence, Union
 
 # Import libraries
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import registry
 from official.modeling import hyperparams
@@ -61,7 +62,7 @@ def register_backbone_builder(key: str):
   This decorator supports registration of backbone builder as follows:
 
   ```
-  class MyBackbone(tf_keras.Model):
+  class MyBackbone(keras.Model):
     pass
 
   @register_backbone_builder('mybackbone')
@@ -82,24 +83,24 @@ def register_backbone_builder(key: str):
   return registry.register(_REGISTERED_BACKBONE_CLS, key)
 
 
-def build_backbone(input_specs: Union[tf_keras.layers.InputSpec,
-                                      Sequence[tf_keras.layers.InputSpec]],
+def build_backbone(input_specs: Union[keras.layers.InputSpec,
+                                      Sequence[keras.layers.InputSpec]],
                    backbone_config: hyperparams.Config,
                    norm_activation_config: hyperparams.Config,
-                   l2_regularizer: tf_keras.regularizers.Regularizer = None,
-                   **kwargs) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+                   l2_regularizer: keras.regularizers.Regularizer = None,
+                   **kwargs) -> keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds backbone from a config.
 
   Args:
-    input_specs: A (sequence of) `tf_keras.layers.InputSpec` of input.
+    input_specs: A (sequence of) `keras.layers.InputSpec` of input.
     backbone_config: A `OneOfConfig` of backbone config.
     norm_activation_config: A config for normalization/activation layer.
-    l2_regularizer: A `tf_keras.regularizers.Regularizer` object. Default to
+    l2_regularizer: A `keras.regularizers.Regularizer` object. Default to
       None.
     **kwargs: Additional keyword args to be passed to backbone builder.
 
   Returns:
-    A `tf_keras.Model` instance of the backbone.
+    A `keras.Model` instance of the backbone.
   """
   backbone_builder = registry.lookup(_REGISTERED_BACKBONE_CLS,
                                      backbone_config.type)

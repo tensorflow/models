@@ -16,7 +16,8 @@
 from typing import Any, Dict, Mapping, Optional, Sequence, Union
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -33,9 +34,9 @@ from official.projects.volumetric_models.modeling import factory
 class SemanticSegmentation3DTask(base_task.Task):
   """A task for semantic segmentation."""
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> keras.Model:
     """Builds segmentation model."""
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size +
         [self.task_config.model.num_channels],
         dtype=self.task_config.train_data.dtype)
@@ -45,7 +46,7 @@ class SemanticSegmentation3DTask(base_task.Task):
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
     l2_regularizer = (
-        tf_keras.regularizers.l2(l2_weight_decay /
+        keras.regularizers.l2(l2_weight_decay /
                                  2.0) if l2_weight_decay else None)
 
     model = factory.build_segmentation_model_3d(
@@ -66,7 +67,7 @@ class SemanticSegmentation3DTask(base_task.Task):
 
     return model
 
-  def initialize(self, model: tf_keras.Model):
+  def initialize(self, model: keras.Model):
     """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -143,13 +144,13 @@ class SemanticSegmentation3DTask(base_task.Task):
     return total_loss
 
   def build_metrics(self,
-                    training: bool = True) -> Sequence[tf_keras.metrics.Metric]:
+                    training: bool = True) -> Sequence[keras.metrics.Metric]:
     """Gets streaming metrics for training/validation."""
     metrics = []
     num_classes = self.task_config.model.num_classes
     if training:
       metrics.extend([
-          tf_keras.metrics.CategoricalAccuracy(
+          keras.metrics.CategoricalAccuracy(
               name='train_categorical_accuracy', dtype=tf.float32)
       ])
     else:
@@ -168,9 +169,9 @@ class SemanticSegmentation3DTask(base_task.Task):
   def train_step(
       self,
       inputs,
-      model: tf_keras.Model,
-      optimizer: tf_keras.optimizers.Optimizer,
-      metrics: Optional[Sequence[tf_keras.metrics.Metric]] = None
+      model: keras.Model,
+      optimizer: keras.optimizers.Optimizer,
+      metrics: Optional[Sequence[keras.metrics.Metric]] = None
   ) -> Dict[Any, Any]:
     """Does forward and backward.
 
@@ -211,14 +212,14 @@ class SemanticSegmentation3DTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -236,8 +237,8 @@ class SemanticSegmentation3DTask(base_task.Task):
   def validation_step(
       self,
       inputs,
-      model: tf_keras.Model,
-      metrics: Optional[Sequence[tf_keras.metrics.Metric]] = None
+      model: keras.Model,
+      metrics: Optional[Sequence[keras.metrics.Metric]] = None
   ) -> Dict[Any, Any]:
     """Validatation step.
 
@@ -275,25 +276,25 @@ class SemanticSegmentation3DTask(base_task.Task):
 
     return logs
 
-  def inference_step(self, inputs, model: tf_keras.Model) -> tf.Tensor:
+  def inference_step(self, inputs, model: keras.Model) -> tf.Tensor:
     """Performs the forward step."""
     return model(inputs, training=False)
 
   def aggregate_logs(
       self,
       state: Optional[Sequence[Union[segmentation_metrics.DiceScore,
-                                     tf_keras.metrics.Metric]]] = None,
+                                     keras.metrics.Metric]]] = None,
       step_outputs: Optional[Mapping[str, Any]] = None
-  ) -> Sequence[tf_keras.metrics.Metric]:
+  ) -> Sequence[keras.metrics.Metric]:
     """Aggregates statistics to compute metrics over training.
 
     Args:
-      state: A sequence of tf_keras.metrics.Metric objects. Each element records
+      state: A sequence of keras.metrics.Metric objects. Each element records
         a metric.
       step_outputs: A dictionary of [metric_name, (labels, output)] from a step.
 
     Returns:
-      An updated sequence of tf_keras.metrics.Metric objects.
+      An updated sequence of keras.metrics.Metric objects.
     """
     if state is None:
       for metric in self.metrics:

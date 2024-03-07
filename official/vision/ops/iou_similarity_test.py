@@ -14,7 +14,8 @@
 
 """Tests for iou_similarity.py."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.ops import iou_similarity
 

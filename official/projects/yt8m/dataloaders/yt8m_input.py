@@ -24,7 +24,8 @@
 """
 from typing import Any, Dict
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.projects.yt8m.dataloaders import utils
 from official.vision.configs import video_classification as exp_cfg
 from official.vision.dataloaders import decoder

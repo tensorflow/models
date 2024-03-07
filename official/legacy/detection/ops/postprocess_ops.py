@@ -20,7 +20,8 @@ from __future__ import print_function
 
 import functools
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.legacy.detection.ops import nms
 from official.legacy.detection.utils import box_utils
@@ -291,7 +292,7 @@ def _generate_detections_batched(boxes, scores, max_total_size,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-class MultilevelDetectionGenerator(tf_keras.layers.Layer):
+class MultilevelDetectionGenerator(keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
   def __init__(self, min_level, max_level, params):
@@ -338,7 +339,7 @@ class MultilevelDetectionGenerator(tf_keras.layers.Layer):
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-class GenericDetectionGenerator(tf_keras.layers.Layer):
+class GenericDetectionGenerator(keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
   def __init__(self, params):

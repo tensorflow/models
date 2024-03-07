@@ -18,7 +18,8 @@ import os
 import random
 
 import orbit
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 # pylint: disable=unused-import
 from official.core import exp_factory

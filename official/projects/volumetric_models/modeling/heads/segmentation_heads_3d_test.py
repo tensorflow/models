@@ -16,7 +16,8 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.volumetric_models.modeling.heads import segmentation_heads_3d
 

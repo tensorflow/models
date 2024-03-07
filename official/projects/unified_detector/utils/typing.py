@@ -17,7 +17,8 @@
 from typing import Dict, Union
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 NpDict = Dict[str, np.ndarray]
 FeaturesAndLabelsType = Dict[str, Dict[str, tf.Tensor]]

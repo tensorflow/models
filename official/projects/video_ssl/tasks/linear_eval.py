@@ -15,7 +15,8 @@
 """Video ssl linear evaluation task definition."""
 from typing import Any, Optional, List, Tuple
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 # pylint: disable=unused-import
 from official.core import task_factory
@@ -28,7 +29,7 @@ from official.vision.tasks import video_classification
 class VideoSSLEvalTask(video_classification.VideoClassificationTask):
   """A task for video ssl linear evaluation."""
 
-  def initialize(self, model: tf_keras.Model):
+  def initialize(self, model: keras.Model):
     """Loading pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -49,8 +50,8 @@ class VideoSSLEvalTask(video_classification.VideoClassificationTask):
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf_keras.Model,
-                 optimizer: tf_keras.optimizers.Optimizer,
+                 model: keras.Model,
+                 optimizer: keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 

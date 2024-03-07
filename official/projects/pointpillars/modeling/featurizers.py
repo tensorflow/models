@@ -17,14 +17,15 @@
 from typing import Any, List, Mapping, Optional, Tuple
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pointpillars.modeling import layers
 from official.projects.pointpillars.utils import utils
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class Featurizer(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class Featurizer(keras.layers.Layer):
   """The featurizer to convert pillars to a BEV pseudo image.
 
   The implementation is from the network architecture of PointPillars
@@ -49,7 +50,7 @@ class Featurizer(tf_keras.layers.Layer):
       eval_batch_size: int,
       num_blocks: int,
       num_channels: int,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initialize the featurizer.
 
@@ -60,7 +61,7 @@ class Featurizer(tf_keras.layers.Layer):
       eval_batch_size: An `int` evaluation batch size per replica.
       num_blocks: An `int` number of blocks for extracting features.
       num_channels: An `int` number channels of the BEV image.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         block layers. Default to None.
       **kwargs: Additional keyword arguments to be passed.
     """
@@ -158,7 +159,7 @@ class Featurizer(tf_keras.layers.Layer):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> keras.Model:
     return cls(**config)
 
   @property

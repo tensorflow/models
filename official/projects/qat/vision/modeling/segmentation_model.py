@@ -16,13 +16,14 @@
 from typing import Any, Mapping, Union
 
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
-layers = tf_keras.layers
+layers = keras.layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class SegmentationModelQuantized(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Vision')
+class SegmentationModelQuantized(keras.Model):
   """A Segmentation class model.
 
   Input images are passed through backbone first. Decoder network is then
@@ -34,9 +35,9 @@ class SegmentationModelQuantized(tf_keras.Model):
   different backbones, and decoders.
   """
 
-  def __init__(self, backbone: tf_keras.Model, decoder: tf_keras.layers.Layer,
-               head: tf_keras.layers.Layer,
-               input_specs: tf_keras.layers.InputSpec, **kwargs):
+  def __init__(self, backbone: keras.Model, decoder: keras.layers.Layer,
+               head: keras.layers.Layer,
+               input_specs: keras.layers.InputSpec, **kwargs):
     """Segmentation initialization function.
 
     Args:
@@ -46,7 +47,7 @@ class SegmentationModelQuantized(tf_keras.Model):
       input_specs: The shape specifications of input tensor.
       **kwargs: keyword arguments to be passed.
     """
-    inputs = tf_keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
+    inputs = keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
     backbone_features = backbone(inputs)
 
     if decoder:
@@ -69,7 +70,7 @@ class SegmentationModelQuantized(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self) -> Mapping[str, Union[keras.Model, keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:

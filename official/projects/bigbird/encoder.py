@@ -15,7 +15,8 @@
 """Transformer-based text encoder network."""
 # pylint: disable=g-classes-have-attributes
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import activations
 from official.modeling import tf_utils
@@ -51,8 +52,8 @@ class RecomputeTransformerLayer(layers.TransformerScaffold):
     return f(emb, *mask)
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class BigBirdEncoder(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class BigBirdEncoder(keras.Model):
   """Transformer-based encoder network with BigBird attentions.
 
   *Note* that the network is constructed by
@@ -101,15 +102,15 @@ class BigBirdEncoder(tf_keras.Model):
                activation=activations.gelu,
                dropout_rate=0.1,
                attention_dropout_rate=0.1,
-               initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
+               initializer=keras.initializers.TruncatedNormal(stddev=0.02),
                embedding_width=None,
                use_gradient_checkpointing=False,
                **kwargs):
-    activation = tf_keras.activations.get(activation)
-    initializer = tf_keras.initializers.get(initializer)
+    activation = keras.activations.get(activation)
+    initializer = keras.initializers.get(initializer)
 
     if use_gradient_checkpointing:
-      tf_keras.layers.Dropout = recomputing_dropout.RecomputingDropout
+      keras.layers.Dropout = recomputing_dropout.RecomputingDropout
       layer_cls = RecomputeTransformerLayer
     else:
       layer_cls = layers.TransformerScaffold
@@ -136,11 +137,11 @@ class BigBirdEncoder(tf_keras.Model):
         'embedding_width': embedding_width,
     }
 
-    word_ids = tf_keras.layers.Input(
+    word_ids = keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_word_ids')
-    mask = tf_keras.layers.Input(
+    mask = keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_mask')
-    type_ids = tf_keras.layers.Input(
+    type_ids = keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_type_ids')
 
     if embedding_width is None:
@@ -166,19 +167,19 @@ class BigBirdEncoder(tf_keras.Model):
         name='type_embeddings')
     type_embeddings = self._type_embedding_layer(type_ids)
 
-    embeddings = tf_keras.layers.Add()(
+    embeddings = keras.layers.Add()(
         [word_embeddings, position_embeddings, type_embeddings])
 
-    self._embedding_norm_layer = tf_keras.layers.LayerNormalization(
+    self._embedding_norm_layer = keras.layers.LayerNormalization(
         name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
 
     embeddings = self._embedding_norm_layer(embeddings)
-    embeddings = tf_keras.layers.Dropout(rate=dropout_rate)(embeddings)
+    embeddings = keras.layers.Dropout(rate=dropout_rate)(embeddings)
 
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
-      self._embedding_projection = tf_keras.layers.EinsumDense(
+      self._embedding_projection = keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',

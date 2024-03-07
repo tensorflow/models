@@ -19,7 +19,8 @@ from typing import List, Optional
 
 from absl import logging
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import optimization
 from official.nlp import optimization as nlp_optimization

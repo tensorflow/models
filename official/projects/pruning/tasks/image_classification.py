@@ -14,7 +14,8 @@
 
 """Image classification task definition."""
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_model_optimization as tfmot
 
 from official.core import task_factory
@@ -49,7 +50,7 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
       ),
   }
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> keras.Model:
     """Builds classification model with pruning."""
     model = super(ImageClassificationTask, self).build_model()
     if self.task_config.pruning is None:
@@ -57,7 +58,7 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
 
     pruning_cfg = self.task_config.pruning
 
-    prunable_model = tf_keras.models.clone_model(
+    prunable_model = keras.models.clone_model(
         model,
         clone_function=self._make_block_prunable,
     )
@@ -113,9 +114,9 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
     return pruned_model
 
   def _make_block_prunable(
-      self, layer: tf_keras.layers.Layer) -> tf_keras.layers.Layer:
-    if isinstance(layer, tf_keras.Model):
-      return tf_keras.models.clone_model(
+      self, layer: keras.layers.Layer) -> keras.layers.Layer:
+    if isinstance(layer, keras.Model):
+      return keras.models.clone_model(
           layer, input_tensors=None, clone_function=self._make_block_prunable)
 
     if layer.__class__ not in self._BLOCK_LAYER_SUFFIX_MAP:
@@ -139,7 +140,7 @@ def collect_prunable_layers(model):
   """Recursively collect the prunable layers in the model."""
   prunable_layers = []
   for layer in model.layers:
-    if isinstance(layer, tf_keras.Model):
+    if isinstance(layer, keras.Model):
       prunable_layers += collect_prunable_layers(layer)
     if layer.__class__.__name__ == 'PruneLowMagnitude':
       prunable_layers.append(layer)

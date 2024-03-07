@@ -17,7 +17,8 @@
 import math
 from typing import Optional, Sequence, Tuple, Union
 from six.moves import range
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.ops import augment
 from official.vision.ops import box_ops

@@ -14,13 +14,14 @@
 
 """Keras metric for computing fraction of treated examples."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.uplift import types
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class TreatmentFraction(tf_keras.metrics.Metric):
+@keras.utils.register_keras_serializable(package="Uplift")
+class TreatmentFraction(keras.metrics.Metric):
   """Computes the fraction of treated examples.
 
   Note that the prediction tensor is expected to be of type
@@ -39,7 +40,7 @@ class TreatmentFraction(tf_keras.metrics.Metric):
 
   >>> model.compile(
   ...     optimizer="sgd",
-  ...     loss=TrueLogitsLoss(tf_keras.losses.mean_squared_error),
+  ...     loss=TrueLogitsLoss(keras.losses.mean_squared_error),
   ...     metrics=[TreatmentFraction()]
   ... )
   """
@@ -51,7 +52,7 @@ class TreatmentFraction(tf_keras.metrics.Metric):
       **kwargs: base metric keyword arguments.
     """
     super().__init__(**kwargs)
-    self._treatment_fraction = tf_keras.metrics.Mean(**kwargs)
+    self._treatment_fraction = keras.metrics.Mean(**kwargs)
 
   def update_state(
       self,

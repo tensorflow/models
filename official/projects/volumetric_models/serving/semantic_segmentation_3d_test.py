@@ -18,7 +18,8 @@ import os
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 # pylint: disable=unused-import
 from official.core import exp_factory

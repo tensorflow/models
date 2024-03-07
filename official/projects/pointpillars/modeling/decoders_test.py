@@ -15,7 +15,8 @@
 """Tests for decoders."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pointpillars.modeling import decoders
 
@@ -35,7 +36,7 @@ class DecoderTest(parameterized.TestCase, tf.test.TestCase):
     for k, v in input_shape.items():
       if k == str(min_level):
         batch_size, height, width, _ = v
-      inputs[k] = tf_keras.Input(shape=v[1:], batch_size=batch_size)
+      inputs[k] = keras.Input(shape=v[1:], batch_size=batch_size)
     decoder = decoders.Decoder(input_shape)
     endpoints = decoder(inputs)
 

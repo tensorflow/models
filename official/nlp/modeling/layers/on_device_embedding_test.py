@@ -15,7 +15,8 @@
 """Tests for Keras-based one-hot embedding layer."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import on_device_embedding
 
@@ -29,7 +30,7 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         vocab_size=vocab_size, embedding_width=embedding_width)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # The output should be the same as the input, save that it has an extra
@@ -46,7 +47,7 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         dtype="mixed_float16")
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # The output should be the same as the input, save that it has an extra
@@ -62,11 +63,11 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         vocab_size=vocab_size, embedding_width=embedding_width)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(input_tensor, output_tensor)
+    model = keras.Model(input_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -84,11 +85,11 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         dtype="mixed_float16")
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(input_tensor, output_tensor)
+    model = keras.Model(input_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -107,7 +108,7 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         use_one_hot=True)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # The output should be the same as the input, save that it has an extra
@@ -126,7 +127,7 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         use_one_hot=True)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # The output should be the same as the input, save that it has an extra
@@ -144,11 +145,11 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         use_one_hot=True)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(input_tensor, output_tensor)
+    model = keras.Model(input_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -168,11 +169,11 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         use_one_hot=True)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(input_tensor, output_tensor)
+    model = keras.Model(input_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -190,11 +191,11 @@ class OnDeviceEmbeddingTest(tf.test.TestCase):
         scale_factor=embedding_width**0.5)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
-    input_tensor = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
+    input_tensor = keras.Input(shape=(sequence_length), dtype=tf.int32)
     output_tensor = test_layer(input_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(input_tensor, output_tensor)
+    model = keras.Model(input_tensor, output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.

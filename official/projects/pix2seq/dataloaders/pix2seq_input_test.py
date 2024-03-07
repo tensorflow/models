@@ -18,7 +18,8 @@ import io
 # Import libraries
 import numpy as np
 from PIL import Image
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pix2seq.dataloaders import pix2seq_input
 from official.vision.dataloaders import tf_example_decoder

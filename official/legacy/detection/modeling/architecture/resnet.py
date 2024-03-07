@@ -23,7 +23,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.legacy.detection.modeling.architecture import nn_ops
 
 
@@ -159,7 +160,7 @@ class Resnet(object):
     if strides > 1:
       inputs = self.fixed_padding(inputs, kernel_size)
 
-    return tf_keras.layers.Conv2D(
+    return keras.layers.Conv2D(
         filters=filters,
         kernel_size=kernel_size,
         strides=strides,
@@ -309,7 +310,7 @@ class Resnet(object):
       inputs = tf.identity(inputs, 'initial_conv')
       inputs = self._norm_activation()(inputs, is_training=is_training)
 
-      inputs = tf_keras.layers.MaxPool2D(
+      inputs = keras.layers.MaxPool2D(
           pool_size=3, strides=2, padding='SAME',
           data_format=self._data_format)(
               inputs)

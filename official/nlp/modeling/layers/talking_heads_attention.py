@@ -18,16 +18,17 @@ import math
 import string
 
 import gin
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
 _CHR_IDX = string.ascii_lowercase
 
 
-@tf_keras.utils.register_keras_serializable(package="Text")
+@keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
-class TalkingHeadsAttention(tf_keras.layers.MultiHeadAttention):
+class TalkingHeadsAttention(keras.layers.MultiHeadAttention):
   """Implements Talking-Heads Attention.
 
   This is an implementation of Talking-Heads Attention based on the paper
@@ -35,7 +36,7 @@ class TalkingHeadsAttention(tf_keras.layers.MultiHeadAttention):
   multi-head attention by including linearprojections across the attention-heads
   dimension, immediately before and after the softmax operation.
 
-  See the base class `tf_keras.layers.MultiHeadAttention` for more details.
+  See the base class `keras.layers.MultiHeadAttention` for more details.
 
   Args:
     num_heads: Number of attention heads.

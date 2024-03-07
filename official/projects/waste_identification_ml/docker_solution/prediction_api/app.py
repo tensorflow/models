@@ -28,7 +28,8 @@ import io
 import json
 import fastapi
 import PIL
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import uvicorn
 from official.projects.waste_identification_ml.docker_solution.prediction_api import app_utils
 

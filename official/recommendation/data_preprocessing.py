@@ -28,7 +28,8 @@ from typing import Dict, Text, Tuple
 from absl import logging
 import numpy as np
 import pandas as pd
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline

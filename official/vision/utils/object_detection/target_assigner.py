@@ -31,7 +31,8 @@ image at a time, so any logic for applying a TargetAssigner to multiple
 images must be handled externally.
 """
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.utils.object_detection import box_list
 from official.vision.utils.object_detection import shape_utils

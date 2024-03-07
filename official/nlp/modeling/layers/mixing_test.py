@@ -15,7 +15,8 @@
 """Tests for mixing.py."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import mixing
 
@@ -64,7 +65,7 @@ class MixingTest(tf.test.TestCase):
 
     inputs = tf.ones((batch_size, max_seq_length, hidden_dim), dtype=tf.float32)
     outputs = mixing.LinearTransformLayer(
-        kernel_initializer=tf_keras.initializers.Ones())(
+        kernel_initializer=keras.initializers.Ones())(
             query=inputs, value=inputs)
 
     # hidden_dim * (max_seq_length * 1) = 12.

@@ -45,7 +45,8 @@ class FooTrainTest(tf.test.TestCase):
 from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import file_writers
 from official.vision.data import fake_feature_generator

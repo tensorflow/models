@@ -17,13 +17,14 @@
 
 from typing import Any, Mapping, Optional, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 
 
-class XLNetMaskedLM(tf_keras.layers.Layer):
+class XLNetMaskedLM(keras.layers.Layer):
   """XLNet pretraining head."""
 
   def __init__(self,
@@ -40,12 +41,12 @@ class XLNetMaskedLM(tf_keras.layers.Layer):
     self._activation = activation
 
   def build(self, input_shape):
-    self.dense = tf_keras.layers.Dense(
+    self.dense = keras.layers.Dense(
         units=self._hidden_size,
         activation=self._activation,
         kernel_initializer=self._initializer,
         name='transform/dense')
-    self.layer_norm = tf_keras.layers.LayerNormalization(
+    self.layer_norm = keras.layers.LayerNormalization(
         axis=-1, epsilon=1e-12, name='transform/LayerNorm')
     self.bias = self.add_weight(
         'output_bias/bias',
@@ -76,8 +77,8 @@ class XLNetMaskedLM(tf_keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class XLNetPretrainer(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class XLNetPretrainer(keras.Model):
   """XLNet-based pretrainer.
 
   This is an implementation of the network structure surrounding a
@@ -96,7 +97,7 @@ class XLNetPretrainer(tf_keras.Model):
 
   def __init__(
       self,
-      network: Union[tf_keras.layers.Layer, tf_keras.Model],
+      network: Union[keras.layers.Layer, keras.Model],
       mlm_activation=None,
       mlm_initializer='glorot_uniform',
       name: Optional[str] = None,
@@ -152,8 +153,8 @@ class XLNetPretrainer(tf_keras.Model):
     return dict(encoder=self._network)
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class XLNetClassifier(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class XLNetClassifier(keras.Model):
   """Classifier model based on XLNet.
 
   This is an implementation of the network structure surrounding a
@@ -176,9 +177,9 @@ class XLNetClassifier(tf_keras.Model):
 
   def __init__(
       self,
-      network: Union[tf_keras.layers.Layer, tf_keras.Model],
+      network: Union[keras.layers.Layer, keras.Model],
       num_classes: int,
-      initializer: tf_keras.initializers.Initializer = 'random_normal',
+      initializer: keras.initializers.Initializer = 'random_normal',
       summary_type: str = 'last',
       dropout_rate: float = 0.1,
       head_name: str = 'sentence_prediction',  # pytype: disable=annotation-type-mismatch  # typed-keras
@@ -244,8 +245,8 @@ class XLNetClassifier(tf_keras.Model):
     return items
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class XLNetSpanLabeler(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class XLNetSpanLabeler(keras.Model):
   """Span labeler model based on XLNet.
 
   This is an implementation of the network structure surrounding a
@@ -266,12 +267,12 @@ class XLNetSpanLabeler(tf_keras.Model):
 
   def __init__(
       self,
-      network: Union[tf_keras.layers.Layer, tf_keras.Model],
+      network: Union[keras.layers.Layer, keras.Model],
       start_n_top: int = 5,
       end_n_top: int = 5,
       dropout_rate: float = 0.1,
-      span_labeling_activation: tf_keras.initializers.Initializer = 'tanh',
-      initializer: tf_keras.initializers.Initializer = 'glorot_uniform',  # pytype: disable=annotation-type-mismatch  # typed-keras
+      span_labeling_activation: keras.initializers.Initializer = 'tanh',
+      initializer: keras.initializers.Initializer = 'glorot_uniform',  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     super().__init__(**kwargs)
     self._config = {

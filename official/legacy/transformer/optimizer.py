@@ -14,10 +14,11 @@
 
 """Optimizer from addons and learning rate scheduler."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-class LearningRateSchedule(tf_keras.optimizers.schedules.LearningRateSchedule):
+class LearningRateSchedule(keras.optimizers.schedules.LearningRateSchedule):
   """Learning rate schedule."""
 
   def __init__(self, initial_learning_rate, hidden_size, warmup_steps):

@@ -19,7 +19,8 @@
 from typing import Any, Callable, Optional, Union
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_models as tfm
 
 from official.modeling import tf_utils
@@ -28,12 +29,12 @@ from official.projects.lra.moving_average_gated_attention import MovingAverageGa
 
 layers = tfm.nlp.layers
 
-_Initializer = Union[str, tf_keras.initializers.Initializer]
-_approx_gelu = lambda x: tf_keras.activations.gelu(x, approximate=True)
+_Initializer = Union[str, keras.initializers.Initializer]
+_approx_gelu = lambda x: keras.activations.gelu(x, approximate=True)
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class MegaEncoder(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class MegaEncoder(keras.layers.Layer):
   """MegaEncoder.
 
   Args:
@@ -86,18 +87,18 @@ class MegaEncoder(tf_keras.layers.Layer):
       attention_dropout: float = 0.0,
       hidden_dropout: float = 0.0,
       inner_activation: Callable[..., Any] = _approx_gelu,
-      initializer: _Initializer = tf_keras.initializers.TruncatedNormal(
+      initializer: _Initializer = keras.initializers.TruncatedNormal(
           stddev=0.02
       ),
       output_range: Optional[int] = None,
-      embedding_layer: Optional[tf_keras.layers.Layer] = None,
+      embedding_layer: Optional[keras.layers.Layer] = None,
       norm_first: bool = False,
       hidden_size: Optional[int] = None,
       **kwargs
   ):
     super().__init__(**kwargs)
     # Mega args
-    initializer = tf_keras.initializers.get(initializer)
+    initializer = keras.initializers.get(initializer)
 
     if embedding_layer is None:
       self._embedding_layer = layers.OnDeviceEmbedding(
@@ -123,11 +124,11 @@ class MegaEncoder(tf_keras.layers.Layer):
         name='type_embeddings',
     )
 
-    self._embedding_norm_layer = tf_keras.layers.LayerNormalization(
+    self._embedding_norm_layer = keras.layers.LayerNormalization(
         name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32
     )
 
-    self._embedding_dropout = tf_keras.layers.Dropout(
+    self._embedding_dropout = keras.layers.Dropout(
         rate=dropout, name='embedding_dropout'
     )
 
@@ -156,7 +157,7 @@ class MegaEncoder(tf_keras.layers.Layer):
       )
       self._transformer_layers.append(layer)
     self._num_layers = num_layers
-    self._pooler_layer = tf_keras.layers.Dense(
+    self._pooler_layer = keras.layers.Dense(
         units=embedding_width,
         activation='silu',
         kernel_initializer=initializer,
@@ -175,17 +176,17 @@ class MegaEncoder(tf_keras.layers.Layer):
         'dropout': dropout,
         'attention_dropout': attention_dropout,
         'hidden_dropout': hidden_dropout,
-        'inner_activation': tf_keras.activations.serialize(inner_activation),
-        'initializer': tf_keras.initializers.serialize(initializer),
+        'inner_activation': keras.activations.serialize(inner_activation),
+        'initializer': keras.initializers.serialize(initializer),
         'output_range': output_range,
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
         'norm_first': norm_first,
     }
     self.inputs = dict(
-        input_word_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
-        input_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
-        input_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
+        input_word_ids=keras.Input(shape=(None,), dtype=tf.int32),
+        input_mask=keras.Input(shape=(None,), dtype=tf.int32),
+        input_type_ids=keras.Input(shape=(None,), dtype=tf.int32),
     )
 
   def call(self, inputs):

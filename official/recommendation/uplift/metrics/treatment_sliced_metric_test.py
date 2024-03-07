@@ -16,12 +16,13 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 
 
-class MeanSquared(tf_keras.metrics.Mean):
+class MeanSquared(keras.metrics.Mean):
 
   def result(self):
     mean = super().result()
@@ -94,14 +95,14 @@ class TreatmentSlicedMetricTest(
       self, values, is_treatment, sample_weight, expected_result
   ):
     sliced_metric = treatment_sliced_metric.TreatmentSlicedMetric(
-        metric=tf_keras.metrics.Mean(name="test/mean")
+        metric=keras.metrics.Mean(name="test/mean")
     )
     sliced_metric(values, is_treatment, sample_weight=sample_weight)
     self.assertDictEqual(expected_result, sliced_metric.result())
 
   def test_multiple_batches(self):
     sliced_metric = treatment_sliced_metric.TreatmentSlicedMetric(
-        metric=tf_keras.metrics.Mean(name="test/mean")
+        metric=keras.metrics.Mean(name="test/mean")
     )
 
     sliced_metric(
@@ -136,7 +137,7 @@ class TreatmentSlicedMetricTest(
 
   def test_metric_states(self):
     sliced_metric = treatment_sliced_metric.TreatmentSlicedMetric(
-        metric=tf_keras.metrics.Mean(name="test/mean")
+        metric=keras.metrics.Mean(name="test/mean")
     )
 
     expected_initial_result = {
@@ -161,7 +162,7 @@ class TreatmentSlicedMetricTest(
 
   def test_metric_config(self):
     sliced_metric = treatment_sliced_metric.TreatmentSlicedMetric(
-        metric=tf_keras.metrics.BinaryCrossentropy(
+        metric=keras.metrics.BinaryCrossentropy(
             name="loss/bc", from_logits=True
         )
     )

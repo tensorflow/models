@@ -16,7 +16,8 @@
 from typing import Any, Mapping, Optional
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.common import dataset_fn
 from official.core import config_definitions as cfg
@@ -99,7 +100,7 @@ class CustomSemanticSegmentationTask(
     return dataset
 
 
-class AutosegEdgeTPU(tf_keras.Model):
+class AutosegEdgeTPU(keras.Model):
   """Segmentation keras network without pre/post-processing."""
 
   def __init__(self,
@@ -232,7 +233,7 @@ class AutosegEdgeTPU(tf_keras.Model):
     return class_outputs
 
 
-def get_models() -> Mapping[str, tf_keras.Model]:
+def get_models() -> Mapping[str, keras.Model]:
   """Returns the mapping from model type name to Keras model."""
   model_mapping = {}
 

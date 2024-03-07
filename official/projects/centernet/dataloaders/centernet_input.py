@@ -16,7 +16,8 @@
 
 from typing import Tuple
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.centernet.ops import box_list
 from official.projects.centernet.ops import box_list_ops

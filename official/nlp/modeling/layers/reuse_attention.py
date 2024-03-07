@@ -20,7 +20,8 @@ import math
 import string
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
@@ -109,7 +110,7 @@ def _get_output_shape(output_rank, known_last_dims):
   return [None] * (output_rank - len(known_last_dims)) + list(known_last_dims)
 
 
-class ReuseMultiHeadAttention(tf_keras.layers.Layer):
+class ReuseMultiHeadAttention(keras.layers.Layer):
   """MultiHeadAttention layer.
 
   This is an implementation of multi-headed attention as described in the paper
@@ -138,8 +139,8 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
   Returns the additional attention weights over heads.
 
   >>> layer = MultiHeadAttention(num_heads=2, key_dim=2)
-  >>> target = tf_keras.Input(shape=[8, 16])
-  >>> source = tf_keras.Input(shape=[4, 16])
+  >>> target = keras.Input(shape=[8, 16])
+  >>> source = keras.Input(shape=[4, 16])
   >>> output_tensor, weights = layer(target, source,
   ...                                return_attention_scores=True)
   >>> print(output_tensor.shape)
@@ -150,7 +151,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
   Performs 2D self-attention over a 5D input tensor on axes 2 and 3.
 
   >>> layer = MultiHeadAttention(num_heads=2, key_dim=2, attention_axes=(2, 3))
-  >>> input_tensor = tf_keras.Input(shape=[5, 3, 4, 16])
+  >>> input_tensor = keras.Input(shape=[5, 3, 4, 16])
   >>> output_tensor = layer(input_tensor, input_tensor)
   >>> print(output_tensor.shape)
   (None, 5, 3, 4, 16)
@@ -239,12 +240,12 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
     self._pe_max_seq_length = pe_max_seq_length
     self._use_bias = use_bias
     self._output_shape = output_shape
-    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
-    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
+    self._kernel_initializer = keras.initializers.get(kernel_initializer)
+    self._bias_initializer = keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = keras.regularizers.get(bias_regularizer)
+    self._kernel_constraint = keras.constraints.get(kernel_constraint)
+    self._bias_constraint = keras.constraints.get(bias_constraint)
     if attention_axes is not None and not isinstance(attention_axes,
                                                      collections.abc.Sized):
       self._attention_axes = (attention_axes,)
@@ -255,7 +256,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
     # Use relative PE only if reuse_heads < num_heads.
     if self._use_relative_pe and self._reuse_heads < self._num_heads:
       # Determine the dtype from global policy.
-      policy = tf_keras.mixed_precision.global_policy()
+      policy = keras.mixed_precision.global_policy()
       if policy.name == "mixed_bfloat16":
         policy = tf.bfloat16
       elif policy.name == "mixed_float16":
@@ -284,19 +285,19 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
         "use_relative_pe": self._use_relative_pe,
         "pe_max_seq_length": self._pe_max_seq_length,
         "kernel_initializer":
-            tf_keras.initializers.serialize(self._kernel_initializer),
+            keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
-            tf_keras.initializers.serialize(self._bias_initializer),
+            keras.initializers.serialize(self._bias_initializer),
         "kernel_regularizer":
-            tf_keras.regularizers.serialize(self._kernel_regularizer),
+            keras.regularizers.serialize(self._kernel_regularizer),
         "bias_regularizer":
-            tf_keras.regularizers.serialize(self._bias_regularizer),
+            keras.regularizers.serialize(self._bias_regularizer),
         "activity_regularizer":
-            tf_keras.regularizers.serialize(self._activity_regularizer),
+            keras.regularizers.serialize(self._activity_regularizer),
         "kernel_constraint":
-            tf_keras.constraints.serialize(self._kernel_constraint),
+            keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
-            tf_keras.constraints.serialize(self._bias_constraint),
+            keras.constraints.serialize(self._bias_constraint),
         "query_shape": self._query_shape,
         "key_shape": self._key_shape,
         "value_shape": self._value_shape,
@@ -362,7 +363,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
       if self._reuse_heads < self._num_heads:
         einsum_equation, bias_axes, output_rank = _build_proj_equation(
             free_dims, bound_dims=1, output_dims=2)
-        self._query_dense = tf_keras.layers.EinsumDense(
+        self._query_dense = keras.layers.EinsumDense(
             einsum_equation,
             output_shape=_get_output_shape(
                 output_rank - 1,
@@ -375,7 +376,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
             **common_kwargs)
         einsum_equation, bias_axes, output_rank = _build_proj_equation(
             self._key_shape.rank - 1, bound_dims=1, output_dims=2)
-        self._key_dense = tf_keras.layers.EinsumDense(
+        self._key_dense = keras.layers.EinsumDense(
             einsum_equation,
             output_shape=_get_output_shape(
                 output_rank - 1,
@@ -392,7 +393,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
       self._value_dense = []
       if self._reuse_heads > 0:
         self._value_dense.append(
-            tf_keras.layers.EinsumDense(
+            keras.layers.EinsumDense(
                 einsum_equation,
                 output_shape=_get_output_shape(
                     output_rank - 1, [self._reuse_heads, self._value_dim]),
@@ -405,7 +406,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
                 **common_kwargs))
       if self._reuse_heads < self._num_heads:
         self._value_dense.append(
-            tf_keras.layers.EinsumDense(
+            keras.layers.EinsumDense(
                 einsum_equation,
                 output_shape=_get_output_shape(
                     output_rank - 1,
@@ -453,7 +454,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
       output_shape = [self._query_shape[-1]]
     einsum_equation, bias_axes, output_rank = _build_proj_equation(
         free_dims, bound_dims=2, output_dims=len(output_shape))
-    return tf_keras.layers.EinsumDense(
+    return keras.layers.EinsumDense(
         einsum_equation,
         output_shape=_get_output_shape(output_rank - 1, output_shape),
         bias_axes=bias_axes if (use_bias and self._use_bias) else None,
@@ -480,8 +481,8 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
         _build_attention_equation(rank, attn_axes=self._attention_axes))
     norm_axes = tuple(
         range(attn_scores_rank - len(self._attention_axes), attn_scores_rank))
-    self._softmax = tf_keras.layers.Softmax(axis=norm_axes)
-    self._dropout_layer = tf_keras.layers.Dropout(rate=self._dropout)
+    self._softmax = keras.layers.Softmax(axis=norm_axes)
+    self._dropout_layer = keras.layers.Dropout(rate=self._dropout)
 
   def _masked_softmax(self, attention_scores, attention_mask=None):
     # Normalize the attention scores to probabilities.

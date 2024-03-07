@@ -15,12 +15,13 @@
 """Tests for sliced metrics."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift.metrics import sliced_metric
 
 
-class MeanSquared(tf_keras.metrics.Mean):
+class MeanSquared(keras.metrics.Mean):
 
   def result(self):
     mean = super().result()
@@ -97,7 +98,7 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
       weights: tf.Tensor | None = None,
   ):
     metric = sliced_metric.SlicedMetric(
-        tf_keras.metrics.Accuracy("accuracy"),
+        keras.metrics.Accuracy("accuracy"),
         slicing_spec=slicing_spec,
     )
     metric.update_state(
@@ -141,7 +142,7 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
       expected_result: dict[str, float],
   ):
     metric = sliced_metric.SlicedMetric(
-        tf_keras.metrics.Mean("mean"),
+        keras.metrics.Mean("mean"),
         slicing_spec=slicing_spec,
     )
     metric.update_state(labels, slicing_feature=slicing_feature)
@@ -212,7 +213,7 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
     self.assertRaises(
         ValueError,
         sliced_metric.SlicedMetric,
-        tf_keras.metrics.Mean(),
+        keras.metrics.Mean(),
         slicing_spec=slicing_spec,
     )
 
@@ -231,7 +232,7 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
   def test_invalid_update(self, slicing_spec, slicing_feature):
     # Invalid cast
     metric = sliced_metric.SlicedMetric(
-        tf_keras.metrics.Mean(), slicing_spec=slicing_spec
+        keras.metrics.Mean(), slicing_spec=slicing_spec
     )
     self.assertRaises(
         ValueError,
@@ -287,7 +288,7 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
       sample_weight: tf.Tensor | None = None,
   ):
     metric = sliced_metric.SlicedMetric(
-        tf_keras.metrics.Accuracy("accuracy"),
+        keras.metrics.Accuracy("accuracy"),
         slicing_spec={"control": False, "treatment": True},
     )
     metric.update_state(
@@ -300,7 +301,7 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
 
   def test_batched_inputs(self):
     metric = sliced_metric.SlicedMetric(
-        tf_keras.metrics.Accuracy("accuracy"),
+        keras.metrics.Accuracy("accuracy"),
         slicing_spec={"install": 4, "purchase": 5},
     )
     metric.update_state(
@@ -317,7 +318,7 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
 
   def test_metric_config(self):
     metric = sliced_metric.SlicedMetric(
-        tf_keras.metrics.SparseTopKCategoricalAccuracy(k=2, name="accuracy@2"),
+        keras.metrics.SparseTopKCategoricalAccuracy(k=2, name="accuracy@2"),
         slicing_spec={"a": False, "b": True},
         slicing_feature_dtype=tf.bool,
         name="sliced_accuracy",

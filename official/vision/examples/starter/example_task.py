@@ -15,7 +15,8 @@
 """An example task definition for image classification."""
 from typing import Any, List, Optional, Tuple, Sequence, Mapping
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -35,9 +36,9 @@ class ExampleTask(base_task.Task):
   and one training and evaluation step, etc.
   """
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> keras.Model:
     """Builds a model."""
-    input_specs = tf_keras.layers.InputSpec(shape=[None] +
+    input_specs = keras.layers.InputSpec(shape=[None] +
                                             self.task_config.model.input_size)
 
     model = example_model.build_example_model(
@@ -88,12 +89,12 @@ class ExampleTask(base_task.Task):
     Args:
       labels: Input groundt-ruth labels.
       model_outputs: Output of the model.
-      aux_losses: The auxiliarly loss tensors, i.e. `losses` in tf_keras.Model.
+      aux_losses: The auxiliarly loss tensors, i.e. `losses` in keras.Model.
 
     Returns:
       The total loss tensor.
     """
-    total_loss = tf_keras.losses.sparse_categorical_crossentropy(
+    total_loss = keras.losses.sparse_categorical_crossentropy(
         labels, model_outputs, from_logits=True)
     total_loss = tf_utils.safe_mean(total_loss)
 
@@ -103,31 +104,31 @@ class ExampleTask(base_task.Task):
     return total_loss
 
   def build_metrics(self,
-                    training: bool = True) -> Sequence[tf_keras.metrics.Metric]:
+                    training: bool = True) -> Sequence[keras.metrics.Metric]:
     """Gets streaming metrics for training/validation.
 
     This function builds and returns a list of metrics to compute during
     training and validation. The list contains objects of subclasses of
-    tf_keras.metrics.Metric. Training and validation can have different metrics.
+    keras.metrics.Metric. Training and validation can have different metrics.
 
     Args:
       training: Whether the metric is for training or not.
 
     Returns:
-     A list of tf_keras.metrics.Metric objects.
+     A list of keras.metrics.Metric objects.
     """
     k = self.task_config.evaluation.top_k
     metrics = [
-        tf_keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-        tf_keras.metrics.SparseTopKCategoricalAccuracy(
+        keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+        keras.metrics.SparseTopKCategoricalAccuracy(
             k=k, name='top_{}_accuracy'.format(k))
     ]
     return metrics
 
   def train_step(self,
                  inputs: Tuple[Any, Any],
-                 model: tf_keras.Model,
-                 optimizer: tf_keras.optimizers.Optimizer,
+                 model: keras.Model,
+                 optimizer: keras.optimizers.Optimizer,
                  metrics: Optional[List[Any]] = None) -> Mapping[str, Any]:
     """Does forward and backward.
 
@@ -139,7 +140,7 @@ class ExampleTask(base_task.Task):
 
     Args:
       inputs: A tuple of input tensors of (features, labels).
-      model: A tf_keras.Model instance.
+      model: A keras.Model instance.
       optimizer: The optimizer for this training step.
       metrics: A nested structure of metrics objects.
 
@@ -163,14 +164,14 @@ class ExampleTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
-    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -181,13 +182,13 @@ class ExampleTask(base_task.Task):
 
   def validation_step(self,
                       inputs: Tuple[Any, Any],
-                      model: tf_keras.Model,
+                      model: keras.Model,
                       metrics: Optional[List[Any]] = None) -> Mapping[str, Any]:
     """Runs validation step.
 
     Args:
       inputs: A tuple of input tensors of (features, labels).
-      model: A tf_keras.Model instance.
+      model: A keras.Model instance.
       metrics: A nested structure of metrics objects.
 
     Returns:
@@ -204,6 +205,6 @@ class ExampleTask(base_task.Task):
       self.process_metrics(metrics, labels, outputs)
     return logs
 
-  def inference_step(self, inputs: tf.Tensor, model: tf_keras.Model) -> Any:
+  def inference_step(self, inputs: tf.Tensor, model: keras.Model) -> Any:
     """Performs the forward step. It is used in 'validation_step'."""
     return model(inputs, training=False)

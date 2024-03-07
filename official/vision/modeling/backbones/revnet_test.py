@@ -16,7 +16,8 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.modeling.backbones import revnet
 
@@ -30,10 +31,10 @@ class RevNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, input_size, model_id,
                             endpoint_filter_scale):
     """Test creation of RevNet family models."""
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
 
     network = revnet.RevNet(model_id=model_id)
-    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     network.summary()
 
@@ -53,12 +54,12 @@ class RevNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
 
-    input_specs = tf_keras.layers.InputSpec(shape=[None, None, None, input_dim])
+    input_specs = keras.layers.InputSpec(shape=[None, None, None, input_dim])
     network = revnet.RevNet(model_id=56, input_specs=input_specs)
 
-    inputs = tf_keras.Input(shape=(128, 128, input_dim), batch_size=1)
+    inputs = keras.Input(shape=(128, 128, input_dim), batch_size=1)
     _ = network(inputs)
 
   def test_serialize_deserialize(self):

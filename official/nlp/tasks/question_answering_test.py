@@ -18,7 +18,8 @@ import json
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
@@ -90,7 +91,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     train_dataset = task.build_inputs(config.train_data)
     train_iterator = iter(train_dataset)
-    optimizer = tf_keras.optimizers.SGD(lr=0.1)
+    optimizer = keras.optimizers.SGD(lr=0.1)
     task.train_step(next(train_iterator), model, optimizer, metrics=metrics)
 
     val_dataset = task.build_inputs(config.validation_data)
@@ -137,7 +138,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
             bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1)))
     encoder_inputs_dict = {x.name: x for x in encoder.inputs}
     encoder_output_dict = encoder(encoder_inputs_dict)
-    core_model = tf_keras.Model(
+    core_model = keras.Model(
         inputs=encoder_inputs_dict, outputs=encoder_output_dict)
     hub_destination = os.path.join(self.get_temp_dir(), "hub")
     core_model.save(hub_destination, include_optimizer=False, save_format="tf")
@@ -240,7 +241,7 @@ class XLNetQuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     train_dataset = task.build_inputs(config.train_data)
     train_iterator = iter(train_dataset)
-    optimizer = tf_keras.optimizers.SGD(lr=0.1)
+    optimizer = keras.optimizers.SGD(lr=0.1)
     task.train_step(next(train_iterator), model, optimizer, metrics=metrics)
 
     val_dataset = task.build_inputs(config.validation_data)

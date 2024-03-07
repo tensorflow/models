@@ -20,10 +20,11 @@ from __future__ import print_function
 
 import functools
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-class NormActivation(tf_keras.layers.Layer):
+class NormActivation(keras.layers.Layer):
   """Combined Normalization and Activation layers."""
 
   def __init__(self,
@@ -54,10 +55,10 @@ class NormActivation(tf_keras.layers.Layer):
     """
     super(NormActivation, self).__init__(trainable=trainable)
     if init_zero:
-      gamma_initializer = tf_keras.initializers.Zeros()
+      gamma_initializer = keras.initializers.Zeros()
     else:
-      gamma_initializer = tf_keras.initializers.Ones()
-    self._normalization_op = tf_keras.layers.BatchNormalization(
+      gamma_initializer = keras.initializers.Ones()
+    self._normalization_op = keras.layers.BatchNormalization(
         momentum=momentum,
         epsilon=epsilon,
         center=True,

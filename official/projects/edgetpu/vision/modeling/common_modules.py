@@ -16,7 +16,8 @@
 from typing import Optional, Tuple
 # Import libraries
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow.compat.v1 as tf1
 
 from tensorflow.python.tpu import tpu_function  # pylint: disable=g-direct-tensorflow-import
@@ -26,8 +27,8 @@ MEAN_RGB = (0.5 * 255, 0.5 * 255, 0.5 * 255)
 STDDEV_RGB = (0.5 * 255, 0.5 * 255, 0.5 * 255)
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class TpuBatchNormalization(tf_keras.layers.BatchNormalization):
+@keras.utils.register_keras_serializable(package='Vision')
+class TpuBatchNormalization(keras.layers.BatchNormalization):
   """Cross replica batch normalization."""
 
   def __init__(self, fused: Optional[bool] = False, **kwargs):
@@ -78,7 +79,7 @@ class TpuBatchNormalization(tf_keras.layers.BatchNormalization):
       return (shard_mean, shard_variance)
 
 
-def get_batch_norm(batch_norm_type: str) -> tf_keras.layers.BatchNormalization:
+def get_batch_norm(batch_norm_type: str) -> keras.layers.BatchNormalization:
   """A helper to create a batch normalization getter.
 
   Args:
@@ -86,12 +87,12 @@ def get_batch_norm(batch_norm_type: str) -> tf_keras.layers.BatchNormalization:
      will use `TpuBatchNormalization`.
 
   Returns:
-    An instance of `tf_keras.layers.BatchNormalization`.
+    An instance of `keras.layers.BatchNormalization`.
   """
   if batch_norm_type == 'tpu':
     return TpuBatchNormalization
 
-  return tf_keras.layers.BatchNormalization  # pytype: disable=bad-return-type  # typed-keras
+  return keras.layers.BatchNormalization  # pytype: disable=bad-return-type  # typed-keras
 
 
 def count_params(model, trainable_only=True):
@@ -99,11 +100,11 @@ def count_params(model, trainable_only=True):
   if not trainable_only:
     return model.count_params()
   else:
-    return int(np.sum([tf_keras.backend.count_params(p)
+    return int(np.sum([keras.backend.count_params(p)
                        for p in model.trainable_weights]))
 
 
-def load_weights(model: tf_keras.Model,
+def load_weights(model: keras.Model,
                  model_weights_path: str,
                  checkpoint_format: str = 'tf_checkpoint'):
   """Load model weights from the given file path.

@@ -17,12 +17,13 @@
 
 from typing import Any, Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.yt8m.modeling import nn_layers
 
 
-layers = tf_keras.layers
+layers = keras.layers
 
 
 class MoeModel(layers.Layer):
@@ -36,7 +37,7 @@ class MoeModel(layers.Layer):
       use_output_context_gate: bool = False,
       normalizer_params: Optional[dict[str, Any]] = None,
       vocab_as_last_dim: bool = False,
-      l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      l2_regularizer: Optional[keras.regularizers.Regularizer] = None,
       **kwargs,
   ):
     """Creates a Mixture of (Logistic) Experts model.

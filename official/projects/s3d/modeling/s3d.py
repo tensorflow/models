@@ -19,7 +19,8 @@ https://arxiv.org/abs/1712.04851.
 """
 from typing import Any, Dict, Mapping, Optional, Sequence, Text, Tuple, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import hyperparams
 from official.projects.s3d.configs import s3d as cfg
@@ -28,15 +29,15 @@ from official.projects.s3d.modeling import net_utils
 from official.vision.modeling import factory_3d as model_factory
 from official.vision.modeling.backbones import factory as backbone_factory
 
-initializers = tf_keras.initializers
-regularizers = tf_keras.regularizers
+initializers = keras.initializers
+regularizers = keras.regularizers
 
 
-class S3D(tf_keras.Model):
+class S3D(keras.Model):
   """Class to build S3D family model."""
 
   def __init__(self,
-               input_specs: tf_keras.layers.InputSpec,
+               input_specs: keras.layers.InputSpec,
                final_endpoint: Text = 'Mixed_5c',
                first_temporal_kernel_size: int = 3,
                temporal_conv_start_at: Text = 'Conv2d_2c_3x3',
@@ -61,7 +62,7 @@ class S3D(tf_keras.Model):
     """Constructor.
 
     Args:
-      input_specs: `tf_keras.layers.InputSpec` specs of the input tensor.
+      input_specs: `keras.layers.InputSpec` specs of the input tensor.
       final_endpoint: Specifies the endpoint to construct the network up to.
       first_temporal_kernel_size: Temporal kernel size of the first convolution
         layer.
@@ -109,7 +110,7 @@ class S3D(tf_keras.Model):
     self._self_gating_endpoints = net_utils.make_set_from_start_endpoint(
         gating_start_at, inception_utils.INCEPTION_V1_CONV_ENDPOINTS)
 
-    inputs = tf_keras.Input(shape=input_specs.shape[1:])
+    inputs = keras.Input(shape=input_specs.shape[1:])
     net, end_points = inception_utils.inception_v1_stem_cells(
         inputs,
         depth_multiplier,
@@ -146,9 +147,9 @@ class S3D(tf_keras.Model):
       end_point: Text,
       end_points: Dict[Text, tf.Tensor],
       filters: Union[int, Sequence[Any]],
-      non_local_block: Optional[tf_keras.layers.Layer] = None,
-      attention_cell: Optional[tf_keras.layers.Layer] = None,
-      attention_cell_super_graph: Optional[tf_keras.layers.Layer] = None
+      non_local_block: Optional[keras.layers.Layer] = None,
+      attention_cell: Optional[keras.layers.Layer] = None,
+      attention_cell_super_graph: Optional[keras.layers.Layer] = None
   ) -> Tuple[tf.Tensor, Dict[Text, tf.Tensor]]:
     if end_point.startswith('Mixed'):
       conv_type = (
@@ -180,7 +181,7 @@ class S3D(tf_keras.Model):
           name=self._get_layer_naming_fn()(end_point))(
               net)
     else:
-      net = tf_keras.layers.MaxPool3D(
+      net = keras.layers.MaxPool3D(
           pool_size=filters[0],
           strides=filters[1],
           padding='same',
@@ -238,13 +239,13 @@ class S3D(tf_keras.Model):
     return lambda end_point: None
 
 
-class S3DModel(tf_keras.Model):
+class S3DModel(keras.Model):
   """An S3D model builder."""
 
   def __init__(self,
-               backbone: tf_keras.Model,
+               backbone: keras.Model,
                num_classes: int,
-               input_specs: Mapping[Text, tf_keras.layers.InputSpec],
+               input_specs: Mapping[Text, keras.layers.InputSpec],
                final_endpoint: Text = 'Mixed_5c',
                dropout_rate: float = 0.0,
                **kwargs):
@@ -253,7 +254,7 @@ class S3DModel(tf_keras.Model):
     Args:
       backbone: S3D backbone Keras Model.
       num_classes: `int` number of possible classes for video classification.
-      input_specs: input_specs: `tf_keras.layers.InputSpec` specs of the input
+      input_specs: input_specs: `keras.layers.InputSpec` specs of the input
         tensor.
       final_endpoint: Specifies the endpoint to construct the network up to.
       dropout_rate: `float` between 0 and 1. Fraction of the input units to
@@ -275,13 +276,13 @@ class S3DModel(tf_keras.Model):
     }
 
     inputs = {
-        k: tf_keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+        k: keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
     }
     streams = self._backbone(inputs['image'])
 
     pool = tf.math.reduce_mean(streams[self._final_endpoint], axis=[1, 2, 3])
-    fc = tf_keras.layers.Dropout(dropout_rate)(pool)
-    logits = tf_keras.layers.Dense(**self._build_dense_layer_params())(fc)
+    fc = keras.layers.Dropout(dropout_rate)(pool)
+    logits = keras.layers.Dense(**self._build_dense_layer_params())(fc)
 
     super(S3DModel, self).__init__(inputs=inputs, outputs=logits, **kwargs)
 
@@ -307,11 +308,11 @@ class S3DModel(tf_keras.Model):
 
 @backbone_factory.register_backbone_builder('s3d')
 def build_s3d(
-    input_specs: tf_keras.layers.InputSpec,
+    input_specs: keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
-) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: keras.regularizers.Regularizer = None
+) -> keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds S3D backbone."""
 
   backbone_type = backbone_config.type
@@ -338,11 +339,11 @@ def build_s3d(
 
 @model_factory.register_model_builder('s3d')
 def build_s3d_model(
-    input_specs: tf_keras.layers.InputSpec,
+    input_specs: keras.layers.InputSpec,
     model_config: cfg.S3DModel,
     num_classes: int,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
-) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: keras.regularizers.Regularizer = None
+) -> keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds S3D model with classification layer."""
   input_specs_dict = {'image': input_specs}
   backbone = build_s3d(input_specs, model_config.backbone,

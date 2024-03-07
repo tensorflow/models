@@ -14,16 +14,17 @@
 
 """Utils for testing."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-class FakeKerasModel(tf_keras.Model):
+class FakeKerasModel(keras.Model):
   """Fake keras model for testing."""
 
   def __init__(self):
     super().__init__()
-    self.dense = tf_keras.layers.Dense(4, activation=tf.nn.relu)
-    self.dense2 = tf_keras.layers.Dense(4, activation=tf.nn.relu)
+    self.dense = keras.layers.Dense(4, activation=tf.nn.relu)
+    self.dense2 = keras.layers.Dense(4, activation=tf.nn.relu)
 
   def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     return self.dense2(self.dense(inputs))

@@ -40,7 +40,7 @@ class BaseOptimizerConfig(base_config.Config):
 class SGDConfig(BaseOptimizerConfig):
   """Configuration for SGD optimizer.
 
-  The attributes for this class matches the arguments of tf_keras.optimizer.SGD.
+  The attributes for this class matches the arguments of keras.optimizer.SGD.
 
   Attributes:
     name: name of the optimizer.
@@ -61,7 +61,7 @@ class SGDExperimentalConfig(BaseOptimizerConfig):
   """Configuration for SGD optimizer.
 
   The attributes for this class matches the arguments of
-  `tf_keras.optimizer.experimental.SGD`.
+  `keras.optimizer.experimental.SGD`.
 
   Attributes:
     name: name of the optimizer.
@@ -80,7 +80,7 @@ class RMSPropConfig(BaseOptimizerConfig):
   """Configuration for RMSProp optimizer.
 
   The attributes for this class matches the arguments of
-  tf_keras.optimizers.RMSprop.
+  keras.optimizers.RMSprop.
 
   Attributes:
     name: name of the optimizer.
@@ -101,7 +101,7 @@ class AdagradConfig(BaseOptimizerConfig):
   """Configuration for Adagrad optimizer.
 
   The attributes of this class match the arguments of
-  tf_keras.optimizer.Adagrad.
+  keras.optimizer.Adagrad.
 
   Attributes:
     name: name of the optimizer.
@@ -119,7 +119,7 @@ class AdamConfig(BaseOptimizerConfig):
   """Configuration for Adam optimizer.
 
   The attributes for this class matches the arguments of
-  tf_keras.optimizer.Adam.
+  keras.optimizer.Adam.
 
   Attributes:
     name: name of the optimizer.
@@ -141,7 +141,7 @@ class AdamExperimentalConfig(BaseOptimizerConfig):
   """Configuration for experimental Adam optimizer.
 
   The attributes for this class matches the arguments of
-  `tf_keras.optimizer.experimental.Adam`.
+  `keras.optimizer.experimental.Adam`.
 
   Attributes:
     name: name of the optimizer.
@@ -350,7 +350,7 @@ class AdafactorKerasConfig(BaseOptimizerConfig):
   Attributes:
           learning_rate: Initial value for the learning rate: either a floating
             point value, or a
-            `tf_keras.optimizers.schedules.LearningRateSchedule` instance.
+            `keras.optimizers.schedules.LearningRateSchedule` instance.
             Defaults to 0.001.
         beta_2_decay: float, defaults to -0.8. The decay rate of `beta_2`.
         epsilon_1: float, defaults to 1e-30. A small offset to keep denominator

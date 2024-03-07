@@ -27,7 +27,8 @@ from PIL import Image
 from pycocotools import coco
 from pycocotools import mask as mask_api
 import six
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.legacy.detection.dataloader import tf_example_decoder
 from official.legacy.detection.utils import box_utils

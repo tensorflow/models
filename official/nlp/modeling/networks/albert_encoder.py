@@ -15,15 +15,16 @@
 """ALBERT (https://arxiv.org/abs/1810.04805) text encoder network."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import activations
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class AlbertEncoder(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class AlbertEncoder(keras.Model):
   """ALBERT (https://arxiv.org/abs/1810.04805) text encoder network.
 
   This network implements the encoder described in the paper "ALBERT: A Lite
@@ -75,17 +76,17 @@ class AlbertEncoder(tf_keras.Model):
                activation=activations.gelu,
                dropout_rate=0.1,
                attention_dropout_rate=0.1,
-               initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
+               initializer=keras.initializers.TruncatedNormal(stddev=0.02),
                dict_outputs=False,
                **kwargs):
-    activation = tf_keras.activations.get(activation)
-    initializer = tf_keras.initializers.get(initializer)
+    activation = keras.activations.get(activation)
+    initializer = keras.initializers.get(initializer)
 
-    word_ids = tf_keras.layers.Input(
+    word_ids = keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_word_ids')
-    mask = tf_keras.layers.Input(
+    mask = keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_mask')
-    type_ids = tf_keras.layers.Input(
+    type_ids = keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_type_ids')
 
     if embedding_width is None:
@@ -112,19 +113,19 @@ class AlbertEncoder(tf_keras.Model):
             use_one_hot=True,
             name='type_embeddings')(type_ids))
 
-    embeddings = tf_keras.layers.Add()(
+    embeddings = keras.layers.Add()(
         [word_embeddings, position_embeddings, type_embeddings])
     embeddings = (
-        tf_keras.layers.LayerNormalization(
+        keras.layers.LayerNormalization(
             name='embeddings/layer_norm',
             axis=-1,
             epsilon=1e-12,
             dtype=tf.float32)(embeddings))
-    embeddings = (tf_keras.layers.Dropout(rate=dropout_rate)(embeddings))
+    embeddings = (keras.layers.Dropout(rate=dropout_rate)(embeddings))
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
-      embeddings = tf_keras.layers.EinsumDense(
+      embeddings = keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
@@ -151,7 +152,7 @@ class AlbertEncoder(tf_keras.Model):
     # like this will create a SliceOpLambda layer. This is better than a Lambda
     # layer with Python code, because that is fundamentally less portable.
     first_token_tensor = data[:, 0, :]
-    cls_output = tf_keras.layers.Dense(
+    cls_output = keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
         kernel_initializer=tf_utils.clone_initializer(initializer),
@@ -184,10 +185,10 @@ class AlbertEncoder(tf_keras.Model):
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'intermediate_size': intermediate_size,
-        'activation': tf_keras.activations.serialize(activation),
+        'activation': keras.activations.serialize(activation),
         'dropout_rate': dropout_rate,
         'attention_dropout_rate': attention_dropout_rate,
-        'initializer': tf_keras.initializers.serialize(initializer),
+        'initializer': keras.initializers.serialize(initializer),
     }
 
     # We are storing the config dict as a namedtuple here to ensure checkpoint

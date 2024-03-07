@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.projects.video_ssl.ops import video_ssl_preprocess_ops
 from official.vision.ops import preprocess_ops_3d
 

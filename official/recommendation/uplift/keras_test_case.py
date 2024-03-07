@@ -32,7 +32,8 @@ succeed.
 import json
 from typing import Any, Mapping, Sequence
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 # pylint: disable=invalid-name
@@ -65,21 +66,21 @@ class KerasTestCase(tf.test.TestCase):
     self.assertNestedEqual(output1, output2)
 
   def toKerasInputs(self, inputs):  # pylint:disable=[invalid-name]
-    """Generate tf_keras.Input for inputs.
+    """Generate keras.Input for inputs.
 
     Args:
       inputs: a StructuredTensor, Tensor, RecordTensor, RaggedTensor, or nested
         structures of these.
 
     Returns:
-      tf_keras.Input representing the input.
+      keras.Input representing the input.
     """
 
     def map_to_keras_input(x):
       if isinstance(x, tf.Tensor):
-        return tf_keras.Input(x.shape[1:], dtype=x.dtype)
+        return keras.Input(x.shape[1:], dtype=x.dtype)
       ts = tf.type_spec_from_value(x)
-      return tf_keras.Input(type_spec=ts)
+      return keras.Input(type_spec=ts)
 
     return tf.nest.map_structure(map_to_keras_input, inputs)
 
@@ -97,7 +98,7 @@ class KerasTestCase(tf.test.TestCase):
     Args:
       inputs: an input to the layer.
       layer: a layer to save.
-      keras_inputs: if inputs._type_spec won't create a tf_keras.Input.
+      keras_inputs: if inputs._type_spec won't create a keras.Input.
       custom_objects: passed to load_model.
       save_format: save_format ("tf" or "h5")
       **kwargs: auxiliary inputs passed to the layer.
@@ -108,7 +109,7 @@ class KerasTestCase(tf.test.TestCase):
         # TODO(martinz): This is not a generic solution.
         keras_inputs = self.toKerasInputs(inputs)
       keras_outputs = layer(keras_inputs, **kwargs)
-      return tf_keras.Model(keras_inputs, keras_outputs)
+      return keras.Model(keras_inputs, keras_outputs)
 
     model = _make_model(inputs, layer, keras_inputs)
     self.assertModelSavable(
@@ -131,8 +132,8 @@ class KerasTestCase(tf.test.TestCase):
 
     src_output = model(inputs)
     model_path = self.get_temp_dir() + "/tmp_model"
-    tf_keras.models.save_model(model, model_path, save_format=save_format)
-    reloaded_model = tf_keras.models.load_model(
+    keras.models.save_model(model, model_path, save_format=save_format)
+    reloaded_model = keras.models.load_model(
         model_path, custom_objects=custom_objects
     )
     self.assertEqual(
@@ -148,7 +149,7 @@ class KerasTestCase(tf.test.TestCase):
     self.assertNestedEqual(src_output, loaded_output)
 
   def assertLayerConfigurable(
-      self, layer: tf_keras.layers.Layer, serializable: bool = True, **kwargs
+      self, layer: keras.layers.Layer, serializable: bool = True, **kwargs
   ):
     """Layer can be reconstructed using get_config and from_config.
 

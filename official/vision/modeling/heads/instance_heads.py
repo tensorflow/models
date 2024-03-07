@@ -16,13 +16,14 @@
 
 from typing import List, Union, Optional
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class DetectionHead(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class DetectionHead(keras.layers.Layer):
   """Creates a detection head."""
 
   def __init__(
@@ -38,8 +39,8 @@ class DetectionHead(tf_keras.layers.Layer):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a detection head.
 
@@ -63,9 +64,9 @@ class DetectionHead(tf_keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(DetectionHead, self).__init__(**kwargs)
@@ -85,7 +86,7 @@ class DetectionHead(tf_keras.layers.Layer):
         'bias_regularizer': bias_regularizer,
     }
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -93,9 +94,9 @@ class DetectionHead(tf_keras.layers.Layer):
 
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
-    conv_op = (tf_keras.layers.SeparableConv2D
+    conv_op = (keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
-               else tf_keras.layers.Conv2D)
+               else keras.layers.Conv2D)
     conv_kwargs = {
         'filters': self._config_dict['num_filters'],
         'kernel_size': 3,
@@ -103,9 +104,9 @@ class DetectionHead(tf_keras.layers.Layer):
     }
     if self._config_dict['use_separable_conv']:
       conv_kwargs.update({
-          'depthwise_initializer': tf_keras.initializers.VarianceScaling(
+          'depthwise_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf_keras.initializers.VarianceScaling(
+          'pointwise_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
@@ -114,13 +115,13 @@ class DetectionHead(tf_keras.layers.Layer):
       })
     else:
       conv_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.VarianceScaling(
+          'kernel_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
           'bias_regularizer': self._config_dict['bias_regularizer'],
       })
-    bn_op = tf_keras.layers.BatchNormalization
+    bn_op = keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
@@ -144,9 +145,9 @@ class DetectionHead(tf_keras.layers.Layer):
     for i in range(self._config_dict['num_fcs']):
       fc_name = 'detection-fc_{}'.format(i)
       self._fcs.append(
-          tf_keras.layers.Dense(
+          keras.layers.Dense(
               units=self._config_dict['fc_dims'],
-              kernel_initializer=tf_keras.initializers.VarianceScaling(
+              kernel_initializer=keras.initializers.VarianceScaling(
                   scale=1 / 3.0, mode='fan_out', distribution='uniform'),
               kernel_regularizer=self._config_dict['kernel_regularizer'],
               bias_regularizer=self._config_dict['bias_regularizer'],
@@ -154,9 +155,9 @@ class DetectionHead(tf_keras.layers.Layer):
       bn_name = 'detection-fc-bn_{}'.format(i)
       self._fc_norms.append(bn_op(name=bn_name, **bn_kwargs))
 
-    self._classifier = tf_keras.layers.Dense(
+    self._classifier = keras.layers.Dense(
         units=self._config_dict['num_classes'],
-        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.01),
+        kernel_initializer=keras.initializers.RandomNormal(stddev=0.01),
         bias_initializer=tf.zeros_initializer(),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'],
@@ -164,9 +165,9 @@ class DetectionHead(tf_keras.layers.Layer):
 
     num_box_outputs = (4 if self._config_dict['class_agnostic_bbox_pred'] else
                        self._config_dict['num_classes'] * 4)
-    self._box_regressor = tf_keras.layers.Dense(
+    self._box_regressor = keras.layers.Dense(
         units=num_box_outputs,
-        kernel_initializer=tf_keras.initializers.RandomNormal(stddev=0.001),
+        kernel_initializer=keras.initializers.RandomNormal(stddev=0.001),
         bias_initializer=tf.zeros_initializer(),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         bias_regularizer=self._config_dict['bias_regularizer'],
@@ -218,8 +219,8 @@ class DetectionHead(tf_keras.layers.Layer):
     return cls(**config)
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class MaskHead(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class MaskHead(keras.layers.Layer):
   """Creates a mask head."""
 
   def __init__(
@@ -233,8 +234,8 @@ class MaskHead(tf_keras.layers.Layer):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       class_agnostic: bool = False,
       **kwargs):
     """Initializes a mask head.
@@ -255,9 +256,9 @@ class MaskHead(tf_keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2D.
       class_agnostic: A `bool`. If set, we use a single channel mask head that
         is shared between all classes.
       **kwargs: Additional keyword arguments to be passed.
@@ -278,7 +279,7 @@ class MaskHead(tf_keras.layers.Layer):
         'class_agnostic': class_agnostic
     }
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -286,9 +287,9 @@ class MaskHead(tf_keras.layers.Layer):
 
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
-    conv_op = (tf_keras.layers.SeparableConv2D
+    conv_op = (keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
-               else tf_keras.layers.Conv2D)
+               else keras.layers.Conv2D)
     conv_kwargs = {
         'filters': self._config_dict['num_filters'],
         'kernel_size': 3,
@@ -296,9 +297,9 @@ class MaskHead(tf_keras.layers.Layer):
     }
     if self._config_dict['use_separable_conv']:
       conv_kwargs.update({
-          'depthwise_initializer': tf_keras.initializers.VarianceScaling(
+          'depthwise_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf_keras.initializers.VarianceScaling(
+          'pointwise_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
@@ -307,13 +308,13 @@ class MaskHead(tf_keras.layers.Layer):
       })
     else:
       conv_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.VarianceScaling(
+          'kernel_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
           'bias_regularizer': self._config_dict['bias_regularizer'],
       })
-    bn_op = tf_keras.layers.BatchNormalization
+    bn_op = keras.layers.BatchNormalization
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
@@ -334,12 +335,12 @@ class MaskHead(tf_keras.layers.Layer):
       bn_name = 'mask-conv-bn_{}'.format(i)
       self._conv_norms.append(bn_op(name=bn_name, **bn_kwargs))
 
-    self._deconv = tf_keras.layers.Conv2DTranspose(
+    self._deconv = keras.layers.Conv2DTranspose(
         filters=self._config_dict['num_filters'],
         kernel_size=self._config_dict['upsample_factor'],
         strides=self._config_dict['upsample_factor'],
         padding='valid',
-        kernel_initializer=tf_keras.initializers.VarianceScaling(
+        kernel_initializer=keras.initializers.VarianceScaling(
             scale=2, mode='fan_out', distribution='untruncated_normal'),
         bias_initializer=tf.zeros_initializer(),
         kernel_regularizer=self._config_dict['kernel_regularizer'],
@@ -359,9 +360,9 @@ class MaskHead(tf_keras.layers.Layer):
     }
     if self._config_dict['use_separable_conv']:
       conv_kwargs.update({
-          'depthwise_initializer': tf_keras.initializers.VarianceScaling(
+          'depthwise_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
-          'pointwise_initializer': tf_keras.initializers.VarianceScaling(
+          'pointwise_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
@@ -370,7 +371,7 @@ class MaskHead(tf_keras.layers.Layer):
       })
     else:
       conv_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.VarianceScaling(
+          'kernel_initializer': keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],

@@ -17,7 +17,8 @@
 from typing import Mapping, Optional
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pointpillars.configs import pointpillars as cfg
 from official.projects.pointpillars.modeling import backbones
@@ -29,12 +30,12 @@ from official.vision.modeling.layers import detection_generator
 
 
 def build_pointpillars(
-    input_specs: Mapping[str, tf_keras.layers.InputSpec],
+    input_specs: Mapping[str, keras.layers.InputSpec],
     model_config: cfg.PointPillarsModel,
     train_batch_size: int,
     eval_batch_size: int,
-    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
-) -> tf_keras.Model:
+    l2_regularizer: Optional[keras.regularizers.Regularizer] = None
+) -> keras.Model:
   """Build the PointPillars model.
 
   Args:
@@ -50,7 +51,7 @@ def build_pointpillars(
   # Build inputs
   inputs = {}
   for k, v in input_specs.items():
-    inputs[k] = tf_keras.Input(shape=v.shape[1:], dtype=v.dtype)
+    inputs[k] = keras.Input(shape=v.shape[1:], dtype=v.dtype)
 
   # Build featurizer
   image_size = (model_config.image.height, model_config.image.width)

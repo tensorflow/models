@@ -16,12 +16,13 @@
 
 import abc
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.uplift import types
 
 
-class BaseTwoTowerUpliftNetwork(tf_keras.layers.Layer, metaclass=abc.ABCMeta):
+class BaseTwoTowerUpliftNetwork(keras.layers.Layer, metaclass=abc.ABCMeta):
   """Abstract class for uplift layers that compute control and treatment logits.
 
   A TwoTowerUpliftNetwork layer is expected to take in a dictionary of feature

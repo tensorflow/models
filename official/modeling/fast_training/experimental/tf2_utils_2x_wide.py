@@ -16,7 +16,8 @@
 
 from absl import logging
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 def expand_vector(v: np.ndarray) -> np.ndarray:
@@ -169,15 +170,15 @@ def model_to_model_2x_wide(model_from: tf.Module,
   Also makes sure that the output of the model is not changed after expanding.
   For example:
   ```
-  model_narrow = tf_keras.Sequential()
-  model_narrow.add(tf_keras.Input(shape=(3,)))
-  model_narrow.add(tf_keras.layers.Dense(4))
-  model_narrow.add(tf_keras.layers.Dense(1))
+  model_narrow = keras.Sequential()
+  model_narrow.add(keras.Input(shape=(3,)))
+  model_narrow.add(keras.layers.Dense(4))
+  model_narrow.add(keras.layers.Dense(1))
 
-  model_wide = tf_keras.Sequential()
-  model_wide.add(tf_keras.Input(shape=(6,)))
-  model_wide.add(tf_keras.layers.Dense(8))
-  model_wide.add(tf_keras.layers.Dense(1))
+  model_wide = keras.Sequential()
+  model_wide.add(keras.Input(shape=(6,)))
+  model_wide.add(keras.layers.Dense(8))
+  model_wide.add(keras.layers.Dense(1))
 
   model_to_model_2x_wide(model_narrow, model_wide)
   assert model_narrow([[1, 2, 3]]) == model_wide([[1, 1, 2, 2, 3, 3]])

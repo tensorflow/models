@@ -16,7 +16,8 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.centernet.modeling.heads import centernet_head
 
@@ -30,8 +31,8 @@ class CenterNetHeadTest(tf.test.TestCase, parameterized.TestCase):
         'ct_size': 2,
     }
     input_specs = {
-        '2_0': tf_keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
-        '2': tf_keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
+        '2_0': keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
+        '2': keras.layers.InputSpec(shape=(None, 128, 128, 256)).shape,
     }
 
     input_levels = ['2', '2_0']

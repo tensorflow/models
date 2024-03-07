@@ -15,13 +15,14 @@
 """Trainer network for dual encoder style models."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling import layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class DualEncoder(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class DualEncoder(keras.Model):
   """A dual encoder model based on a transformer-based encoder.
 
   This is an implementation of the dual encoder network structure based on the
@@ -43,7 +44,7 @@ class DualEncoder(tf_keras.Model):
   """
 
   def __init__(self,
-               network: tf_keras.Model,
+               network: keras.Model,
                max_seq_length: int = 32,
                normalize: bool = True,
                logit_scale: float = 1.0,
@@ -52,19 +53,19 @@ class DualEncoder(tf_keras.Model):
                **kwargs) -> None:
 
     if output == 'logits':
-      left_word_ids = tf_keras.layers.Input(
+      left_word_ids = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='left_word_ids')
-      left_mask = tf_keras.layers.Input(
+      left_mask = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='left_mask')
-      left_type_ids = tf_keras.layers.Input(
+      left_type_ids = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='left_type_ids')
     else:
       # Keep the consistant with legacy BERT hub module input names.
-      left_word_ids = tf_keras.layers.Input(
+      left_word_ids = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
-      left_mask = tf_keras.layers.Input(
+      left_mask = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
-      left_type_ids = tf_keras.layers.Input(
+      left_type_ids = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
 
     left_inputs = [left_word_ids, left_mask, left_type_ids]
@@ -75,16 +76,16 @@ class DualEncoder(tf_keras.Model):
       left_sequence_output = left_outputs['sequence_output']
       left_encoded = left_outputs['pooled_output']
     if normalize:
-      left_encoded = tf_keras.layers.Lambda(
+      left_encoded = keras.layers.Lambda(
           lambda x: tf.nn.l2_normalize(x, axis=1))(
               left_encoded)
 
     if output == 'logits':
-      right_word_ids = tf_keras.layers.Input(
+      right_word_ids = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='right_word_ids')
-      right_mask = tf_keras.layers.Input(
+      right_mask = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='right_mask')
-      right_type_ids = tf_keras.layers.Input(
+      right_type_ids = keras.layers.Input(
           shape=(max_seq_length,), dtype=tf.int32, name='right_type_ids')
 
       right_inputs = [right_word_ids, right_mask, right_type_ids]
@@ -94,7 +95,7 @@ class DualEncoder(tf_keras.Model):
       else:
         right_encoded = right_outputs['pooled_output']
       if normalize:
-        right_encoded = tf_keras.layers.Lambda(
+        right_encoded = keras.layers.Lambda(
             lambda x: tf.nn.l2_normalize(x, axis=1))(
                 right_encoded)
 

@@ -18,7 +18,8 @@ Model paper: https://arxiv.org/pdf/1706.03762.pdf
 Transformer model code source: https://github.com/tensorflow/tensor2tensor
 """
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.legacy.transformer import attention_layer
 from official.legacy.transformer import embedding_layer
@@ -38,32 +39,32 @@ def create_model(params, is_train):
   """Creates transformer model."""
   with tf.name_scope("model"):
     if is_train:
-      inputs = tf_keras.layers.Input((None,), dtype="int64", name="inputs")
-      targets = tf_keras.layers.Input((None,), dtype="int64", name="targets")
+      inputs = keras.layers.Input((None,), dtype="int64", name="inputs")
+      targets = keras.layers.Input((None,), dtype="int64", name="targets")
       internal_model = Transformer(params, name="transformer_v2")
       logits = internal_model([inputs, targets], training=is_train)
       vocab_size = params["vocab_size"]
       label_smoothing = params["label_smoothing"]
       if params["enable_metrics_in_training"]:
         logits = metrics.MetricLayer(vocab_size)([logits, targets])
-      logits = tf_keras.layers.Lambda(
+      logits = keras.layers.Lambda(
           lambda x: x, name="logits", dtype=tf.float32)(
               logits)
-      model = tf_keras.Model([inputs, targets], logits)
+      model = keras.Model([inputs, targets], logits)
       loss = metrics.transformer_loss(logits, targets, label_smoothing,
                                       vocab_size)
       model.add_loss(loss)
       return model
 
     else:
-      inputs = tf_keras.layers.Input((None,), dtype="int64", name="inputs")
+      inputs = keras.layers.Input((None,), dtype="int64", name="inputs")
       internal_model = Transformer(params, name="transformer_v2")
       ret = internal_model([inputs], training=is_train)
       outputs, scores = ret["outputs"], ret["scores"]
-      return tf_keras.Model(inputs, [outputs, scores])
+      return keras.Model(inputs, [outputs, scores])
 
 
-class Transformer(tf_keras.Model):
+class Transformer(keras.Model):
   """Transformer model with Keras.
 
   Implemented as described in: https://arxiv.org/pdf/1706.03762.pdf
@@ -339,7 +340,7 @@ class Transformer(tf_keras.Model):
     return {"outputs": top_decoded_ids, "scores": top_scores}
 
 
-class PrePostProcessingWrapper(tf_keras.layers.Layer):
+class PrePostProcessingWrapper(keras.layers.Layer):
   """Wrapper class that applies layer pre-processing and post-processing."""
 
   def __init__(self, layer, params):
@@ -350,7 +351,7 @@ class PrePostProcessingWrapper(tf_keras.layers.Layer):
 
   def build(self, input_shape):
     # Create normalization layer
-    self.layer_norm = tf_keras.layers.LayerNormalization(
+    self.layer_norm = keras.layers.LayerNormalization(
         epsilon=1e-6, dtype="float32")
     super(PrePostProcessingWrapper, self).build(input_shape)
 
@@ -375,7 +376,7 @@ class PrePostProcessingWrapper(tf_keras.layers.Layer):
     return x + y
 
 
-class EncoderStack(tf_keras.layers.Layer):
+class EncoderStack(keras.layers.Layer):
   """Transformer encoder stack.
 
   The encoder stack is made up of N identical layers. Each layer is composed
@@ -406,7 +407,7 @@ class EncoderStack(tf_keras.layers.Layer):
       ])
 
     # Create final layer normalization layer.
-    self.output_normalization = tf_keras.layers.LayerNormalization(
+    self.output_normalization = keras.layers.LayerNormalization(
         epsilon=1e-6, dtype="float32")
     super(EncoderStack, self).build(input_shape)
 
@@ -446,7 +447,7 @@ class EncoderStack(tf_keras.layers.Layer):
     return self.output_normalization(encoder_inputs)
 
 
-class DecoderStack(tf_keras.layers.Layer):
+class DecoderStack(keras.layers.Layer):
   """Transformer decoder stack.
 
   Like the encoder stack, the decoder stack is made up of N identical layers.
@@ -480,7 +481,7 @@ class DecoderStack(tf_keras.layers.Layer):
           PrePostProcessingWrapper(enc_dec_attention_layer, params),
           PrePostProcessingWrapper(feed_forward_network, params)
       ])
-    self.output_normalization = tf_keras.layers.LayerNormalization(
+    self.output_normalization = keras.layers.LayerNormalization(
         epsilon=1e-6, dtype="float32")
     super(DecoderStack, self).build(input_shape)
 

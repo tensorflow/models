@@ -14,10 +14,11 @@
 
 """Gaussian error linear unit."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 def gelu(x):
   """Gaussian Error Linear Unit.
 
@@ -29,4 +30,4 @@ def gelu(x):
   Returns:
     `x` with the GELU activation applied.
   """
-  return tf_keras.activations.gelu(x, approximate=True)
+  return keras.activations.gelu(x, approximate=True)

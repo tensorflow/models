@@ -15,7 +15,8 @@
 """Tests for backbones."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pointpillars.modeling import backbones
 
@@ -28,7 +29,7 @@ class BackboneTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_network_creation(self, input_shape, min_level, max_level):
     batch_size = input_shape[0]
-    inputs = tf_keras.Input(shape=input_shape[1:], batch_size=batch_size)
+    inputs = keras.Input(shape=input_shape[1:], batch_size=batch_size)
     backbone = backbones.Backbone(input_shape, min_level, max_level)
     endpoints = backbone(inputs)
     _, h, w, c = input_shape

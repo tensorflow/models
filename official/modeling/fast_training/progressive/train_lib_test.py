@@ -19,7 +19,8 @@ from absl import flags
 from absl.testing import parameterized
 import dataclasses
 import orbit
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations

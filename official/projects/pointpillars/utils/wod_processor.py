@@ -18,7 +18,8 @@ from typing import Any, List, Mapping, Optional, Sequence, Tuple
 import zlib
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pointpillars.configs import pointpillars as cfg
 from official.projects.pointpillars.utils import utils

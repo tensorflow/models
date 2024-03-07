@@ -15,7 +15,8 @@
 """TEAMS pretraining task (Joint Masked LM, Replaced Token Detection and )."""
 
 import dataclasses
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -79,7 +80,7 @@ def _build_pretrainer(
       candidate_size=config.candidate_size,
       mlm_activation=tf_utils.get_activation(
           generator_encoder_cfg.hidden_activation),
-      mlm_initializer=tf_keras.initializers.TruncatedNormal(
+      mlm_initializer=keras.initializers.TruncatedNormal(
           stddev=generator_encoder_cfg.initializer_range))
 
 
@@ -99,7 +100,7 @@ class TeamsPretrainTask(base_task.Task):
       metrics = dict([(metric.name, metric) for metric in metrics])
 
       # Generator MLM loss.
-      lm_prediction_losses = tf_keras.losses.sparse_categorical_crossentropy(
+      lm_prediction_losses = keras.losses.sparse_categorical_crossentropy(
           labels['masked_lm_ids'],
           tf.cast(model_outputs['lm_outputs'], tf.float32),
           from_logits=True)
@@ -127,7 +128,7 @@ class TeamsPretrainTask(base_task.Task):
       # Discriminator MWS loss.
       mws_logits = model_outputs['disc_mws_logits']
       mws_labels = model_outputs['disc_mws_label']
-      mws_loss = tf_keras.losses.sparse_categorical_crossentropy(
+      mws_loss = keras.losses.sparse_categorical_crossentropy(
           mws_labels, mws_logits, from_logits=True)
       mws_numerator_loss = tf.reduce_sum(mws_loss * lm_label_weights)
       mws_denominator_loss = tf.reduce_sum(lm_label_weights)
@@ -169,15 +170,15 @@ class TeamsPretrainTask(base_task.Task):
   def build_metrics(self, training=None):
     del training
     metrics = [
-        tf_keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
-        tf_keras.metrics.Mean(name='masked_lm_loss'),
-        tf_keras.metrics.SparseCategoricalAccuracy(
+        keras.metrics.SparseCategoricalAccuracy(name='masked_lm_accuracy'),
+        keras.metrics.Mean(name='masked_lm_loss'),
+        keras.metrics.SparseCategoricalAccuracy(
             name='replaced_token_detection_accuracy'),
-        tf_keras.metrics.Mean(name='replaced_token_detection_loss'),
-        tf_keras.metrics.SparseCategoricalAccuracy(
+        keras.metrics.Mean(name='replaced_token_detection_loss'),
+        keras.metrics.SparseCategoricalAccuracy(
             name='multiword_selection_accuracy'),
-        tf_keras.metrics.Mean(name='multiword_selection_loss'),
-        tf_keras.metrics.Mean(name='total_loss'),
+        keras.metrics.Mean(name='multiword_selection_loss'),
+        keras.metrics.Mean(name='total_loss'),
     ]
     return metrics
 
@@ -203,8 +204,8 @@ class TeamsPretrainTask(base_task.Task):
             model_outputs['disc_mws_label'], model_outputs['disc_mws_logits'],
             labels['masked_lm_weights'])
 
-  def train_step(self, inputs, model: tf_keras.Model,
-                 optimizer: tf_keras.optimizers.Optimizer, metrics):
+  def train_step(self, inputs, model: keras.Model,
+                 optimizer: keras.optimizers.Optimizer, metrics):
     """Does forward and backward.
 
     Args:
@@ -233,7 +234,7 @@ class TeamsPretrainTask(base_task.Task):
     self.process_metrics(metrics, inputs, outputs)
     return {self.loss: loss}
 
-  def validation_step(self, inputs, model: tf_keras.Model, metrics):
+  def validation_step(self, inputs, model: keras.Model, metrics):
     """Validatation step.
 
     Args:

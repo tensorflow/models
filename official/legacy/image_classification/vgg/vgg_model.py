@@ -14,19 +14,20 @@
 
 """VGG16 model for Keras.
 
-Adapted from tf_keras.applications.vgg16.VGG16().
+Adapted from keras.applications.vgg16.VGG16().
 
 Related papers/blogs:
 - https://arxiv.org/abs/1409.1556
 """
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
-layers = tf_keras.layers
+layers = keras.layers
 
 
 def _gen_l2_regularizer(use_l2_regularizer=True, l2_weight_decay=1e-4):
-  return tf_keras.regularizers.L2(
+  return keras.regularizers.L2(
       l2_weight_decay) if use_l2_regularizer else None
 
 
@@ -53,7 +54,7 @@ def vgg16(num_classes,
 
   x = img_input
 
-  if tf_keras.backend.image_data_format() == 'channels_first':
+  if keras.backend.image_data_format() == 'channels_first':
     x = layers.Permute((3, 1, 2))(x)
     bn_axis = 1
   else:  # channels_last
@@ -266,4 +267,4 @@ def vgg16(num_classes,
   x = layers.Activation('softmax', dtype='float32')(x)
 
   # Create model.
-  return tf_keras.Model(img_input, x, name='vgg16')
+  return keras.Model(img_input, x, name='vgg16')

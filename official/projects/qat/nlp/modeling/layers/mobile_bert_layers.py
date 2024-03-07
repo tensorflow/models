@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """MobileBERT embedding and transformer layers."""
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 import tensorflow_model_optimization as tfmot
 from official.nlp import modeling
@@ -30,7 +31,7 @@ def _quantized_multi_head_attention(*args, **kwargs):
 
 
 def _quantized_einsum_dense(*args, **kwargs):
-  layer = tf_keras.layers.EinsumDense(*args, **kwargs)
+  layer = keras.layers.EinsumDense(*args, **kwargs)
   return tfmot.quantization.keras.QuantizeWrapperV2(
       layer, configs.DefaultEinsumDenseQuantizeConfig())
 
@@ -40,8 +41,8 @@ def _output_quantize(layer):
       layer, configs.Default8BitOutputQuantizeConfig())
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class NoNormQuantized(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class NoNormQuantized(keras.layers.Layer):
   """Apply element-wise linear transformation to the last dimension."""
 
   def __init__(self, name=None):
@@ -56,7 +57,7 @@ class NoNormQuantized(tf_keras.layers.Layer):
                                  shape=[kernal_size],
                                  initializer='ones')
     self.multiply = _output_quantize(
-        tf_keras.layers.Multiply())
+        keras.layers.Multiply())
 
   def call(self, feature):
     broadcast_shape = tf.shape(feature)
@@ -79,7 +80,7 @@ def _get_norm_layer(normalization_type='no_norm', name=None):
   if normalization_type == 'no_norm':
     layer = NoNormQuantized(name=name)
   elif normalization_type == 'layer_norm':
-    layer = tf_keras.layers.LayerNormalization(
+    layer = keras.layers.LayerNormalization(
         name=name,
         axis=-1,
         epsilon=1e-12,
@@ -90,7 +91,7 @@ def _get_norm_layer(normalization_type='no_norm', name=None):
 
 
 class MobileBertEmbeddingQuantized(helper.LayerQuantizerHelper,
-                                   tf_keras.layers.Layer):
+                                   keras.layers.Layer):
   """Performs an embedding lookup for MobileBERT.
 
   This layer includes word embedding, token type embedding, position embedding.
@@ -103,7 +104,7 @@ class MobileBertEmbeddingQuantized(helper.LayerQuantizerHelper,
                output_embed_size,
                max_sequence_length=512,
                normalization_type='no_norm',
-               initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
+               initializer=keras.initializers.TruncatedNormal(stddev=0.02),
                dropout_rate=0.1,
                **kwargs):
     """Class initialization.
@@ -128,7 +129,7 @@ class MobileBertEmbeddingQuantized(helper.LayerQuantizerHelper,
     self.output_embed_size = output_embed_size
     self.max_sequence_length = max_sequence_length
     self.normalization_type = normalization_type
-    self.initializer = tf_keras.initializers.get(initializer)
+    self.initializer = keras.initializers.get(initializer)
     self.dropout_rate = dropout_rate
 
     self.word_embedding = modeling.layers.OnDeviceEmbedding(
@@ -151,13 +152,13 @@ class MobileBertEmbeddingQuantized(helper.LayerQuantizerHelper,
         kernel_initializer=initializer,
         bias_axes='d',
         name='embedding_projection')
-    self.embedding_out_add_pos = _output_quantize(tf_keras.layers.Add())
+    self.embedding_out_add_pos = _output_quantize(keras.layers.Add())
     self.layer_norm = _output_quantize(
         _get_norm_layer(normalization_type, 'embedding_norm'))
-    self.dropout_layer = tf_keras.layers.Dropout(
+    self.dropout_layer = keras.layers.Dropout(
         self.dropout_rate,
         name='embedding_dropout')
-    self.embedding_out_add_type = _output_quantize(tf_keras.layers.Add())
+    self.embedding_out_add_type = _output_quantize(keras.layers.Add())
 
   def build(self, input_shape):
     self._add_quantizer('word_embedding_out')
@@ -174,7 +175,7 @@ class MobileBertEmbeddingQuantized(helper.LayerQuantizerHelper,
         'output_embed_size': self.output_embed_size,
         'max_sequence_length': self.max_sequence_length,
         'normalization_type': self.normalization_type,
-        'initializer': tf_keras.initializers.serialize(self.initializer),
+        'initializer': keras.initializers.serialize(self.initializer),
         'dropout_rate': self.dropout_rate
     }
     base_config = super().get_config()
@@ -208,7 +209,7 @@ class MobileBertEmbeddingQuantized(helper.LayerQuantizerHelper,
     return embedding_out
 
 
-class MobileBertTransformerQuantized(tf_keras.layers.Layer):
+class MobileBertTransformerQuantized(keras.layers.Layer):
   """Transformer block for MobileBERT.
 
   An implementation of one layer (block) of Transformer with bottleneck and
@@ -230,7 +231,7 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
                key_query_shared_bottleneck=True,
                num_feedforward_networks=4,
                normalization_type='no_norm',
-               initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
+               initializer=keras.initializers.TruncatedNormal(stddev=0.02),
                **kwargs):
     """Class initialization.
 
@@ -274,7 +275,7 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
     self.key_query_shared_bottleneck = key_query_shared_bottleneck
     self.num_feedforward_networks = num_feedforward_networks
     self.normalization_type = normalization_type
-    self.initializer = tf_keras.initializers.get(initializer)
+    self.initializer = keras.initializers.get(initializer)
 
     if intra_bottleneck_size % num_attention_heads != 0:
       raise ValueError(
@@ -352,7 +353,7 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
                                        output_layer,
                                        layer_norm])
       self.ffn_add_layers.append(_output_quantize(
-          tf_keras.layers.Add()))
+          keras.layers.Add()))
 
     # add output bottleneck
     bottleneck = _quantized_einsum_dense(
@@ -362,7 +363,7 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
         bias_axes='d',
         kernel_initializer=initializer,
         name='bottleneck_output/dense')
-    dropout_layer = tf_keras.layers.Dropout(
+    dropout_layer = keras.layers.Dropout(
         self.hidden_dropout_prob,
         name='bottleneck_output/dropout')
     layer_norm = _output_quantize(
@@ -372,9 +373,9 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
                                               dropout_layer,
                                               layer_norm]
     self.attention_output_add = _output_quantize(
-        tf_keras.layers.Add())
+        keras.layers.Add())
     self.output_add = _output_quantize(
-        tf_keras.layers.Add())
+        keras.layers.Add())
 
   def get_config(self):
     config = {
@@ -389,7 +390,7 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
         'key_query_shared_bottleneck': self.key_query_shared_bottleneck,
         'num_feedforward_networks': self.num_feedforward_networks,
         'normalization_type': self.normalization_type,
-        'initializer': tf_keras.initializers.serialize(self.initializer),
+        'initializer': keras.initializers.serialize(self.initializer),
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))

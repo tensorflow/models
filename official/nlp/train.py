@@ -18,7 +18,8 @@ from absl import app
 from absl import flags
 from absl import logging
 import gin
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.common import distribute_utils
 # pylint: disable=unused-import

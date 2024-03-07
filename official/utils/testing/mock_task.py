@@ -17,7 +17,8 @@
 import dataclasses
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -25,7 +26,7 @@ from official.core import exp_factory
 from official.modeling.hyperparams import base_config
 
 
-class MockModel(tf_keras.Model):
+class MockModel(keras.Model):
 
   def __init__(self, network):
     super().__init__()
@@ -50,18 +51,18 @@ class MockTask(base_task.Task):
     super().__init__(params=params, logging_dir=logging_dir, name=name)
 
   def build_model(self, *arg, **kwargs):
-    inputs = tf_keras.layers.Input(shape=(2,), name="random", dtype=tf.float32)
-    outputs = tf_keras.layers.Dense(
-        1, bias_initializer=tf_keras.initializers.Ones(), name="dense_0")(
+    inputs = keras.layers.Input(shape=(2,), name="random", dtype=tf.float32)
+    outputs = keras.layers.Dense(
+        1, bias_initializer=keras.initializers.Ones(), name="dense_0")(
             inputs)
-    network = tf_keras.Model(inputs=inputs, outputs=outputs)
+    network = keras.Model(inputs=inputs, outputs=outputs)
     return MockModel(network)
 
   def build_metrics(self, training: bool = True):
     del training
-    return [tf_keras.metrics.Accuracy(name="acc")]
+    return [keras.metrics.Accuracy(name="acc")]
 
-  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
+  def validation_step(self, inputs, model: keras.Model, metrics=None):
     logs = super().validation_step(inputs, model, metrics)
     logs["counter"] = tf.constant(1, dtype=tf.float32)
     return logs

@@ -15,7 +15,8 @@
 """Tests for losses of centernet model."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.centernet.losses import centernet_losses
 

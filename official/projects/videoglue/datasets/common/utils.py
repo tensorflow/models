@@ -18,7 +18,8 @@ from typing import Any, Mapping, Optional, MutableMapping, Dict
 
 from dmvr import builders
 from dmvr import modalities
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.videoglue.datasets.common import processors
 from official.vision.ops import augment

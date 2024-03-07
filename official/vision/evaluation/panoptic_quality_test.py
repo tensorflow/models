@@ -21,7 +21,8 @@ https://github.com/tensorflow/models/blob/master/research/deeplab/evaluation/pan
 
 from absl.testing import absltest
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.evaluation import panoptic_quality
 

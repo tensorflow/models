@@ -14,10 +14,11 @@
 
 """Customized Swish activation."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 def simple_swish(features):
   """Computes the Swish activation function.
 
@@ -38,7 +39,7 @@ def simple_swish(features):
   return features * tf.nn.sigmoid(features)
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 def hard_swish(features):
   """Computes a hard version of the swish function.
 
@@ -56,7 +57,7 @@ def hard_swish(features):
   return features * tf.nn.relu6(features + tf.cast(3., fdtype)) * (1. / 6.)
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 def identity(features):
   """Computes the identity function.
 

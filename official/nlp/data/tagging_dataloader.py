@@ -16,7 +16,8 @@
 import dataclasses
 from typing import Mapping, Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.common import dataset_fn
 from official.core import config_definitions as cfg
 from official.core import input_reader

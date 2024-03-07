@@ -18,10 +18,11 @@ the position embeddings are added to the query and key for every self- and
 cross-attention layer.
 """
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-class TransformerEncoder(tf_keras.layers.Layer):
+class TransformerEncoder(keras.layers.Layer):
   """Transformer encoder."""
 
   def __init__(
@@ -91,7 +92,7 @@ class TransformerEncoder(tf_keras.layers.Layer):
     return config
 
 
-class TransformerEncoderLayer(tf_keras.layers.Layer):  # pylint: disable=missing-docstring
+class TransformerEncoderLayer(keras.layers.Layer):  # pylint: disable=missing-docstring
 
   def __init__(
       self,
@@ -118,13 +119,13 @@ class TransformerEncoderLayer(tf_keras.layers.Layer):  # pylint: disable=missing
     self._ln_scale_shift = ln_scale_shift
 
     if self_attention:
-      self.mha_ln = tf_keras.layers.LayerNormalization(
+      self.mha_ln = keras.layers.LayerNormalization(
           epsilon=1e-6,
           center=ln_scale_shift,
           scale=ln_scale_shift,
           name='mha/ln',
       )
-      self.mha = tf_keras.layers.MultiHeadAttention(
+      self.mha = keras.layers.MultiHeadAttention(
           num_heads, dim // num_heads, dropout=drop_att, name='mha'
       )
     self.mlp = MLP(
@@ -170,7 +171,7 @@ def suffix_id(i):
   return '' if i == 0 else '_%d' % i
 
 
-class DropPath(tf_keras.layers.Layer):
+class DropPath(keras.layers.Layer):
   """For stochastic depth."""
 
   def __init__(self, drop_rate=0.0, **kwargs):
@@ -211,7 +212,7 @@ class DropPath(tf_keras.layers.Layer):
     return config
 
 
-class FeedForwardLayer(tf_keras.layers.Layer):  # pylint: disable=missing-docstring
+class FeedForwardLayer(keras.layers.Layer):  # pylint: disable=missing-docstring
 
   def __init__(
       self,
@@ -229,13 +230,13 @@ class FeedForwardLayer(tf_keras.layers.Layer):  # pylint: disable=missing-docstr
     self._use_ln = use_ln
     self._ln_scale_shift = ln_scale_shift
 
-    self.dense1 = tf_keras.layers.Dense(
+    self.dense1 = keras.layers.Dense(
         dim_mlp, activation=tf.nn.gelu, name='dense1'
     )
-    self.dropout = tf_keras.layers.Dropout(drop_units)
-    self.dense2 = tf_keras.layers.Dense(dim_att, name='dense2')
+    self.dropout = keras.layers.Dropout(drop_units)
+    self.dense2 = keras.layers.Dense(dim_att, name='dense2')
     if use_ln:
-      self.ln = tf_keras.layers.LayerNormalization(
+      self.ln = keras.layers.LayerNormalization(
           epsilon=1e-6,
           center=ln_scale_shift,
           scale=ln_scale_shift,
@@ -260,7 +261,7 @@ class FeedForwardLayer(tf_keras.layers.Layer):  # pylint: disable=missing-docstr
     return config
 
 
-class MLP(tf_keras.layers.Layer):  # pylint: disable=missing-docstring
+class MLP(keras.layers.Layer):  # pylint: disable=missing-docstring
 
   def __init__(
       self,
@@ -296,7 +297,7 @@ class MLP(tf_keras.layers.Layer):  # pylint: disable=missing-docstring
           )
       )
       self.layernorms.append(
-          tf_keras.layers.LayerNormalization(
+          keras.layers.LayerNormalization(
               epsilon=1e-6,
               center=ln_scale_shift,
               scale=ln_scale_shift,
@@ -328,7 +329,7 @@ class MLP(tf_keras.layers.Layer):  # pylint: disable=missing-docstring
     return config
 
 
-class TransformerDecoderLayer(tf_keras.layers.Layer):  # pylint: disable=missing-docstring
+class TransformerDecoderLayer(keras.layers.Layer):  # pylint: disable=missing-docstring
 
   def __init__(
       self,
@@ -363,24 +364,24 @@ class TransformerDecoderLayer(tf_keras.layers.Layer):  # pylint: disable=missing
     self._ln_scale_shift = ln_scale_shift
 
     if self_attention:
-      self.self_ln = tf_keras.layers.LayerNormalization(
+      self.self_ln = keras.layers.LayerNormalization(
           epsilon=1e-6,
           center=ln_scale_shift,
           scale=ln_scale_shift,
           name='self_mha/ln',
       )
-      self.self_mha = tf_keras.layers.MultiHeadAttention(
+      self.self_mha = keras.layers.MultiHeadAttention(
           num_heads, dim // num_heads, dropout=drop_att, name='self_mha'
       )
     if cross_attention:
-      self.cross_ln = tf_keras.layers.LayerNormalization(
+      self.cross_ln = keras.layers.LayerNormalization(
           epsilon=1e-6,
           center=ln_scale_shift,
           scale=ln_scale_shift,
           name='cross_mha/ln',
       )
       if use_enc_ln:
-        self.enc_ln = tf_keras.layers.LayerNormalization(
+        self.enc_ln = keras.layers.LayerNormalization(
             epsilon=1e-6,
             center=ln_scale_shift,
             scale=ln_scale_shift,
@@ -389,7 +390,7 @@ class TransformerDecoderLayer(tf_keras.layers.Layer):  # pylint: disable=missing
       else:
         self.enc_ln = lambda x: x
       dim_x_att = dim if dim_x_att is None else dim_x_att
-      self.cross_mha = tf_keras.layers.MultiHeadAttention(
+      self.cross_mha = keras.layers.MultiHeadAttention(
           num_heads, dim_x_att // num_heads, dropout=drop_att, name='cross_mha'
       )
     if use_mlp:
@@ -446,7 +447,7 @@ class TransformerDecoderLayer(tf_keras.layers.Layer):  # pylint: disable=missing
     return config
 
 
-class TransformerDecoder(tf_keras.layers.Layer):  # pylint: disable=missing-docstring
+class TransformerDecoder(keras.layers.Layer):  # pylint: disable=missing-docstring
 
   def __init__(
       self,

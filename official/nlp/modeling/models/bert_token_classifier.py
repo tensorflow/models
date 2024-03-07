@@ -15,11 +15,12 @@
 """BERT token classifier."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class BertTokenClassifier(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class BertTokenClassifier(keras.Model):
   """Token classifier model based on a BERT-style transformer-based encoder.
 
   This is an implementation of the network structure surrounding a transformer
@@ -68,10 +69,10 @@ class BertTokenClassifier(tf_keras.Model):
       sequence_output = outputs[0]
     else:
       sequence_output = outputs['sequence_output']
-    sequence_output = tf_keras.layers.Dropout(rate=dropout_rate)(
+    sequence_output = keras.layers.Dropout(rate=dropout_rate)(
         sequence_output)
 
-    classifier = tf_keras.layers.Dense(
+    classifier = keras.layers.Dense(
         num_classes,
         activation=None,
         kernel_initializer=initializer,
@@ -81,7 +82,7 @@ class BertTokenClassifier(tf_keras.Model):
       output_tensors = {'logits': logits}
     elif output == 'predictions':
       output_tensors = {
-          'predictions': tf_keras.layers.Activation(tf.nn.log_softmax)(logits)
+          'predictions': keras.layers.Activation(tf.nn.log_softmax)(logits)
       }
     else:
       raise ValueError(

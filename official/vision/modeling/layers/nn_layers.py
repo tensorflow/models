@@ -17,7 +17,8 @@
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.vision.ops import spatial_transform_ops
@@ -85,8 +86,8 @@ def get_padding_for_kernel_size(kernel_size):
         kernel_size))
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class SqueezeExcitation(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class SqueezeExcitation(keras.layers.Layer):
   """Creates a squeeze and excitation layer."""
 
   def __init__(self,
@@ -114,9 +115,9 @@ class SqueezeExcitation(tf_keras.layers.Layer):
       use_3d_input: A `bool` of whether input is 2D or 3D image.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2d.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
       activation: A `str` name of the activation function.
       gating_activation: A `str` name of the activation function for final
@@ -138,7 +139,7 @@ class SqueezeExcitation(tf_keras.layers.Layer):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       if not use_3d_input:
         self._spatial_axis = [1, 2]
       else:
@@ -157,7 +158,7 @@ class SqueezeExcitation(tf_keras.layers.Layer):
         divisor=self._divisible_by,
         round_down_protect=self._round_down_protect)
 
-    self._se_reduce = tf_keras.layers.Conv2D(
+    self._se_reduce = keras.layers.Conv2D(
         filters=num_reduced_filters,
         kernel_size=1,
         strides=1,
@@ -167,7 +168,7 @@ class SqueezeExcitation(tf_keras.layers.Layer):
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
 
-    self._se_expand = tf_keras.layers.Conv2D(
+    self._se_expand = keras.layers.Conv2D(
         filters=self._out_filters,
         kernel_size=1,
         strides=1,
@@ -223,8 +224,8 @@ def get_stochastic_depth_rate(init_rate, i, n):
   return rate
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class StochasticDepth(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class StochasticDepth(keras.layers.Layer):
   """Creates a stochastic depth layer."""
 
   def __init__(self, stochastic_depth_drop_rate, **kwargs):
@@ -247,7 +248,7 @@ class StochasticDepth(tf_keras.layers.Layer):
 
   def call(self, inputs, training=None):
     if training is None:
-      training = tf_keras.backend.learning_phase()
+      training = keras.backend.learning_phase()
     if not training or self._drop_rate is None or self._drop_rate == 0:
       return inputs
 
@@ -261,7 +262,7 @@ class StochasticDepth(tf_keras.layers.Layer):
     return output
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
+@keras.utils.register_keras_serializable(package='Vision')
 def pyramid_feature_fusion(inputs, target_level):
   """Fuses all feature maps in the feature pyramid at the target level.
 
@@ -299,7 +300,7 @@ def pyramid_feature_fusion(inputs, target_level):
   return tf.math.add_n(resampled_feats)
 
 
-class PanopticFPNFusion(tf_keras.Model):
+class PanopticFPNFusion(keras.Model):
   """Creates a Panoptic FPN feature Fusion layer.
 
   This implements feature fusion for semantic segmentation head from the paper:
@@ -316,8 +317,8 @@ class PanopticFPNFusion(tf_keras.Model):
       num_filters: int = 128,
       num_fpn_filters: int = 256,
       activation: str = 'relu',
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       **kwargs):
 
     """Initializes panoptic FPN feature fusion layer.
@@ -329,9 +330,9 @@ class PanopticFPNFusion(tf_keras.Model):
       num_filters: An `int` number of filters in conv2d layers.
       num_fpn_filters: An `int` number of filters in the FPN outputs
       activation: A `str` name of the activation function.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     Returns:
       A `float` `tf.Tensor` of shape [batch_size, feature_height, feature_width,
@@ -350,10 +351,10 @@ class PanopticFPNFusion(tf_keras.Model):
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
     }
-    norm = tf_keras.layers.GroupNormalization
-    conv2d = tf_keras.layers.Conv2D
+    norm = keras.layers.GroupNormalization
+    conv2d = keras.layers.Conv2D
     activation_fn = tf_utils.get_activation(activation)
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       norm_axis = -1
     else:
       norm_axis = 1
@@ -368,7 +369,7 @@ class PanopticFPNFusion(tf_keras.Model):
             filters=num_filters,
             kernel_size=3,
             padding='same',
-            kernel_initializer=tf_keras.initializers.VarianceScaling(),
+            kernel_initializer=keras.initializers.VarianceScaling(),
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer)(x)
         x = norm(groups=32, axis=norm_axis)(x)
@@ -387,7 +388,7 @@ class PanopticFPNFusion(tf_keras.Model):
                     min_level: int, max_level: int):
     inputs = {}
     for level in range(min_level, max_level + 1):
-      inputs[str(level)] = tf_keras.Input(shape=[None, None, num_filters])
+      inputs[str(level)] = keras.Input(shape=[None, None, num_filters])
     return inputs
 
   def get_config(self) -> Mapping[str, Any]:
@@ -403,8 +404,8 @@ class PanopticFPNFusion(tf_keras.Model):
     return self._output_specs
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class Scale(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class Scale(keras.layers.Layer):
   """Scales the input by a trainable scalar weight.
 
   This is useful for applying ReZero to layers, which improves convergence
@@ -415,14 +416,14 @@ class Scale(tf_keras.layers.Layer):
 
   def __init__(
       self,
-      initializer: tf_keras.initializers.Initializer = 'ones',
-      regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      initializer: keras.initializers.Initializer = 'ones',
+      regularizer: Optional[keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a scale layer.
 
     Args:
       initializer: A `str` of initializer for the scalar weight.
-      regularizer: A `tf_keras.regularizers.Regularizer` for the scalar weight.
+      regularizer: A `keras.regularizers.Regularizer` for the scalar weight.
       **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
@@ -456,8 +457,8 @@ class Scale(tf_keras.layers.Layer):
     return scale * inputs
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class TemporalSoftmaxPool(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class TemporalSoftmaxPool(keras.layers.Layer):
   """Creates a network layer corresponding to temporal softmax pooling.
 
   This is useful for multi-class logits (used in e.g., Charades). Modified from
@@ -479,8 +480,8 @@ class TemporalSoftmaxPool(tf_keras.layers.Layer):
     return outputs
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class PositionalEncoding(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class PositionalEncoding(keras.layers.Layer):
   """Creates a network layer that adds a sinusoidal positional encoding.
 
   Positional encoding is incremented across frames, and is added to the input.
@@ -494,7 +495,7 @@ class PositionalEncoding(tf_keras.layers.Layer):
   """
 
   def __init__(self,
-               initializer: tf_keras.initializers.Initializer = 'zeros',
+               initializer: keras.initializers.Initializer = 'zeros',
                cache_encoding: bool = False,
                state_prefix: Optional[str] = None,
                **kwargs):
@@ -597,7 +598,7 @@ class PositionalEncoding(tf_keras.layers.Layer):
     Raises:
       ValueError: If using 'channels_first' data format.
     """
-    if tf_keras.backend.image_data_format() == 'channels_first':
+    if keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
 
     if self._cache_encoding:
@@ -647,8 +648,8 @@ class PositionalEncoding(tf_keras.layers.Layer):
     return (outputs, states) if output_states else outputs
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class GlobalAveragePool3D(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class GlobalAveragePool3D(keras.layers.Layer):
   """Creates a global average pooling layer with causal mode.
 
   Implements causal mode, which runs a cumulative sum (with `tf.cumsum`) across
@@ -716,7 +717,7 @@ class GlobalAveragePool3D(tf_keras.layers.Layer):
       `[batch_size, num_frames, 1, 1, channels]` if `keepdims=True`. We keep
       the frame dimension in this case to simulate a cumulative global average
       as if we are inputting one frame at a time. If `causal=False`, the output
-      is equivalent to `tf_keras.layers.GlobalAveragePooling3D` with shape
+      is equivalent to `keras.layers.GlobalAveragePooling3D` with shape
       `[batch_size, 1, 1, 1, channels]` if `keepdims=True` (plus the optional
       buffer stored in `states`).
 
@@ -725,7 +726,7 @@ class GlobalAveragePool3D(tf_keras.layers.Layer):
     """
     states = dict(states) if states is not None else {}
 
-    if tf_keras.backend.image_data_format() == 'channels_first':
+    if keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
 
     # Shape: [batch_size, 1, 1, 1, channels]
@@ -781,8 +782,8 @@ class GlobalAveragePool3D(tf_keras.layers.Layer):
     return (x, states) if output_states else x
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class SpatialAveragePool3D(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class SpatialAveragePool3D(keras.layers.Layer):
   """Creates a global average pooling layer pooling across spatial dimentions."""
 
   def __init__(self, keepdims: bool = False, **kwargs):
@@ -808,7 +809,7 @@ class SpatialAveragePool3D(tf_keras.layers.Layer):
 
   def build(self, input_shape):
     """Builds the layer with the given input shape."""
-    if tf_keras.backend.image_data_format() == 'channels_first':
+    if keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
 
     super(SpatialAveragePool3D, self).build(input_shape)
@@ -824,7 +825,7 @@ class SpatialAveragePool3D(tf_keras.layers.Layer):
 
 
 class CausalConvMixin:
-  """Mixin class to implement CausalConv for `tf_keras.layers.Conv` layers."""
+  """Mixin class to implement CausalConv for `keras.layers.Conv` layers."""
 
   @property
   def use_buffered_input(self) -> bool:
@@ -852,7 +853,7 @@ class CausalConvMixin:
     """
     input_shape = tf.shape(inputs)[1:-1]
 
-    if tf_keras.backend.image_data_format() == 'channels_first':
+    if keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
 
     kernel_size_effective = [
@@ -902,11 +903,11 @@ class CausalConvMixin:
     return spatial_output_shape
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class Conv2D(tf_keras.layers.Conv2D, CausalConvMixin):
+@keras.utils.register_keras_serializable(package='Vision')
+class Conv2D(keras.layers.Conv2D, CausalConvMixin):
   """Conv2D layer supporting CausalConv.
 
-  Supports `padding='causal'` option (like in `tf_keras.layers.Conv1D`),
+  Supports `padding='causal'` option (like in `keras.layers.Conv1D`),
   which applies causal padding to the temporal dimension, and same padding in
   the spatial dimensions.
   """
@@ -950,11 +951,11 @@ class Conv2D(tf_keras.layers.Conv2D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class DepthwiseConv2D(tf_keras.layers.DepthwiseConv2D, CausalConvMixin):
+@keras.utils.register_keras_serializable(package='Vision')
+class DepthwiseConv2D(keras.layers.DepthwiseConv2D, CausalConvMixin):
   """DepthwiseConv2D layer supporting CausalConv.
 
-  Supports `padding='causal'` option (like in `tf_keras.layers.Conv1D`),
+  Supports `padding='causal'` option (like in `keras.layers.Conv1D`),
   which applies causal padding to the temporal dimension, and same padding in
   the spatial dimensions.
   """
@@ -1012,11 +1013,11 @@ class DepthwiseConv2D(tf_keras.layers.DepthwiseConv2D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class Conv3D(tf_keras.layers.Conv3D, CausalConvMixin):
+@keras.utils.register_keras_serializable(package='Vision')
+class Conv3D(keras.layers.Conv3D, CausalConvMixin):
   """Conv3D layer supporting CausalConv.
 
-  Supports `padding='causal'` option (like in `tf_keras.layers.Conv1D`),
+  Supports `padding='causal'` option (like in `keras.layers.Conv1D`),
   which applies causal padding to the temporal dimension, and same padding in
   the spatial dimensions.
   """
@@ -1068,8 +1069,8 @@ class Conv3D(tf_keras.layers.Conv3D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class SpatialPyramidPooling(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class SpatialPyramidPooling(keras.layers.Layer):
   """Implements the Atrous Spatial Pyramid Pooling.
 
   References:
@@ -1090,7 +1091,7 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
       activation: str = 'relu',
       dropout: float = 0.5,
       kernel_initializer: str = 'GlorotUniform',
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
       use_depthwise_convolution: bool = False,
       **kwargs):
@@ -1135,9 +1136,9 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
     self._pool_kernel_size = pool_kernel_size
     self._use_depthwise_convolution = use_depthwise_convolution
     self._activation_fn = tf_utils.get_activation(activation)
-    self._bn_op = tf_keras.layers.BatchNormalization
+    self._bn_op = keras.layers.BatchNormalization
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -1149,7 +1150,7 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
 
     self.aspp_layers = []
 
-    conv1 = tf_keras.layers.Conv2D(
+    conv1 = keras.layers.Conv2D(
         filters=self._output_channels,
         kernel_size=(1, 1),
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
@@ -1168,7 +1169,7 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
       kernel_size = (3, 3)
       if self._use_depthwise_convolution:
         leading_layers += [
-            tf_keras.layers.DepthwiseConv2D(
+            keras.layers.DepthwiseConv2D(
                 depth_multiplier=1,
                 kernel_size=kernel_size,
                 padding='same',
@@ -1180,7 +1181,7 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
         ]
         kernel_size = (1, 1)
       conv_dilation = leading_layers + [
-          tf_keras.layers.Conv2D(
+          keras.layers.Conv2D(
               filters=self._output_channels,
               kernel_size=kernel_size,
               padding='same',
@@ -1200,13 +1201,13 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
 
     if self._pool_kernel_size is None:
       pooling = [
-          tf_keras.layers.GlobalAveragePooling2D(),
-          tf_keras.layers.Reshape((1, 1, channels))
+          keras.layers.GlobalAveragePooling2D(),
+          keras.layers.Reshape((1, 1, channels))
       ]
     else:
-      pooling = [tf_keras.layers.AveragePooling2D(self._pool_kernel_size)]
+      pooling = [keras.layers.AveragePooling2D(self._pool_kernel_size)]
 
-    conv2 = tf_keras.layers.Conv2D(
+    conv2 = keras.layers.Conv2D(
         filters=self._output_channels,
         kernel_size=(1, 1),
         kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
@@ -1220,11 +1221,11 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
 
     self.aspp_layers.append(pooling + [conv2, norm2])
 
-    self._resizing_layer = tf_keras.layers.Resizing(
+    self._resizing_layer = keras.layers.Resizing(
         height, width, interpolation=self._interpolation, dtype=tf.float32)
 
     self._projection = [
-        tf_keras.layers.Conv2D(
+        keras.layers.Conv2D(
             filters=self._output_channels,
             kernel_size=(1, 1),
             kernel_initializer=tf_utils.clone_initializer(
@@ -1237,14 +1238,14 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
             epsilon=self._batchnorm_epsilon,
             synchronized=self._use_sync_bn)
     ]
-    self._dropout_layer = tf_keras.layers.Dropout(rate=self._dropout)
-    self._concat_layer = tf_keras.layers.Concatenate(axis=-1)
+    self._dropout_layer = keras.layers.Dropout(rate=self._dropout)
+    self._concat_layer = keras.layers.Concatenate(axis=-1)
 
   def call(self,
            inputs: tf.Tensor,
            training: Optional[bool] = None) -> tf.Tensor:
     if training is None:
-      training = tf_keras.backend.learning_phase()
+      training = keras.backend.learning_phase()
     result = []
     for i, layers in enumerate(self.aspp_layers):
       x = inputs
@@ -1282,8 +1283,8 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
+@keras.utils.register_keras_serializable(package='Vision')
+class MultiHeadAttention(keras.layers.MultiHeadAttention):
   """MultiHeadAttention layer.
 
   This is an implementation of multi-headed attention as described in the paper

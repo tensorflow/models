@@ -18,13 +18,14 @@ from __future__ import division
 from __future__ import print_function
 from typing import Optional, Text
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow.compat.v1 as tf1
 from tensorflow.python.tpu import tpu_function
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class TpuBatchNormalization(tf_keras.layers.BatchNormalization):
+@keras.utils.register_keras_serializable(package='Vision')
+class TpuBatchNormalization(keras.layers.BatchNormalization):
   """Cross replica batch normalization."""
 
   def __init__(self, fused: Optional[bool] = False, **kwargs):
@@ -71,7 +72,7 @@ class TpuBatchNormalization(tf_keras.layers.BatchNormalization):
       return (shard_mean, shard_variance)
 
 
-def get_batch_norm(batch_norm_type: Text) -> tf_keras.layers.BatchNormalization:
+def get_batch_norm(batch_norm_type: Text) -> keras.layers.BatchNormalization:
   """A helper to create a batch normalization getter.
 
   Args:
@@ -79,12 +80,12 @@ def get_batch_norm(batch_norm_type: Text) -> tf_keras.layers.BatchNormalization:
       will use `TpuBatchNormalization`.
 
   Returns:
-    An instance of `tf_keras.layers.BatchNormalization`.
+    An instance of `keras.layers.BatchNormalization`.
   """
   if batch_norm_type == 'tpu':
     return TpuBatchNormalization
 
-  return tf_keras.layers.BatchNormalization  # pytype: disable=bad-return-type  # typed-keras
+  return keras.layers.BatchNormalization  # pytype: disable=bad-return-type  # typed-keras
 
 
 def count_params(model, trainable_only=True):
@@ -94,11 +95,11 @@ def count_params(model, trainable_only=True):
   else:
     return int(
         np.sum([
-            tf_keras.backend.count_params(p) for p in model.trainable_weights
+            keras.backend.count_params(p) for p in model.trainable_weights
         ]))
 
 
-def load_weights(model: tf_keras.Model,
+def load_weights(model: keras.Model,
                  model_weights_path: Text,
                  weights_format: Text = 'saved_model'):
   """Load model weights from the given file path.
@@ -110,7 +111,7 @@ def load_weights(model: tf_keras.Model,
       'checkpoint'.
   """
   if weights_format == 'saved_model':
-    loaded_model = tf_keras.models.load_model(model_weights_path)
+    loaded_model = keras.models.load_model(model_weights_path)
     model.set_weights(loaded_model.get_weights())
   else:
     model.load_weights(model_weights_path)

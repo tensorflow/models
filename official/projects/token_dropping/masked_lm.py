@@ -16,7 +16,8 @@
 
 import dataclasses
 from typing import Tuple
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import task_factory
 from official.nlp.tasks import masked_lm
@@ -40,7 +41,7 @@ class TokenDropMaskedLMTask(masked_lm.MaskedLMTask):
     """Return the final loss, and the masked-lm loss."""
     with tf.name_scope('MaskedLMTask/losses'):
       metrics = dict([(metric.name, metric) for metric in metrics])
-      lm_prediction_losses = tf_keras.losses.sparse_categorical_crossentropy(
+      lm_prediction_losses = keras.losses.sparse_categorical_crossentropy(
           labels['masked_lm_ids'],
           tf.cast(model_outputs['mlm_logits'], tf.float32),
           from_logits=True)
@@ -55,7 +56,7 @@ class TokenDropMaskedLMTask(masked_lm.MaskedLMTask):
         sentence_outputs = tf.cast(
             model_outputs['next_sentence'], dtype=tf.float32)
         sentence_loss = tf.reduce_mean(
-            tf_keras.losses.sparse_categorical_crossentropy(
+            keras.losses.sparse_categorical_crossentropy(
                 sentence_labels, sentence_outputs, from_logits=True))
         metrics['next_sentence_loss'].update_state(sentence_loss)
         total_loss = mlm_loss + sentence_loss
@@ -66,8 +67,8 @@ class TokenDropMaskedLMTask(masked_lm.MaskedLMTask):
         total_loss += tf.add_n(aux_losses)
       return total_loss, lm_prediction_losses
 
-  def train_step(self, inputs, model: tf_keras.Model,
-                 optimizer: tf_keras.optimizers.Optimizer, metrics):
+  def train_step(self, inputs, model: keras.Model,
+                 optimizer: keras.optimizers.Optimizer, metrics):
     """Does forward and backward.
 
     Args:
@@ -103,7 +104,7 @@ class TokenDropMaskedLMTask(masked_lm.MaskedLMTask):
     self.process_metrics(metrics, inputs, outputs)
     return {self.loss: loss}
 
-  def validation_step(self, inputs, model: tf_keras.Model, metrics):
+  def validation_step(self, inputs, model: keras.Model, metrics):
     """Validatation step.
 
     Args:

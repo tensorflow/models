@@ -17,7 +17,8 @@ from typing import Any, Dict, Optional, Text
 
 # Import libraries
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.edgetpu.vision.modeling import common_modules
 from official.projects.edgetpu.vision.modeling import mobilenet_edgetpu_v1_model_blocks
@@ -34,8 +35,8 @@ MODEL_CONFIGS = {
 }
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class MobilenetEdgeTPU(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Vision')
+class MobilenetEdgeTPU(keras.Model):
   """Wrapper class for a MobilenetEdgeTPU Keras model.
 
   Contains helper methods to build, manage, and save metadata about the model.
@@ -63,7 +64,7 @@ class MobilenetEdgeTPU(tf_keras.Model):
     else:
       input_shape = (self.config.resolution, self.config.resolution,
                      input_channels)
-    image_input = tf_keras.layers.Input(shape=input_shape)
+    image_input = keras.layers.Input(shape=input_shape)
 
     output = mobilenet_edgetpu_v1_model_blocks.mobilenet_edgetpu(
         image_input, self.config)

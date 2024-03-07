@@ -16,7 +16,8 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -33,13 +34,13 @@ class YoloV7DecoderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_network_creation(self, model_id):
     """Tests declaration of YOLOv7 decoder variants."""
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
 
     backbone_network = backbone.YoloV7(model_id)
     decoder_network = decoder.YoloV7(backbone_network.output_specs, model_id)
     self.assertEqual(decoder_network.get_config()['model_id'], model_id)
 
-    inputs = tf_keras.Input(shape=(*_INPUT_SIZE, 3), batch_size=1)
+    inputs = keras.Input(shape=(*_INPUT_SIZE, 3), batch_size=1)
     outputs = decoder_network(backbone_network(inputs))
 
     for level, level_output in outputs.items():
@@ -59,7 +60,7 @@ class YoloV7DecoderTest(parameterized.TestCase, tf.test.TestCase):
     """Test for sync bn on TPU and GPU devices."""
     inputs = np.random.rand(1, *_INPUT_SIZE, 3)
 
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
       backbone_network = backbone.YoloV7(model_id='yolov7', use_sync_bn=True)

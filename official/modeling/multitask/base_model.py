@@ -15,7 +15,8 @@
 """Abstraction of multi-task model."""
 from typing import Text, Dict
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 class MultiTaskBaseModel(tf.Module):
@@ -25,11 +26,11 @@ class MultiTaskBaseModel(tf.Module):
     super().__init__(**kwargs)
     self._sub_tasks = self._instantiate_sub_tasks()
 
-  def _instantiate_sub_tasks(self) -> Dict[Text, tf_keras.Model]:
+  def _instantiate_sub_tasks(self) -> Dict[Text, keras.Model]:
     """Abstract function that sets up the computation for each sub-task.
 
     Returns:
-      A map from task name (as string) to a tf_keras.Model object that
+      A map from task name (as string) to a keras.Model object that
         represents the sub-task in the multi-task pool.
     """
     raise NotImplementedError(
@@ -37,7 +38,7 @@ class MultiTaskBaseModel(tf.Module):
 
   @property
   def sub_tasks(self):
-    """Fetch a map of task name (string) to task model (tf_keras.Model)."""
+    """Fetch a map of task name (string) to task model (keras.Model)."""
     return self._sub_tasks
 
   def initialize(self):
@@ -50,5 +51,5 @@ class MultiTaskBaseModel(tf.Module):
     for task_model in self._sub_tasks.values():
       # Assumes all the tf.Module models are built because we don't have any
       # way to check them.
-      if isinstance(task_model, tf_keras.Model) and not task_model.built:
+      if isinstance(task_model, keras.Model) and not task_model.built:
         _ = task_model(task_model.inputs)

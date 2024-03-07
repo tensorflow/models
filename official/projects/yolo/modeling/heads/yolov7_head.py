@@ -14,11 +14,12 @@
 
 """YOLOv7 heads."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.projects.yolo.ops import initializer_ops
 
 
-class YoloV7DetectionHead(tf_keras.layers.Layer):
+class YoloV7DetectionHead(keras.layers.Layer):
   """YOLOv7 Detection Head."""
 
   def __init__(
@@ -42,9 +43,9 @@ class YoloV7DetectionHead(tf_keras.layers.Layer):
       max_level: maximum feature level.
       num_anchors: integer for number of anchors at each location.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: keras.regularizers.Regularizer object for Conv2D.
       bias_initializer: bias initializer for convolutional layers.
-      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: keras.regularizers.Regularizer object for Conv2d.
       use_separable_conv: `bool` wether to use separable convs.
       **kwargs: other keyword arguments.
     """
@@ -65,7 +66,7 @@ class YoloV7DetectionHead(tf_keras.layers.Layer):
   def _bias_init(self, scale, in_channels, isize=640, no_per_conf=8):
 
     def bias(shape, dtype):
-      init = tf_keras.initializers.VarianceScaling(
+      init = keras.initializers.VarianceScaling(
           scale=1 / 3, mode='fan_in', distribution='uniform')
       base = init([in_channels, *shape], dtype=dtype)[0]
 
@@ -84,9 +85,9 @@ class YoloV7DetectionHead(tf_keras.layers.Layer):
     self._implicit_adds = []
     self._implicit_muls = []
     conv_op = (
-        tf_keras.layers.SeparableConv2D
+        keras.layers.SeparableConv2D
         if self._use_separable_conv
-        else tf_keras.layers.Conv2D
+        else keras.layers.Conv2D
     )
     for level in range(self._min_level, self._max_level + 1):
       # Note that we assume height == width.
@@ -108,7 +109,7 @@ class YoloV7DetectionHead(tf_keras.layers.Layer):
           self.add_weight(
               name=f'implicit_adds_l{level}',
               shape=[1, 1, 1, in_channels],
-              initializer=tf_keras.initializers.random_normal(
+              initializer=keras.initializers.random_normal(
                   mean=0.0, stddev=0.02
               ),
               trainable=True,
@@ -118,7 +119,7 @@ class YoloV7DetectionHead(tf_keras.layers.Layer):
           self.add_weight(
               name=f'implicit_muls_l{level}',
               shape=[1, 1, 1, (self._num_classes + 5) * self._num_anchors],
-              initializer=tf_keras.initializers.random_normal(
+              initializer=keras.initializers.random_normal(
                   mean=1.0, stddev=0.02
               ),
               trainable=True,

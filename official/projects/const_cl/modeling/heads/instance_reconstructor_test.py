@@ -14,7 +14,8 @@
 
 """Tests for instance_reconstructor."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.projects.const_cl.modeling.heads import instance_reconstructor
 
 

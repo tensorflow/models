@@ -18,7 +18,8 @@ import os
 from typing import Any, Dict, List, Mapping, Optional, Union
 
 from dmvr import video_dataset
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.videoglue.datasets.common import utils
 

@@ -13,13 +13,14 @@
 # limitations under the License.
 
 """Modeling for TriviaQA."""
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.nlp.configs import encoders
 
 
-class TriviaQaHead(tf_keras.layers.Layer):
+class TriviaQaHead(keras.layers.Layer):
   """Computes logits given token and global embeddings."""
 
   def __init__(self,
@@ -29,17 +30,17 @@ class TriviaQaHead(tf_keras.layers.Layer):
                attention_dropout_rate=0.0,
                **kwargs):
     super(TriviaQaHead, self).__init__(**kwargs)
-    self._attention_dropout = tf_keras.layers.Dropout(attention_dropout_rate)
-    self._intermediate_dense = tf_keras.layers.Dense(intermediate_size)
-    self._intermediate_activation = tf_keras.layers.Activation(
+    self._attention_dropout = keras.layers.Dropout(attention_dropout_rate)
+    self._intermediate_dense = keras.layers.Dense(intermediate_size)
+    self._intermediate_activation = keras.layers.Activation(
         intermediate_activation)
-    self._output_dropout = tf_keras.layers.Dropout(dropout_rate)
-    self._output_layer_norm = tf_keras.layers.LayerNormalization()
-    self._logits_dense = tf_keras.layers.Dense(2)
+    self._output_dropout = keras.layers.Dropout(dropout_rate)
+    self._output_layer_norm = keras.layers.LayerNormalization()
+    self._logits_dense = keras.layers.Dense(2)
 
   def build(self, input_shape):
     output_shape = input_shape['token_embeddings'][-1]
-    self._output_dense = tf_keras.layers.Dense(output_shape)
+    self._output_dense = keras.layers.Dense(output_shape)
     super(TriviaQaHead, self).build(input_shape)
 
   def call(self, inputs, training=None):
@@ -59,14 +60,14 @@ class TriviaQaHead(tf_keras.layers.Layer):
     return logits
 
 
-class TriviaQaModel(tf_keras.Model):
+class TriviaQaModel(keras.Model):
   """Model for TriviaQA."""
 
   def __init__(self, model_config: encoders.EncoderConfig, sequence_length: int,
                **kwargs):
     inputs = dict(
-        token_ids=tf_keras.Input((sequence_length,), dtype=tf.int32),
-        question_lengths=tf_keras.Input((), dtype=tf.int32))
+        token_ids=keras.Input((sequence_length,), dtype=tf.int32),
+        question_lengths=keras.Input((), dtype=tf.int32))
     encoder = encoders.build_encoder(model_config)
     x = encoder(
         dict(
@@ -91,7 +92,7 @@ class TriviaQaModel(tf_keras.Model):
     return self._encoder
 
 
-class SpanOrCrossEntropyLoss(tf_keras.losses.Loss):
+class SpanOrCrossEntropyLoss(keras.losses.Loss):
   """Cross entropy loss for multiple correct answers.
 
   See https://arxiv.org/abs/1710.10723.

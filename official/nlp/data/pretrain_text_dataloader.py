@@ -16,7 +16,8 @@
 import dataclasses
 from typing import List, Mapping, Optional, Text
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_text as tf_text
 
 from official.common import dataset_fn

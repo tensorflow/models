@@ -16,12 +16,13 @@
 
 import copy
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling import layers
 
 
-class Pretrainer(tf_keras.Model):
+class Pretrainer(keras.Model):
   """Perceiver Pretrainer.
 
   Adds the masked language model head upon the encoder output. Optionally
@@ -38,7 +39,7 @@ class Pretrainer(tf_keras.Model):
       Masked language model network head for language modeling with encoder
       and optionally decoded output.
     inputs:
-      A `Dict[str, tf_keras.Input]` with `input_word_ids`, `input_mask`, and
+      A `Dict[str, keras.Input]` with `input_word_ids`, `input_mask`, and
       `input_type_ids`. The shapes are all `(None)` with dtype `tf.int32`.
       If `masked_lm_positions` is included, it will run masked language
       modeling layer to return sequence of logits.
@@ -76,9 +77,9 @@ class Pretrainer(tf_keras.Model):
         specified masked_lm layer. Above arguments `mlm_activation` and
         `mlm_initializer` will be ignored.
       name:
-        Sets the `tf_keras.Model` name.
+        Sets the `keras.Model` name.
       **kwargs:
-        Any keyword arguments to pass through to `tf_keras.Model`.
+        Any keyword arguments to pass through to `keras.Model`.
     """
     super().__init__(**kwargs, name=name)
 
@@ -123,7 +124,7 @@ class Pretrainer(tf_keras.Model):
         activation=mlm_activation,
         initializer=mlm_initializer,
         name='cls/predictions')
-    masked_lm_positions = tf_keras.layers.Input(
+    masked_lm_positions = keras.layers.Input(
         shape=(None,), name='masked_lm_positions', dtype=tf.int32)
 
     if isinstance(inputs, dict):
@@ -138,7 +139,7 @@ class Pretrainer(tf_keras.Model):
     Accepts inputs as dictionary of tensors.
     Args:
       inputs:
-        A `Dict[str, tf_keras.Input]` with `input_word_ids`, `input_mask`, and
+        A `Dict[str, keras.Input]` with `input_word_ids`, `input_mask`, and
         `input_type_ids`. The shapes are all `(None)` with dtype `tf.int32`.
         If `masked_lm_positions` is included, it will run masked language
         modeling layer to return sequence of logits.

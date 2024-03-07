@@ -15,7 +15,8 @@
 """COCO data loader for Pix2Seq."""
 
 from typing import Tuple
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pix2seq import utils
 from official.projects.pix2seq.configs import pix2seq as pix2seq_cfg

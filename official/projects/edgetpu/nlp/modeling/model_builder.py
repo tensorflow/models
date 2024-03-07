@@ -15,7 +15,8 @@
 """Build MobileBERT-EdgeTPU model."""
 from typing import Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.nlp import modeling
@@ -25,10 +26,10 @@ from official.projects.edgetpu.nlp.modeling import pretrainer as edgetpu_pretrai
 
 
 def build_bert_pretrainer(pretrainer_cfg: params.PretrainerModelParams,
-                          encoder: Optional[tf_keras.Model] = None,
-                          masked_lm: Optional[tf_keras.Model] = None,
+                          encoder: Optional[keras.Model] = None,
+                          masked_lm: Optional[keras.Model] = None,
                           quantization_friendly: Optional[bool] = False,
-                          name: Optional[str] = None) -> tf_keras.Model:
+                          name: Optional[str] = None) -> keras.Model:
   """Builds pretrainer.
 
   Args:
@@ -83,7 +84,7 @@ def build_bert_pretrainer(pretrainer_cfg: params.PretrainerModelParams,
   masked_lm = masked_lm or modeling.layers.MobileBertMaskedLM(
       embedding_table=_get_embedding_table(encoder),
       activation=tf_utils.get_activation(pretrainer_cfg.mlm_activation),
-      initializer=tf_keras.initializers.TruncatedNormal(
+      initializer=keras.initializers.TruncatedNormal(
           stddev=pretrainer_cfg.mlm_initializer_range),
       output_weights_use_proj=pretrainer_cfg.mlm_output_weights_use_proj,
       name='cls/predictions')

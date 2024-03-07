@@ -22,7 +22,8 @@ for graph serializaiton.
 import math
 from typing import Any, List, Mapping, Optional, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.projects.pix2seq.modeling import transformer
@@ -36,7 +37,7 @@ def get_shape(x):
 
 def get_variable_initializer(name=None):
   if name is None:
-    return tf_keras.initializers.TruncatedNormal(mean=0.0, stddev=0.02)
+    return keras.initializers.TruncatedNormal(mean=0.0, stddev=0.02)
 
 
 def add_seq_pos_emb(
@@ -218,7 +219,7 @@ def top_logits(
   return logits
 
 
-class Pix2Seq(tf_keras.Model):
+class Pix2Seq(keras.Model):
   """Pix2Seq model with Keras.
 
   Pix2Seq consists of backbone, input token embedding, Pix2SeqTransformer.
@@ -258,11 +259,11 @@ class Pix2Seq(tf_keras.Model):
     if hidden_size % 2 != 0:
       raise ValueError("hidden_size must be a multiple of 2.")
 
-    self._dropout = tf_keras.layers.Dropout(self._drop_units)
-    self._stem_projection = tf_keras.layers.Dense(
+    self._dropout = keras.layers.Dropout(self._drop_units)
+    self._stem_projection = keras.layers.Dense(
         self._hidden_size, name="stem_projection"
     )
-    self._stem_ln = tf_keras.layers.LayerNormalization(
+    self._stem_ln = keras.layers.LayerNormalization(
         epsilon=1e-6, name="stem_ln"
     )
 
@@ -284,11 +285,11 @@ class Pix2Seq(tf_keras.Model):
     self._eos_token = eos_token
 
   @property
-  def backbone(self) -> tf_keras.Model:
+  def backbone(self) -> keras.Model:
     return self._backbone
 
   @property
-  def transformer(self) -> tf_keras.Model:
+  def transformer(self) -> keras.Model:
     return self._transformer
 
   def get_config(self):
@@ -316,7 +317,7 @@ class Pix2Seq(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self) -> Mapping[str, Union[keras.Model, keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, transformer=self.transformer)
     return items
@@ -406,7 +407,7 @@ def _create_cond_fn(seq_len: int, eos_token: int | None, prompt_len: int):
   return cond
 
 
-class Pix2SeqTransformer(tf_keras.layers.Layer):
+class Pix2SeqTransformer(keras.layers.Layer):
   """Encoder and Decoder of Pix2Seq."""
 
   def __init__(
@@ -463,12 +464,12 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     else:
       self._encoder = None
 
-    self._output_ln_enc = tf_keras.layers.LayerNormalization(
+    self._output_ln_enc = keras.layers.LayerNormalization(
         epsilon=1e-6, name="output_ln_enc"
     )
 
-    self._proj = tf_keras.layers.Dense(self._hidden_size, name="proj/linear")
-    self._proj_ln = tf_keras.layers.LayerNormalization(
+    self._proj = keras.layers.Dense(self._hidden_size, name="proj/linear")
+    self._proj_ln = keras.layers.LayerNormalization(
         epsilon=1e-6, name="proj/ln"
     )
     self._proj_mlp = transformer.MLP(
@@ -489,7 +490,7 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
         drop_units=self._drop_units,
         drop_att=self._drop_att,
     )
-    self._output_ln_dec = tf_keras.layers.LayerNormalization(
+    self._output_ln_dec = keras.layers.LayerNormalization(
         epsilon=1e-6, name="output_ln_dec"
     )
 

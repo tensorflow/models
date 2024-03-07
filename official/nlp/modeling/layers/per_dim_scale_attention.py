@@ -15,12 +15,13 @@
 """Keras-based attention layer with learnable per dim scaling."""
 import gin
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 @gin.configurable
-@tf_keras.utils.register_keras_serializable(package='Text')
-class PerDimScaleAttention(tf_keras.layers.MultiHeadAttention):
+@keras.utils.register_keras_serializable(package='Text')
+class PerDimScaleAttention(keras.layers.MultiHeadAttention):
   """Learn scales for individual dims.
 
      It can improve quality but might hurt training stability.

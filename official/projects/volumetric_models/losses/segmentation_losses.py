@@ -15,7 +15,8 @@
 """Losses used for segmentation models."""
 
 from typing import Optional, Sequence
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 class SegmentationLossDiceScore(object):
@@ -65,7 +66,7 @@ class SegmentationLossDiceScore(object):
     if labels.get_shape().ndims < 2 or logits.get_shape().ndims < 2:
       raise ValueError('The labels and logits must be at least rank 2.')
 
-    epsilon = tf_keras.backend.epsilon()
+    epsilon = keras.backend.epsilon()
     keep_label_axis = list(range(len(logits.shape) - 1))
     keep_batch_axis = list(range(1, len(logits.shape)))
 

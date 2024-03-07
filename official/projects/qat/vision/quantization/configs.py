@@ -15,12 +15,13 @@
 """Default 8-bit QuantizeConfigs."""
 from typing import Sequence, Callable, Tuple, Any, Dict
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_model_optimization as tfmot
 
 
 Quantizer = tfmot.quantization.keras.quantizers.Quantizer
-Layer = tf_keras.layers.Layer
+Layer = keras.layers.Layer
 Activation = Callable[[tf.Tensor], tf.Tensor]
 WeightAndQuantizer = Tuple[tf.Variable, Quantizer]
 ActivationAndQuantizer = Tuple[Activation, Quantizer]
@@ -215,12 +216,12 @@ class Default8BitConvWeightsQuantizer(
     min_weight = layer.add_weight(
         name + '_min',
         shape=(tensor_shape[-1],),
-        initializer=tf_keras.initializers.Constant(-6.0),
+        initializer=keras.initializers.Constant(-6.0),
         trainable=False)
     max_weight = layer.add_weight(
         name + '_max',
         shape=(tensor_shape[-1],),
-        initializer=tf_keras.initializers.Constant(6.0),
+        initializer=keras.initializers.Constant(6.0),
         trainable=False)
 
     return {'min_var': min_weight, 'max_var': max_weight}
@@ -261,7 +262,7 @@ class Default8BitActivationQuantizeConfig(
   """
 
   def _assert_activation_layer(self, layer: Layer):
-    if not isinstance(layer, tf_keras.layers.Activation):
+    if not isinstance(layer, keras.layers.Activation):
       raise RuntimeError(
           'Default8BitActivationQuantizeConfig can only be used with '
           '`keras.layers.Activation`.')

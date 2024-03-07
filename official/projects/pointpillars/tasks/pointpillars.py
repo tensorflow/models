@@ -18,7 +18,8 @@ import functools
 from typing import Any, List, Mapping, Optional, Tuple
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import base_task
 from official.core import task_factory
@@ -67,7 +68,7 @@ class PointPillarsTask(base_task.Task):
     self._model = None
     self._attribute_heads = self.task_config.model.head.attribute_heads
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> keras.Model:
     # Create only one model instance if this function is called multiple times.
     if self._model is not None:
       return self._model
@@ -75,12 +76,12 @@ class PointPillarsTask(base_task.Task):
     pillars_config = self.task_config.model.pillars
     input_specs = {
         'pillars':
-            tf_keras.layers.InputSpec(
+            keras.layers.InputSpec(
                 shape=(None, pillars_config.num_pillars,
                        pillars_config.num_points_per_pillar,
                        pillars_config.num_features_per_point)),
         'indices':
-            tf_keras.layers.InputSpec(
+            keras.layers.InputSpec(
                 shape=(None, pillars_config.num_pillars, 2), dtype='int32'),
     }
 
@@ -90,7 +91,7 @@ class PointPillarsTask(base_task.Task):
         self.task_config.validation_data.global_batch_size)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
-    l2_regularizer = (tf_keras.regularizers.l2(
+    l2_regularizer = (keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
     self._model = factory.build_pointpillars(
@@ -101,7 +102,7 @@ class PointPillarsTask(base_task.Task):
         l2_regularizer=l2_regularizer)
     return self._model
 
-  def initialize(self, model: tf_keras.Model):
+  def initialize(self, model: keras.Model):
     """Loading pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
@@ -171,9 +172,9 @@ class PointPillarsTask(base_task.Task):
       labels: Mapping[str, Any],
       box_sample_weight: tf.Tensor) -> Mapping[str, float]:
     """Computes attribute loss."""
-    att_loss_fn = tf_keras.losses.Huber(
+    att_loss_fn = keras.losses.Huber(
         self.task_config.losses.huber_loss_delta,
-        reduction=tf_keras.losses.Reduction.SUM)
+        reduction=keras.losses.Reduction.SUM)
 
     losses = {}
     total_loss = 0.0
@@ -215,10 +216,10 @@ class PointPillarsTask(base_task.Task):
     cls_loss_fn = focal_loss.FocalLoss(
         alpha=params.losses.focal_loss_alpha,
         gamma=params.losses.focal_loss_gamma,
-        reduction=tf_keras.losses.Reduction.SUM)
-    box_loss_fn = tf_keras.losses.Huber(
+        reduction=keras.losses.Reduction.SUM)
+    box_loss_fn = keras.losses.Huber(
         params.losses.huber_loss_delta,
-        reduction=tf_keras.losses.Reduction.SUM)
+        reduction=keras.losses.Reduction.SUM)
 
     # Sums all positives in a batch for normalization and avoids zero
     # num_positives_sum, which would lead to inf loss during training
@@ -275,7 +276,7 @@ class PointPillarsTask(base_task.Task):
       loss_names.append(head.name + '_loss')
     metrics = []
     for name in loss_names:
-      metrics.append(tf_keras.metrics.Mean(name, dtype=tf.float32))
+      metrics.append(keras.metrics.Mean(name, dtype=tf.float32))
 
     # Use a separate metric for WOD validation.
     if not training:
@@ -299,8 +300,8 @@ class PointPillarsTask(base_task.Task):
   def train_step(
       self,
       inputs: Tuple[Any, Any],
-      model: tf_keras.Model,
-      optimizer: tf_keras.optimizers.Optimizer,
+      model: keras.Model,
+      optimizer: keras.optimizers.Optimizer,
       metrics: Optional[List[tf.metrics.Metric]] = None) -> Mapping[str, Any]:
     """Does forward and backward."""
     features, labels = inputs
@@ -317,13 +318,13 @@ class PointPillarsTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
@@ -338,7 +339,7 @@ class PointPillarsTask(base_task.Task):
   def validation_step(
       self,
       inputs: Tuple[Any, Any],
-      model: tf_keras.Model,
+      model: keras.Model,
       metrics: Optional[List[tf.metrics.Metric]] = None) -> Mapping[str, Any]:
     """Validatation step."""
     features, labels = inputs

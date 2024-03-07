@@ -17,14 +17,15 @@
 
 import copy
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class ElectraPretrainer(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class ElectraPretrainer(keras.Model):
   """ELECTRA network training model.
 
   This is an implementation of the network structure described in "ELECTRA:
@@ -104,12 +105,12 @@ class ElectraPretrainer(tf_keras.Model):
         num_classes=num_classes,
         initializer=tf_utils.clone_initializer(mlm_initializer),
         name='generator_classification_head')
-    self.discriminator_projection = tf_keras.layers.Dense(
+    self.discriminator_projection = keras.layers.Dense(
         units=discriminator_network.get_config()['hidden_size'],
         activation=mlm_activation,
         kernel_initializer=tf_utils.clone_initializer(mlm_initializer),
         name='discriminator_projection_head')
-    self.discriminator_head = tf_keras.layers.Dense(
+    self.discriminator_head = keras.layers.Dense(
         units=1,
         kernel_initializer=tf_utils.clone_initializer(mlm_initializer))
 

@@ -15,21 +15,22 @@
 """PointPillars Model."""
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.pointpillars.utils import utils
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class PointPillarsModel(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Vision')
+class PointPillarsModel(keras.Model):
   """The PointPillars model class."""
 
   def __init__(self,
-               featurizer: tf_keras.layers.Layer,
-               backbone: tf_keras.Model,
-               decoder: tf_keras.Model,
-               head: tf_keras.layers.Layer,
-               detection_generator: tf_keras.layers.Layer,
+               featurizer: keras.layers.Layer,
+               backbone: keras.Model,
+               decoder: keras.Model,
+               head: keras.layers.Layer,
+               detection_generator: keras.layers.Layer,
                min_level: int,
                max_level: int,
                image_size: Tuple[int, int],
@@ -38,11 +39,11 @@ class PointPillarsModel(tf_keras.Model):
     """Initialize the model class.
 
     Args:
-      featurizer: A `tf_keras.layers.Layer` to extract features from pillars.
-      backbone: A `tf_keras.Model` to downsample feature images.
-      decoder: A `tf_keras.Model` to upsample feature images.
-      head: A `tf_keras.layers.Layer` to predict targets.
-      detection_generator: A `tf_keras.layers.Layer` to generate detections.
+      featurizer: A `keras.layers.Layer` to extract features from pillars.
+      backbone: A `keras.Model` to downsample feature images.
+      decoder: A `keras.Model` to upsample feature images.
+      head: A `keras.layers.Layer` to predict targets.
+      detection_generator: A `keras.layers.Layer` to generate detections.
       min_level: An `int` minimum level of multiscale outputs.
       max_level: An `int` maximum level of multiscale outputs.
       image_size: A tuple (height, width) of image size.
@@ -170,7 +171,7 @@ class PointPillarsModel(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self) -> Mapping[str, Union[keras.Model, keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(featurizer=self.featurizer,
                  backbone=self.backbone,
@@ -179,23 +180,23 @@ class PointPillarsModel(tf_keras.Model):
     return items
 
   @property
-  def featurizer(self) -> tf_keras.layers.Layer:
+  def featurizer(self) -> keras.layers.Layer:
     return self._featurizer
 
   @property
-  def backbone(self) -> tf_keras.Model:
+  def backbone(self) -> keras.Model:
     return self._backbone
 
   @property
-  def decoder(self) -> tf_keras.Model:
+  def decoder(self) -> keras.Model:
     return self._decoder
 
   @property
-  def head(self) -> tf_keras.layers.Layer:
+  def head(self) -> keras.layers.Layer:
     return self._head
 
   @property
-  def detection_generator(self) -> tf_keras.layers.Layer:
+  def detection_generator(self) -> keras.layers.Layer:
     return self._detection_generator
 
   def get_config(self) -> Mapping[str, Any]:
@@ -213,5 +214,5 @@ class PointPillarsModel(tf_keras.Model):
     return config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> keras.Model:
     return cls(**config)

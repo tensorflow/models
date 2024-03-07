@@ -15,7 +15,8 @@
 """Tests for distribution util functions."""
 
 import sys
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.common import distribute_utils
 

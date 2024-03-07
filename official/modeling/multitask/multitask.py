@@ -16,7 +16,8 @@
 import abc
 from typing import Dict, List, Optional, Text, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.core import base_task
 from official.core import config_definitions
 from official.core import task_factory
@@ -103,7 +104,7 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
 
   def joint_train_step(self, task_inputs,
                        multi_task_model: base_model.MultiTaskBaseModel,
-                       optimizer: tf_keras.optimizers.Optimizer, task_metrics,
+                       optimizer: keras.optimizers.Optimizer, task_metrics,
                        **kwargs):
     """The joint train step.
 

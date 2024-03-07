@@ -15,7 +15,8 @@
 """Tests for encoder."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.perceiver.modeling.layers import encoder
 
@@ -30,9 +31,9 @@ class EncoderTest(tf.test.TestCase):
     embedding_width = 800
     lantent_length = 8
     latent_width = 80
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(sequence_length, embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(lantent_length, latent_width))
 
     output_tensor = test_layer((data_input, latent_input))
@@ -48,11 +49,11 @@ class EncoderTest(tf.test.TestCase):
     embedding_width = 800
     lantent_length = 8
     latent_width = 80
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(sequence_length, embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(lantent_length, latent_width))
-    mask_tensor = tf_keras.Input(
+    mask_tensor = keras.Input(
         shape=(sequence_length),
         dtype=tf.int32)
     output_tensor = test_layer(
@@ -70,11 +71,11 @@ class EncoderTest(tf.test.TestCase):
     embedding_width = 800
     lantent_length = 8
     latent_width = 80
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(sequence_length, embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(lantent_length, latent_width))
-    mask_tensor = tf_keras.Input(
+    mask_tensor = keras.Input(
         shape=(sequence_length),
         dtype=tf.int32)
 
@@ -83,7 +84,7 @@ class EncoderTest(tf.test.TestCase):
         input_mask=mask_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(
+    model = keras.Model(
         ((data_input, latent_input), mask_tensor),
         output_tensor)
 
@@ -108,11 +109,11 @@ class EncoderTest(tf.test.TestCase):
     some_embedding_width = 800
     some_lantent_length = 8
     some_latent_width = last_dim
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(some_sequence_length, some_embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(some_lantent_length, some_latent_width))
-    mask_tensor = tf_keras.Input(shape=(some_sequence_length), dtype=tf.int32)
+    mask_tensor = keras.Input(shape=(some_sequence_length), dtype=tf.int32)
     test_layer((data_input, latent_input), input_mask=mask_tensor)
     value = test_layer._self_attention_encoder_blocks[
         0]._intermediate_dense.get_config()['output_shape'].pop()
@@ -129,11 +130,11 @@ class EncoderTest(tf.test.TestCase):
     some_embedding_width = 800
     some_lantent_length = 8
     some_latent_width = last_dim
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(some_sequence_length, some_embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(some_lantent_length, some_latent_width))
-    mask_tensor = tf_keras.Input(shape=(some_sequence_length), dtype=tf.int32)
+    mask_tensor = keras.Input(shape=(some_sequence_length), dtype=tf.int32)
     test_layer((data_input, latent_input), input_mask=mask_tensor)
     value = test_layer._cross_attention_encoder_block._intermediate_dense.get_config(
     )['output_shape'].pop()
@@ -149,11 +150,11 @@ class EncoderTest(tf.test.TestCase):
     some_embedding_width = 800
     some_lantent_length = 8
     some_latent_width = 64
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(some_sequence_length, some_embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(some_lantent_length, some_latent_width))
-    mask_tensor = tf_keras.Input(shape=(some_sequence_length), dtype=tf.int32)
+    mask_tensor = keras.Input(shape=(some_sequence_length), dtype=tf.int32)
     test_layer((data_input, latent_input), input_mask=mask_tensor)
     value = test_layer._self_attention_encoder_blocks[
         0]._attention_layer.get_config()['num_heads']
@@ -169,11 +170,11 @@ class EncoderTest(tf.test.TestCase):
     some_embedding_width = 800
     some_lantent_length = 8
     some_latent_width = 64
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(some_sequence_length, some_embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(some_lantent_length, some_latent_width))
-    mask_tensor = tf_keras.Input(shape=(some_sequence_length), dtype=tf.int32)
+    mask_tensor = keras.Input(shape=(some_sequence_length), dtype=tf.int32)
     test_layer((data_input, latent_input), input_mask=mask_tensor)
     value = test_layer._cross_attention_encoder_block._attention_layer.get_config(
     )['num_heads']
@@ -189,11 +190,11 @@ class EncoderTest(tf.test.TestCase):
     some_embedding_width = 800
     some_lantent_length = 8
     some_latent_width = 64
-    data_input = tf_keras.Input(
+    data_input = keras.Input(
         shape=(some_sequence_length, some_embedding_width))
-    latent_input = tf_keras.Input(
+    latent_input = keras.Input(
         shape=(some_lantent_length, some_latent_width))
-    mask_tensor = tf_keras.Input(shape=(some_sequence_length), dtype=tf.int32)
+    mask_tensor = keras.Input(shape=(some_sequence_length), dtype=tf.int32)
     test_layer((data_input, latent_input), input_mask=mask_tensor)
     self.assertLen(
         test_layer._self_attention_encoder_blocks,

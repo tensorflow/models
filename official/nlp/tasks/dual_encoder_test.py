@@ -17,7 +17,8 @@ import functools
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.legacy.bert import configs
 from official.nlp.configs import bert
@@ -53,7 +54,7 @@ class DualEncoderTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     dataset.batch(10)
     iterator = iter(dataset)
-    optimizer = tf_keras.optimizers.SGD(lr=0.1)
+    optimizer = keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
     model.save(os.path.join(self.get_temp_dir(), "saved_model"))
@@ -69,7 +70,7 @@ class DualEncoderTaskTest(tf.test.TestCase, parameterized.TestCase):
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    optimizer = tf_keras.optimizers.SGD(lr=0.1)
+    optimizer = keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
 

@@ -43,7 +43,8 @@ from typing import Any, Callable, Mapping, Optional, Union
 
 # Import libraries
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import registry
 from official.modeling import hyperparams
@@ -58,7 +59,7 @@ def register_decoder_builder(key: str) -> Callable[..., Any]:
   This decorator supports registration of decoder builder as follows:
 
   ```
-  class MyDecoder(tf_keras.Model):
+  class MyDecoder(keras.Model):
     pass
 
   @register_decoder_builder('mydecoder')
@@ -83,7 +84,7 @@ def register_decoder_builder(key: str) -> Callable[..., Any]:
 def build_identity(
     input_specs: Optional[Mapping[str, tf.TensorShape]] = None,
     model_config: Optional[hyperparams.Config] = None,
-    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None) -> None:
+    l2_regularizer: Optional[keras.regularizers.Regularizer] = None) -> None:
   """Builds identity decoder from a config.
 
   All the input arguments are not used by identity decoder but kept here to
@@ -93,7 +94,7 @@ def build_identity(
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A `OneOfConfig` of model config.
-    l2_regularizer: A `tf_keras.regularizers.Regularizer` object. Default to
+    l2_regularizer: A `keras.regularizers.Regularizer` object. Default to
       None.
 
   Returns:
@@ -105,8 +106,8 @@ def build_identity(
 def build_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None,
-    **kwargs) -> Union[None, tf_keras.Model, tf_keras.layers.Layer]:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: keras.regularizers.Regularizer = None,
+    **kwargs) -> Union[None, keras.Model, keras.layers.Layer]:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds decoder from a config.
 
   A decoder can be a keras.Model, a keras.layers.Layer, or None. If it is not
@@ -118,7 +119,7 @@ def build_decoder(
     input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A `OneOfConfig` of model config.
-    l2_regularizer: A `tf_keras.regularizers.Regularizer` object. Default to
+    l2_regularizer: A `keras.regularizers.Regularizer` object. Default to
       None.
     **kwargs: Additional keyword args to be passed to decoder builder.
 

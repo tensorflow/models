@@ -17,7 +17,8 @@
 import os
 from unittest import mock
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import export_base
 from official.vision import configs

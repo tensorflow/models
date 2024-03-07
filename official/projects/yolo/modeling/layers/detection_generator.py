@@ -14,7 +14,8 @@
 
 """Contains common building blocks for yolo layer (detection layer)."""
 from typing import Optional
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.yolo.losses import yolo_loss
 from official.projects.yolo.ops import box_ops
@@ -22,7 +23,7 @@ from official.projects.yolo.ops import loss_utils
 from official.vision.modeling.layers import detection_generator
 
 
-class YoloLayer(tf_keras.layers.Layer):
+class YoloLayer(keras.layers.Layer):
   """Yolo layer (detection generator)."""
 
   def __init__(

@@ -16,17 +16,18 @@
 # pylint: disable=g-classes-have-attributes
 import math
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
-EinsumDense = tf_keras.layers.EinsumDense
-MultiHeadAttention = tf_keras.layers.MultiHeadAttention
+EinsumDense = keras.layers.EinsumDense
+MultiHeadAttention = keras.layers.MultiHeadAttention
 
 
-@tf_keras.utils.register_keras_serializable(package="Text")
-class CachedAttention(tf_keras.layers.MultiHeadAttention):
+@keras.utils.register_keras_serializable(package="Text")
+class CachedAttention(keras.layers.MultiHeadAttention):
   """Attention layer with cache used for autoregressive decoding.
 
-  Arguments are the same as `tf_keras.layers.MultiHeadAttention` layer.
+  Arguments are the same as `keras.layers.MultiHeadAttention` layer.
   """
 
   def _update_cache(self, key, value, cache, decode_loop_step):

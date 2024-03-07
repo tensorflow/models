@@ -14,10 +14,11 @@
 
 """Customized Relu activation."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 def relu6(features):
   """Computes the Relu6 activation function.
 

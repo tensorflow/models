@@ -16,7 +16,8 @@
 import itertools
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import kernel_attention as attention
 

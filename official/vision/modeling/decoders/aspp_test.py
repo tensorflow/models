@@ -16,7 +16,8 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.modeling.backbones import resnet
 from official.vision.modeling.decoders import aspp
@@ -37,9 +38,9 @@ class ASPPTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of ASPP."""
 
     input_size = 256
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
 
-    inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    inputs = keras.Input(shape=(input_size, input_size, 3), batch_size=1)
 
     backbone = resnet.ResNet(model_id=50)
     network = aspp.ASPP(

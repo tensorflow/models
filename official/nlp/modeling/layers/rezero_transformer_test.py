@@ -16,7 +16,8 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import rezero_transformer
 
@@ -25,12 +26,12 @@ class TransformerWithReZeroLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerWithReZeroLayerTest, self).tearDown()
-    tf_keras.mixed_precision.set_global_policy('float32')
+    keras.mixed_precision.set_global_policy('float32')
 
   @parameterized.named_parameters(('no_share_attn_ffn', False),
                                   ('share_attn_ffn', True))
   def test_layer_invocation_with_float16_dtype(self, share_rezero):
-    tf_keras.mixed_precision.set_global_policy('mixed_float16')
+    keras.mixed_precision.set_global_policy('mixed_float16')
     test_layer = rezero_transformer.ReZeroTransformer(
         num_attention_heads=10,
         intermediate_size=2048,
@@ -39,13 +40,13 @@ class TransformerWithReZeroLayerTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    mask_tensor = keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
 
     # Create a model from the test layer.
-    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
+    model = keras.Model([data_tensor, mask_tensor], output_tensor)
 
     # Invoke the model on test data. We can't validate the output data itself
     # (the NN is too complex) but this will rule out structural runtime errors.
@@ -66,9 +67,9 @@ class TransformerWithReZeroLayerTest(tf.test.TestCase, parameterized.TestCase):
         use_layer_norm=False)
 
     input_length, width = 16, 30
-    input_tensor = tf_keras.Input(shape=(input_length, width))
+    input_tensor = keras.Input(shape=(input_length, width))
     output_tensor = test_layer(input_tensor)
-    model = tf_keras.Model(input_tensor, output_tensor)
+    model = keras.Model(input_tensor, output_tensor)
 
     input_data = np.random.rand(2, input_length, width)
     test_layer._rezero_a.assign(1.0)
@@ -85,9 +86,9 @@ class TransformerWithReZeroLayerTest(tf.test.TestCase, parameterized.TestCase):
         use_layer_norm=True)
 
     input_length, width = 16, 30
-    input_tensor = tf_keras.Input(shape=(input_length, width))
+    input_tensor = keras.Input(shape=(input_length, width))
     output_tensor = test_layer(input_tensor)
-    model = tf_keras.Model(input_tensor, output_tensor)
+    model = keras.Model(input_tensor, output_tensor)
 
     input_data = np.random.rand(2, input_length, width) + 2.0
     output_data = model.predict(input_data)
@@ -132,7 +133,7 @@ class TransformerWithReZeroLayerTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=2,
         intermediate_size=128,
         intermediate_activation='relu',
-        kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02))
+        kernel_initializer=keras.initializers.TruncatedNormal(stddev=0.02))
     # Forward path.
     q_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
     kv_tensor = tf.zeros([2, 8, 16], dtype=tf.float32)

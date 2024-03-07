@@ -19,12 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.modeling.hyperparams import params_dict
 
 
 class StepLearningRateWithLinearWarmup(
-    tf_keras.optimizers.schedules.LearningRateSchedule):
+    keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
   def __init__(self, total_steps, params):
@@ -57,7 +58,7 @@ class StepLearningRateWithLinearWarmup(
 
 
 class CosineLearningRateWithLinearWarmup(
-    tf_keras.optimizers.schedules.LearningRateSchedule):
+    keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
   def __init__(self, total_steps, params):

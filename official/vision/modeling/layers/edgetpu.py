@@ -16,7 +16,8 @@
 from typing import List, Optional, Union, Iterable, Sequence
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 _or = tf.maximum
 _and = tf.minimum

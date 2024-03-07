@@ -26,7 +26,8 @@ import dataclasses
 from typing import Dict, Optional
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 class Config(abc.ABC):
@@ -36,7 +37,7 @@ class Config(abc.ABC):
     """Generates the weights needed to be loaded into the layer."""
     raise NotImplementedError
 
-  def load_weights(self, layer: tf_keras.layers.Layer) -> int:
+  def load_weights(self, layer: keras.layers.Layer) -> int:
     """Assign weights to layer.
 
     Given a layer, this function retrieves the weights for that layer in an
@@ -47,7 +48,7 @@ class Config(abc.ABC):
     will be raised by set_weights().
 
     Args:
-      layer: A `tf_keras.layers.Layer`.
+      layer: A `keras.layers.Layer`.
 
     Returns:
 

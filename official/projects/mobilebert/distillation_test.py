@@ -17,7 +17,8 @@ import os
 
 from absl import logging
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import config_definitions as cfg
 from official.modeling import optimization
@@ -119,7 +120,7 @@ class DistillationTest(tf.test.TestCase, parameterized.TestCase):
     masked_lm = layers.MobileBertMaskedLM(
         embedding_table=teacher_encoder.get_embedding_table(),
         activation=tf_utils.get_activation(pretrainer_config.mlm_activation),
-        initializer=tf_keras.initializers.TruncatedNormal(
+        initializer=keras.initializers.TruncatedNormal(
             stddev=pretrainer_config.mlm_initializer_range),
         name='cls/predictions')
     teacher_pretrainer = models.BertPretrainerV2(
@@ -153,7 +154,7 @@ class DistillationTest(tf.test.TestCase, parameterized.TestCase):
 
     eval_dataset = bert_distillation_task.get_eval_dataset(stage_id=0)
     eval_iterator = iter(eval_dataset)
-    optimizer = tf_keras.optimizers.legacy.SGD(learning_rate=0.1)
+    optimizer = keras.optimizers.legacy.SGD(learning_rate=0.1)
 
     # test train/val step for all stages, including the last pretraining stage
     for stage in range(student_block_num + 1):

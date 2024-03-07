@@ -15,7 +15,8 @@
 """Tests for dual encoder network."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import dual_encoder
@@ -40,13 +41,13 @@ class DualEncoderTest(tf.test.TestCase, parameterized.TestCase):
         test_network, max_seq_length=sequence_length, output=output)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
-    left_word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    left_mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    left_type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    left_word_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    left_mask = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    left_type_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
-    right_word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    right_mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    right_type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    right_word_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    right_mask = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    right_type_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     if output == 'logits':
       outputs = dual_encoder_model([

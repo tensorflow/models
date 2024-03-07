@@ -18,7 +18,8 @@ from typing import Optional
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.vision.modeling.layers import edgetpu
 
 
@@ -169,10 +170,10 @@ class NonMaxSuppressionTest(parameterized.TestCase, tf.test.TestCase):
                             ([20, 20, 200], 10, _stright_nms, False))
   def test_sharded_size(self, shape: list[int], top: int, algorithm,
                         fits_as_is: bool):
-    scores = tf_keras.Input(shape=shape, batch_size=1)
-    boxes = tf_keras.Input(shape=shape + [4], batch_size=1)
+    scores = keras.Input(shape=shape, batch_size=1)
+    boxes = keras.Input(shape=shape + [4], batch_size=1)
     optimized = algorithm(boxes, scores, top)
-    model = tf_keras.Model(inputs=[boxes, scores], outputs=optimized)
+    model = keras.Model(inputs=[boxes, scores], outputs=optimized)
     max_size = _maximum_activation_size(model)
     if fits_as_is:
       # Sharding done or not needed.

@@ -15,7 +15,8 @@
 """Forward pass test for Transformer model refactoring."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.legacy.transformer import metrics
 from official.legacy.transformer import model_params
@@ -30,7 +31,7 @@ def _count_params(layer, trainable_only=True):
   else:
     return int(
         np.sum([
-            tf_keras.backend.count_params(p) for p in layer.trainable_weights
+            keras.backend.count_params(p) for p in layer.trainable_weights
         ]))
 
 
@@ -66,8 +67,8 @@ def _create_model(params, is_train):
       name="transformer_v2")
 
   if is_train:
-    inputs = tf_keras.layers.Input((None,), dtype="int64", name="inputs")
-    targets = tf_keras.layers.Input((None,), dtype="int64", name="targets")
+    inputs = keras.layers.Input((None,), dtype="int64", name="inputs")
+    targets = keras.layers.Input((None,), dtype="int64", name="targets")
     internal_model = models.Seq2SeqTransformer(**model_kwargs)
     logits = internal_model(
         dict(inputs=inputs, targets=targets), training=is_train)
@@ -75,24 +76,24 @@ def _create_model(params, is_train):
     label_smoothing = params["label_smoothing"]
     if params["enable_metrics_in_training"]:
       logits = metrics.MetricLayer(vocab_size)([logits, targets])
-    logits = tf_keras.layers.Lambda(
+    logits = keras.layers.Lambda(
         lambda x: x, name="logits", dtype=tf.float32)(
             logits)
-    model = tf_keras.Model([inputs, targets], logits)
+    model = keras.Model([inputs, targets], logits)
     loss = metrics.transformer_loss(logits, targets, label_smoothing,
                                     vocab_size)
     model.add_loss(loss)
     return model
 
   batch_size = params["decode_batch_size"] if params["padded_decode"] else None
-  inputs = tf_keras.layers.Input((None,),
+  inputs = keras.layers.Input((None,),
                                  batch_size=batch_size,
                                  dtype="int64",
                                  name="inputs")
   internal_model = models.Seq2SeqTransformer(**model_kwargs)
   ret = internal_model(dict(inputs=inputs), training=is_train)
   outputs, scores = ret["outputs"], ret["scores"]
-  return tf_keras.Model(inputs, [outputs, scores])
+  return keras.Model(inputs, [outputs, scores])
 
 
 class TransformerForwardTest(tf.test.TestCase):

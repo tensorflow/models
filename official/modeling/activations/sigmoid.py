@@ -14,10 +14,11 @@
 
 """Customized Sigmoid activation."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
+@keras.utils.register_keras_serializable(package='Text')
 def hard_sigmoid(features):
   """Computes the hard sigmoid activation function.
 

@@ -17,13 +17,14 @@
 import copy
 from typing import List, Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling import layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class MobileBERTEdgeTPUPretrainer(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Text')
+class MobileBERTEdgeTPUPretrainer(keras.Model):
   """BERT pretraining model V2.
 
   Adds the masked language model head and optional classification heads upon the
@@ -52,11 +53,11 @@ class MobileBERTEdgeTPUPretrainer(tf_keras.Model):
 
   def __init__(
       self,
-      encoder_network: tf_keras.Model,
+      encoder_network: keras.Model,
       mlm_activation=None,
       mlm_initializer='glorot_uniform',
-      classification_heads: Optional[List[tf_keras.layers.Layer]] = None,
-      customized_masked_lm: Optional[tf_keras.layers.Layer] = None,
+      classification_heads: Optional[List[keras.layers.Layer]] = None,
+      customized_masked_lm: Optional[keras.layers.Layer] = None,
       name: str = 'bert',
       **kwargs):
 
@@ -76,7 +77,7 @@ class MobileBERTEdgeTPUPretrainer(tf_keras.Model):
       raise ValueError('encoder_network\'s output should be either a list '
                        'or a dict, but got %s' % encoder_network_outputs)
 
-    masked_lm_positions = tf_keras.layers.Input(
+    masked_lm_positions = keras.layers.Input(
         shape=(None,), name='masked_lm_positions', dtype=tf.int32)
     inputs.append(masked_lm_positions)
     masked_lm_layer = customized_masked_lm or layers.MaskedLM(

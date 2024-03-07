@@ -14,7 +14,8 @@
 
 """Tests for the customized Swish activation."""
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import activations
 

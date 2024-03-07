@@ -19,7 +19,8 @@ from typing import Optional
 
 from absl import logging
 import sacrebleu
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_text as tftxt
 
 from official.core import base_task
@@ -203,7 +204,7 @@ class TranslationTask(base_task.Task):
       self._references, self._tf_record_input_path = write_test_record(
           params.validation_data, self.logging_dir)
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> keras.Model:
     """Creates model architecture.
 
     Returns:
@@ -266,8 +267,8 @@ class TranslationTask(base_task.Task):
 
   def train_step(self,
                  inputs,
-                 model: tf_keras.Model,
-                 optimizer: tf_keras.optimizers.Optimizer,
+                 model: keras.Model,
+                 optimizer: keras.optimizers.Optimizer,
                  metrics=None):
     """Does forward and backward.
 
@@ -292,13 +293,13 @@ class TranslationTask(base_task.Task):
 
       # For mixed precision, when a LossScaleOptimizer is used, the loss is
       # scaled to avoid numeric underflow.
-      if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+      if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
 
-    if isinstance(optimizer, tf_keras.mixed_precision.LossScaleOptimizer):
+    if isinstance(optimizer, keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
     logs = {self.loss: loss}
@@ -306,7 +307,7 @@ class TranslationTask(base_task.Task):
       self.process_metrics(metrics, inputs["targets"], outputs)
     return logs
 
-  def validation_step(self, inputs, model: tf_keras.Model, metrics=None):
+  def validation_step(self, inputs, model: keras.Model, metrics=None):
     unique_ids = inputs.pop("unique_id")
     # Validation loss
     outputs = model(inputs, training=False)

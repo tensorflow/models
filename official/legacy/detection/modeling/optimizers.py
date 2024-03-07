@@ -20,7 +20,8 @@ from __future__ import print_function
 
 import functools
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 class OptimizerFactory(object):
@@ -30,18 +31,18 @@ class OptimizerFactory(object):
     """Creates optimized based on the specified flags."""
     if params.type == 'momentum':
       self._optimizer = functools.partial(
-          tf_keras.optimizers.SGD,
+          keras.optimizers.SGD,
           momentum=params.momentum,
           nesterov=params.nesterov)
     elif params.type == 'adam':
-      self._optimizer = tf_keras.optimizers.Adam
+      self._optimizer = keras.optimizers.Adam
     elif params.type == 'adadelta':
-      self._optimizer = tf_keras.optimizers.Adadelta
+      self._optimizer = keras.optimizers.Adadelta
     elif params.type == 'adagrad':
-      self._optimizer = tf_keras.optimizers.Adagrad
+      self._optimizer = keras.optimizers.Adagrad
     elif params.type == 'rmsprop':
       self._optimizer = functools.partial(
-          tf_keras.optimizers.RMSprop, momentum=params.momentum)
+          keras.optimizers.RMSprop, momentum=params.momentum)
     else:
       raise ValueError('Unsupported optimizer type `{}`.'.format(params.type))
 

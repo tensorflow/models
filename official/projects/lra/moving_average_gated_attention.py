@@ -16,7 +16,8 @@
 
 from typing import Any
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.projects.lra.exponential_moving_average import MultiHeadEMA
@@ -33,7 +34,7 @@ def get_activation_fn(activation):
   return
 
 
-class RelativePositionBias(tf_keras.layers.Layer):
+class RelativePositionBias(keras.layers.Layer):
   """Relative position embedding layer with bias."""
 
   def __init__(self, max_positions):
@@ -41,7 +42,7 @@ class RelativePositionBias(tf_keras.layers.Layer):
     self.max_positions = max_positions
 
   def build(self, input_shape):
-    gauss_init = tf_keras.initializers.RandomNormal(mean=0.0, stddev=0.02)
+    gauss_init = keras.initializers.RandomNormal(mean=0.0, stddev=0.02)
     self.rel_pos_bias = tf.Variable(
         gauss_init(shape=[2 * self.max_positions - 1], dtype=tf.float32),
         trainable=True,
@@ -69,7 +70,7 @@ class RelativePositionBias(tf_keras.layers.Layer):
     return t
 
 
-class MovingAverageGatedAttention(tf_keras.layers.Layer):
+class MovingAverageGatedAttention(keras.layers.Layer):
   """MegaEncoderBlock layer.
 
   This layer implements the Mega Encoder from
@@ -114,24 +115,24 @@ class MovingAverageGatedAttention(tf_keras.layers.Layer):
     self.inner_activation = inner_activation
     self.scaling = self.zdim**-0.5
 
-    self.dropout = tf_keras.layers.Dropout(rate=dropout)
-    self.hidden_dropout = tf_keras.layers.Dropout(rate=hidden_dropout)
+    self.dropout = keras.layers.Dropout(rate=dropout)
+    self.hidden_dropout = keras.layers.Dropout(rate=hidden_dropout)
     self.attention_dropout_rate = attention_dropout
-    self.attention_dropout = tf_keras.layers.Dropout(rate=attention_dropout)
+    self.attention_dropout = keras.layers.Dropout(rate=attention_dropout)
 
-    self.ffn_intermediate_dropout = tf_keras.layers.Dropout(rate=hidden_dropout)
-    self.output_dropout = tf_keras.layers.Dropout(rate=hidden_dropout)
+    self.ffn_intermediate_dropout = keras.layers.Dropout(rate=hidden_dropout)
+    self.output_dropout = keras.layers.Dropout(rate=hidden_dropout)
 
-    self._kernel_initializer = tf_keras.initializers.get(kernel_initializer)
-    self._bias_initializer = tf_keras.initializers.get(bias_initializer)
-    self._kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
-    self._bias_regularizer = tf_keras.regularizers.get(bias_regularizer)
-    self._activity_regularizer = tf_keras.regularizers.get(activity_regularizer)
-    self._kernel_constraint = tf_keras.constraints.get(kernel_constraint)
-    self._bias_constraint = tf_keras.constraints.get(bias_constraint)
+    self._kernel_initializer = keras.initializers.get(kernel_initializer)
+    self._bias_initializer = keras.initializers.get(bias_initializer)
+    self._kernel_regularizer = keras.regularizers.get(kernel_regularizer)
+    self._bias_regularizer = keras.regularizers.get(bias_regularizer)
+    self._activity_regularizer = keras.regularizers.get(activity_regularizer)
+    self._kernel_constraint = keras.constraints.get(kernel_constraint)
+    self._bias_constraint = keras.constraints.get(bias_constraint)
 
     if attention_initializer:
-      self._attention_initializer = tf_keras.initializers.get(
+      self._attention_initializer = keras.initializers.get(
           attention_initializer
       )
     else:
@@ -143,8 +144,8 @@ class MovingAverageGatedAttention(tf_keras.layers.Layer):
     self.return_attention_scores = return_attention_scores
 
     self.prenorm = prenorm
-    self.norm = tf_keras.layers.LayerNormalization(axis=-1)
-    self.ffn_norm = tf_keras.layers.LayerNormalization(axis=-1)
+    self.norm = keras.layers.LayerNormalization(axis=-1)
+    self.ffn_norm = keras.layers.LayerNormalization(axis=-1)
 
     self.move = MultiHeadEMA(
         embed_dim, ndim=ndim, bidirectional=bidirectional, truncation=truncation
@@ -154,10 +155,10 @@ class MovingAverageGatedAttention(tf_keras.layers.Layer):
     super().__init__()
 
   def build(self, input_shape):
-    gauss_init = tf_keras.initializers.RandomNormal(mean=0.0, stddev=0.02)
-    zero_init = tf_keras.initializers.Zeros()
+    gauss_init = keras.initializers.RandomNormal(mean=0.0, stddev=0.02)
+    zero_init = keras.initializers.Zeros()
 
-    self.v_proj = tf_keras.layers.Dense(
+    self.v_proj = keras.layers.Dense(
         self.hdim,
         activation=None,
         use_bias=True,
@@ -166,7 +167,7 @@ class MovingAverageGatedAttention(tf_keras.layers.Layer):
         name="v_proj",
     )
 
-    self.mx_proj = tf_keras.layers.Dense(
+    self.mx_proj = keras.layers.Dense(
         self.zdim + self.hdim + 2 * self.embed_dim,
         activation=None,
         use_bias=True,
@@ -175,7 +176,7 @@ class MovingAverageGatedAttention(tf_keras.layers.Layer):
         name="mx_proj",
     )
 
-    self.h_proj = tf_keras.layers.Dense(
+    self.h_proj = keras.layers.Dense(
         self.embed_dim,
         activation=None,
         use_bias=True,
@@ -184,14 +185,14 @@ class MovingAverageGatedAttention(tf_keras.layers.Layer):
         name="h_proj",
     )
 
-    self._intermediate_dense = tf_keras.layers.Dense(
+    self._intermediate_dense = keras.layers.Dense(
         self.inner_dim, use_bias=True
     )
 
-    self._output_dense = tf_keras.layers.Dense(self.embed_dim, use_bias=True)
+    self._output_dense = keras.layers.Dense(self.embed_dim, use_bias=True)
 
-    policy = tf_keras.mixed_precision.global_policy()
-    self._intermediate_activation_layer = tf_keras.layers.Activation(
+    policy = keras.mixed_precision.global_policy()
+    self._intermediate_activation_layer = keras.layers.Activation(
         self.inner_activation, dtype=policy
     )
 
@@ -214,16 +215,16 @@ class MovingAverageGatedAttention(tf_keras.layers.Layer):
         "hdim": self.hdim,
         "dropout": self.dropout,
         "attention_dropout": self.attention_dropout_rate,
-        "kernel_initializer": tf_keras.initializers.serialize(
+        "kernel_initializer": keras.initializers.serialize(
             self._kernel_initializer
         ),
-        "bias_initializer": tf_keras.initializers.serialize(
+        "bias_initializer": keras.initializers.serialize(
             self._bias_initializer
         ),
         "use_bias": self._use_bias,
         "prenorm": self.prenorm,
         "max_positions": self.max_positions,
-        "attention_initializer": tf_keras.initializers.serialize(
+        "attention_initializer": keras.initializers.serialize(
             self._attention_initializer
         ),
         "attention_axes": self._attention_axes,

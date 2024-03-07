@@ -21,7 +21,8 @@ from absl.testing import flagsaver
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -94,16 +95,16 @@ def create_model_fn(input_shape, num_classes, use_float16=False):
 
   def _model_fn():
     """A one-layer softmax model suitable for testing."""
-    input_layer = tf_keras.layers.Input(shape=input_shape)
-    x = tf_keras.layers.Dense(num_classes, activation='relu')(input_layer)
-    output_layer = tf_keras.layers.Dense(num_classes, activation='softmax')(x)
-    sub_model = tf_keras.models.Model(input_layer, x, name='sub_model')
-    model = tf_keras.models.Model(input_layer, output_layer, name='model')
+    input_layer = keras.layers.Input(shape=input_shape)
+    x = keras.layers.Dense(num_classes, activation='relu')(input_layer)
+    output_layer = keras.layers.Dense(num_classes, activation='softmax')(x)
+    sub_model = keras.models.Model(input_layer, x, name='sub_model')
+    model = keras.models.Model(input_layer, output_layer, name='model')
     model.add_metric(
         tf.reduce_mean(input_layer), name='mean_input', aggregation='mean')
-    model.optimizer = tf_keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
+    model.optimizer = keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
     if use_float16:
-      model.optimizer = tf_keras.mixed_precision.LossScaleOptimizer(
+      model.optimizer = keras.mixed_precision.LossScaleOptimizer(
           model.optimizer)
     return model, sub_model
 
@@ -112,7 +113,7 @@ def create_model_fn(input_shape, num_classes, use_float16=False):
 
 def metric_fn():
   """Gets a tf.keras metric object."""
-  return tf_keras.metrics.CategoricalAccuracy(name='accuracy', dtype=tf.float32)
+  return keras.metrics.CategoricalAccuracy(name='accuracy', dtype=tf.float32)
 
 
 def summaries_with_matching_keyword(keyword, summary_dir):
@@ -131,7 +132,7 @@ def check_eventfile_for_keyword(keyword, summary_dir):
   return any(summaries_with_matching_keyword(keyword, summary_dir))
 
 
-class RecordingCallback(tf_keras.callbacks.Callback):
+class RecordingCallback(keras.callbacks.Callback):
 
   def __init__(self):
     self.batch_begin = []  # (batch, logs)
@@ -165,7 +166,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     model_training_utils.run_customized_training_loop(
         strategy=strategy,
         model_fn=self._model_fn,
-        loss_fn=tf_keras.losses.categorical_crossentropy,
+        loss_fn=keras.losses.categorical_crossentropy,
         model_dir=model_dir,
         steps_per_epoch=20,
         steps_per_loop=steps_per_loop,
@@ -195,7 +196,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(eager_gpu_strategy_combinations())
   def test_train_eager_mixed_precision(self, distribution):
     model_dir = self.create_tempdir().full_path
-    tf_keras.mixed_precision.set_global_policy('mixed_float16')
+    keras.mixed_precision.set_global_policy('mixed_float16')
     self._model_fn = create_model_fn(
         input_shape=[128], num_classes=3, use_float16=True)
     self.run_training(
@@ -255,7 +256,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     model_training_utils.run_customized_training_loop(
         strategy=distribution,
         model_fn=self._model_fn,
-        loss_fn=tf_keras.losses.categorical_crossentropy,
+        loss_fn=keras.losses.categorical_crossentropy,
         model_dir=model_dir,
         steps_per_epoch=20,
         num_eval_per_epoch=4,

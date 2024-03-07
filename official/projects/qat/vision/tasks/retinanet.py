@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """RetinaNet task definition."""
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import task_factory
 from official.projects.qat.vision.configs import retinanet as exp_cfg
@@ -25,7 +26,7 @@ from official.vision.tasks import retinanet
 class RetinaNetTask(retinanet.RetinaNetTask):
   """A task for RetinaNet object detection with QAT."""
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> keras.Model:
     """Builds RetinaNet model with QAT."""
     model = super(RetinaNetTask, self).build_model()
     # Call the model with dummy input to build the head part.

@@ -15,7 +15,8 @@
 """Tests for official.nlp.data.data_loader_factory."""
 
 import dataclasses
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import config_definitions as cfg
 from official.nlp.data import data_loader_factory

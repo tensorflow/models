@@ -15,7 +15,8 @@
 """Keras-based bigbird attention layer."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 MAX_SEQ_LEN = 4096
 
@@ -368,7 +369,7 @@ def bigbird_block_sparse_attention(
   return context_layer
 
 
-class BigBirdMasks(tf_keras.layers.Layer):
+class BigBirdMasks(keras.layers.Layer):
   """Creates bigbird attention masks."""
 
   def __init__(self, block_size, **kwargs):
@@ -390,8 +391,8 @@ class BigBirdMasks(tf_keras.layers.Layer):
     return [band_mask, encoder_from_mask, encoder_to_mask, blocked_encoder_mask]
 
 
-@tf_keras.utils.register_keras_serializable(package="Text")
-class BigBirdAttention(tf_keras.layers.MultiHeadAttention):
+@keras.utils.register_keras_serializable(package="Text")
+class BigBirdAttention(keras.layers.MultiHeadAttention):
   """BigBird, a sparse attention mechanism.
 
   This layer follows the paper "Big Bird: Transformers for Longer Sequences"

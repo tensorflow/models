@@ -23,7 +23,8 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_datasets as tfds
 from official.common import distribute_utils
 from official.legacy.image_classification.resnet import common
@@ -36,29 +37,29 @@ FLAGS = flags.FLAGS
 def build_model():
   """Constructs the ML model used to predict handwritten digits."""
 
-  image = tf_keras.layers.Input(shape=(28, 28, 1))
+  image = keras.layers.Input(shape=(28, 28, 1))
 
-  y = tf_keras.layers.Conv2D(filters=32,
+  y = keras.layers.Conv2D(filters=32,
                              kernel_size=5,
                              padding='same',
                              activation='relu')(image)
-  y = tf_keras.layers.MaxPooling2D(pool_size=(2, 2),
+  y = keras.layers.MaxPooling2D(pool_size=(2, 2),
                                    strides=(2, 2),
                                    padding='same')(y)
-  y = tf_keras.layers.Conv2D(filters=32,
+  y = keras.layers.Conv2D(filters=32,
                              kernel_size=5,
                              padding='same',
                              activation='relu')(y)
-  y = tf_keras.layers.MaxPooling2D(pool_size=(2, 2),
+  y = keras.layers.MaxPooling2D(pool_size=(2, 2),
                                    strides=(2, 2),
                                    padding='same')(y)
-  y = tf_keras.layers.Flatten()(y)
-  y = tf_keras.layers.Dense(1024, activation='relu')(y)
-  y = tf_keras.layers.Dropout(0.4)(y)
+  y = keras.layers.Flatten()(y)
+  y = keras.layers.Dense(1024, activation='relu')(y)
+  y = keras.layers.Dropout(0.4)(y)
 
-  probs = tf_keras.layers.Dense(10, activation='softmax')(y)
+  probs = keras.layers.Dense(10, activation='softmax')(y)
 
-  model = tf_keras.models.Model(image, probs, name='mnist')
+  model = keras.models.Model(image, probs, name='mnist')
 
   return model
 
@@ -104,9 +105,9 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
   eval_input_dataset = mnist_test.cache().repeat().batch(flags_obj.batch_size)
 
   with strategy_scope:
-    lr_schedule = tf_keras.optimizers.schedules.ExponentialDecay(
+    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
         0.05, decay_steps=100000, decay_rate=0.96)
-    optimizer = tf_keras.optimizers.SGD(learning_rate=lr_schedule)
+    optimizer = keras.optimizers.SGD(learning_rate=lr_schedule)
 
     model = build_model()
     model.compile(
@@ -120,9 +121,9 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
 
   ckpt_full_path = os.path.join(flags_obj.model_dir, 'model.ckpt-{epoch:04d}')
   callbacks = [
-      tf_keras.callbacks.ModelCheckpoint(
+      keras.callbacks.ModelCheckpoint(
           ckpt_full_path, save_weights_only=True),
-      tf_keras.callbacks.TensorBoard(log_dir=flags_obj.model_dir),
+      keras.callbacks.TensorBoard(log_dir=flags_obj.model_dir),
   ]
 
   num_eval_examples = mnist.info.splits['test'].num_examples

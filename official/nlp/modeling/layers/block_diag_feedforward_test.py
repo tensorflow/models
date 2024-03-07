@@ -16,7 +16,8 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import block_diag_feedforward
 
@@ -27,7 +28,7 @@ class BlockDiagFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(BlockDiagFeedforwardTest, self).tearDown()
-    tf_keras.mixed_precision.set_global_policy("float32")
+    keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.parameters(
       (1, True, "float32"),
@@ -40,7 +41,7 @@ class BlockDiagFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
       (2, False, "mixed_float16"),
   )
   def test_layer_creation(self, num_blocks, apply_mixing, dtype):
-    tf_keras.mixed_precision.set_global_policy(dtype)
+    keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
         intermediate_size=128,
         intermediate_activation="relu",
@@ -54,7 +55,7 @@ class BlockDiagFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 64
     width = 128
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
@@ -70,7 +71,7 @@ class BlockDiagFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
       (2, False, "mixed_float16"),
   )
   def test_layer_invocation(self, num_blocks, apply_mixing, dtype):
-    tf_keras.mixed_precision.set_global_policy(dtype)
+    keras.mixed_precision.set_global_policy(dtype)
     kwargs = dict(
         intermediate_size=16,
         intermediate_activation="relu",
@@ -84,11 +85,11 @@ class BlockDiagFeedforwardTest(tf.test.TestCase, parameterized.TestCase):
     sequence_length = 16
     width = 32
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    data_tensor = keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
 
     # Create a model from the test layer.
-    model = tf_keras.Model(data_tensor, output_tensor)
+    model = keras.Model(data_tensor, output_tensor)
 
     # Invoke the model on test data.
     batch_size = 6

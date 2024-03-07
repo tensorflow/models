@@ -15,13 +15,14 @@
 """Trainer network for dual encoder style models."""
 # pylint: disable=g-classes-have-attributes
 import collections
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 import tensorflow_models as tfm
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class LRADualEncoder(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class LRADualEncoder(keras.layers.Layer):
   """A dual encoder model based on a transformer-based encoder.
 
   This is an implementation of the dual encoder network structure based on the

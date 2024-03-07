@@ -16,15 +16,16 @@
 
 from typing import Optional, Text
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.simclr.modeling.layers import nn_blocks
 
-regularizers = tf_keras.regularizers
-layers = tf_keras.layers
+regularizers = keras.regularizers
+layers = keras.layers
 
 
-class ProjectionHead(tf_keras.layers.Layer):
+class ProjectionHead(keras.layers.Layer):
   """Projection head."""
 
   def __init__(
@@ -48,9 +49,9 @@ class ProjectionHead(tf_keras.layers.Layer):
       ft_proj_idx: `int` index of layer to use during fine-tuning. 0 means no
         projection head during fine tuning, -1 means the final layer.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
@@ -143,7 +144,7 @@ class ProjectionHead(tf_keras.layers.Layer):
     return proj_head_output, proj_finetune_output
 
 
-class ClassificationHead(tf_keras.layers.Layer):
+class ClassificationHead(keras.layers.Layer):
   """Classification Head."""
 
   def __init__(
@@ -160,9 +161,9 @@ class ClassificationHead(tf_keras.layers.Layer):
       num_classes: `int` size of the output dimension or number of classes
         for classification task.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: keras.regularizers.Regularizer object for Conv2D.
         Default to None.
-      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       name: `str`, name of the layer.
       **kwargs: keyword arguments to be passed.

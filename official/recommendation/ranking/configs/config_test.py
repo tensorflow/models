@@ -15,7 +15,8 @@
 """Unit tests for DLRM config."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.ranking.configs import config
 

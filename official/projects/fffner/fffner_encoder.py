@@ -17,18 +17,19 @@
 
 from typing import Any, Callable, Optional, Union
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 
-_Initializer = Union[str, tf_keras.initializers.Initializer]
+_Initializer = Union[str, keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
 
-_approx_gelu = lambda x: tf_keras.activations.gelu(x, approximate=True)
+_approx_gelu = lambda x: keras.activations.gelu(x, approximate=True)
 
 
-class FFFNerEncoder(tf_keras.layers.Layer):
+class FFFNerEncoder(keras.layers.Layer):
   """Transformer-based encoder network for FFFNER.
 
      The main difference is that it takes in additional positional arguments and
@@ -84,11 +85,11 @@ class FFFNerEncoder(tf_keras.layers.Layer):
       inner_activation: _Activation = _approx_gelu,
       output_dropout: float = 0.1,
       attention_dropout: float = 0.1,
-      initializer: _Initializer = tf_keras.initializers.TruncatedNormal(
+      initializer: _Initializer = keras.initializers.TruncatedNormal(
           stddev=0.02),
       output_range: Optional[int] = None,
       embedding_width: Optional[int] = None,
-      embedding_layer: Optional[tf_keras.layers.Layer] = None,
+      embedding_layer: Optional[keras.layers.Layer] = None,
       norm_first: bool = False,
       with_dense_inputs: bool = False,
       return_attention_scores: bool = False,
@@ -109,8 +110,8 @@ class FFFNerEncoder(tf_keras.layers.Layer):
 
     self._output_range = output_range
 
-    activation = tf_keras.activations.get(inner_activation)
-    initializer = tf_keras.initializers.get(initializer)
+    activation = keras.activations.get(inner_activation)
+    initializer = keras.initializers.get(initializer)
 
     if embedding_width is None:
       embedding_width = hidden_size
@@ -136,17 +137,17 @@ class FFFNerEncoder(tf_keras.layers.Layer):
         use_one_hot=True,
         name='type_embeddings')
 
-    self._embedding_norm_layer = tf_keras.layers.LayerNormalization(
+    self._embedding_norm_layer = keras.layers.LayerNormalization(
         name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
 
-    self._embedding_dropout = tf_keras.layers.Dropout(
+    self._embedding_dropout = keras.layers.Dropout(
         rate=output_dropout, name='embedding_dropout')
 
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     self._embedding_projection = None
     if embedding_width != hidden_size:
-      self._embedding_projection = tf_keras.layers.EinsumDense(
+      self._embedding_projection = keras.layers.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
@@ -170,12 +171,12 @@ class FFFNerEncoder(tf_keras.layers.Layer):
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
 
-    self._pooler_layer_is_entity = tf_keras.layers.Dense(
+    self._pooler_layer_is_entity = keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
         kernel_initializer=tf_utils.clone_initializer(initializer),
         name='pooler_transform_is_entity')
-    self._pooler_layer_entity_type = tf_keras.layers.Dense(
+    self._pooler_layer_entity_type = keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
         kernel_initializer=tf_utils.clone_initializer(initializer),
@@ -189,10 +190,10 @@ class FFFNerEncoder(tf_keras.layers.Layer):
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'inner_dim': inner_dim,
-        'inner_activation': tf_keras.activations.serialize(activation),
+        'inner_activation': keras.activations.serialize(activation),
         'output_dropout': output_dropout,
         'attention_dropout': attention_dropout,
-        'initializer': tf_keras.initializers.serialize(initializer),
+        'initializer': keras.initializers.serialize(initializer),
         'output_range': output_range,
         'embedding_width': embedding_width,
         'embedding_layer': embedding_layer,
@@ -202,22 +203,22 @@ class FFFNerEncoder(tf_keras.layers.Layer):
     }
     if with_dense_inputs:
       self.inputs = dict(
-          input_word_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          input_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          input_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          dense_inputs=tf_keras.Input(
+          input_word_ids=keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=keras.Input(shape=(None,), dtype=tf.int32),
+          dense_inputs=keras.Input(
               shape=(None, embedding_width), dtype=tf.float32),
-          dense_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          dense_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          is_entity_token_pos=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          entity_type_token_pos=tf_keras.Input(shape=(None,), dtype=tf.int32))
+          dense_mask=keras.Input(shape=(None,), dtype=tf.int32),
+          dense_type_ids=keras.Input(shape=(None,), dtype=tf.int32),
+          is_entity_token_pos=keras.Input(shape=(None,), dtype=tf.int32),
+          entity_type_token_pos=keras.Input(shape=(None,), dtype=tf.int32))
     else:
       self.inputs = dict(
-          input_word_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          input_mask=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          input_type_ids=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          is_entity_token_pos=tf_keras.Input(shape=(None,), dtype=tf.int32),
-          entity_type_token_pos=tf_keras.Input(shape=(None,), dtype=tf.int32))
+          input_word_ids=keras.Input(shape=(None,), dtype=tf.int32),
+          input_mask=keras.Input(shape=(None,), dtype=tf.int32),
+          input_type_ids=keras.Input(shape=(None,), dtype=tf.int32),
+          is_entity_token_pos=keras.Input(shape=(None,), dtype=tf.int32),
+          entity_type_token_pos=keras.Input(shape=(None,), dtype=tf.int32))
 
   def call(self, inputs):
     word_embeddings = None

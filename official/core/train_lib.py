@@ -22,7 +22,8 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 from absl import logging
 import orbit
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import actions
 from official.core import base_task
@@ -252,12 +253,12 @@ class OrbitExperimentRunner:
     )
     return controller
 
-  def run(self) -> Tuple[tf_keras.Model, Mapping[str, Any]]:
+  def run(self) -> Tuple[keras.Model, Mapping[str, Any]]:
     """Run experiments by mode.
 
     Returns:
       A 2-tuple of (model, eval_logs).
-        model: `tf_keras.Model` instance.
+        model: `keras.Model` instance.
         eval_logs: returns eval metrics logs when run_post_eval is set to True,
           otherwise, returns {}.
     """
@@ -321,7 +322,7 @@ def run_experiment(
     summary_manager: Optional[orbit.utils.SummaryManager] = None,
     eval_summary_manager: Optional[orbit.utils.SummaryManager] = None,
     enable_async_checkpointing: bool = False,
-) -> Tuple[tf_keras.Model, Mapping[str, Any]]:
+) -> Tuple[keras.Model, Mapping[str, Any]]:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -349,7 +350,7 @@ def run_experiment(
 
   Returns:
     A 2-tuple of (model, eval_logs).
-      model: `tf_keras.Model` instance.
+      model: `keras.Model` instance.
       eval_logs: returns eval metrics logs when run_post_eval is set to True,
         otherwise, returns {}.
   """

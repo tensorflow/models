@@ -16,16 +16,17 @@
 
 from typing import Mapping, Union, Any
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-class CenterNetModel(tf_keras.Model):
+class CenterNetModel(keras.Model):
   """CenterNet Model."""
 
   def __init__(self,
-               backbone: tf_keras.Model,
-               head: tf_keras.Model,
-               detection_generator: tf_keras.layers.Layer,
+               backbone: keras.Model,
+               head: keras.Model,
+               detection_generator: keras.layers.Layer,
                **kwargs):
     """CenterNet Model.
 
@@ -55,7 +56,7 @@ class CenterNetModel(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self) -> Mapping[str, Union[keras.Model, keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
 

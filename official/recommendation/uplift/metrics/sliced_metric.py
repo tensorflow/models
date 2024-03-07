@@ -16,10 +16,11 @@
 
 import copy
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
-class SlicedMetric(tf_keras.metrics.Metric):
+class SlicedMetric(keras.metrics.Metric):
   """A metric sliced by integer, boolean, or string features.
 
   A metric wrapper that computes a metric for different slices of an arbitrary
@@ -47,7 +48,7 @@ class SlicedMetric(tf_keras.metrics.Metric):
   Example usage:
 
   >>> sliced_metric = SlicedMetric(
-  ...     tf_keras.metrics.Accuracy('accuracy'),
+  ...     keras.metrics.Accuracy('accuracy'),
   ...     slicing_spec={"control": False, "treatment": True},
   ... )
   >>> sliced_metric.update_state(
@@ -65,7 +66,7 @@ class SlicedMetric(tf_keras.metrics.Metric):
 
   def __init__(
       self,
-      metric: tf_keras.metrics.Metric,
+      metric: keras.metrics.Metric,
       slicing_spec: dict[str, str] | dict[str, int],
       slicing_feature_dtype: tf.DType | None = None,
       name: str | None = None,
@@ -73,7 +74,7 @@ class SlicedMetric(tf_keras.metrics.Metric):
     """Initializes the instance.
 
     Args:
-      metric: A `tf_keras.metrics.Metric` instance.
+      metric: A `keras.metrics.Metric` instance.
       slicing_spec: A dictionary that maps from string slice names, to one of
         integer, boolean, or string slicing values.
       slicing_feature_dtype: The expected dtype of the slicing feature. The
@@ -196,14 +197,14 @@ class SlicedMetric(tf_keras.metrics.Metric):
   def get_config(self):
     return {
         "name": self.name,
-        "metric": tf_keras.metrics.serialize(self._metric),
+        "metric": keras.metrics.serialize(self._metric),
         "slicing_spec": dict(zip(self._slice_names, self._slicing_values)),
         "slicing_feature_dtype": self._slicing_feature_dtype.name,
     }
 
   @classmethod
   def from_config(cls, config):
-    config["metric"] = tf_keras.metrics.deserialize(config["metric"])
+    config["metric"] = keras.metrics.deserialize(config["metric"])
     config["slicing_feature_dtype"] = tf.as_dtype(
         config["slicing_feature_dtype"]
     )

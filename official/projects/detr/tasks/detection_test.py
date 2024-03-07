@@ -15,7 +15,8 @@
 """Tests for detection."""
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_datasets as tfds
 
 from official.projects.detr import optimization

@@ -18,7 +18,8 @@ import os
 from absl import flags
 from absl.testing import flagsaver
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.yt8m import train as train_lib
 from official.projects.yt8m.dataloaders import utils

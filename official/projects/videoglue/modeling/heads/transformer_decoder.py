@@ -17,7 +17,8 @@
 from typing import Mapping, Optional, Union, List, Sequence
 from absl import logging
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 def _get_shape(x: tf.Tensor):
@@ -27,7 +28,7 @@ def _get_shape(x: tf.Tensor):
   return [dynamic[i] if s is None else s for i, s in enumerate(static)]
 
 
-class DecoderUnit(tf_keras.layers.Layer):
+class DecoderUnit(keras.layers.Layer):
   """Constructs the decoder MHA module used in Transformer layers."""
 
   def __init__(
@@ -37,8 +38,8 @@ class DecoderUnit(tf_keras.layers.Layer):
       dropout_rate: float,
       activation: str,
       layer_norm_epsilon: float,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       **kwargs):
 
     super().__init__(**kwargs)
@@ -57,21 +58,21 @@ class DecoderUnit(tf_keras.layers.Layer):
       input_shape: the input shape for the keras tensor.
     """
     # Query, key, and value mapping.
-    self.layer_q = tf_keras.layers.Dense(
+    self.layer_q = keras.layers.Dense(
         self._num_channels,
         use_bias=self._use_bias,
         activation=None,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         name='query')
-    self.layer_k = tf_keras.layers.Dense(
+    self.layer_k = keras.layers.Dense(
         self._num_channels,
         use_bias=self._use_bias,
         activation=None,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         name='key')
-    self.layer_v = tf_keras.layers.Dense(
+    self.layer_v = keras.layers.Dense(
         self._num_channels,
         use_bias=self._use_bias,
         activation=None,
@@ -79,24 +80,24 @@ class DecoderUnit(tf_keras.layers.Layer):
         bias_regularizer=self._bias_regularizer,
         name='value')
 
-    self.dropout = tf_keras.layers.Dropout(self._dropout_rate)
+    self.dropout = keras.layers.Dropout(self._dropout_rate)
     # Note here is a different behavior for contrib_layers.layer_norm and
-    # tf_keras.layers.LayerNormalization, where by default, the former
+    # keras.layers.LayerNormalization, where by default, the former
     # calculates mean/variance across all axes except the first one
     # (batch axis), while the latter one computes statistics only on the last
     # axis.
-    self.layer_norm = tf_keras.layers.LayerNormalization(
+    self.layer_norm = keras.layers.LayerNormalization(
         epsilon=self._layer_norm_epsilon,
         name='layer_norm')
 
-    self.ffn1 = tf_keras.layers.Dense(
+    self.ffn1 = keras.layers.Dense(
         self._num_channels,
         use_bias=self._use_bias,
         activation=self._activation,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         name='ffn1')
-    self.ffn2 = tf_keras.layers.Dense(
+    self.ffn2 = keras.layers.Dense(
         self._num_channels,
         use_bias=self._use_bias,
         activation=None,
@@ -155,7 +156,7 @@ class DecoderUnit(tf_keras.layers.Layer):
     return outputs
 
 
-class TransformerDecoderLayer(tf_keras.layers.Layer):
+class TransformerDecoderLayer(keras.layers.Layer):
   """Constructs the main Transformer decoder module which includes MHA + FFN."""
 
   def __init__(
@@ -166,8 +167,8 @@ class TransformerDecoderLayer(tf_keras.layers.Layer):
       activation: str,
       dropout_rate: float,
       layer_norm_epsilon: float,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       name: str = 'decoder_layer',
       **kwargs):
     super().__init__(name=name)
@@ -233,7 +234,7 @@ class TransformerDecoderLayer(tf_keras.layers.Layer):
     return outputs
 
 
-class TransformerDecoder(tf_keras.layers.Layer):
+class TransformerDecoder(keras.layers.Layer):
   """Constructs the final Transformer decoder stack."""
 
   def __init__(
@@ -245,8 +246,8 @@ class TransformerDecoder(tf_keras.layers.Layer):
       activation: str,
       dropout_rate: float,
       layer_norm_epsilon: float,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       name: str = 'transformer_decoder',
       **kwargs):
     super().__init__(name=name)

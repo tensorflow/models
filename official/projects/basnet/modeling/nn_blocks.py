@@ -14,13 +14,14 @@
 
 """Contains common building blocks for BasNet model."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class ConvBlock(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class ConvBlock(keras.layers.Layer):
   """A (Conv+BN+Activation) block."""
 
   def __init__(self,
@@ -47,9 +48,9 @@ class ConvBlock(tf_keras.layers.Layer):
       dilation_rate: `int`, dilation rate for conv layers.
       kernel_size: `int`, kernel size of conv layers.
       kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf_keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: keras.regularizers.Regularizer object for Conv2D.
                           Default to None.
-      bias_regularizer: tf_keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: keras.regularizers.Regularizer object for Conv2d.
                         Default to None.
       activation: `str` name of the activation function.
       use_bias: `bool`, whether or not use bias in conv layers.
@@ -75,10 +76,10 @@ class ConvBlock(tf_keras.layers.Layer):
         'norm_epsilon': norm_epsilon
     }
     if use_sync_bn:
-      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
+      self._norm = keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf_keras.layers.BatchNormalization
-    if tf_keras.backend.image_data_format() == 'channels_last':
+      self._norm = keras.layers.BatchNormalization
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -93,7 +94,7 @@ class ConvBlock(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
 
-    self._conv0 = tf_keras.layers.Conv2D(
+    self._conv0 = keras.layers.Conv2D(
         filters=self._config_dict['filters'],
         kernel_size=self._config_dict['kernel_size'],
         strides=self._config_dict['strides'],
@@ -117,8 +118,8 @@ class ConvBlock(tf_keras.layers.Layer):
     return x
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class ResBlock(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class ResBlock(keras.layers.Layer):
   """A residual block."""
 
   def __init__(self,
@@ -147,9 +148,9 @@ class ResBlock(tf_keras.layers.Layer):
         filters and the resolution.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2d.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
       activation: A `str` name of the activation function.
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
@@ -173,10 +174,10 @@ class ResBlock(tf_keras.layers.Layer):
         'norm_epsilon': norm_epsilon
     }
     if use_sync_bn:
-      self._norm = tf_keras.layers.experimental.SyncBatchNormalization
+      self._norm = keras.layers.experimental.SyncBatchNormalization
     else:
-      self._norm = tf_keras.layers.BatchNormalization
-    if tf_keras.backend.image_data_format() == 'channels_last':
+      self._norm = keras.layers.BatchNormalization
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -193,7 +194,7 @@ class ResBlock(tf_keras.layers.Layer):
     }
 
     if self._config_dict['use_projection']:
-      self._shortcut = tf_keras.layers.Conv2D(
+      self._shortcut = keras.layers.Conv2D(
           filters=self._config_dict['filters'],
           kernel_size=1,
           strides=self._config_dict['strides'],
@@ -206,7 +207,7 @@ class ResBlock(tf_keras.layers.Layer):
           momentum=self._config_dict['norm_momentum'],
           epsilon=self._config_dict['norm_epsilon'])
 
-    self._conv1 = tf_keras.layers.Conv2D(
+    self._conv1 = keras.layers.Conv2D(
         kernel_size=3,
         strides=self._config_dict['strides'],
         **conv_kwargs)
@@ -215,7 +216,7 @@ class ResBlock(tf_keras.layers.Layer):
         momentum=self._config_dict['norm_momentum'],
         epsilon=self._config_dict['norm_epsilon'])
 
-    self._conv2 = tf_keras.layers.Conv2D(
+    self._conv2 = keras.layers.Conv2D(
         kernel_size=3,
         strides=1,
         **conv_kwargs)

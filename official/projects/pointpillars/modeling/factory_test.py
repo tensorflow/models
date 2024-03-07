@@ -16,7 +16,8 @@
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 from official.projects.pointpillars.configs import pointpillars as cfg
@@ -37,12 +38,12 @@ class PointPillarsBuilderTest(parameterized.TestCase, tf.test.TestCase):
     pillars_config = model_config.pillars
     input_specs = {
         'pillars':
-            tf_keras.layers.InputSpec(
+            keras.layers.InputSpec(
                 shape=(None, pillars_config.num_pillars,
                        pillars_config.num_points_per_pillar,
                        pillars_config.num_features_per_point)),
         'indices':
-            tf_keras.layers.InputSpec(
+            keras.layers.InputSpec(
                 shape=(None, pillars_config.num_pillars, 2), dtype='int32'),
     }
     model = factory.build_pointpillars(

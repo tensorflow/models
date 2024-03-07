@@ -19,7 +19,8 @@ import os
 from absl import flags
 from absl import logging
 from absl.testing import flagsaver
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.projects.volumetric_models import train as train_lib
 from official.vision.dataloaders import tfexample_utils
 

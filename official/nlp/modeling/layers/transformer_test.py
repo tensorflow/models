@@ -15,7 +15,8 @@
 """Tests for Keras-based transformer block layer."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.nlp.modeling.layers import transformer
 
 
@@ -64,7 +65,7 @@ class TransformerDecoderBlockTest(parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         intermediate_dropout=0.1,
-        attention_initializer=tf_keras.initializers.RandomUniform(
+        attention_initializer=keras.initializers.RandomUniform(
             minval=0., maxval=1.))
     # Forward path.
     dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
@@ -85,7 +86,7 @@ class TransformerDecoderBlockTest(parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         intermediate_dropout=0.1,
-        attention_initializer=tf_keras.initializers.RandomUniform(
+        attention_initializer=keras.initializers.RandomUniform(
             minval=0., maxval=1.))
     decoder_block_config = decoder_block.get_config()
     new_decoder_block = transformer.TransformerDecoderBlock.from_config(

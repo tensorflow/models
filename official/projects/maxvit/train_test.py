@@ -18,7 +18,8 @@ import os
 from absl import flags
 from absl.testing import flagsaver
 import gin
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.maxvit import train as train_lib
 from official.vision.dataloaders import tfexample_utils

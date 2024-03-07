@@ -17,7 +17,8 @@
 from typing import Sequence
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling import layers
 from official.nlp.modeling.networks import sparse_mixer
@@ -27,7 +28,7 @@ class SparseMixerTest(parameterized.TestCase, tf.test.TestCase):
 
   def tearDown(self):
     super().tearDown()
-    tf_keras.mixed_precision.set_global_policy("float32")
+    keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.named_parameters(
       dict(
@@ -68,11 +69,11 @@ class SparseMixerTest(parameterized.TestCase, tf.test.TestCase):
         attention_layers=attention_layers)
 
     batch_size = 4
-    word_ids = tf_keras.Input(
+    word_ids = keras.Input(
         shape=(sequence_length,), batch_size=batch_size, dtype=tf.int32)
-    mask = tf_keras.Input(
+    mask = keras.Input(
         shape=(sequence_length,), batch_size=batch_size, dtype=tf.int32)
-    type_ids = tf_keras.Input(
+    type_ids = keras.Input(
         shape=(sequence_length,), batch_size=batch_size, dtype=tf.int32)
 
     dict_outputs = test_network(
@@ -82,7 +83,7 @@ class SparseMixerTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertIsInstance(test_network.transformer_layers, list)
     self.assertLen(test_network.transformer_layers, 3)
-    self.assertIsInstance(test_network.pooler_layer, tf_keras.layers.Dense)
+    self.assertIsInstance(test_network.pooler_layer, keras.layers.Dense)
 
     expected_data_shape = [batch_size, sequence_length, hidden_size]
     expected_pooled_shape = [batch_size, hidden_size]
@@ -107,11 +108,11 @@ class SparseMixerTest(parameterized.TestCase, tf.test.TestCase):
         attention_layers=(2,))
 
     batch_size = 2
-    word_ids = tf_keras.Input(
+    word_ids = keras.Input(
         shape=(sequence_length), batch_size=batch_size, dtype=tf.int32)
-    mask = tf_keras.Input(
+    mask = keras.Input(
         shape=(sequence_length,), batch_size=batch_size, dtype=tf.int32)
-    type_ids = tf_keras.Input(
+    type_ids = keras.Input(
         shape=(sequence_length,), batch_size=batch_size, dtype=tf.int32)
 
     test_network.build(

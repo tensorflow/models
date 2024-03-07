@@ -18,20 +18,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 def trivial_model(num_classes):
   """Trivial model for ImageNet dataset."""
 
   input_shape = (224, 224, 3)
-  img_input = tf_keras.layers.Input(shape=input_shape)
+  img_input = keras.layers.Input(shape=input_shape)
 
-  x = tf_keras.layers.Lambda(
-      lambda x: tf_keras.backend.reshape(x, [-1, 224 * 224 * 3]),
+  x = keras.layers.Lambda(
+      lambda x: keras.backend.reshape(x, [-1, 224 * 224 * 3]),
       name='reshape')(img_input)
-  x = tf_keras.layers.Dense(1, name='fc1')(x)
-  x = tf_keras.layers.Dense(num_classes, name='fc1000')(x)
-  x = tf_keras.layers.Activation('softmax', dtype='float32')(x)
+  x = keras.layers.Dense(1, name='fc1')(x)
+  x = keras.layers.Dense(num_classes, name='fc1000')(x)
+  x = keras.layers.Activation('softmax', dtype='float32')(x)
 
-  return tf_keras.models.Model(img_input, x, name='trivial')
+  return keras.models.Model(img_input, x, name='trivial')

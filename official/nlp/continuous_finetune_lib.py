@@ -19,7 +19,8 @@ import time
 from typing import Any, Mapping, Optional
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.common import distribute_utils
 from official.core import config_definitions

@@ -18,7 +18,8 @@ from typing import Callable
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift import types
@@ -52,7 +53,7 @@ class TrueLogitsTreatmentLossTest(
   @parameterized.named_parameters(
       {
           "testcase_name": "unweighted",
-          "loss_fn": tf_keras.losses.mean_squared_error,
+          "loss_fn": keras.losses.mean_squared_error,
           "from_logits": False,
           "y_true": tf.constant([[0], [0], [2], [2]]),
           "y_pred": tf.constant([[1], [2], [3], [4]]),
@@ -66,7 +67,7 @@ class TrueLogitsTreatmentLossTest(
       },
       {
           "testcase_name": "weighted",
-          "loss_fn": tf_keras.losses.mean_absolute_error,
+          "loss_fn": keras.losses.mean_absolute_error,
           "from_logits": False,
           "y_true": tf.constant([[0], [0], [2], [7]]),
           "y_pred": tf.constant([[1], [2], [3], [4]]),
@@ -80,7 +81,7 @@ class TrueLogitsTreatmentLossTest(
       },
       {
           "testcase_name": "only_control",
-          "loss_fn": tf_keras.metrics.mean_squared_error,
+          "loss_fn": keras.metrics.mean_squared_error,
           "from_logits": False,
           "y_true": tf.constant([[0], [1], [5]]),
           "y_pred": tf.constant([[1], [2], [5]]),
@@ -94,7 +95,7 @@ class TrueLogitsTreatmentLossTest(
       },
       {
           "testcase_name": "only_treatment",
-          "loss_fn": tf_keras.metrics.mean_absolute_error,
+          "loss_fn": keras.metrics.mean_absolute_error,
           "from_logits": False,
           "y_true": tf.constant([[0], [1], [5]]),
           "y_pred": tf.constant([[1], [2], [5]]),
@@ -126,7 +127,7 @@ class TrueLogitsTreatmentLossTest(
       },
       {
           "testcase_name": "no_entry",
-          "loss_fn": tf_keras.losses.binary_crossentropy,
+          "loss_fn": keras.losses.binary_crossentropy,
           "from_logits": True,
           "y_true": tf.constant([[]]),
           "y_pred": tf.constant([[]]),
@@ -167,7 +168,7 @@ class TrueLogitsTreatmentLossTest(
 
   def test_multiple_update_batches_returns_aggregated_sliced_losses(self):
     metric = loss_metric.LossMetric(
-        loss_fn=tf_keras.losses.mean_absolute_error,
+        loss_fn=keras.losses.mean_absolute_error,
         from_logits=False,
         name="mean_absolute_error",
     )
@@ -216,7 +217,7 @@ class TrueLogitsTreatmentLossTest(
 
   def test_initial_and_reset_state_return_zero_losses(self):
     metric = loss_metric.LossMetric(
-        tf_keras.losses.binary_crossentropy, from_logits=True
+        keras.losses.binary_crossentropy, from_logits=True
     )
 
     expected_initial_result = {
@@ -239,7 +240,7 @@ class TrueLogitsTreatmentLossTest(
 
   def test_metric_is_configurable(self):
     metric = loss_metric.LossMetric(
-        tf_keras.losses.binary_crossentropy, from_logits=True, name="bce_loss"
+        keras.losses.binary_crossentropy, from_logits=True, name="bce_loss"
     )
     self.assertLayerConfigurable(
         layer=metric,
@@ -254,7 +255,7 @@ class TrueLogitsTreatmentLossTest(
 
   def test_invalid_prediction_tensor_type_raises_type_error(self):
     metric = loss_metric.LossMetric(
-        tf_keras.metrics.mean_absolute_percentage_error
+        keras.metrics.mean_absolute_percentage_error
     )
     with self.assertRaisesRegex(
         TypeError, "y_pred must be of type `TwoTowerTrainingOutputs`"

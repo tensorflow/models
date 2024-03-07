@@ -18,7 +18,8 @@ from typing import Optional, Sequence
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.maxvit.configs import backbones
 from official.projects.maxvit.modeling import maxvit
@@ -134,7 +135,7 @@ class MaxViTTest(tf.test.TestCase, parameterized.TestCase):
         ),
     )
     backbone = maxvit.build_maxvit(
-        input_specs=tf_keras.layers.InputSpec(shape=[None] + [64, 64, 3]),
+        input_specs=keras.layers.InputSpec(shape=[None] + [64, 64, 3]),
         backbone_config=backbone_config,
         norm_activation_config=common.NormActivation(),
     )

@@ -16,7 +16,8 @@
 
 from absl import logging
 import gin
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling.optimization import lamb
 from official.modeling.optimization import legacy_adamw
@@ -25,7 +26,7 @@ AdamWeightDecay = legacy_adamw.AdamWeightDecay
 LAMB = lamb.LAMB
 
 
-class WarmUp(tf_keras.optimizers.schedules.LearningRateSchedule):
+class WarmUp(keras.optimizers.schedules.LearningRateSchedule):
   """Applies a warmup schedule on a given learning rate decay schedule."""
 
   def __init__(self,
@@ -77,7 +78,7 @@ def create_optimizer(init_lr,
                      poly_power=1.0):
   """Creates an optimizer with learning rate schedule."""
   # Implements linear decay of the learning rate.
-  lr_schedule = tf_keras.optimizers.schedules.PolynomialDecay(
+  lr_schedule = keras.optimizers.schedules.PolynomialDecay(
       initial_learning_rate=init_lr,
       decay_steps=num_train_steps,
       end_learning_rate=end_lr,

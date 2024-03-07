@@ -15,7 +15,8 @@
 """Tests for two_tower_output_head."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift import types
@@ -28,8 +29,8 @@ _DEFAULT_TREATMENT_LOGITS = tf.constant([2, -1, 1], dtype=tf.float32)
 _DEFAULT_IS_TREATMENT = tf.constant([1, 1, 0], dtype=tf.float32)
 
 
-@tf_keras.utils.register_keras_serializable()
-class TwoTowerUpliftNetworkMock(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable()
+class TwoTowerUpliftNetworkMock(keras.layers.Layer):
 
   def call(self, inputs, training=None, mask=None):
     return types.TwoTowerNetworkOutputs(

@@ -18,7 +18,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, MutableMapping
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.uplift import keys
 from official.recommendation.uplift import types
@@ -26,8 +27,8 @@ from official.recommendation.uplift.layers.uplift_networks import base_uplift_ne
 from official.recommendation.uplift.layers.uplift_networks import two_tower_output_head
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class TwoTowerUpliftModel(tf_keras.Model):
+@keras.utils.register_keras_serializable(package="Uplift")
+class TwoTowerUpliftModel(keras.Model):
   """Training and inference model for a `BaseTwoTowerUpliftNetwork` layer."""
 
   def __init__(
@@ -74,7 +75,7 @@ class TwoTowerUpliftModel(tf_keras.Model):
     return self._output_head(inputs=inputs, training=training, mask=mask)
 
   def _assert_treatment_indicator_in_data(self, data):
-    inputs, _, _ = tf_keras.utils.unpack_x_y_sample_weight(data)
+    inputs, _, _ = keras.utils.unpack_x_y_sample_weight(data)
 
     if self._treatment_indicator_feature_name not in inputs:
       raise ValueError(
@@ -111,10 +112,10 @@ class TwoTowerUpliftModel(tf_keras.Model):
         "treatment_indicator_feature_name": (
             self._treatment_indicator_feature_name
         ),
-        "uplift_network": tf_keras.utils.serialize_keras_object(
+        "uplift_network": keras.utils.serialize_keras_object(
             self._uplift_network
         ),
-        "inverse_link_fn": tf_keras.utils.serialize_keras_object(
+        "inverse_link_fn": keras.utils.serialize_keras_object(
             self._inverse_link_fn
         ),
     })
@@ -122,10 +123,10 @@ class TwoTowerUpliftModel(tf_keras.Model):
 
   @classmethod
   def from_config(cls, config: MutableMapping[str, Any]) -> TwoTowerUpliftModel:
-    config["uplift_network"] = tf_keras.layers.deserialize(
+    config["uplift_network"] = keras.layers.deserialize(
         config["uplift_network"]
     )
-    config["inverse_link_fn"] = tf_keras.utils.deserialize_keras_object(
+    config["inverse_link_fn"] = keras.utils.deserialize_keras_object(
         config["inverse_link_fn"]
     )
     return cls(**config)

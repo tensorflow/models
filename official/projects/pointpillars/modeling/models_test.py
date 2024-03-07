@@ -15,7 +15,8 @@
 """Tests for PointPillars models."""
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -41,7 +42,7 @@ class PointpillarsTest(parameterized.TestCase, tf.test.TestCase):
           training=[True, False],
       ))
   def test_all(self, strategy, training):
-    tf_keras.backend.set_image_data_format('channels_last')
+    keras.backend.set_image_data_format('channels_last')
     num_classes = 2
 
     h, w, c = 8, 8, 2
@@ -60,8 +61,8 @@ class PointpillarsTest(parameterized.TestCase, tf.test.TestCase):
     global_batch_size = 4
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     batch_size = int(global_batch_size / num_replicas)
-    pillars = tf_keras.Input(shape=pillars_size, batch_size=batch_size)
-    indices = tf_keras.Input(
+    pillars = keras.Input(shape=pillars_size, batch_size=batch_size)
+    indices = keras.Input(
         shape=indices_size, batch_size=batch_size, dtype=tf.int32)
     image_shape = tf.tile(tf.expand_dims([h, w], axis=0), [batch_size, 1])
     max_num_detections = 4

@@ -18,7 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from typing import List, Optional, Text, Tuple
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.legacy.image_classification import augment
 
 

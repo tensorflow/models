@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Image classification task definition."""
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import task_factory
 from official.projects.qat.vision.configs import image_classification as exp_cfg
@@ -25,9 +26,9 @@ from official.vision.tasks import image_classification
 class ImageClassificationTask(image_classification.ImageClassificationTask):
   """A task for image classification with QAT."""
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> keras.Model:
     """Builds classification model with QAT."""
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size
     )
 
@@ -36,7 +37,7 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
     # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
     # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
     l2_regularizer = (
-        tf_keras.regularizers.l2(l2_weight_decay / 2.0)
+        keras.regularizers.l2(l2_weight_decay / 2.0)
         if l2_weight_decay
         else None
     )

@@ -18,15 +18,16 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, MutableMapping
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift import utils
 from official.recommendation.uplift.layers.uplift_networks import base_uplift_networks
 
 
-@tf_keras.utils.register_keras_serializable(package="Uplift")
-class TwoTowerOutputHead(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package="Uplift")
+class TwoTowerOutputHead(keras.layers.Layer):
   """Two tower training and inference output computation.
 
   This layer is intended to be used in conjunction with a two tower uplift
@@ -160,10 +161,10 @@ class TwoTowerOutputHead(tf_keras.layers.Layer):
         "treatment_indicator_feature_name": (
             self._treatment_indicator_feature_name
         ),
-        "uplift_network": tf_keras.utils.serialize_keras_object(
+        "uplift_network": keras.utils.serialize_keras_object(
             self._uplift_network
         ),
-        "inverse_link_fn": tf_keras.utils.serialize_keras_object(
+        "inverse_link_fn": keras.utils.serialize_keras_object(
             self._inverse_link_fn
         ),
     })
@@ -171,10 +172,10 @@ class TwoTowerOutputHead(tf_keras.layers.Layer):
 
   @classmethod
   def from_config(cls, config: MutableMapping[str, Any]) -> TwoTowerOutputHead:
-    config["uplift_network"] = tf_keras.layers.deserialize(
+    config["uplift_network"] = keras.layers.deserialize(
         config["uplift_network"]
     )
-    config["inverse_link_fn"] = tf_keras.utils.deserialize_keras_object(
+    config["inverse_link_fn"] = keras.utils.deserialize_keras_object(
         config["inverse_link_fn"]
     )
     return cls(**config)

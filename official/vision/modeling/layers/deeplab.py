@@ -14,12 +14,13 @@
 
 """Layers for DeepLabV3."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
 
-class SpatialPyramidPooling(tf_keras.layers.Layer):
+class SpatialPyramidPooling(keras.layers.Layer):
   """Implements the Atrous Spatial Pyramid Pooling.
 
   References:
@@ -79,10 +80,10 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
     self.batchnorm_epsilon = batchnorm_epsilon
     self.activation = activation
     self.dropout = dropout
-    self.kernel_initializer = tf_keras.initializers.get(kernel_initializer)
-    self.kernel_regularizer = tf_keras.regularizers.get(kernel_regularizer)
+    self.kernel_initializer = keras.initializers.get(kernel_initializer)
+    self.kernel_regularizer = keras.regularizers.get(kernel_regularizer)
     self.interpolation = interpolation
-    self.input_spec = tf_keras.layers.InputSpec(ndim=4)
+    self.input_spec = keras.layers.InputSpec(ndim=4)
     self.pool_kernel_size = pool_kernel_size
     self.use_depthwise_convolution = use_depthwise_convolution
 
@@ -90,15 +91,15 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
     channels = input_shape[3]
 
     self.aspp_layers = []
-    bn_op = tf_keras.layers.BatchNormalization
+    bn_op = keras.layers.BatchNormalization
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
     else:
       bn_axis = 1
 
-    conv_sequential = tf_keras.Sequential([
-        tf_keras.layers.Conv2D(
+    conv_sequential = keras.Sequential([
+        keras.layers.Conv2D(
             filters=self.output_channels,
             kernel_size=(1, 1),
             kernel_initializer=tf_utils.clone_initializer(
@@ -110,7 +111,7 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
             momentum=self.batchnorm_momentum,
             epsilon=self.batchnorm_epsilon,
             synchronized=self.use_sync_bn),
-        tf_keras.layers.Activation(self.activation)
+        keras.layers.Activation(self.activation)
     ])
     self.aspp_layers.append(conv_sequential)
 
@@ -119,7 +120,7 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
       kernel_size = (3, 3)
       if self.use_depthwise_convolution:
         leading_layers += [
-            tf_keras.layers.DepthwiseConv2D(
+            keras.layers.DepthwiseConv2D(
                 depth_multiplier=1,
                 kernel_size=kernel_size,
                 padding='same',
@@ -127,8 +128,8 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
                 use_bias=False)
         ]
         kernel_size = (1, 1)
-      conv_sequential = tf_keras.Sequential(leading_layers + [
-          tf_keras.layers.Conv2D(
+      conv_sequential = keras.Sequential(leading_layers + [
+          keras.layers.Conv2D(
               filters=self.output_channels,
               kernel_size=kernel_size,
               padding='same',
@@ -142,21 +143,21 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
               momentum=self.batchnorm_momentum,
               epsilon=self.batchnorm_epsilon,
               synchronized=self.use_sync_bn),
-          tf_keras.layers.Activation(self.activation)
+          keras.layers.Activation(self.activation)
       ])
       self.aspp_layers.append(conv_sequential)
 
     if self.pool_kernel_size is None:
-      pool_sequential = tf_keras.Sequential([
-          tf_keras.layers.GlobalAveragePooling2D(),
-          tf_keras.layers.Reshape((1, 1, channels))])
+      pool_sequential = keras.Sequential([
+          keras.layers.GlobalAveragePooling2D(),
+          keras.layers.Reshape((1, 1, channels))])
     else:
-      pool_sequential = tf_keras.Sequential([
-          tf_keras.layers.AveragePooling2D(self.pool_kernel_size)])
+      pool_sequential = keras.Sequential([
+          keras.layers.AveragePooling2D(self.pool_kernel_size)])
 
     pool_sequential.add(
-        tf_keras.Sequential([
-            tf_keras.layers.Conv2D(
+        keras.Sequential([
+            keras.layers.Conv2D(
                 filters=self.output_channels,
                 kernel_size=(1, 1),
                 kernel_initializer=tf_utils.clone_initializer(
@@ -168,13 +169,13 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
                 momentum=self.batchnorm_momentum,
                 epsilon=self.batchnorm_epsilon,
                 synchronized=self.use_sync_bn),
-            tf_keras.layers.Activation(self.activation)
+            keras.layers.Activation(self.activation)
         ]))
 
     self.aspp_layers.append(pool_sequential)
 
-    self.projection = tf_keras.Sequential([
-        tf_keras.layers.Conv2D(
+    self.projection = keras.Sequential([
+        keras.layers.Conv2D(
             filters=self.output_channels,
             kernel_size=(1, 1),
             kernel_initializer=tf_utils.clone_initializer(
@@ -186,13 +187,13 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
             momentum=self.batchnorm_momentum,
             epsilon=self.batchnorm_epsilon,
             synchronized=self.use_sync_bn),
-        tf_keras.layers.Activation(self.activation),
-        tf_keras.layers.Dropout(rate=self.dropout)
+        keras.layers.Activation(self.activation),
+        keras.layers.Dropout(rate=self.dropout)
     ])
 
   def call(self, inputs, training=None):
     if training is None:
-      training = tf_keras.backend.learning_phase()
+      training = keras.backend.learning_phase()
     result = []
     for i, layer in enumerate(self.aspp_layers):
       x = layer(inputs, training=training)
@@ -214,9 +215,9 @@ class SpatialPyramidPooling(tf_keras.layers.Layer):
         'batchnorm_epsilon': self.batchnorm_epsilon,
         'activation': self.activation,
         'dropout': self.dropout,
-        'kernel_initializer': tf_keras.initializers.serialize(
+        'kernel_initializer': keras.initializers.serialize(
             self.kernel_initializer),
-        'kernel_regularizer': tf_keras.regularizers.serialize(
+        'kernel_regularizer': keras.regularizers.serialize(
             self.kernel_regularizer),
         'interpolation': self.interpolation,
     }

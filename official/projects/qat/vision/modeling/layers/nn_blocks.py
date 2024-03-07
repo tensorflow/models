@@ -18,7 +18,8 @@ from typing import Any, Dict, Optional, Sequence, Tuple, Union
 # Import libraries
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 import tensorflow_model_optimization as tfmot
 from official.modeling import tf_utils
@@ -30,8 +31,8 @@ from official.vision.modeling.layers import nn_layers
 
 # This class is copied from modeling.layers.nn_blocks.BottleneckBlock and apply
 # QAT.
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class BottleneckBlockQuantized(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class BottleneckBlockQuantized(keras.layers.Layer):
   """A quantized standard bottleneck block."""
 
   def __init__(self,
@@ -43,8 +44,8 @@ class BottleneckBlockQuantized(tf_keras.layers.Layer):
                resnetd_shortcut: bool = False,
                stochastic_depth_drop_rate: Optional[float] = None,
                kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
-               bias_regularizer: tf_keras.regularizers.Regularizer = None,
+               kernel_regularizer: keras.regularizers.Regularizer = None,
+               bias_regularizer: keras.regularizers.Regularizer = None,
                activation: str = 'relu',
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
@@ -70,9 +71,9 @@ class BottleneckBlockQuantized(tf_keras.layers.Layer):
         the stochastic depth layer.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2d.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
       activation: A `str` name of the activation function.
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
@@ -100,12 +101,12 @@ class BottleneckBlockQuantized(tf_keras.layers.Layer):
     self._bias_regularizer = bias_regularizer
 
     norm_layer = (
-        tf_keras.layers.experimental.SyncBatchNormalization
-        if use_sync_bn else tf_keras.layers.BatchNormalization)
+        keras.layers.experimental.SyncBatchNormalization
+        if use_sync_bn else keras.layers.BatchNormalization)
     self._norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     self._norm = helper.BatchNormalizationNoQuantized(norm_layer)
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -115,7 +116,7 @@ class BottleneckBlockQuantized(tf_keras.layers.Layer):
     """Build variables and child layers to prepare for calling."""
     if self._use_projection:
       if self._resnetd_shortcut:
-        self._shortcut0 = tf_keras.layers.AveragePooling2D(
+        self._shortcut0 = keras.layers.AveragePooling2D(
             pool_size=2, strides=self._strides, padding='same')
         self._shortcut1 = helper.Conv2DQuantized(
             filters=self._filters * 4,
@@ -216,7 +217,7 @@ class BottleneckBlockQuantized(tf_keras.layers.Layer):
     else:
       self._stochastic_depth = None
     self._add = tfmot.quantization.keras.QuantizeWrapperV2(
-        tf_keras.layers.Add(),
+        keras.layers.Add(),
         configs.Default8BitQuantizeConfig([], [], True))
 
     super(BottleneckBlockQuantized, self).build(input_shape)
@@ -280,8 +281,8 @@ class BottleneckBlockQuantized(tf_keras.layers.Layer):
 
 # This class is copied from modeling.backbones.mobilenet.Conv2DBNBlock and apply
 # QAT.
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class Conv2DBNBlockQuantized(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class Conv2DBNBlockQuantized(keras.layers.Layer):
   """A quantized convolution block with batch normalization."""
 
   def __init__(
@@ -293,8 +294,8 @@ class Conv2DBNBlockQuantized(tf_keras.layers.Layer):
       use_explicit_padding: bool = False,
       activation: str = 'relu6',
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       use_normalization: bool = True,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -316,9 +317,9 @@ class Conv2DBNBlockQuantized(tf_keras.layers.Layer):
       activation: A `str` name of the activation function.
       kernel_initializer: A `str` for kernel initializer of convolutional
         layers.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
       use_normalization: If True, use batch normalization.
       use_sync_bn: If True, use synchronized batch normalization.
@@ -347,12 +348,12 @@ class Conv2DBNBlockQuantized(tf_keras.layers.Layer):
       self._padding = 'same'
 
     norm_layer = (
-        tf_keras.layers.experimental.SyncBatchNormalization
-        if use_sync_bn else tf_keras.layers.BatchNormalization)
+        keras.layers.experimental.SyncBatchNormalization
+        if use_sync_bn else keras.layers.BatchNormalization)
     self._norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     self._norm = helper.BatchNormalizationNoQuantized(norm_layer)
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -381,7 +382,7 @@ class Conv2DBNBlockQuantized(tf_keras.layers.Layer):
     """Build variables and child layers to prepare for calling."""
     if self._use_explicit_padding and self._kernel_size > 1:
       padding_size = nn_layers.get_padding_for_kernel_size(self._kernel_size)
-      self._pad = tf_keras.layers.ZeroPadding2D(padding_size)
+      self._pad = keras.layers.ZeroPadding2D(padding_size)
     conv2d_quantized = (
         helper.Conv2DQuantized
         if self._use_normalization else helper.Conv2DOutputQuantized)
@@ -421,8 +422,8 @@ class Conv2DBNBlockQuantized(tf_keras.layers.Layer):
     return self._activation_layer(x)
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class InvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class InvertedBottleneckBlockQuantized(keras.layers.Layer):
   """A quantized inverted bottleneck block."""
 
   def __init__(self,
@@ -467,9 +468,9 @@ class InvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
         the stochastic depth layer.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default to None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2d.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
       activation: A `str` name of the activation function.
       se_inner_activation: A `str` name of squeeze-excitation inner activation.
@@ -528,12 +529,12 @@ class InvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
     self._output_intermediate_endpoints = output_intermediate_endpoints
 
     norm_layer = (
-        tf_keras.layers.experimental.SyncBatchNormalization
-        if use_sync_bn else tf_keras.layers.BatchNormalization)
+        keras.layers.experimental.SyncBatchNormalization
+        if use_sync_bn else keras.layers.BatchNormalization)
     self._norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     self._norm = helper.BatchNormalizationNoQuantized(norm_layer)
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -642,7 +643,7 @@ class InvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
     else:
       self._stochastic_depth = None
     self._add = tfmot.quantization.keras.QuantizeWrapperV2(
-        tf_keras.layers.Add(),
+        keras.layers.Add(),
         configs.Default8BitQuantizeConfig([], [], True))
 
     super(InvertedBottleneckBlockQuantized, self).build(input_shape)
@@ -718,8 +719,8 @@ class InvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
     return x
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class UniversalInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class UniversalInvertedBottleneckBlockQuantized(keras.layers.Layer):
   """A quantized inverted bottleneck block with optional depthwise convs."""
 
   def __init__(
@@ -734,8 +735,8 @@ class UniversalInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
       end_dw_kernel_size: int = 0,
       stochastic_depth_drop_rate: float | None = None,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: tf_keras.regularizers.Regularizer | None = None,
-      bias_regularizer: tf_keras.regularizers.Regularizer | None = None,
+      kernel_regularizer: keras.regularizers.Regularizer | None = None,
+      bias_regularizer: keras.regularizers.Regularizer | None = None,
       activation: str = 'relu',
       depthwise_activation: str | None = None,
       use_sync_bn: bool = False,
@@ -796,7 +797,7 @@ class UniversalInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
         endpoint, but this argument is included for compatibility with other
         blocks.
       **kwargs: Additional keyword arguments to be passed to
-        tf_keras.layers.Layer.
+        keras.layers.Layer.
     """
     super().__init__(**kwargs)
     logging.info(
@@ -845,13 +846,13 @@ class UniversalInvertedBottleneckBlockQuantized(tf_keras.layers.Layer):
         )
 
     if use_sync_bn:
-      norm_layer = tf_keras.layers.experimental.SyncBatchNormalization
+      norm_layer = keras.layers.experimental.SyncBatchNormalization
     else:
-      norm_layer = tf_keras.layers.BatchNormalization
+      norm_layer = keras.layers.BatchNormalization
     self._norm_with_quantize = helper.BatchNormalizationQuantized(norm_layer)
     self._norm = helper.BatchNormalizationNoQuantized(norm_layer)
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1

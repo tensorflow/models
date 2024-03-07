@@ -14,7 +14,8 @@
 
 """Tests for mat_mul_with_margin layer."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import mat_mul_with_margin
 
@@ -26,8 +27,8 @@ class MatMulWithMarginTest(tf.test.TestCase):
     input_width = 512
     test_layer = mat_mul_with_margin.MatMulWithMargin()
     # Create a 2-dimensional input (the first dimension is implicit).
-    left_encoded = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
-    right_encoded = tf_keras.Input(shape=(input_width,), dtype=tf.float32)
+    left_encoded = keras.Input(shape=(input_width,), dtype=tf.float32)
+    right_encoded = keras.Input(shape=(input_width,), dtype=tf.float32)
     left_logits, right_logits = test_layer(left_encoded, right_encoded)
 
     # Validate that the outputs are of the expected shape.

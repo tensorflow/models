@@ -16,24 +16,25 @@
 from typing import Any, Callable
 
 import orbit
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_hub as hub
 
 
-def get_encoder_from_hub(hub_model_path: str) -> tf_keras.Model:
+def get_encoder_from_hub(hub_model_path: str) -> keras.Model:
   """Gets an encoder from hub.
 
   Args:
     hub_model_path: The path to the tfhub model.
 
   Returns:
-    A tf_keras.Model.
+    A keras.Model.
   """
-  input_word_ids = tf_keras.layers.Input(
+  input_word_ids = keras.layers.Input(
       shape=(None,), dtype=tf.int32, name='input_word_ids')
-  input_mask = tf_keras.layers.Input(
+  input_mask = keras.layers.Input(
       shape=(None,), dtype=tf.int32, name='input_mask')
-  input_type_ids = tf_keras.layers.Input(
+  input_type_ids = keras.layers.Input(
       shape=(None,), dtype=tf.int32, name='input_type_ids')
   hub_layer = hub.KerasLayer(hub_model_path, trainable=True)
   output_dict = {}
@@ -43,7 +44,7 @@ def get_encoder_from_hub(hub_model_path: str) -> tf_keras.Model:
       input_type_ids=input_type_ids)
   output_dict = hub_layer(dict_input)
 
-  return tf_keras.Model(inputs=dict_input, outputs=output_dict)
+  return keras.Model(inputs=dict_input, outputs=output_dict)
 
 
 def predict(predict_step_fn: Callable[[Any], Any],

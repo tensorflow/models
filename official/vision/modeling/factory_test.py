@@ -17,7 +17,8 @@ import collections
 
 # Import libraries
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.configs import backbones
 from official.vision.configs import backbones_3d
@@ -40,13 +41,13 @@ class ClassificationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_builder(self, backbone_type, input_size, weight_decay):
     num_classes = 2
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], 3])
     model_config = classification_cfg.ImageClassificationModel(
         num_classes=num_classes,
         backbone=backbones.Backbone(type=backbone_type))
     l2_regularizer = (
-        tf_keras.regularizers.l2(weight_decay) if weight_decay else None)
+        keras.regularizers.l2(weight_decay) if weight_decay else None)
     _ = factory.build_classification_model(
         input_specs=input_specs,
         model_config=model_config,
@@ -61,12 +62,12 @@ class MaskRCNNBuilderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_builder(self, backbone_type, input_size):
     num_classes = 2
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], 3])
     model_config = maskrcnn_cfg.MaskRCNN(
         num_classes=num_classes,
         backbone=backbones.Backbone(type=backbone_type))
-    l2_regularizer = tf_keras.regularizers.l2(5e-5)
+    l2_regularizer = keras.regularizers.l2(5e-5)
     _ = factory.build_maskrcnn(
         input_specs=input_specs,
         model_config=model_config,
@@ -81,7 +82,7 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_builder(self, backbone_type, input_size, has_att_heads):
     num_classes = 2
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], 3])
     if has_att_heads:
       attribute_heads_config = [
@@ -96,7 +97,7 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
         backbone=backbones.Backbone(type=backbone_type),
         head=retinanet_cfg.RetinaNetHead(
             attribute_heads=attribute_heads_config))
-    l2_regularizer = tf_keras.regularizers.l2(5e-5)
+    l2_regularizer = keras.regularizers.l2(5e-5)
     _ = factory.build_retinanet(
         input_specs=input_specs,
         model_config=model_config,
@@ -127,7 +128,7 @@ class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_build_model_with_custom_anchors_can_run(self):
     image_size = (16, 16)
-    input_specs = tf_keras.layers.InputSpec(shape=[None, *image_size, 3])
+    input_specs = keras.layers.InputSpec(shape=[None, *image_size, 3])
     model_config = retinanet_cfg.RetinaNet(
         num_classes=5,
         min_level=3,
@@ -175,12 +176,12 @@ class VideoClassificationModelBuilderTest(parameterized.TestCase,
       ('resnet_3d', (None, None, None), 5e-5),
   )
   def test_builder(self, backbone_type, input_size, weight_decay):
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], input_size[2], 3])
     model_config = video_classification_cfg.VideoClassificationModel(
         backbone=backbones_3d.Backbone3D(type=backbone_type))
     l2_regularizer = (
-        tf_keras.regularizers.l2(weight_decay) if weight_decay else None)
+        keras.regularizers.l2(weight_decay) if weight_decay else None)
     _ = factory_3d.build_video_classification_model(
         input_specs=input_specs,
         model_config=model_config,

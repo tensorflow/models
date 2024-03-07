@@ -16,7 +16,8 @@
 
 from typing import Mapping, Optional
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.configs import image_classification as classification_cfg
 from official.vision.configs import maskrcnn as maskrcnn_cfg
@@ -39,11 +40,11 @@ from official.vision.modeling.layers import roi_sampler
 
 
 def build_classification_model(
-    input_specs: tf_keras.layers.InputSpec,
+    input_specs: keras.layers.InputSpec,
     model_config: classification_cfg.ImageClassificationModel,
-    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+    l2_regularizer: Optional[keras.regularizers.Regularizer] = None,
     skip_logits_layer: bool = False,
-    backbone: Optional[tf_keras.Model] = None) -> tf_keras.Model:
+    backbone: Optional[keras.Model] = None) -> keras.Model:
   """Builds the classification model."""
   norm_activation_config = model_config.norm_activation
   if not backbone:
@@ -68,12 +69,12 @@ def build_classification_model(
   return model
 
 
-def build_maskrcnn(input_specs: tf_keras.layers.InputSpec,
+def build_maskrcnn(input_specs: keras.layers.InputSpec,
                    model_config: maskrcnn_cfg.MaskRCNN,
                    l2_regularizer: Optional[
-                       tf_keras.regularizers.Regularizer] = None,
-                   backbone: Optional[tf_keras.Model] = None,
-                   decoder: Optional[tf_keras.Model] = None) -> tf_keras.Model:
+                       keras.regularizers.Regularizer] = None,
+                   backbone: Optional[keras.Model] = None,
+                   decoder: Optional[keras.Model] = None) -> keras.Model:
   """Builds Mask R-CNN model."""
   norm_activation_config = model_config.norm_activation
   if not backbone:
@@ -82,7 +83,7 @@ def build_maskrcnn(input_specs: tf_keras.layers.InputSpec,
         backbone_config=model_config.backbone,
         norm_activation_config=norm_activation_config,
         l2_regularizer=l2_regularizer)
-  backbone_features = backbone(tf_keras.Input(input_specs.shape[1:]))
+  backbone_features = backbone(keras.Input(input_specs.shape[1:]))
 
   if not decoder:
     decoder = decoders.factory.build_decoder(
@@ -258,14 +259,14 @@ def build_maskrcnn(input_specs: tf_keras.layers.InputSpec,
 
 
 def build_retinanet(
-    input_specs: tf_keras.layers.InputSpec,
+    input_specs: keras.layers.InputSpec,
     model_config: retinanet_cfg.RetinaNet,
-    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-    backbone: Optional[tf_keras.Model] = None,
-    decoder: Optional[tf_keras.Model] = None,
+    l2_regularizer: Optional[keras.regularizers.Regularizer] = None,
+    backbone: Optional[keras.Model] = None,
+    decoder: Optional[keras.Model] = None,
     num_anchors_per_location: int | dict[str, int] | None = None,
     anchor_boxes: Mapping[str, tf.Tensor] | None = None,
-) -> tf_keras.Model:
+) -> keras.Model:
   """Builds a RetinaNet model.
 
   Args:
@@ -291,7 +292,7 @@ def build_retinanet(
         backbone_config=model_config.backbone,
         norm_activation_config=norm_activation_config,
         l2_regularizer=l2_regularizer)
-  backbone_features = backbone(tf_keras.Input(input_specs.shape[1:]))
+  backbone_features = backbone(keras.Input(input_specs.shape[1:]))
 
   if not decoder:
     decoder = decoders.factory.build_decoder(
@@ -376,12 +377,12 @@ def build_retinanet(
 
 
 def build_segmentation_model(
-    input_specs: tf_keras.layers.InputSpec,
+    input_specs: keras.layers.InputSpec,
     model_config: segmentation_cfg.SemanticSegmentationModel,
-    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-    backbone: Optional[tf_keras.Model] = None,
-    decoder: Optional[tf_keras.Model] = None
-) -> tf_keras.Model:
+    l2_regularizer: Optional[keras.regularizers.Regularizer] = None,
+    backbone: Optional[keras.Model] = None,
+    decoder: Optional[keras.Model] = None
+) -> keras.Model:
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
   if not backbone:

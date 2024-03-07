@@ -14,7 +14,8 @@
 
 """Export module for BASNet."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.basnet.tasks import basnet
 from official.vision.serving import semantic_segmentation
@@ -24,7 +25,7 @@ class BASNetModule(semantic_segmentation.SegmentationModule):
   """BASNet Module."""
 
   def _build_model(self):
-    input_specs = tf_keras.layers.InputSpec(
+    input_specs = keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
     return basnet.build_basnet_model(

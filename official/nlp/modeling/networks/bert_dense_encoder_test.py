@@ -17,7 +17,8 @@
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.networks import bert_encoder
 
@@ -26,7 +27,7 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
 
   def tearDown(self):
     super(BertEncoderV2Test, self).tearDown()
-    tf_keras.mixed_precision.set_global_policy("float32")
+    keras.mixed_precision.set_global_policy("float32")
 
   def test_dict_outputs_network_creation(self):
     hidden_size = 32
@@ -42,14 +43,14 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
         with_dense_inputs=True,
         **kwargs)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
-    dense_inputs = tf_keras.Input(
+    dense_inputs = keras.Input(
         shape=(dense_sequence_length, hidden_size), dtype=tf.float32)
-    dense_mask = tf_keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
-    dense_type_ids = tf_keras.Input(
+    dense_mask = keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
+    dense_type_ids = keras.Input(
         shape=(dense_sequence_length,), dtype=tf.int32)
 
     dict_outputs = test_network(
@@ -65,7 +66,7 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
 
     self.assertIsInstance(test_network.transformer_layers, list)
     self.assertLen(test_network.transformer_layers, 3)
-    self.assertIsInstance(test_network.pooler_layer, tf_keras.layers.Dense)
+    self.assertIsInstance(test_network.pooler_layer, keras.layers.Dense)
 
     expected_data_shape = [
         None, sequence_length + dense_sequence_length, hidden_size
@@ -91,14 +92,14 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
         dict_outputs=True,
         with_dense_inputs=True)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
-    dense_inputs = tf_keras.Input(
+    dense_inputs = keras.Input(
         shape=(dense_sequence_length, hidden_size), dtype=tf.float32)
-    dense_mask = tf_keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
-    dense_type_ids = tf_keras.Input(
+    dense_mask = keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
+    dense_type_ids = keras.Input(
         shape=(dense_sequence_length,), dtype=tf.int32)
 
     dict_outputs = test_network(
@@ -130,7 +131,7 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
     hidden_size = 32
     sequence_length = 21
     dense_sequence_length = 20
-    tf_keras.mixed_precision.set_global_policy("mixed_float16")
+    keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a small BertEncoder for testing.
     test_network = bert_encoder.BertEncoderV2(
         vocab_size=100,
@@ -140,14 +141,14 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
         dict_outputs=True,
         with_dense_inputs=True)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
-    dense_inputs = tf_keras.Input(
+    dense_inputs = keras.Input(
         shape=(dense_sequence_length, hidden_size), dtype=tf.float32)
-    dense_mask = tf_keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
-    dense_type_ids = tf_keras.Input(
+    dense_mask = keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
+    dense_type_ids = keras.Input(
         shape=(dense_sequence_length,), dtype=tf.int32)
 
     dict_outputs = test_network(
@@ -196,13 +197,13 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
         with_dense_inputs=True,
         output_range=output_range)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    dense_inputs = tf_keras.Input(
+    word_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    dense_inputs = keras.Input(
         shape=(dense_sequence_length, hidden_size), dtype=tf.float32)
-    dense_mask = tf_keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
-    dense_type_ids = tf_keras.Input(
+    dense_mask = keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
+    dense_type_ids = keras.Input(
         shape=(dense_sequence_length,), dtype=tf.int32)
 
     dict_outputs = test_network(
@@ -217,7 +218,7 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
     pooled = dict_outputs["pooled_output"]
 
     # Create a model based off of this network:
-    model = tf_keras.Model(
+    model = keras.Model(
         [word_ids, mask, type_ids, dense_inputs, dense_mask, dense_type_ids],
         [data, pooled])
 
@@ -263,7 +264,7 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
             dense_type_ids=dense_type_ids))
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
-    model = tf_keras.Model(
+    model = keras.Model(
         [word_ids, mask, type_ids, dense_inputs, dense_mask, dense_type_ids],
         [data, pooled])
     outputs = model.predict([
@@ -285,7 +286,7 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
         embedding_width=embedding_width,
         dict_outputs=True)
 
-    dense_inputs = tf_keras.Input(
+    dense_inputs = keras.Input(
         shape=(dense_sequence_length, embedding_width), dtype=tf.float32)
     dense_input_data = np.zeros(
         (batch_size, dense_sequence_length, embedding_width), dtype=float)
@@ -300,7 +301,7 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
             dense_type_ids=dense_type_ids))
     data = dict_outputs["sequence_output"]
     pooled = dict_outputs["pooled_output"]
-    model = tf_keras.Model(
+    model = keras.Model(
         [word_ids, mask, type_ids, dense_inputs, dense_mask, dense_type_ids],
         [data, pooled])
     outputs = model.predict([
@@ -322,14 +323,14 @@ class BertEncoderV2Test(tf.test.TestCase, parameterized.TestCase):
         num_layers=3,
         with_dense_inputs=True)
     # Create the inputs (note that the first dimension is implicit).
-    word_ids = tf_keras.Input(shape=(sequence_length), dtype=tf.int32)
-    mask = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf_keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    word_ids = keras.Input(shape=(sequence_length), dtype=tf.int32)
+    mask = keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
-    dense_inputs = tf_keras.Input(
+    dense_inputs = keras.Input(
         shape=(dense_sequence_length, hidden_size), dtype=tf.float32)
-    dense_mask = tf_keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
-    dense_type_ids = tf_keras.Input(
+    dense_mask = keras.Input(shape=(dense_sequence_length,), dtype=tf.int32)
+    dense_type_ids = keras.Input(
         shape=(dense_sequence_length,), dtype=tf.int32)
 
     test_network.build(

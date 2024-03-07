@@ -15,7 +15,8 @@
 """Tests for tflite_imagenet_evaluator."""
 
 from unittest import mock
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.projects.edgetpu.vision.serving import tflite_imagenet_evaluator
 

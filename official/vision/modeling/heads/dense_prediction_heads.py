@@ -19,13 +19,14 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 # Import libraries
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class RetinaNetHead(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class RetinaNetHead(keras.layers.Layer):
   """Creates a RetinaNet head."""
 
   def __init__(
@@ -43,8 +44,8 @@ class RetinaNetHead(tf_keras.layers.Layer):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       num_params_per_anchor: int = 4,
       share_level_convs: bool = True,
       **kwargs,
@@ -77,9 +78,9 @@ class RetinaNetHead(tf_keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2D.
       num_params_per_anchor: Number of parameters required to specify an anchor
         box. For example, `num_params_per_anchor` would be 4 for axis-aligned
         anchor boxes specified by their y-centers, x-centers, heights, and
@@ -110,7 +111,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
         'share_level_convs': share_level_convs,
     }
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -125,7 +126,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
     }
     if not self._config_dict['use_separable_conv']:
       self._conv_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=0.01),
+          'kernel_initializer': keras.initializers.RandomNormal(stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
 
@@ -153,18 +154,18 @@ class RetinaNetHead(tf_keras.layers.Layer):
       )
     if self._config_dict['use_separable_conv']:
       self._classifier_kwargs.update({
-          'depthwise_initializer': tf_keras.initializers.RandomNormal(
+          'depthwise_initializer': keras.initializers.RandomNormal(
               stddev=0.03
           ),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_initializer': tf_keras.initializers.RandomNormal(
+          'pointwise_initializer': keras.initializers.RandomNormal(
               stddev=0.03
           ),
           'pointwise_regularizer': self._config_dict['kernel_regularizer'],
       })
     else:
       self._classifier_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
+          'kernel_initializer': keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
 
@@ -186,18 +187,18 @@ class RetinaNetHead(tf_keras.layers.Layer):
       )
     if self._config_dict['use_separable_conv']:
       self._box_regressor_kwargs.update({
-          'depthwise_initializer': tf_keras.initializers.RandomNormal(
+          'depthwise_initializer': keras.initializers.RandomNormal(
               stddev=0.03
           ),
           'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_initializer': tf_keras.initializers.RandomNormal(
+          'pointwise_initializer': keras.initializers.RandomNormal(
               stddev=0.03
           ),
           'pointwise_regularizer': self._config_dict['kernel_regularizer'],
       })
     else:
       self._box_regressor_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
+          'kernel_initializer': keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
 
@@ -261,7 +262,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
 
       if not self._config_dict['use_separable_conv']:
         att_predictor_kwargs.update({
-            'kernel_initializer': tf_keras.initializers.RandomNormal(
+            'kernel_initializer': keras.initializers.RandomNormal(
                 stddev=1e-5
             ),
             'kernel_regularizer': self._config_dict['kernel_regularizer'],
@@ -420,14 +421,14 @@ class RetinaNetHead(tf_keras.layers.Layer):
   def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     conv_op = (
-        tf_keras.layers.SeparableConv2D
+        keras.layers.SeparableConv2D
         if self._config_dict['use_separable_conv']
-        else tf_keras.layers.Conv2D
+        else keras.layers.Conv2D
     )
     bn_op = (
-        tf_keras.layers.experimental.SyncBatchNormalization
+        keras.layers.experimental.SyncBatchNormalization
         if self._config_dict['use_sync_bn']
-        else tf_keras.layers.BatchNormalization
+        else keras.layers.BatchNormalization
     )
 
     # Class net.
@@ -536,8 +537,8 @@ class RetinaNetHead(tf_keras.layers.Layer):
     return cls(**config)
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class RPNHead(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Vision')
+class RPNHead(keras.layers.Layer):
   """Creates a Region Proposal Network (RPN) head."""
 
   def __init__(
@@ -552,8 +553,8 @@ class RPNHead(tf_keras.layers.Layer):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: Optional[keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[keras.regularizers.Regularizer] = None,
       **kwargs):
     """Initializes a Region Proposal Network head.
 
@@ -574,9 +575,9 @@ class RPNHead(tf_keras.layers.Layer):
         normalization across different replicas.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
-      kernel_regularizer: A `tf_keras.regularizers.Regularizer` object for
+      kernel_regularizer: A `keras.regularizers.Regularizer` object for
         Conv2D. Default is None.
-      bias_regularizer: A `tf_keras.regularizers.Regularizer` object for Conv2D.
+      bias_regularizer: A `keras.regularizers.Regularizer` object for Conv2D.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(RPNHead, self).__init__(**kwargs)
@@ -595,7 +596,7 @@ class RPNHead(tf_keras.layers.Layer):
         'bias_regularizer': bias_regularizer,
     }
 
-    if tf_keras.backend.image_data_format() == 'channels_last':
+    if keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
     else:
       self._bn_axis = 1
@@ -603,9 +604,9 @@ class RPNHead(tf_keras.layers.Layer):
 
   def build(self, input_shape):
     """Creates the variables of the head."""
-    conv_op = (tf_keras.layers.SeparableConv2D
+    conv_op = (keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
-               else tf_keras.layers.Conv2D)
+               else keras.layers.Conv2D)
     conv_kwargs = {
         'filters': self._config_dict['num_filters'],
         'kernel_size': 3,
@@ -615,13 +616,13 @@ class RPNHead(tf_keras.layers.Layer):
     }
     if not self._config_dict['use_separable_conv']:
       conv_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(
+          'kernel_initializer': keras.initializers.RandomNormal(
               stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
-    bn_op = (tf_keras.layers.experimental.SyncBatchNormalization
+    bn_op = (keras.layers.experimental.SyncBatchNormalization
              if self._config_dict['use_sync_bn']
-             else tf_keras.layers.BatchNormalization)
+             else keras.layers.BatchNormalization)
     bn_kwargs = {
         'axis': self._bn_axis,
         'momentum': self._config_dict['norm_momentum'],
@@ -653,7 +654,7 @@ class RPNHead(tf_keras.layers.Layer):
     }
     if not self._config_dict['use_separable_conv']:
       classifier_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(
+          'kernel_initializer': keras.initializers.RandomNormal(
               stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
@@ -668,7 +669,7 @@ class RPNHead(tf_keras.layers.Layer):
     }
     if not self._config_dict['use_separable_conv']:
       box_regressor_kwargs.update({
-          'kernel_initializer': tf_keras.initializers.RandomNormal(
+          'kernel_initializer': keras.initializers.RandomNormal(
               stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })

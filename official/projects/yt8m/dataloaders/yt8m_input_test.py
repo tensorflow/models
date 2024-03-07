@@ -17,7 +17,8 @@ import os
 from absl import logging
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import input_reader
 from official.projects.yt8m.configs import yt8m as yt8m_configs

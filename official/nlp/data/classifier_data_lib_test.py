@@ -18,7 +18,8 @@ import os
 import tempfile
 
 from absl.testing import parameterized
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 import tensorflow_datasets as tfds
 
 from official.nlp.data import classifier_data_lib

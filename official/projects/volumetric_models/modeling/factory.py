@@ -16,7 +16,8 @@
 from typing import Sequence, Union
 # Import libraries
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import hyperparams
 from official.projects.volumetric_models.modeling.decoders import factory as decoder_factory
@@ -26,11 +27,11 @@ from official.vision.modeling.backbones import factory as backbone_factory
 
 
 def build_segmentation_model_3d(
-    input_specs: Union[tf_keras.layers.InputSpec,
-                       Sequence[tf_keras.layers.InputSpec]],
+    input_specs: Union[keras.layers.InputSpec,
+                       Sequence[keras.layers.InputSpec]],
     model_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
-) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: keras.regularizers.Regularizer = None
+) -> keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation
   backbone = backbone_factory.build_backbone(

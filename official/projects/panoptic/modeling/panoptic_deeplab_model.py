@@ -15,21 +15,22 @@
 """Build Panoptic Deeplab model."""
 from typing import Any, Mapping, Optional, Union
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.projects.panoptic.modeling.layers import panoptic_deeplab_merge
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class PanopticDeeplabModel(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Vision')
+class PanopticDeeplabModel(keras.Model):
   """Panoptic Deeplab model."""
 
   def __init__(
       self,
-      backbone: tf_keras.Model,
-      semantic_decoder: tf_keras.Model,
-      semantic_head: tf_keras.layers.Layer,
-      instance_head: tf_keras.layers.Layer,
-      instance_decoder: Optional[tf_keras.Model] = None,
+      backbone: keras.Model,
+      semantic_decoder: keras.Model,
+      semantic_head: keras.layers.Layer,
+      instance_head: keras.layers.Layer,
+      instance_decoder: Optional[keras.Model] = None,
       post_processor: Optional[panoptic_deeplab_merge.PostProcessor] = None,
       **kwargs):
     """Panoptic deeplab model initializer.
@@ -65,7 +66,7 @@ class PanopticDeeplabModel(tf_keras.Model):
       image_info: tf.Tensor,
       training: bool = None):
     if training is None:
-      training = tf_keras.backend.learning_phase()
+      training = keras.backend.learning_phase()
 
     backbone_features = self.backbone(inputs, training=training)
 
@@ -102,7 +103,7 @@ class PanopticDeeplabModel(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self) -> Mapping[str, Union[keras.Model, keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(
         backbone=self.backbone,

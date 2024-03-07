@@ -35,7 +35,8 @@ output = model_fn(input_images)
 
 from absl import app
 from absl import flags
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.core import exp_factory
 from official.modeling import hyperparams
@@ -96,7 +97,7 @@ def main(_):
   params.lock()
 
   input_image_size = [int(x) for x in FLAGS.input_image_size.split(',')]
-  input_specs = tf_keras.layers.InputSpec(
+  input_specs = keras.layers.InputSpec(
       shape=[FLAGS.batch_size, *input_image_size, 3])
 
   if FLAGS.model == 'panoptic_deeplab':

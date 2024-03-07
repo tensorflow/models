@@ -20,7 +20,8 @@ import time
 from typing import Callable, List, Mapping, Optional, Union
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 SAVED_MODULES_PATH_SUFFIX = 'saved_modules'
 

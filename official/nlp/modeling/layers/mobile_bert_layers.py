@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """MobileBERT embedding and transformer layers."""
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import tf_utils
 
@@ -21,8 +22,8 @@ from official.nlp.modeling.layers import on_device_embedding
 from official.nlp.modeling.layers import position_embedding
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class NoNorm(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class NoNorm(keras.layers.Layer):
   """Apply element-wise linear transformation to the last dimension."""
 
   def __init__(self, name=None):
@@ -56,7 +57,7 @@ def _get_norm_layer(normalization_type='no_norm', name=None):
   if normalization_type == 'no_norm':
     layer = NoNorm(name=name)
   elif normalization_type == 'layer_norm':
-    layer = tf_keras.layers.LayerNormalization(
+    layer = keras.layers.LayerNormalization(
         name=name,
         axis=-1,
         epsilon=1e-12,
@@ -66,8 +67,8 @@ def _get_norm_layer(normalization_type='no_norm', name=None):
   return layer
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class MobileBertEmbedding(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class MobileBertEmbedding(keras.layers.Layer):
   """Performs an embedding lookup for MobileBERT.
 
   This layer includes word embedding, token type embedding, position embedding.
@@ -80,7 +81,7 @@ class MobileBertEmbedding(tf_keras.layers.Layer):
                output_embed_size,
                max_sequence_length=512,
                normalization_type='no_norm',
-               initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
+               initializer=keras.initializers.TruncatedNormal(stddev=0.02),
                dropout_rate=0.1,
                **kwargs):
     """Class initialization.
@@ -105,7 +106,7 @@ class MobileBertEmbedding(tf_keras.layers.Layer):
     self.output_embed_size = output_embed_size
     self.max_sequence_length = max_sequence_length
     self.normalization_type = normalization_type
-    self.initializer = tf_keras.initializers.get(initializer)
+    self.initializer = keras.initializers.get(initializer)
     self.dropout_rate = dropout_rate
 
     self.word_embedding = on_device_embedding.OnDeviceEmbedding(
@@ -122,14 +123,14 @@ class MobileBertEmbedding(tf_keras.layers.Layer):
         max_length=max_sequence_length,
         initializer=tf_utils.clone_initializer(self.initializer),
         name='position_embedding')
-    self.word_embedding_proj = tf_keras.layers.EinsumDense(
+    self.word_embedding_proj = keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.output_embed_size],
         kernel_initializer=tf_utils.clone_initializer(self.initializer),
         bias_axes='d',
         name='embedding_projection')
     self.layer_norm = _get_norm_layer(normalization_type, 'embedding_norm')
-    self.dropout_layer = tf_keras.layers.Dropout(
+    self.dropout_layer = keras.layers.Dropout(
         self.dropout_rate,
         name='embedding_dropout')
 
@@ -141,7 +142,7 @@ class MobileBertEmbedding(tf_keras.layers.Layer):
         'output_embed_size': self.output_embed_size,
         'max_sequence_length': self.max_sequence_length,
         'normalization_type': self.normalization_type,
-        'initializer': tf_keras.initializers.serialize(self.initializer),
+        'initializer': keras.initializers.serialize(self.initializer),
         'dropout_rate': self.dropout_rate
     }
     base_config = super(MobileBertEmbedding, self).get_config()
@@ -167,8 +168,8 @@ class MobileBertEmbedding(tf_keras.layers.Layer):
     return embedding_out
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class MobileBertTransformer(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class MobileBertTransformer(keras.layers.Layer):
   """Transformer block for MobileBERT.
 
   An implementation of one layer (block) of Transformer with bottleneck and
@@ -190,7 +191,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
                key_query_shared_bottleneck=True,
                num_feedforward_networks=4,
                normalization_type='no_norm',
-               initializer=tf_keras.initializers.TruncatedNormal(stddev=0.02),
+               initializer=keras.initializers.TruncatedNormal(stddev=0.02),
                **kwargs):
     """Class initialization.
 
@@ -234,7 +235,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
     self.key_query_shared_bottleneck = key_query_shared_bottleneck
     self.num_feedforward_networks = num_feedforward_networks
     self.normalization_type = normalization_type
-    self.initializer = tf_keras.initializers.get(initializer)
+    self.initializer = keras.initializers.get(initializer)
 
     if intra_bottleneck_size % num_attention_heads != 0:
       raise ValueError(
@@ -244,7 +245,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
 
     self.block_layers = {}
     # add input bottleneck
-    dense_layer_2d = tf_keras.layers.EinsumDense(
+    dense_layer_2d = keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.intra_bottleneck_size],
         bias_axes='d',
@@ -256,7 +257,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
                                              layer_norm]
 
     if self.key_query_shared_bottleneck:
-      dense_layer_2d = tf_keras.layers.EinsumDense(
+      dense_layer_2d = keras.layers.EinsumDense(
           'abc,cd->abd',
           output_shape=[None, self.intra_bottleneck_size],
           bias_axes='d',
@@ -268,7 +269,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
                                                    layer_norm]
 
     # add attention layer
-    attention_layer = tf_keras.layers.MultiHeadAttention(
+    attention_layer = keras.layers.MultiHeadAttention(
         num_heads=self.num_attention_heads,
         key_dim=attention_head_size,
         value_dim=attention_head_size,
@@ -286,7 +287,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
     for ffn_layer_idx in range(self.num_feedforward_networks):
       layer_prefix = f'ffn_layer_{ffn_layer_idx}'
       layer_name = layer_prefix + '/intermediate_dense'
-      intermediate_layer = tf_keras.layers.EinsumDense(
+      intermediate_layer = keras.layers.EinsumDense(
           'abc,cd->abd',
           activation=self.intermediate_act_fn,
           output_shape=[None, self.intermediate_size],
@@ -294,7 +295,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
           kernel_initializer=tf_utils.clone_initializer(self.initializer),
           name=layer_name)
       layer_name = layer_prefix + '/output_dense'
-      output_layer = tf_keras.layers.EinsumDense(
+      output_layer = keras.layers.EinsumDense(
           'abc,cd->abd',
           output_shape=[None, self.intra_bottleneck_size],
           bias_axes='d',
@@ -308,14 +309,14 @@ class MobileBertTransformer(tf_keras.layers.Layer):
                                        layer_norm])
 
     # add output bottleneck
-    bottleneck = tf_keras.layers.EinsumDense(
+    bottleneck = keras.layers.EinsumDense(
         'abc,cd->abd',
         output_shape=[None, self.hidden_size],
         activation=None,
         bias_axes='d',
         kernel_initializer=tf_utils.clone_initializer(self.initializer),
         name='bottleneck_output/dense')
-    dropout_layer = tf_keras.layers.Dropout(
+    dropout_layer = keras.layers.Dropout(
         self.hidden_dropout_prob,
         name='bottleneck_output/dropout')
     layer_norm = _get_norm_layer(self.normalization_type,
@@ -337,7 +338,7 @@ class MobileBertTransformer(tf_keras.layers.Layer):
         'key_query_shared_bottleneck': self.key_query_shared_bottleneck,
         'num_feedforward_networks': self.num_feedforward_networks,
         'normalization_type': self.normalization_type,
-        'initializer': tf_keras.initializers.serialize(self.initializer),
+        'initializer': keras.initializers.serialize(self.initializer),
     }
     base_config = super(MobileBertTransformer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -431,8 +432,8 @@ class MobileBertTransformer(tf_keras.layers.Layer):
       return layer_output
 
 
-@tf_keras.utils.register_keras_serializable(package='Text')
-class MobileBertMaskedLM(tf_keras.layers.Layer):
+@keras.utils.register_keras_serializable(package='Text')
+class MobileBertMaskedLM(keras.layers.Layer):
   """Masked language model network head for BERT modeling.
 
   This layer implements a masked language model based on the provided
@@ -466,7 +467,7 @@ class MobileBertMaskedLM(tf_keras.layers.Layer):
     super().__init__(**kwargs)
     self.embedding_table = embedding_table
     self.activation = activation
-    self.initializer = tf_keras.initializers.get(initializer)
+    self.initializer = keras.initializers.get(initializer)
 
     if output not in ('predictions', 'logits'):
       raise ValueError(
@@ -478,7 +479,7 @@ class MobileBertMaskedLM(tf_keras.layers.Layer):
   def build(self, input_shape):
     self._vocab_size, embedding_width = self.embedding_table.shape
     hidden_size = input_shape[-1]
-    self.dense = tf_keras.layers.Dense(
+    self.dense = keras.layers.Dense(
         hidden_size,
         activation=self.activation,
         kernel_initializer=tf_utils.clone_initializer(self.initializer),
@@ -504,7 +505,7 @@ class MobileBertMaskedLM(tf_keras.layers.Layer):
           'hidden size %d cannot be smaller than embedding width %d.' %
           (hidden_size, embedding_width))
 
-    self.layer_norm = tf_keras.layers.LayerNormalization(
+    self.layer_norm = keras.layers.LayerNormalization(
         axis=-1, epsilon=1e-12, name='transform/LayerNorm')
     self.bias = self.add_weight(
         'output_bias/bias',

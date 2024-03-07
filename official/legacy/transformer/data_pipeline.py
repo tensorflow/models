@@ -50,7 +50,8 @@ Two things to note in the pipeline:
 import os
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.utils.misc import model_helpers
 

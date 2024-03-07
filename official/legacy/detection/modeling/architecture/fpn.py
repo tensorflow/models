@@ -26,7 +26,8 @@ from __future__ import print_function
 
 import functools
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.legacy.detection.modeling.architecture import nn_ops
 from official.legacy.detection.ops import spatial_transform_ops
@@ -62,9 +63,9 @@ class Fpn(object):
     self._fpn_feat_dims = fpn_feat_dims
     if use_separable_conv:
       self._conv2d_op = functools.partial(
-          tf_keras.layers.SeparableConv2D, depth_multiplier=1)
+          keras.layers.SeparableConv2D, depth_multiplier=1)
     else:
-      self._conv2d_op = tf_keras.layers.Conv2D
+      self._conv2d_op = keras.layers.Conv2D
     if activation == 'relu':
       self._activation_op = tf.nn.relu
     elif activation == 'swish':

@@ -22,16 +22,17 @@ Annotation. arXiv:1606.06650.
 from typing import Any, Mapping, Sequence
 
 # Import libraries
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from official.modeling import hyperparams
 from official.projects.volumetric_models.modeling import nn_blocks_3d
 from official.vision.modeling.backbones import factory
 
-layers = tf_keras.layers
+layers = keras.layers
 
 
-@tf_keras.utils.register_keras_serializable(package='Vision')
-class UNet3D(tf_keras.Model):
+@keras.utils.register_keras_serializable(package='Vision')
+class UNet3D(keras.Model):
   """Class to build 3D UNet backbone."""
 
   def __init__(
@@ -41,7 +42,7 @@ class UNet3D(tf_keras.Model):
       pool_size: Sequence[int] = (2, 2, 2),
       kernel_size: Sequence[int] = (3, 3, 3),
       base_filters: int = 32,
-      kernel_regularizer: tf_keras.regularizers.Regularizer = None,
+      kernel_regularizer: keras.regularizers.Regularizer = None,
       activation: str = 'relu',
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
@@ -64,7 +65,7 @@ class UNet3D(tf_keras.Model):
         convolution network will have. Following layers will contain a multiple
         of this number. Lowering this number will likely reduce the amount of
         memory required to train the model.
-      kernel_regularizer: A tf_keras.regularizers.Regularizer object for Conv2D.
+      kernel_regularizer: A keras.regularizers.Regularizer object for Conv2D.
         Default to None.
       activation: The name of the activation function.
       norm_momentum: The normalization momentum for the moving average.
@@ -92,7 +93,7 @@ class UNet3D(tf_keras.Model):
     self._use_batch_normalization = use_batch_normalization
 
     # Build 3D UNet.
-    inputs = tf_keras.Input(
+    inputs = keras.Input(
         shape=input_specs.shape[1:], dtype=input_specs.dtype)
     x = inputs
     endpoints = {}
@@ -117,7 +118,7 @@ class UNet3D(tf_keras.Model):
             pool_size=pool_size,
             strides=(2, 2, 2),
             padding='valid',
-            data_format=tf_keras.backend.image_data_format())(
+            data_format=keras.backend.image_data_format())(
                 x2)
       else:
         x = x2
@@ -153,10 +154,10 @@ class UNet3D(tf_keras.Model):
 
 @factory.register_backbone_builder('unet_3d')
 def build_unet3d(
-    input_specs: tf_keras.layers.InputSpec,
+    input_specs: keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: keras.regularizers.Regularizer = None) -> keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds 3D UNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

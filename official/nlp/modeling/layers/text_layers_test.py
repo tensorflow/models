@@ -18,7 +18,8 @@ import os
 import tempfile
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 from tensorflow import estimator as tf_estimator
 
 from sentencepiece import SentencePieceTrainer
@@ -103,7 +104,7 @@ class BertTokenizerTest(tf.test.TestCase):
       with tf.init_scope():
         self.assertFalse(tf.executing_eagerly())
       # Build a preprocessing Model.
-      sentences = tf_keras.layers.Input(shape=[], dtype=tf.string)
+      sentences = keras.layers.Input(shape=[], dtype=tf.string)
       bert_tokenizer = text_layers.BertTokenizer(
           vocab_file=vocab_file, lower_case=True)
       special_tokens_dict = bert_tokenizer.get_special_tokens_dict()
@@ -112,7 +113,7 @@ class BertTokenizerTest(tf.test.TestCase):
       tokens = bert_tokenizer(sentences)
       packed_inputs = text_layers.BertPackInputs(
           4, special_tokens_dict=special_tokens_dict)(tokens)
-      preprocessing = tf_keras.Model(sentences, packed_inputs)
+      preprocessing = keras.Model(sentences, packed_inputs)
       # Map the dataset.
       ds = tf.data.Dataset.from_tensors(
           (tf.constant(["abc", "DEF"]), tf.constant([0, 1])))
@@ -214,7 +215,7 @@ class SentencepieceTokenizerTest(tf.test.TestCase):
       with tf.init_scope():
         self.assertFalse(tf.executing_eagerly())
       # Build a preprocessing Model.
-      sentences = tf_keras.layers.Input(shape=[], dtype=tf.string)
+      sentences = keras.layers.Input(shape=[], dtype=tf.string)
       sentencepiece_tokenizer = text_layers.SentencepieceTokenizer(
           model_file_path=self._spm_path, lower_case=True, nbest_size=0)
       special_tokens_dict = sentencepiece_tokenizer.get_special_tokens_dict()
@@ -223,7 +224,7 @@ class SentencepieceTokenizerTest(tf.test.TestCase):
       tokens = sentencepiece_tokenizer(sentences)
       packed_inputs = text_layers.BertPackInputs(
           4, special_tokens_dict=special_tokens_dict)(tokens)
-      preprocessing = tf_keras.Model(sentences, packed_inputs)
+      preprocessing = keras.Model(sentences, packed_inputs)
       # Map the dataset.
       ds = tf.data.Dataset.from_tensors(
           (tf.constant(["abc", "DEF"]), tf.constant([0, 1])))
@@ -294,9 +295,9 @@ class SentencepieceTokenizerTest(tf.test.TestCase):
   def test_saving(self):
     sentencepiece_tokenizer = text_layers.SentencepieceTokenizer(
         model_file_path=self._spm_path, lower_case=True, nbest_size=0)
-    inputs = tf_keras.layers.Input([], dtype=tf.string)
+    inputs = keras.layers.Input([], dtype=tf.string)
     outputs = sentencepiece_tokenizer(inputs)
-    model = tf_keras.Model(inputs, outputs)
+    model = keras.Model(inputs, outputs)
     export_path = tempfile.mkdtemp(dir=self.get_temp_dir())
     model.save(export_path, signatures={})
 
@@ -520,7 +521,7 @@ class FastWordPieceBertTokenizerTest(tf.test.TestCase):
       with tf.init_scope():
         self.assertFalse(tf.executing_eagerly())
       # Build a preprocessing Model.
-      sentences = tf_keras.layers.Input(shape=[], dtype=tf.string)
+      sentences = keras.layers.Input(shape=[], dtype=tf.string)
       bert_tokenizer = text_layers.FastWordpieceBertTokenizer(
           vocab_file=vocab_file, lower_case=True)
       special_tokens_dict = bert_tokenizer.get_special_tokens_dict()
@@ -529,7 +530,7 @@ class FastWordPieceBertTokenizerTest(tf.test.TestCase):
       tokens = bert_tokenizer(sentences)
       packed_inputs = text_layers.BertPackInputs(
           4, special_tokens_dict=special_tokens_dict)(tokens)
-      preprocessing = tf_keras.Model(sentences, packed_inputs)
+      preprocessing = keras.Model(sentences, packed_inputs)
       # Map the dataset.
       ds = tf.data.Dataset.from_tensors(
           (tf.constant(["abc", "DEF"]), tf.constant([0, 1])))

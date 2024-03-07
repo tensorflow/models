@@ -19,7 +19,8 @@ from typing import List, Mapping, Optional, Union
 # Import libraries
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.vision.modeling import maskrcnn_model
 from official.vision.ops import box_ops
@@ -36,19 +37,19 @@ class DeepMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
   """The Mask R-CNN model."""
 
   def __init__(self,
-               backbone: tf_keras.Model,
-               decoder: tf_keras.Model,
-               rpn_head: tf_keras.layers.Layer,
-               detection_head: Union[tf_keras.layers.Layer,
-                                     List[tf_keras.layers.Layer]],
-               roi_generator: tf_keras.layers.Layer,
-               roi_sampler: Union[tf_keras.layers.Layer,
-                                  List[tf_keras.layers.Layer]],
-               roi_aligner: tf_keras.layers.Layer,
-               detection_generator: tf_keras.layers.Layer,
-               mask_head: Optional[tf_keras.layers.Layer] = None,
-               mask_sampler: Optional[tf_keras.layers.Layer] = None,
-               mask_roi_aligner: Optional[tf_keras.layers.Layer] = None,
+               backbone: keras.Model,
+               decoder: keras.Model,
+               rpn_head: keras.layers.Layer,
+               detection_head: Union[keras.layers.Layer,
+                                     List[keras.layers.Layer]],
+               roi_generator: keras.layers.Layer,
+               roi_sampler: Union[keras.layers.Layer,
+                                  List[keras.layers.Layer]],
+               roi_aligner: keras.layers.Layer,
+               detection_generator: keras.layers.Layer,
+               mask_head: Optional[keras.layers.Layer] = None,
+               mask_sampler: Optional[keras.layers.Layer] = None,
+               mask_roi_aligner: Optional[keras.layers.Layer] = None,
                class_agnostic_bbox_pred: bool = False,
                cascade_class_ensemble: bool = False,
                min_level: Optional[int] = None,
@@ -62,8 +63,8 @@ class DeepMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
     """Initializes the Mask R-CNN model.
 
     Args:
-      backbone: `tf_keras.Model`, the backbone network.
-      decoder: `tf_keras.Model`, the decoder network.
+      backbone: `keras.Model`, the backbone network.
+      decoder: `keras.Model`, the decoder network.
       rpn_head: the RPN head.
       detection_head: the detection head or a list of heads.
       roi_generator: the ROI generator.

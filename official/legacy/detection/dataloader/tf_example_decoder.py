@@ -18,7 +18,8 @@
 A decoder to decode string tensors containing serialized tensorflow.Example
 protos for object detection.
 """
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 class TfExampleDecoder(object):

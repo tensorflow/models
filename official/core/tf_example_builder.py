@@ -20,7 +20,8 @@ from __future__ import annotations
 from typing import Mapping, Sequence, Union
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 BytesValueType = Union[bytes, Sequence[bytes], str, Sequence[str]]
 

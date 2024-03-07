@@ -15,7 +15,8 @@
 """Keras-based relative attention layers."""
 import math
 import string
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 _CHR_IDX = string.ascii_lowercase
 
@@ -69,12 +70,12 @@ def _rel_shift(x, klen=-1):
   return x
 
 
-@tf_keras.utils.register_keras_serializable(package="Text")
-class MultiHeadRelativeAttention(tf_keras.layers.MultiHeadAttention):
+@keras.utils.register_keras_serializable(package="Text")
+class MultiHeadRelativeAttention(keras.layers.MultiHeadAttention):
   """A multi-head attention layer with relative attention + position encoding.
 
   This layer shares the same input/output projections as the common
-  `tf_keras.layers.MultiHeadAttention` layer.
+  `keras.layers.MultiHeadAttention` layer.
 
   When it calculates attention logits, position encoding is projected to form
   relative keys. The logits are composed by shifted relative logits and content
@@ -144,7 +145,7 @@ class MultiHeadRelativeAttention(tf_keras.layers.MultiHeadAttention):
     with tf.init_scope():
       einsum_equation, _, output_rank = _build_proj_equation(
           key_shape.rank - 1, bound_dims=1, output_dims=2)
-      self._encoding_dense = tf_keras.layers.EinsumDense(
+      self._encoding_dense = keras.layers.EinsumDense(
           einsum_equation,
           output_shape=_get_output_shape(output_rank - 1,
                                          [self._num_heads, self._key_dim]),
@@ -319,7 +320,7 @@ class MultiHeadRelativeAttention(tf_keras.layers.MultiHeadAttention):
     return attention_output
 
 
-@tf_keras.utils.register_keras_serializable(package="Text")
+@keras.utils.register_keras_serializable(package="Text")
 class TwoStreamRelativeAttention(MultiHeadRelativeAttention):
   """Two-stream relative self-attention for XLNet.
 
@@ -333,7 +334,7 @@ class TwoStreamRelativeAttention(MultiHeadRelativeAttention):
   but not the content.
 
   This layer shares the same build signature as
-  `tf_keras.layers.MultiHeadAttention` but has different input/output
+  `keras.layers.MultiHeadAttention` but has different input/output
   projections.
 
   **Note: This layer is currently experimental.

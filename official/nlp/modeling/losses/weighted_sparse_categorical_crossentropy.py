@@ -14,7 +14,8 @@
 
 """Weighted sparse categorical cross-entropy losses."""
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 def _adjust_labels(labels, predictions):
@@ -61,7 +62,7 @@ def loss(labels, predictions, weights=None, from_logits=False):
   labels, predictions = _adjust_labels(labels, predictions)
   _validate_rank(labels, predictions, weights)
 
-  example_losses = tf_keras.losses.sparse_categorical_crossentropy(
+  example_losses = keras.losses.sparse_categorical_crossentropy(
       labels, predictions, from_logits=from_logits)
 
   if weights is None:

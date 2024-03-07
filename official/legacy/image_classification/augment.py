@@ -25,7 +25,8 @@ from __future__ import print_function
 import math
 from typing import Any, Dict, List, Optional, Text, Tuple
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 
 # This signifies the max integer that the controller RNN could predict for the

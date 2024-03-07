@@ -23,12 +23,13 @@
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.nlp.modeling.layers import spectral_normalization
 
-DenseLayer = tf_keras.layers.Dense(10)
-Conv2DLayer = tf_keras.layers.Conv2D(filters=64, kernel_size=3, padding='valid')
+DenseLayer = keras.layers.Dense(10)
+Conv2DLayer = keras.layers.Conv2D(filters=64, kernel_size=3, padding='valid')
 
 
 def _compute_spectral_norm(weight):

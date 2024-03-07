@@ -17,14 +17,15 @@
 # Import libraries
 
 from absl import logging
-import tensorflow as tf, tf_keras
+import tensorflow as tf 
+import keras
 
 from official.modeling import hyperparams
 from official.projects.edgetpu.vision.modeling.mobilenet_edgetpu_v1_model import MobilenetEdgeTPU
 from official.projects.edgetpu.vision.modeling.mobilenet_edgetpu_v2_model import MobilenetEdgeTPUV2
 from official.vision.modeling.backbones import factory
 
-layers = tf_keras.layers
+layers = keras.layers
 
 # MobileNet-EdgeTPU-V2 configs.
 MOBILENET_EDGETPU_V2_CONFIGS = frozenset([
@@ -48,7 +49,7 @@ MOBILENET_EDGETPU_CONFIGS = frozenset([
 ])
 
 
-def freeze_large_filters(model: tf_keras.Model, threshold: int):
+def freeze_large_filters(model: keras.Model, threshold: int):
   """Freezes layer with large number of filters."""
   for layer in model.layers:
     if isinstance(layer.output_shape, tuple):
@@ -59,9 +60,9 @@ def freeze_large_filters(model: tf_keras.Model, threshold: int):
 
 
 @factory.register_backbone_builder('mobilenet_edgetpu')
-def build_mobilenet_edgetpu(input_specs: tf_keras.layers.InputSpec,
+def build_mobilenet_edgetpu(input_specs: keras.layers.InputSpec,
                             backbone_config: hyperparams.Config,
-                            **unused_kwargs) -> tf_keras.Model:
+                            **unused_kwargs) -> keras.Model:
   """Builds MobileNetEdgeTpu backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
