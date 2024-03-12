@@ -16,6 +16,7 @@
 
 import math
 from typing import Optional, Sequence, Tuple, Union
+
 from six.moves import range
 import tensorflow as tf, tf_keras
 
@@ -64,8 +65,9 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
     padding_shape.append(tf.shape(input_tensor)[i])
 
   # Pads input tensor to the fixed first dimension.
-  paddings = tf.cast(constant_values * tf.ones(padding_shape),
-                     input_tensor.dtype)
+  paddings = tf.cast(
+      constant_values * tf.ones(padding_shape), input_tensor.dtype
+  )
   padded_tensor = tf.concat([input_tensor, paddings], axis=0)
   output_shape = input_shape
   output_shape[0] = size
@@ -73,9 +75,11 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
   return padded_tensor
 
 
-def normalize_image(image: tf.Tensor,
-                    offset: Sequence[float] = MEAN_NORM,
-                    scale: Sequence[float] = STDDEV_NORM) -> tf.Tensor:
+def normalize_image(
+    image: tf.Tensor,
+    offset: Sequence[float] = MEAN_NORM,
+    scale: Sequence[float] = STDDEV_NORM,
+) -> tf.Tensor:
   """Normalizes the image to zero mean and unit variance.
 
   If the input image dtype is float, it is expected to either have values in
@@ -96,9 +100,11 @@ def normalize_image(image: tf.Tensor,
     return normalize_scaled_float_image(image, offset, scale)
 
 
-def normalize_scaled_float_image(image: tf.Tensor,
-                                 offset: Sequence[float] = MEAN_NORM,
-                                 scale: Sequence[float] = STDDEV_NORM):
+def normalize_scaled_float_image(
+    image: tf.Tensor,
+    offset: Sequence[float] = MEAN_NORM,
+    scale: Sequence[float] = STDDEV_NORM,
+):
   """Normalizes a scaled float image to zero mean and unit variance.
 
   It assumes the input image is float dtype with values in [0, 1) if offset is
@@ -142,24 +148,27 @@ def compute_padded_size(desired_size, stride):
       [height, width] of the padded output image size.
   """
   if isinstance(desired_size, list) or isinstance(desired_size, tuple):
-    padded_size = [int(math.ceil(d * 1.0 / stride) * stride)
-                   for d in desired_size]
+    padded_size = [
+        int(math.ceil(d * 1.0 / stride) * stride) for d in desired_size
+    ]
   else:
     padded_size = tf.cast(
-        tf.math.ceil(
-            tf.cast(desired_size, dtype=tf.float32) / stride) * stride,
-        tf.int32)
+        tf.math.ceil(tf.cast(desired_size, dtype=tf.float32) / stride) * stride,
+        tf.int32,
+    )
   return padded_size
 
 
-def resize_and_crop_image(image,
-                          desired_size,
-                          padded_size,
-                          aug_scale_min=1.0,
-                          aug_scale_max=1.0,
-                          seed=1,
-                          method=tf.image.ResizeMethod.BILINEAR,
-                          keep_aspect_ratio=True):
+def resize_and_crop_image(
+    image,
+    desired_size,
+    padded_size,
+    aug_scale_min=1.0,
+    aug_scale_max=1.0,
+    seed=1,
+    method=tf.image.ResizeMethod.BILINEAR,
+    keep_aspect_ratio=True,
+):
   """Resizes the input image to output size (RetinaNet style).
 
   Resize and pad images given the desired output size of the image and
@@ -210,14 +219,16 @@ def resize_and_crop_image(image,
 
     if random_jittering:
       random_scale = tf.random.uniform(
-          [], aug_scale_min, aug_scale_max, seed=seed)
+          [], aug_scale_min, aug_scale_max, seed=seed
+      )
       scaled_size = tf.round(random_scale * tf.cast(desired_size, tf.float32))
     else:
       scaled_size = tf.cast(desired_size, tf.float32)
 
     if keep_aspect_ratio:
       scale = tf.minimum(
-          scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
+          scaled_size[0] / image_size[0], scaled_size[1] / image_size[1]
+      )
       scaled_size = tf.round(image_size * scale)
 
     # Computes 2D image_scale.
@@ -228,41 +239,56 @@ def resize_and_crop_image(image,
     if random_jittering:
       max_offset = scaled_size - tf.cast(desired_size, tf.float32)
       max_offset = tf.where(
-          tf.less(max_offset, 0), tf.zeros_like(max_offset), max_offset)
-      offset = max_offset * tf.random.uniform([2,], 0, 1, seed=seed)
+          tf.less(max_offset, 0), tf.zeros_like(max_offset), max_offset
+      )
+      offset = max_offset * tf.random.uniform(
+          [
+              2,
+          ],
+          0,
+          1,
+          seed=seed,
+      )
       offset = tf.cast(offset, tf.int32)
     else:
       offset = tf.zeros((2,), tf.int32)
 
     scaled_image = tf.image.resize(
-        image, tf.cast(scaled_size, tf.int32), method=method)
+        image, tf.cast(scaled_size, tf.int32), method=method
+    )
 
     if random_jittering:
       scaled_image = scaled_image[
-          offset[0]:offset[0] + desired_size[0],
-          offset[1]:offset[1] + desired_size[1], :]
+          offset[0] : offset[0] + desired_size[0],
+          offset[1] : offset[1] + desired_size[1],
+          :,
+      ]
 
     output_image = scaled_image
     if padded_size is not None:
       output_image = tf.image.pad_to_bounding_box(
-          scaled_image, 0, 0, padded_size[0], padded_size[1])
+          scaled_image, 0, 0, padded_size[0], padded_size[1]
+      )
 
     image_info = tf.stack([
         image_size,
         tf.cast(desired_size, dtype=tf.float32),
         image_scale,
-        tf.cast(offset, tf.float32)])
+        tf.cast(offset, tf.float32),
+    ])
     return output_image, image_info
 
 
-def resize_and_crop_image_v2(image,
-                             short_side,
-                             long_side,
-                             padded_size,
-                             aug_scale_min=1.0,
-                             aug_scale_max=1.0,
-                             seed=1,
-                             method=tf.image.ResizeMethod.BILINEAR):
+def resize_and_crop_image_v2(
+    image,
+    short_side,
+    long_side,
+    padded_size,
+    aug_scale_min=1.0,
+    aug_scale_max=1.0,
+    seed=1,
+    method=tf.image.ResizeMethod.BILINEAR,
+):
   """Resizes the input image to output size (Faster R-CNN style).
 
   Resize and pad images given the specified short / long side length and the
@@ -306,17 +332,21 @@ def resize_and_crop_image_v2(image,
   with tf.name_scope('resize_and_crop_image_v2'):
     image_size = tf.cast(tf.shape(image)[0:2], tf.float32)
 
-    scale_using_short_side = (
-        short_side / tf.math.minimum(image_size[0], image_size[1]))
-    scale_using_long_side = (
-        long_side / tf.math.maximum(image_size[0], image_size[1]))
+    scale_using_short_side = short_side / tf.math.minimum(
+        image_size[0], image_size[1]
+    )
+    scale_using_long_side = long_side / tf.math.maximum(
+        image_size[0], image_size[1]
+    )
 
     scaled_size = tf.math.round(image_size * scale_using_short_side)
     scaled_size = tf.where(
         tf.math.greater(
-            tf.math.maximum(scaled_size[0], scaled_size[1]), long_side),
+            tf.math.maximum(scaled_size[0], scaled_size[1]), long_side
+        ),
         tf.math.round(image_size * scale_using_long_side),
-        scaled_size)
+        scaled_size,
+    )
     desired_size = scaled_size
 
     random_jittering = (
@@ -328,7 +358,8 @@ def resize_and_crop_image_v2(image,
 
     if random_jittering:
       random_scale = tf.random.uniform(
-          [], aug_scale_min, aug_scale_max, seed=seed)
+          [], aug_scale_min, aug_scale_max, seed=seed
+      )
       scaled_size = tf.math.round(random_scale * scaled_size)
 
     # Computes 2D image_scale.
@@ -339,28 +370,41 @@ def resize_and_crop_image_v2(image,
     if random_jittering:
       max_offset = scaled_size - desired_size
       max_offset = tf.where(
-          tf.math.less(max_offset, 0), tf.zeros_like(max_offset), max_offset)
-      offset = max_offset * tf.random.uniform([2,], 0, 1, seed=seed)
+          tf.math.less(max_offset, 0), tf.zeros_like(max_offset), max_offset
+      )
+      offset = max_offset * tf.random.uniform(
+          [
+              2,
+          ],
+          0,
+          1,
+          seed=seed,
+      )
       offset = tf.cast(offset, tf.int32)
     else:
       offset = tf.zeros((2,), tf.int32)
 
     scaled_image = tf.image.resize(
-        image, tf.cast(scaled_size, tf.int32), method=method)
+        image, tf.cast(scaled_size, tf.int32), method=method
+    )
 
     if random_jittering:
       scaled_image = scaled_image[
-          offset[0]:offset[0] + desired_size[0],
-          offset[1]:offset[1] + desired_size[1], :]
+          offset[0] : offset[0] + desired_size[0],
+          offset[1] : offset[1] + desired_size[1],
+          :,
+      ]
 
     output_image = tf.image.pad_to_bounding_box(
-        scaled_image, 0, 0, padded_size[0], padded_size[1])
+        scaled_image, 0, 0, padded_size[0], padded_size[1]
+    )
 
     image_info = tf.stack([
         image_size,
         tf.cast(desired_size, dtype=tf.float32),
         image_scale,
-        tf.cast(offset, tf.float32)])
+        tf.cast(offset, tf.float32),
+    ])
     return output_image, image_info
 
 
@@ -368,13 +412,14 @@ def resize_image(
     image: tf.Tensor,
     size: Union[Tuple[int, int], int],
     max_size: Optional[int] = None,
-    method: tf.image.ResizeMethod = tf.image.ResizeMethod.BILINEAR):
+    method: tf.image.ResizeMethod = tf.image.ResizeMethod.BILINEAR,
+):
   """Resize image with size and max_size.
 
   Args:
     image: the image to be resized.
-    size: if list to tuple, resize to it. If scalar, we keep the same
-      aspect ratio and resize the short side to the value.
+    size: if list to tuple, resize to it. If scalar, we keep the same aspect
+      ratio and resize the short side to the value.
     max_size: only used when size is a scalar. When the larger side is larger
       than max_size after resized with size we used max_size to keep the aspect
       ratio instead.
@@ -400,7 +445,8 @@ def resize_image(
       if max_original_size / min_original_size * size > max_size:
         size = tf.cast(
             tf.math.floor(max_size * min_original_size / max_original_size),
-            dtype=tf.int32)
+            dtype=tf.int32,
+        )
       else:
         size = tf.cast(size, tf.int32)
 
@@ -412,15 +458,23 @@ def resize_image(
     if w < h:
       ow = size
       oh = tf.cast(
-          (tf.cast(size, dtype=tf.float32) * tf.cast(h, dtype=tf.float32) /
-           tf.cast(w, dtype=tf.float32)),
-          dtype=tf.int32)
+          (
+              tf.cast(size, dtype=tf.float32)
+              * tf.cast(h, dtype=tf.float32)
+              / tf.cast(w, dtype=tf.float32)
+          ),
+          dtype=tf.int32,
+      )
     else:
       oh = size
       ow = tf.cast(
-          (tf.cast(size, dtype=tf.float32) * tf.cast(w, dtype=tf.float32) /
-           tf.cast(h, dtype=tf.float32)),
-          dtype=tf.int32)
+          (
+              tf.cast(size, dtype=tf.float32)
+              * tf.cast(w, dtype=tf.float32)
+              / tf.cast(h, dtype=tf.float32)
+          ),
+          dtype=tf.int32,
+      )
 
     return tf.stack([oh, ow])
 
@@ -433,19 +487,21 @@ def resize_image(
   orignal_size = tf.shape(image)[0:2]
   size = get_size(orignal_size, size, max_size)
   rescaled_image = tf.image.resize(
-      image, tf.cast(size, tf.int32), method=method)
+      image, tf.cast(size, tf.int32), method=method
+  )
   image_scale = size / orignal_size
   image_info = tf.stack([
       tf.cast(orignal_size, dtype=tf.float32),
       tf.cast(size, dtype=tf.float32),
       tf.cast(image_scale, tf.float32),
-      tf.constant([0.0, 0.0], dtype=tf.float32)
+      tf.constant([0.0, 0.0], dtype=tf.float32),
   ])
   return rescaled_image, image_info
 
 
 def center_crop_image(
-    image, center_crop_fraction: float = CENTER_CROP_FRACTION):
+    image, center_crop_fraction: float = CENTER_CROP_FRACTION
+):
   """Center crop a square shape slice from the input image.
 
   It crops a square shape slice from the image. The side of the actual crop
@@ -465,13 +521,16 @@ def center_crop_image(
   """
   with tf.name_scope('center_crop_image'):
     image_size = tf.cast(tf.shape(image)[:2], dtype=tf.float32)
-    crop_size = (
-        center_crop_fraction * tf.math.minimum(image_size[0], image_size[1]))
+    crop_size = center_crop_fraction * tf.math.minimum(
+        image_size[0], image_size[1]
+    )
     crop_offset = tf.cast((image_size - crop_size) / 2.0, dtype=tf.int32)
     crop_size = tf.cast(crop_size, dtype=tf.int32)
     cropped_image = image[
-        crop_offset[0]:crop_offset[0] + crop_size,
-        crop_offset[1]:crop_offset[1] + crop_size, :]
+        crop_offset[0] : crop_offset[0] + crop_size,
+        crop_offset[1] : crop_offset[1] + crop_size,
+        :,
+    ]
     return cropped_image
 
 
@@ -508,25 +567,29 @@ def center_crop_image_v2(
     crop_offset = tf.cast((image_shape - crop_size) / 2.0, dtype=tf.int32)
     crop_size = tf.cast(crop_size, dtype=tf.int32)
     crop_window = tf.stack(
-        [crop_offset[0], crop_offset[1], crop_size, crop_size])
+        [crop_offset[0], crop_offset[1], crop_size, crop_size]
+    )
     cropped_image = tf.image.decode_and_crop_jpeg(
-        image_bytes, crop_window, channels=3)
+        image_bytes, crop_window, channels=3
+    )
     return cropped_image
 
 
-def random_crop_image(image,
-                      aspect_ratio_range=(3. / 4., 4. / 3.),
-                      area_range=(0.08, 1.0),
-                      max_attempts=10,
-                      seed=1):
+def random_crop_image(
+    image,
+    aspect_ratio_range=(3.0 / 4.0, 4.0 / 3.0),
+    area_range=(0.08, 1.0),
+    max_attempts=10,
+    seed=1,
+):
   """Randomly crop an arbitrary shaped slice from the input image.
 
   Args:
     image: a Tensor of shape [height, width, 3] representing the input image.
     aspect_ratio_range: a list of floats. The cropped area of the image must
       have an aspect ratio = width / height within this range.
-    area_range: a list of floats. The cropped reas of the image must contain
-      a fraction of the input image within this range.
+    area_range: a list of floats. The cropped reas of the image must contain a
+      fraction of the input image within this range.
     max_attempts: the number of attempts at generating a cropped region of the
       image of the specified constraints. After max_attempts failures, return
       the entire image.
@@ -544,17 +607,20 @@ def random_crop_image(image,
         min_object_covered=area_range[0],
         aspect_ratio_range=aspect_ratio_range,
         area_range=area_range,
-        max_attempts=max_attempts)
+        max_attempts=max_attempts,
+    )
     cropped_image = tf.slice(image, crop_offset, crop_size)
     return cropped_image
 
 
-def random_crop_image_v2(image_bytes,
-                         image_shape,
-                         aspect_ratio_range=(3. / 4., 4. / 3.),
-                         area_range=(0.08, 1.0),
-                         max_attempts=10,
-                         seed=1):
+def random_crop_image_v2(
+    image_bytes,
+    image_shape,
+    aspect_ratio_range=(3.0 / 4.0, 4.0 / 3.0),
+    area_range=(0.08, 1.0),
+    max_attempts=10,
+    seed=1,
+):
   """Randomly crop an arbitrary shaped slice from the input image.
 
   This is a faster version of `random_crop_image` which takes the original
@@ -566,8 +632,8 @@ def random_crop_image_v2(image_bytes,
     image_shape: a Tensor specifying the shape of the raw image.
     aspect_ratio_range: a list of floats. The cropped area of the image must
       have an aspect ratio = width / height within this range.
-    area_range: a list of floats. The cropped reas of the image must contain
-      a fraction of the input image within this range.
+    area_range: a list of floats. The cropped reas of the image must contain a
+      fraction of the input image within this range.
     max_attempts: the number of attempts at generating a cropped region of the
       image of the specified constraints. After max_attempts failures, return
       the entire image.
@@ -585,19 +651,18 @@ def random_crop_image_v2(image_bytes,
         min_object_covered=area_range[0],
         aspect_ratio_range=aspect_ratio_range,
         area_range=area_range,
-        max_attempts=max_attempts)
+        max_attempts=max_attempts,
+    )
     offset_y, offset_x, _ = tf.unstack(crop_offset)
     crop_height, crop_width, _ = tf.unstack(crop_size)
     crop_window = tf.stack([offset_y, offset_x, crop_height, crop_width])
     cropped_image = tf.image.decode_and_crop_jpeg(
-        image_bytes, crop_window, channels=3)
+        image_bytes, crop_window, channels=3
+    )
     return cropped_image
 
 
-def resize_and_crop_boxes(boxes,
-                          image_scale,
-                          output_size,
-                          offset):
+def resize_and_crop_boxes(boxes, image_scale, output_size, offset):
   """Resizes boxes to output size with scale and offset.
 
   Args:
@@ -640,24 +705,31 @@ def resize_and_crop_masks(masks, image_scale, output_size, offset):
     mask_size = tf.cast(tf.shape(masks)[1:3], tf.float32)
     num_channels = tf.shape(masks)[3]
     # Pad masks to avoid empty mask annotations.
-    masks = tf.concat([
-        tf.zeros([1, mask_size[0], mask_size[1], num_channels],
-                 dtype=masks.dtype), masks
-    ],
-                      axis=0)
+    masks = tf.concat(
+        [
+            tf.zeros(
+                [1, mask_size[0], mask_size[1], num_channels], dtype=masks.dtype
+            ),
+            masks,
+        ],
+        axis=0,
+    )
 
     scaled_size = tf.cast(image_scale * mask_size, tf.int32)
     scaled_masks = tf.image.resize(
-        masks, scaled_size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        masks, scaled_size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR
+    )
     offset = tf.cast(offset, tf.int32)
     scaled_masks = scaled_masks[
         :,
-        offset[0]:offset[0] + output_size[0],
-        offset[1]:offset[1] + output_size[1],
-        :]
+        offset[0] : offset[0] + output_size[0],
+        offset[1] : offset[1] + output_size[1],
+        :,
+    ]
 
     output_masks = tf.image.pad_to_bounding_box(
-        scaled_masks, 0, 0, output_size[0], output_size[1])
+        scaled_masks, 0, 0, output_size[0], output_size[1]
+    )
     # Remove padding.
     output_masks = output_masks[1::]
     return output_masks
@@ -704,21 +776,20 @@ def random_horizontal_flip(
     do_flip = tf.less(tf.random.uniform([], seed=seed), prob)
 
     image = tf.cond(
-        do_flip,
-        lambda: horizontal_flip_image(image),
-        lambda: image)
+        do_flip, lambda: horizontal_flip_image(image), lambda: image
+    )
 
     if normalized_boxes is not None:
       normalized_boxes = tf.cond(
           do_flip,
           lambda: horizontal_flip_boxes(normalized_boxes),
-          lambda: normalized_boxes)
+          lambda: normalized_boxes,
+      )
 
     if masks is not None:
       masks = tf.cond(
-          do_flip,
-          lambda: horizontal_flip_masks(masks),
-          lambda: masks)
+          do_flip, lambda: horizontal_flip_masks(masks), lambda: masks
+      )
 
     return image, normalized_boxes, masks
 
@@ -728,9 +799,10 @@ def random_horizontal_flip_with_roi(
     boxes: Optional[tf.Tensor] = None,
     masks: Optional[tf.Tensor] = None,
     roi_boxes: Optional[tf.Tensor] = None,
-    seed: int = 1
-) -> Tuple[tf.Tensor, Optional[tf.Tensor], Optional[tf.Tensor],
-           Optional[tf.Tensor]]:
+    seed: int = 1,
+) -> Tuple[
+    tf.Tensor, Optional[tf.Tensor], Optional[tf.Tensor], Optional[tf.Tensor]
+]:
   """Randomly flips input image and bounding boxes horizontally.
 
   Extends preprocess_ops.random_horizontal_flip to also flip roi_boxes used
@@ -752,20 +824,24 @@ def random_horizontal_flip_with_roi(
   with tf.name_scope('random_horizontal_flip'):
     do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)
 
-    image = tf.cond(do_flip, lambda: horizontal_flip_image(image),
-                    lambda: image)
+    image = tf.cond(
+        do_flip, lambda: horizontal_flip_image(image), lambda: image
+    )
 
     if boxes is not None:
-      boxes = tf.cond(do_flip, lambda: horizontal_flip_boxes(boxes),
-                      lambda: boxes)
+      boxes = tf.cond(
+          do_flip, lambda: horizontal_flip_boxes(boxes), lambda: boxes
+      )
 
     if masks is not None:
-      masks = tf.cond(do_flip, lambda: horizontal_flip_masks(masks),
-                      lambda: masks)
+      masks = tf.cond(
+          do_flip, lambda: horizontal_flip_masks(masks), lambda: masks
+      )
 
     if roi_boxes is not None:
-      roi_boxes = tf.cond(do_flip, lambda: horizontal_flip_boxes(roi_boxes),
-                          lambda: roi_boxes)
+      roi_boxes = tf.cond(
+          do_flip, lambda: horizontal_flip_boxes(roi_boxes), lambda: roi_boxes
+      )
 
     return image, boxes, masks, roi_boxes
 
@@ -778,30 +854,33 @@ def random_vertical_flip(
     do_flip = tf.less(tf.random.uniform([], seed=seed), prob)
 
     image = tf.cond(
-        do_flip,
-        lambda: tf.image.flip_up_down(image),
-        lambda: image)
+        do_flip, lambda: tf.image.flip_up_down(image), lambda: image
+    )
 
     if normalized_boxes is not None:
       normalized_boxes = tf.cond(
           do_flip,
           lambda: vertical_flip_boxes(normalized_boxes),
-          lambda: normalized_boxes)
+          lambda: normalized_boxes,
+      )
 
     if masks is not None:
       masks = tf.cond(
           do_flip,
           lambda: tf.image.flip_up_down(masks[..., None])[..., 0],
-          lambda: masks)
+          lambda: masks,
+      )
 
     return image, normalized_boxes, masks
 
 
-def color_jitter(image: tf.Tensor,
-                 brightness: Optional[float] = 0.,
-                 contrast: Optional[float] = 0.,
-                 saturation: Optional[float] = 0.,
-                 seed: Optional[int] = None) -> tf.Tensor:
+def color_jitter(
+    image: tf.Tensor,
+    brightness: Optional[float] = 0.0,
+    contrast: Optional[float] = 0.0,
+    saturation: Optional[float] = 0.0,
+    seed: Optional[int] = None,
+) -> tf.Tensor:
   """Applies color jitter to an image, similarly to torchvision`s ColorJitter.
 
   Args:
@@ -823,9 +902,9 @@ def color_jitter(image: tf.Tensor,
   return image
 
 
-def random_brightness(image: tf.Tensor,
-                      brightness: float = 0.,
-                      seed: Optional[int] = None) -> tf.Tensor:
+def random_brightness(
+    image: tf.Tensor, brightness: float = 0.0, seed: Optional[int] = None
+) -> tf.Tensor:
   """Jitters brightness of an image.
 
   Args:
@@ -838,17 +917,15 @@ def random_brightness(image: tf.Tensor,
       tf.Tensor: The augmented `image` of type uint8.
   """
   assert brightness >= 0, '`brightness` must be positive'
-  brightness = tf.random.uniform([],
-                                 max(0, 1 - brightness),
-                                 1 + brightness,
-                                 seed=seed,
-                                 dtype=tf.float32)
+  brightness = tf.random.uniform(
+      [], max(0, 1 - brightness), 1 + brightness, seed=seed, dtype=tf.float32
+  )
   return augment.brightness(image, brightness)
 
 
-def random_contrast(image: tf.Tensor,
-                    contrast: float = 0.,
-                    seed: Optional[int] = None) -> tf.Tensor:
+def random_contrast(
+    image: tf.Tensor, contrast: float = 0.0, seed: Optional[int] = None
+) -> tf.Tensor:
   """Jitters contrast of an image, similarly to torchvision`s ColorJitter.
 
   Args:
@@ -860,17 +937,15 @@ def random_contrast(image: tf.Tensor,
       tf.Tensor: The augmented `image` of type uint8.
   """
   assert contrast >= 0, '`contrast` must be positive'
-  contrast = tf.random.uniform([],
-                               max(0, 1 - contrast),
-                               1 + contrast,
-                               seed=seed,
-                               dtype=tf.float32)
+  contrast = tf.random.uniform(
+      [], max(0, 1 - contrast), 1 + contrast, seed=seed, dtype=tf.float32
+  )
   return augment.contrast(image, contrast)
 
 
-def random_saturation(image: tf.Tensor,
-                      saturation: float = 0.,
-                      seed: Optional[int] = None) -> tf.Tensor:
+def random_saturation(
+    image: tf.Tensor, saturation: float = 0.0, seed: Optional[int] = None
+) -> tf.Tensor:
   """Jitters saturation of an image, similarly to torchvision`s ColorJitter.
 
   Args:
@@ -883,24 +958,29 @@ def random_saturation(image: tf.Tensor,
       tf.Tensor: The augmented `image` of type uint8.
   """
   assert saturation >= 0, '`saturation` must be positive'
-  saturation = tf.random.uniform([],
-                                 max(0, 1 - saturation),
-                                 1 + saturation,
-                                 seed=seed,
-                                 dtype=tf.float32)
+  saturation = tf.random.uniform(
+      [], max(0, 1 - saturation), 1 + saturation, seed=seed, dtype=tf.float32
+  )
   return _saturation(image, saturation)
 
 
-def _saturation(image: tf.Tensor,
-                saturation: Optional[float] = 0.) -> tf.Tensor:
+def _saturation(
+    image: tf.Tensor, saturation: Optional[float] = 0.0
+) -> tf.Tensor:
   return augment.blend(
-      tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1), image,
-      saturation)
+      tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1), image, saturation
+  )
 
 
-def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
-                                            aspect_ratio_range,
-                                            min_overlap_params, max_retry):
+def random_crop_image_with_boxes_and_labels(
+    img,
+    boxes,
+    labels,
+    min_scale,
+    aspect_ratio_range,
+    min_overlap_params,
+    max_retry,
+):
   """Crops a random slice from the input image.
 
   The function will correspondingly recompute the bounding boxes and filter out
@@ -946,8 +1026,13 @@ def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
 
   minval, maxval, step, offset = min_overlap_params
 
-  min_overlap = tf.math.floordiv(
-      tf.random.uniform([], minval=minval, maxval=maxval), step) * step - offset
+  min_overlap = (
+      tf.math.floordiv(
+          tf.random.uniform([], minval=minval, maxval=maxval), step
+      )
+      * step
+      - offset
+  )
 
   min_overlap = tf.clip_by_value(min_overlap, 0.0, 1.1)
 
@@ -961,9 +1046,11 @@ def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
     scale_h = tf.random.uniform([], min_scale, 1.0)
     scale_w = tf.random.uniform([], min_scale, 1.0)
     new_h = tf.cast(
-        scale_h * tf.cast(original_h, dtype=tf.float32), dtype=tf.int32)
+        scale_h * tf.cast(original_h, dtype=tf.float32), dtype=tf.int32
+    )
     new_w = tf.cast(
-        scale_w * tf.cast(original_w, dtype=tf.float32), dtype=tf.int32)
+        scale_w * tf.cast(original_w, dtype=tf.float32), dtype=tf.int32
+    )
 
     # Aspect ratio has to be in the prespecified range
     aspect_ratio = new_h / new_w
@@ -975,18 +1062,18 @@ def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
     top = tf.random.uniform([], 0, original_h - new_h, dtype=tf.int32)
     bottom = top + new_h
 
-    normalized_left = tf.cast(
-        left, dtype=tf.float32) / tf.cast(
-            original_w, dtype=tf.float32)
-    normalized_right = tf.cast(
-        right, dtype=tf.float32) / tf.cast(
-            original_w, dtype=tf.float32)
-    normalized_top = tf.cast(
-        top, dtype=tf.float32) / tf.cast(
-            original_h, dtype=tf.float32)
-    normalized_bottom = tf.cast(
-        bottom, dtype=tf.float32) / tf.cast(
-            original_h, dtype=tf.float32)
+    normalized_left = tf.cast(left, dtype=tf.float32) / tf.cast(
+        original_w, dtype=tf.float32
+    )
+    normalized_right = tf.cast(right, dtype=tf.float32) / tf.cast(
+        original_w, dtype=tf.float32
+    )
+    normalized_top = tf.cast(top, dtype=tf.float32) / tf.cast(
+        original_h, dtype=tf.float32
+    )
+    normalized_bottom = tf.cast(bottom, dtype=tf.float32) / tf.cast(
+        original_h, dtype=tf.float32
+    )
 
     cropped_box = tf.expand_dims(
         tf.stack([
@@ -995,10 +1082,11 @@ def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
             normalized_bottom,
             normalized_right,
         ]),
-        axis=0)
+        axis=0,
+    )
     iou = box_ops.bbox_overlap(
-        tf.expand_dims(cropped_box, axis=0),
-        tf.expand_dims(boxes, axis=0))  # (1, 1, n_ground_truth)
+        tf.expand_dims(cropped_box, axis=0), tf.expand_dims(boxes, axis=0)
+    )  # (1, 1, n_ground_truth)
     iou = tf.squeeze(iou, axis=[0, 1])
 
     # If not a single bounding box has a Jaccard overlap of greater than
@@ -1008,10 +1096,15 @@ def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
 
     centroids = box_ops.yxyx_to_cycxhw(boxes)
     mask = tf.math.logical_and(
-        tf.math.logical_and(centroids[:, 0] > normalized_top,
-                            centroids[:, 0] < normalized_bottom),
-        tf.math.logical_and(centroids[:, 1] > normalized_left,
-                            centroids[:, 1] < normalized_right))
+        tf.math.logical_and(
+            centroids[:, 0] > normalized_top,
+            centroids[:, 0] < normalized_bottom,
+        ),
+        tf.math.logical_and(
+            centroids[:, 1] > normalized_left,
+            centroids[:, 1] < normalized_right,
+        ),
+    )
     # If not a single bounding box has its center in the crop, try again.
     if tf.reduce_sum(tf.cast(mask, dtype=tf.int32)) > 0:
       indices = tf.squeeze(tf.where(mask), axis=1)
@@ -1019,15 +1112,22 @@ def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
       filtered_boxes = tf.gather(boxes, indices)
 
       boxes = tf.clip_by_value(
-          (filtered_boxes[..., :] * tf.cast(
-              tf.stack([original_h, original_w, original_h, original_w]),
-              dtype=tf.float32) -
-           tf.cast(tf.stack([top, left, top, left]), dtype=tf.float32)) /
-          tf.cast(tf.stack([new_h, new_w, new_h, new_w]), dtype=tf.float32),
-          0.0, 1.0)
+          (
+              filtered_boxes[..., :]
+              * tf.cast(
+                  tf.stack([original_h, original_w, original_h, original_w]),
+                  dtype=tf.float32,
+              )
+              - tf.cast(tf.stack([top, left, top, left]), dtype=tf.float32)
+          )
+          / tf.cast(tf.stack([new_h, new_w, new_h, new_w]), dtype=tf.float32),
+          0.0,
+          1.0,
+      )
 
-      img = tf.image.crop_to_bounding_box(img, top, left, bottom - top,
-                                          right - left)
+      img = tf.image.crop_to_bounding_box(
+          img, top, left, bottom - top, right - left
+      )
 
       labels = tf.gather(labels, indices)
       break
@@ -1035,14 +1135,16 @@ def random_crop_image_with_boxes_and_labels(img, boxes, labels, min_scale,
   return img, boxes, labels
 
 
-def random_crop(image,
-                boxes,
-                labels,
-                min_scale=0.3,
-                aspect_ratio_range=(0.5, 2.0),
-                min_overlap_params=(0.0, 1.4, 0.2, 0.1),
-                max_retry=50,
-                seed=None):
+def random_crop(
+    image,
+    boxes,
+    labels,
+    min_scale=0.3,
+    aspect_ratio_range=(0.5, 2.0),
+    min_overlap_params=(0.0, 1.4, 0.2, 0.1),
+    max_retry=50,
+    seed=None,
+):
   """Randomly crop the image and boxes, filtering labels.
 
   Args:
@@ -1069,11 +1171,15 @@ def random_crop(image,
   with tf.name_scope('random_crop'):
     do_crop = tf.greater(tf.random.uniform([], seed=seed), 0.5)
     if do_crop:
-      return random_crop_image_with_boxes_and_labels(image, boxes, labels,
-                                                     min_scale,
-                                                     aspect_ratio_range,
-                                                     min_overlap_params,
-                                                     max_retry)
+      return random_crop_image_with_boxes_and_labels(
+          image,
+          boxes,
+          labels,
+          min_scale,
+          aspect_ratio_range,
+          min_overlap_params,
+          max_retry,
+      )
     else:
       return image, boxes, labels
 
