@@ -33,12 +33,7 @@ class ClassificationModule(export_base.ExportModule):
         model_config=self.params.task.model,
         l2_regularizer=None)
 
-  def _build_inputs(self, image):
-    """Builds classification model inputs for serving."""
-    # Center crops and resizes image.
-    if isinstance(image, tf.RaggedTensor):
-      image = image.to_tensor()
-    image = tf.cast(image, dtype=tf.float32)
+  def _crop_and_resize(self, image):
     if self.params.task.train_data.aug_crop:
       image = preprocess_ops.center_crop_image(image)
 
@@ -47,6 +42,21 @@ class ClassificationModule(export_base.ExportModule):
 
     image = tf.reshape(
         image, [self._input_image_size[0], self._input_image_size[1], 3])
+
+    return image
+
+  def _build_inputs(self, image):
+    """Builds classification model inputs for serving."""
+    # Center crops and resizes image.
+    if isinstance(image, tf.RaggedTensor):
+      image = image.to_tensor()
+    image = tf.cast(image, dtype=tf.float32)
+
+    # For these input types, decode_image already performs cropping.
+    if not (
+        self._input_type in ['tf_example', 'image_bytes']
+        and len(self._input_image_size) == 2):
+      image = self._crop_and_resize(image)
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(
@@ -72,14 +82,12 @@ class ClassificationModule(export_base.ExportModule):
           encoded_image_bytes, channels=self._num_channels
       )
       image_tensor.set_shape((None, None, self._num_channels))
-      # Resize image to input_size to support varible image resolutions in a
-      # batch for tf_example and image_bytes input type.
-      image_tensor = tf.image.resize(
-          tf.cast(image_tensor, tf.float32),
-          self._input_image_size,
-          method=tf.image.ResizeMethod.BILINEAR,
-      )
+      # Crop the image inside the same loop as decoding an image
+      # if there could be several images of different sizes in the batch.
+      image_tensor = tf.cast(image_tensor, dtype=tf.float32)
+      image_tensor = self._crop_and_resize(image_tensor)
       image_tensor = tf.cast(image_tensor, tf.uint8)
+      return image_tensor
     else:
       # Convert raw bytes into a tensor and reshape it, if not 2D input.
       image_tensor = tf.io.decode_raw(encoded_image_bytes, out_type=tf.uint8)
