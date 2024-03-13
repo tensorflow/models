@@ -78,6 +78,11 @@ class DetectionModule(export_base.ExportModule):
 
   def _build_inputs(self, image):
     """Builds detection model inputs for serving."""
+
+    if isinstance(image, tf.RaggedTensor):
+      image = image.to_tensor()
+    image = tf.cast(image, dtype=tf.float32)
+
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(
         image, offset=preprocess_ops.MEAN_RGB, scale=preprocess_ops.STDDEV_RGB)
@@ -134,8 +139,6 @@ class DetectionModule(export_base.ExportModule):
     """
     model_params = self.params.task.model
     with tf.device('cpu:0'):
-      images = tf.cast(images, dtype=tf.float32)
-
       # Tensor Specs for map_fn outputs (images, anchor_boxes, and image_info).
       images_spec = tf.TensorSpec(shape=self._padded_size + [3],
                                   dtype=tf.float32)

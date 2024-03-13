@@ -13,6 +13,9 @@ terms and conditions made available by the third parties before using the data.
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Backbones](#backbones)
+- [Decoders](#decoders)
+- [Heads](#heads)
 - [Image Classification](#image-classification)
   * [ResNet models trained with vanilla settings](#resnet-models-trained-with-vanilla-settings)
   * [ResNet-RS models trained with various settings](#resnet-rs-models-trained-with-various-settings)
@@ -40,6 +43,40 @@ terms and conditions made available by the third parties before using the data.
 TF-Vision modeling library for computer vision provides a collection of
 baselines and checkpoints for image classification, object detection, and
 segmentation.
+
+## Backbones
+
+| Backbones        |
+| ---------------- |
+| [DilatedResNet](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/DilatedResNet)    |
+| [EfficientNet](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/EfficientNet)    |
+| [MobileDet](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/MobileDet)    |
+| [MobileNet](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/MobileNet)    |
+| [ResNet](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/ResNet)    |
+| [ResNet3D](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/ResNet3D)    |
+| [RevNet](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/RevNet)    |
+| [SpineNet](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/SpineNet)    |
+| [SpineNetMobile](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/SpineNetMobile)    |
+| [VisionTransformer](https://www.tensorflow.org/api_docs/python/tfm/vision/backbones/VisionTransformer)    |
+
+## Decoders
+
+| Decoders        |
+| --------------- |
+| [ASPP](https://www.tensorflow.org/api_docs/python/tfm/vision/decoders/ASPP)    |
+| [FPN](https://www.tensorflow.org/api_docs/python/tfm/vision/decoders/FPN)    |
+| [NASFPN](https://www.tensorflow.org/api_docs/python/tfm/vision/decoders/NASFPN)    |
+
+## Heads
+
+| Heads           |
+| --------------- |
+| [DetectionHead](https://www.tensorflow.org/api_docs/python/tfm/vision/heads/DetectionHead)    |
+| [MaskHead](https://www.tensorflow.org/api_docs/python/tfm/vision/heads/MaskHead)    |
+| [MaskScoring](https://www.tensorflow.org/api_docs/python/tfm/vision/heads/MaskScoring)    |
+| [RPNHead](https://www.tensorflow.org/api_docs/python/tfm/vision/heads/RPNHead)    |
+| [RetinaNetHead](https://www.tensorflow.org/api_docs/python/tfm/vision/heads/RetinaNetHead)    |
+| [SegmentationHead](https://www.tensorflow.org/api_docs/python/tfm/vision/heads/SegmentationHead)    |
 
 ## Image Classification
 

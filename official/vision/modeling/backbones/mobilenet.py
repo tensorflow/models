@@ -15,10 +15,13 @@
 """Contains definitions of MobileNet Networks."""
 
 import dataclasses
-from typing import Optional, Dict, Any, Tuple
+from typing import Any
 
 # Import libraries
+
+from absl import logging
 import tensorflow as tf, tf_keras
+
 from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.modeling.backbones import factory
@@ -27,8 +30,106 @@ from official.vision.modeling.layers import nn_layers
 
 layers = tf_keras.layers
 
-
 #  pylint: disable=pointless-string-statement
+
+
+@dataclasses.dataclass
+class BlockSpec(hyperparams.Config):
+  """A container class that specifies the block configuration for MobileNet.
+
+  Attributes:
+    block_fn: Block function name.
+    kernel_size: One side of a 2d kernel size (if relevant).
+    strides: One side of a 2d stride (if relevant).
+    filters: Number of output filters in a kernel (if relevant).
+    use_bias: If True, include a bias term in relevant blocks.
+    use_normalization: If True, include a normalization term in relevant blocks.
+    activation: Block activation function name.
+    expand_ratio: Factor to multiply incoming filter size by in
+      InvertBottlenecks and related blocks.
+    se_ratio: Filter multiplication factor for use in squeeze and excitation.
+    use_depthwise: If True, create an inverted bottleneck structure with 1x1
+      conv2ds between the filters and kxk depthwise convs across the spatial
+      extent. If False, create a fused inverted bottleneck structure with a kxk
+      conv2d followed by a 1x1 conv2d.
+    use_residual: If True, create a residual connection which adds the input
+      filters to the output filters of this block.
+    is_output: If True, add the output filters from this block to the model
+      endpoints.
+    middle_dw_downsample: True if the middle depthwise op should be the strided
+      operation instead of the first depthwise op in
+      UniversalInvertedBottleneckBlocks with strides > 1.
+    start_dw_kernel_size: One side of the 2d kernel size in the first depthwise
+      op in a UniversalInvertedBottleneckBlock.
+    middle_dw_kernel_size: One side of the 2d kernel size in the second
+      depthwise op in a UniversalInvertedBottleneckBlock.
+    end_dw_kernel_size: One side of the 2d kernel size in the second depthwise
+      op in a UniversalInvertedBottleneckBlock.
+    use_layer_scale: True if layer scale should be included in a
+      UniversalInvertedBottleneckBlock or a MultiHeadSelfAttentionBlock.
+    use_multi_query: True if Multi Query Attention should be used in a
+      MultiHeadSelfAttentionBlock.
+    use_downsampling: bool = False
+    downsampling_dw_kernel_size: int = 3
+    num_heads: Number of attention heads to use in a
+      MultiHeadSelfAttentionBlock.
+    key_dim: Size of the key dimension used in a MultiHeadSelfAttentionBlock.
+    value_dim: Size of the value dimension used in a
+      MultiHeadSelfAttentionBlock.
+    query_h_strides: The size of the vertical stride used to compute the query
+      when use_multi_query is True in a MultiHeadSelfAttentionBlock.
+    query_w_strides: The size of the horizontal stride used to compute the query
+      when use_multi_query is True in a MultiHeadSelfAttentionBlock.
+    kv_strides: One size of the 2d stride used to compute the key and value when
+      use_multi_query is True in a MultiHeadSelfAttentionBlock.
+  """
+
+  block_fn: str = 'convbn'
+  kernel_size: int = 3
+  strides: int = 1
+  filters: int = 32
+  use_bias: bool = False
+  use_normalization: bool = True
+  activation: str = 'relu6'
+  # Used for block type InvertedResConv.
+  expand_ratio: float | None = 6.0
+  # Used for block type InvertedResConv with SE.
+  se_ratio: float | None = None
+  use_depthwise: bool = True
+  use_residual: bool = True
+  is_output: bool = True
+
+  # Parameters for a UniversalInvertedBottleneckBlock block.
+  middle_dw_downsample: bool = True
+  start_dw_kernel_size: int = 0
+  middle_dw_kernel_size: int = 0
+  end_dw_kernel_size: int = 0
+
+  # layer scale currently only supports uib and mhsa.
+  use_layer_scale: bool = False
+
+  # Fields only relevant to mhsa blocks.
+  use_multi_query: bool = False
+  use_downsampling: bool = False
+  downsampling_dw_kernel_size: int = 3
+  num_heads: int = 8
+  key_dim: int = 64
+  value_dim: int = 64
+  query_h_strides: int = 1
+  query_w_strides: int = 1
+  kv_strides: int = 1
+
+
+def block_spec_field_list() -> list[str]:
+  """Returns the list of field names used in `BlockSpec`."""
+  return [field.name for field in dataclasses.fields(BlockSpec)]
+
+
+def block_spec_values_to_list(
+    block_specs: list[BlockSpec],
+) -> list[tuple[Any, ...]]:
+  """Creates a list field value tuples from a list of `BlockSpec`s."""
+  return [dataclasses.astuple(bs) for bs in block_specs]
 
 
 @tf_keras.utils.register_keras_serializable(package='Vision')
@@ -44,13 +145,14 @@ class Conv2DBNBlock(tf_keras.layers.Layer):
       use_explicit_padding: bool = False,
       activation: str = 'relu6',
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: tf_keras.regularizers.Regularizer | None = None,
+      bias_regularizer: tf_keras.regularizers.Regularizer | None = None,
       use_normalization: bool = True,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      **kwargs):
+      **kwargs,
+  ):
     """A convolution block with batch normalization.
 
     Args:
@@ -522,6 +624,435 @@ MNV3SmallReducedFilters = {
     ]
 }
 
+
+MNV4ConvSmall_BLOCK_SPECS = {
+    'spec_name': 'MobileNetV4ConvSmall',
+    'block_spec_schema': [
+        'block_fn',
+        'activation',
+        'kernel_size',
+        'start_dw_kernel_size',
+        'middle_dw_kernel_size',
+        'middle_dw_downsample',
+        'strides',
+        'filters',
+        'expand_ratio',
+        'is_output',
+    ],
+    'block_specs': [
+        # 112px after stride 2.
+        ('convbn', 'relu', 3, None, None, False, 2, 32, None, False),
+        # 56px.
+        ('convbn', 'relu', 3, None, None, False, 2, 32, None, False),
+        ('convbn', 'relu', 1, None, None, False, 1, 32, None, True),
+        # 28px.
+        ('convbn', 'relu', 3, None, None, False, 2, 96, None, False),
+        ('convbn', 'relu', 1, None, None, False, 1, 64, None, True),
+        # 14px.
+        ('uib', 'relu', None, 5, 5, True, 2, 96, 3.0, False),  # ExtraDW
+        ('uib', 'relu', None, 0, 3, True, 1, 96, 2.0, False),  # IB
+        ('uib', 'relu', None, 0, 3, True, 1, 96, 2.0, False),  # IB
+        ('uib', 'relu', None, 0, 3, True, 1, 96, 2.0, False),  # IB
+        ('uib', 'relu', None, 0, 3, True, 1, 96, 2.0, False),  # IB
+        ('uib', 'relu', None, 3, 0, True, 1, 96, 4.0, True),  # ConvNext
+        # 7px
+        ('uib', 'relu', None, 3, 3, True, 2, 128, 6.0, False),  # ExtraDW
+        ('uib', 'relu', None, 5, 5, True, 1, 128, 4.0, False),  # ExtraDW
+        ('uib', 'relu', None, 0, 5, True, 1, 128, 4.0, False),  # IB
+        ('uib', 'relu', None, 0, 5, True, 1, 128, 3.0, False),  # IB
+        ('uib', 'relu', None, 0, 3, True, 1, 128, 4.0, False),  # IB
+        ('uib', 'relu', None, 0, 3, True, 1, 128, 4.0, True),  # IB
+        ('convbn', 'relu', 1, None, None, False, 1, 960, None, False),  # Conv
+        (
+            'gpooling',
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # Avg
+        ('convbn', 'relu', 1, None, None, False, 1, 1280, None, False),  # Conv
+    ],
+}
+
+
+def _mnv4_conv_medium_block_specs():
+  """Medium-sized MobileNetV4 using only convolutional operations."""
+
+  def convbn(kernel_size, strides, filters):
+    return BlockSpec(
+        block_fn='convbn',
+        activation='relu',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        is_output=False,
+    )
+
+  def fused_ib(kernel_size, strides, filters, output=False):
+    return BlockSpec(
+        block_fn='fused_ib',
+        activation='relu',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        expand_ratio=4.0,
+        is_output=output,
+    )
+
+  def uib(
+      start_dw_ks, middle_dw_ks, strides, filters, expand_ratio, output=False
+  ):
+    return BlockSpec(
+        block_fn='uib',
+        activation='relu',
+        start_dw_kernel_size=start_dw_ks,
+        middle_dw_kernel_size=middle_dw_ks,
+        filters=filters,
+        strides=strides,
+        expand_ratio=expand_ratio,
+        use_layer_scale=False,
+        is_output=output,
+    )
+
+  blocks = [
+      convbn(3, 2, 32),
+      fused_ib(3, 2, 48, output=True),
+      # 3rd stage
+      uib(3, 5, 2, 80, 4.0),
+      uib(3, 3, 1, 80, 2.0, output=True),
+      # 4th stage
+      uib(3, 5, 2, 160, 6.0),
+      uib(3, 3, 1, 160, 4.0),
+      uib(3, 3, 1, 160, 4.0),
+      uib(3, 5, 1, 160, 4.0),
+      uib(3, 3, 1, 160, 4.0),
+      uib(3, 0, 1, 160, 4.0),
+      uib(0, 0, 1, 160, 2.0),
+      uib(3, 0, 1, 160, 4.0, output=True),
+      # 5th stage
+      uib(5, 5, 2, 256, 6.0),
+      uib(5, 5, 1, 256, 4.0),
+      uib(3, 5, 1, 256, 4.0),
+      uib(3, 5, 1, 256, 4.0),
+      uib(0, 0, 1, 256, 4.0),
+      uib(3, 0, 1, 256, 4.0),
+      uib(3, 5, 1, 256, 2.0),
+      uib(5, 5, 1, 256, 4.0),
+      uib(0, 0, 1, 256, 4.0),
+      uib(0, 0, 1, 256, 4.0),
+      uib(5, 0, 1, 256, 2.0, output=True),
+      # FC layers
+      convbn(1, 1, 960),
+      BlockSpec(block_fn='gpooling', is_output=False),
+      convbn(1, 1, 1280),
+  ]
+  return {
+      'spec_name': 'MobileNetV4ConvMedium',
+      'block_spec_schema': block_spec_field_list(),
+      'block_specs': block_spec_values_to_list(blocks),
+  }
+
+
+MNV4ConvLarge_BLOCK_SPECS = {
+    'spec_name': 'MobileNetV4ConvLarge',
+    'block_spec_schema': [
+        'block_fn',
+        'activation',
+        'kernel_size',
+        'start_dw_kernel_size',
+        'middle_dw_kernel_size',
+        'middle_dw_downsample',
+        'strides',
+        'filters',
+        'expand_ratio',
+        'is_output',
+    ],
+    'block_specs': [
+        ('convbn', 'relu', 3, None, None, False, 2, 24, None, False),
+        ('fused_ib', 'relu', 3, None, None, False, 2, 48, 4.0, True),
+        ('uib', 'relu', None, 3, 5, True, 2, 96, 4.0, False),
+        ('uib', 'relu', None, 3, 3, True, 1, 96, 4.0, True),
+        ('uib', 'relu', None, 3, 5, True, 2, 192, 4.0, False),
+        ('uib', 'relu', None, 3, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 3, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 3, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 3, 5, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 5, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 5, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 5, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 5, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 5, 3, True, 1, 192, 4.0, False),
+        ('uib', 'relu', None, 3, 0, True, 1, 192, 4.0, True),
+        ('uib', 'relu', None, 5, 5, True, 2, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 5, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 5, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 5, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 0, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 3, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 0, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 0, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 3, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 5, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 0, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 0, True, 1, 512, 4.0, False),
+        ('uib', 'relu', None, 5, 0, True, 1, 512, 4.0, True),
+        ('convbn', 'relu', 1, None, None, False, 1, 960, None, False),
+        ('gpooling', None, None, None, None, None, None, None, None, False),
+        ('convbn', 'relu', 1, None, None, False, 1, 1280, None, False),
+    ],
+}
+
+
+def _mnv4_hybrid_medium_block_specs():
+  """Medium-sized MobileNetV4 using only attention and convolutional operations."""
+
+  def convbn(kernel_size, strides, filters):
+    return BlockSpec(
+        block_fn='convbn',
+        activation='relu',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        is_output=False,
+    )
+
+  def fused_ib(kernel_size, strides, filters, output=False):
+    return BlockSpec(
+        block_fn='fused_ib',
+        activation='relu',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        expand_ratio=4.0,
+        is_output=output,
+    )
+
+  def uib(
+      start_dw_ks, middle_dw_ks, strides, filters, expand_ratio, output=False
+  ):
+    return BlockSpec(
+        block_fn='uib',
+        activation='relu',
+        start_dw_kernel_size=start_dw_ks,
+        middle_dw_kernel_size=middle_dw_ks,
+        filters=filters,
+        strides=strides,
+        expand_ratio=expand_ratio,
+        use_layer_scale=True,
+        is_output=output,
+    )
+
+  def mhsa_24px():
+    return BlockSpec(
+        block_fn='mhsa',
+        activation='relu',
+        filters=160,
+        key_dim=64,
+        value_dim=64,
+        query_h_strides=1,
+        query_w_strides=1,
+        kv_strides=2,
+        num_heads=4,
+        use_layer_scale=True,
+        use_multi_query=True,
+        is_output=False,
+    )
+
+  def mhsa_12px():
+    return BlockSpec(
+        block_fn='mhsa',
+        activation='relu',
+        filters=256,
+        key_dim=64,
+        value_dim=64,
+        query_h_strides=1,
+        query_w_strides=1,
+        kv_strides=1,
+        num_heads=4,
+        use_layer_scale=True,
+        use_multi_query=True,
+        is_output=False,
+    )
+
+  blocks = [
+      convbn(3, 2, 32),
+      fused_ib(3, 2, 48, output=True),
+      # 3rd stage
+      uib(3, 5, 2, 80, 4.0),
+      uib(3, 3, 1, 80, 2.0, output=True),
+      # 4th stage
+      uib(3, 5, 2, 160, 6.0),
+      uib(0, 0, 1, 160, 2.0),
+      uib(3, 3, 1, 160, 4.0),
+      uib(3, 5, 1, 160, 4.0),
+      mhsa_24px(),
+      uib(3, 3, 1, 160, 4.0),
+      mhsa_24px(),
+      uib(3, 0, 1, 160, 4.0),
+      mhsa_24px(),
+      uib(3, 3, 1, 160, 4.0),
+      mhsa_24px(),
+      uib(3, 0, 1, 160, 4.0, output=True),
+      # 5th stage
+      uib(5, 5, 2, 256, 6.0),
+      uib(5, 5, 1, 256, 4.0),
+      uib(3, 5, 1, 256, 4.0),
+      uib(3, 5, 1, 256, 4.0),
+      uib(0, 0, 1, 256, 2.0),
+      uib(3, 5, 1, 256, 2.0),
+      uib(0, 0, 1, 256, 2.0),
+      uib(0, 0, 1, 256, 4.0),
+      mhsa_12px(),
+      uib(3, 0, 1, 256, 4.0),
+      mhsa_12px(),
+      uib(5, 5, 1, 256, 4.0),
+      mhsa_12px(),
+      uib(5, 0, 1, 256, 4.0),
+      mhsa_12px(),
+      uib(5, 0, 1, 256, 4.0, output=True),
+      convbn(1, 1, 960),
+      BlockSpec(block_fn='gpooling', is_output=False),
+      convbn(1, 1, 1280),
+  ]
+  return {
+      'spec_name': 'MobileNetV4HybridMedium',
+      'block_spec_schema': block_spec_field_list(),
+      'block_specs': block_spec_values_to_list(blocks),
+  }
+
+
+def _mnv4_hybrid_large_block_specs():
+  """Large-sized MobileNetV4 using only attention and convolutional operations."""
+
+  def convbn(kernel_size, strides, filters):
+    return BlockSpec(
+        block_fn='convbn',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        activation='gelu',
+        is_output=False,
+    )
+
+  def fused_ib(kernel_size, strides, filters, output=False):
+    return BlockSpec(
+        block_fn='fused_ib',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        expand_ratio=4.0,
+        is_output=output,
+        activation='gelu',
+    )
+
+  def uib(
+      start_dw_ks,
+      middle_dw_ks,
+      strides,
+      filters,
+      expand_ratio=4.0,
+      output=False,
+  ):
+    return BlockSpec(
+        block_fn='uib',
+        start_dw_kernel_size=start_dw_ks,
+        middle_dw_kernel_size=middle_dw_ks,
+        filters=filters,
+        strides=strides,
+        expand_ratio=expand_ratio,
+        use_layer_scale=True,
+        is_output=output,
+        activation='gelu',
+    )
+
+  def mhsa_24px():
+    return BlockSpec(
+        block_fn='mhsa',
+        activation='relu',
+        filters=192,
+        key_dim=48,
+        value_dim=48,
+        query_h_strides=1,
+        query_w_strides=1,
+        kv_strides=2,
+        num_heads=8,
+        use_layer_scale=True,
+        use_multi_query=True,
+        is_output=False,
+    )
+
+  def mhsa_12px():
+    return BlockSpec(
+        block_fn='mhsa',
+        activation='relu',
+        filters=512,
+        key_dim=64,
+        value_dim=64,
+        query_h_strides=1,
+        query_w_strides=1,
+        kv_strides=1,
+        num_heads=8,
+        use_layer_scale=True,
+        use_multi_query=True,
+        is_output=False,
+    )
+
+  blocks = [
+      convbn(3, 2, 24),
+      fused_ib(3, 2, 48, output=True),
+      uib(3, 5, 2, 96),
+      uib(3, 3, 1, 96, output=True),
+      uib(3, 5, 2, 192),
+      uib(3, 3, 1, 192),
+      uib(3, 3, 1, 192),
+      uib(3, 3, 1, 192),
+      uib(3, 5, 1, 192),
+      uib(5, 3, 1, 192),
+      uib(5, 3, 1, 192),
+      # add attention blocks to 2nd last stage
+      mhsa_24px(),
+      uib(5, 3, 1, 192),
+      mhsa_24px(),
+      uib(5, 3, 1, 192),
+      mhsa_24px(),
+      uib(5, 3, 1, 192),
+      mhsa_24px(),
+      uib(3, 0, 1, 192, output=True),
+      # last stage
+      uib(5, 5, 2, 512),
+      uib(5, 5, 1, 512),
+      uib(5, 5, 1, 512),
+      uib(5, 5, 1, 512),
+      uib(5, 0, 1, 512),
+      uib(5, 3, 1, 512),
+      uib(5, 0, 1, 512),
+      uib(5, 0, 1, 512),
+      uib(5, 3, 1, 512),
+      uib(5, 5, 1, 512),
+      mhsa_12px(),
+      uib(5, 0, 1, 512),
+      mhsa_12px(),
+      uib(5, 0, 1, 512),
+      mhsa_12px(),
+      uib(5, 0, 1, 512),
+      mhsa_12px(),
+      uib(5, 0, 1, 512, output=True),
+      convbn(1, 1, 960),
+      BlockSpec(block_fn='gpooling', is_output=False),
+      convbn(1, 1, 1280),
+  ]
+  return {
+      'spec_name': 'MobileNetV4HybridLarge',
+      'block_spec_schema': block_spec_field_list(),
+      'block_specs': block_spec_values_to_list(blocks),
+  }
+
+
 SUPPORTED_SPECS_MAP = {
     'MobileNetV1': MNV1_BLOCK_SPECS,
     'MobileNetV2': MNV2_BLOCK_SPECS,
@@ -533,35 +1064,21 @@ SUPPORTED_SPECS_MAP = {
     'MobileNetMultiAVGSeg': MNMultiAVG_SEG_BLOCK_SPECS,
     'MobileNetMultiMAXSeg': MNMultiMAX_SEG_BLOCK_SPECS,
     'MobileNetV3SmallReducedFilters': MNV3SmallReducedFilters,
+    'MobileNetV4ConvSmall': MNV4ConvSmall_BLOCK_SPECS,
+    'MobileNetV4ConvMedium': _mnv4_conv_medium_block_specs(),
+    'MobileNetV4ConvLarge': MNV4ConvLarge_BLOCK_SPECS,
+    'MobileNetV4HybridMedium': _mnv4_hybrid_medium_block_specs(),
+    'MobileNetV4HybridLarge': _mnv4_hybrid_large_block_specs(),
 }
 
 
-@dataclasses.dataclass
-class BlockSpec(hyperparams.Config):
-  """A container class that specifies the block configuration for MobileNet."""
-
-  block_fn: str = 'convbn'
-  kernel_size: int = 3
-  strides: int = 1
-  filters: int = 32
-  use_bias: bool = False
-  use_normalization: bool = True
-  activation: str = 'relu6'
-  # Used for block type InvertedResConv.
-  expand_ratio: Optional[float] = 6.
-  # Used for block type InvertedResConv with SE.
-  se_ratio: Optional[float] = None
-  use_depthwise: bool = True
-  use_residual: bool = True
-  is_output: bool = True
-
-
 def block_spec_decoder(
-    specs: Dict[Any, Any],
+    specs: dict[Any, Any],
     filter_size_scale: float,
     # Set to 1 for mobilenetv1.
     divisible_by: int = 8,
-    finegrain_classification_mode: bool = True):
+    finegrain_classification_mode: bool = True,
+):
   """Decodes specs for a block.
 
   Args:
@@ -588,9 +1105,13 @@ def block_spec_decoder(
     raise ValueError(
         'The block spec cannot be empty for {} !'.format(spec_name))
 
-  if len(block_specs[0]) != len(block_spec_schema):
-    raise ValueError('The block spec values {} do not match with '
-                     'the schema {}'.format(block_specs[0], block_spec_schema))
+  for block_spec in block_specs:
+    if len(block_spec) != len(block_spec_schema):
+      raise ValueError(
+          'The block spec values {} do not match with the schema {}'.format(
+              block_spec, block_spec_schema
+          )
+      )
 
   decoded_specs = []
 
@@ -598,7 +1119,7 @@ def block_spec_decoder(
     kw_s = dict(zip(block_spec_schema, s))
     decoded_specs.append(BlockSpec(**kw_s))
 
-  # This adjustment applies to V2 and V3
+  # This adjustment applies to V2, V3, and V4
   if (spec_name != 'MobileNetV1'
       and finegrain_classification_mode
       and filter_size_scale < 1.0):
@@ -623,25 +1144,28 @@ class MobileNet(tf_keras.Model):
       model_id: str = 'MobileNetV2',
       filter_size_scale: float = 1.0,
       input_specs: tf_keras.layers.InputSpec = layers.InputSpec(
-          shape=[None, None, None, 3]),
+          shape=[None, None, None, 3]
+      ),
       # The followings are for hyper-parameter tuning.
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
-      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      kernel_regularizer: tf_keras.regularizers.Regularizer | None = None,
+      bias_regularizer: tf_keras.regularizers.Regularizer | None = None,
       # The followings should be kept the same most of the times.
-      output_stride: Optional[int] = None,
+      output_stride: int | None = None,
       min_depth: int = 8,
       # divisible is not used in MobileNetV1.
       divisible_by: int = 8,
       stochastic_depth_drop_rate: float = 0.0,
+      flat_stochastic_depth_drop_rate: bool = True,
       regularize_depthwise: bool = False,
       use_sync_bn: bool = False,
       # finegrain is not used in MobileNetV1.
       finegrain_classification_mode: bool = True,
       output_intermediate_endpoints: bool = False,
-      **kwargs):
+      **kwargs,
+  ):
     """Initializes a MobileNet model.
 
     Args:
@@ -673,6 +1197,8 @@ class MobileNet(tf_keras.Model):
       divisible_by: An `int` that ensures all inner dimensions are divisible by
         this number.
       stochastic_depth_drop_rate: A `float` of drop rate for drop connect layer.
+      flat_stochastic_depth_drop_rate: A `bool`, indicating that the stochastic
+        depth drop rate will be fixed and equal to all blocks.
       regularize_depthwise: If Ture, apply regularization on depthwise.
       use_sync_bn: If True, use synchronized batch normalization.
       finegrain_classification_mode: If True, the model will keep the last layer
@@ -704,6 +1230,7 @@ class MobileNet(tf_keras.Model):
     self._output_stride = output_stride
     self._divisible_by = divisible_by
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._flat_stochastic_depth_drop_rate = flat_stochastic_depth_drop_rate
     self._regularize_depthwise = regularize_depthwise
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
@@ -721,7 +1248,8 @@ class MobileNet(tf_keras.Model):
         specs=block_specs,
         filter_size_scale=self._filter_size_scale,
         divisible_by=self._get_divisible_by(),
-        finegrain_classification_mode=self._finegrain_classification_mode)
+        finegrain_classification_mode=self._finegrain_classification_mode,
+    )
 
     x, endpoints, next_endpoint_level = self._mobilenet_base(inputs=inputs)
 
@@ -738,9 +1266,9 @@ class MobileNet(tf_keras.Model):
     else:
       return self._divisible_by
 
-  def _mobilenet_base(self,
-                      inputs: tf.Tensor
-                      ) -> Tuple[tf.Tensor, Dict[str, tf.Tensor], int]:
+  def _mobilenet_base(
+      self, inputs: tf.Tensor
+  ) -> tuple[tf.Tensor, dict[str, tf.Tensor], int]:
     """Builds the base MobileNet architecture.
 
     Args:
@@ -764,11 +1292,18 @@ class MobileNet(tf_keras.Model):
     # The atrous convolution rate parameter.
     rate = 1
 
+    # Used to calulate stochastic depth drop rate. Some blocks do not use
+    # stochastic depth since they do not have residuals. For simplicity, we
+    # count here all the blocks in the model. If one or more of the last layers
+    # do not use stochastic depth, it can be compensated with larger stochastic
+    # depth drop rate.
+    num_blocks = len(self._decoded_specs)
+
     net = inputs
     endpoints = {}
     endpoint_level = 2
-    for i, block_def in enumerate(self._decoded_specs):
-      block_name = 'block_group_{}_{}'.format(block_def.block_fn, i)
+    for block_idx, block_def in enumerate(self._decoded_specs):
+      block_name = 'block_group_{}_{}'.format(block_def.block_fn, block_idx)
       # A small catch for gpooling block with None strides
       if not block_def.strides:
         block_def.strides = 1
@@ -784,6 +1319,19 @@ class MobileNet(tf_keras.Model):
         layer_stride = block_def.strides
         layer_rate = 1
         current_stride *= block_def.strides
+
+      if self._flat_stochastic_depth_drop_rate:
+        stochastic_depth_drop_rate = self._stochastic_depth_drop_rate
+      else:
+        stochastic_depth_drop_rate = nn_layers.get_stochastic_depth_rate(
+            self._stochastic_depth_drop_rate, block_idx + 1, num_blocks
+        )
+      if stochastic_depth_drop_rate is not None:
+        logging.info(
+            'stochastic_depth_drop_rate: %f for block = %d',
+            stochastic_depth_drop_rate,
+            block_idx,
+        )
 
       intermediate_endpoints = {}
       if block_def.block_fn == 'convbn':
@@ -818,7 +1366,36 @@ class MobileNet(tf_keras.Model):
             norm_epsilon=self._norm_epsilon,
         )(net)
 
-      elif block_def.block_fn == 'invertedbottleneck':
+      elif block_def.block_fn == 'mhsa':
+        block = nn_blocks.MultiHeadSelfAttentionBlock(
+            input_dim=block_def.filters,
+            num_heads=block_def.num_heads,
+            key_dim=block_def.key_dim,
+            value_dim=block_def.value_dim,
+            use_multi_query=block_def.use_multi_query,
+            query_h_strides=block_def.query_h_strides,
+            query_w_strides=block_def.query_w_strides,
+            kv_strides=block_def.kv_strides,
+            downsampling_dw_kernel_size=block_def.downsampling_dw_kernel_size,
+            cpe_dw_kernel_size=block_def.kernel_size,
+            stochastic_depth_drop_rate=self._stochastic_depth_drop_rate,
+            use_sync_bn=self._use_sync_bn,
+            use_residual=block_def.use_residual,
+            norm_momentum=self._norm_momentum,
+            norm_epsilon=self._norm_epsilon,
+            use_layer_scale=block_def.use_layer_scale,
+            output_intermediate_endpoints=self._output_intermediate_endpoints,
+        )
+        if self._output_intermediate_endpoints:
+          net, intermediate_endpoints = block(net)
+        else:
+          net = block(net)
+
+      elif block_def.block_fn in (
+          'invertedbottleneck',
+          'fused_ib',
+          'uib',
+      ):
         use_rate = rate
         if layer_rate > 1 and block_def.kernel_size != 1:
           # We will apply atrous rate in the following cases:
@@ -829,30 +1406,50 @@ class MobileNet(tf_keras.Model):
           #   any 1x1 convolution).
           use_rate = layer_rate
         in_filters = net.shape.as_list()[-1]
-        block = nn_blocks.InvertedBottleneckBlock(
-            in_filters=in_filters,
-            out_filters=block_def.filters,
-            kernel_size=block_def.kernel_size,
-            strides=layer_stride,
-            expand_ratio=block_def.expand_ratio,
-            se_ratio=block_def.se_ratio,
-            expand_se_in_filters=True,
-            se_gating_activation='hard_sigmoid',
-            activation=block_def.activation,
-            use_depthwise=block_def.use_depthwise,
-            use_residual=block_def.use_residual,
-            dilation_rate=use_rate,
-            regularize_depthwise=self._regularize_depthwise,
-            kernel_initializer=self._kernel_initializer,
-            kernel_regularizer=self._kernel_regularizer,
-            bias_regularizer=self._bias_regularizer,
-            use_sync_bn=self._use_sync_bn,
-            norm_momentum=self._norm_momentum,
-            norm_epsilon=self._norm_epsilon,
-            stochastic_depth_drop_rate=self._stochastic_depth_drop_rate,
-            divisible_by=self._get_divisible_by(),
-            output_intermediate_endpoints=self._output_intermediate_endpoints,
-        )
+        args = {
+            'in_filters': in_filters,
+            'out_filters': block_def.filters,
+            'strides': layer_stride,
+            'expand_ratio': block_def.expand_ratio,
+            'activation': block_def.activation,
+            'use_residual': block_def.use_residual,
+            'dilation_rate': use_rate,
+            'regularize_depthwise': self._regularize_depthwise,
+            'kernel_initializer': self._kernel_initializer,
+            'kernel_regularizer': self._kernel_regularizer,
+            'bias_regularizer': self._bias_regularizer,
+            'use_sync_bn': self._use_sync_bn,
+            'norm_momentum': self._norm_momentum,
+            'norm_epsilon': self._norm_epsilon,
+            'stochastic_depth_drop_rate': stochastic_depth_drop_rate,
+            'divisible_by': self._get_divisible_by(),
+            'output_intermediate_endpoints': (
+                self._output_intermediate_endpoints
+            ),
+        }
+        if block_def.block_fn in ('invertedbottleneck', 'fused_ib'):
+          args.update({
+              'kernel_size': block_def.kernel_size,
+              'se_ratio': block_def.se_ratio,
+              'expand_se_in_filters': True,
+              'use_depthwise': (
+                  block_def.use_depthwise
+                  if block_def.block_fn == 'invertedbottleneck'
+                  else False
+              ),
+              'se_gating_activation': 'hard_sigmoid',
+          })
+          block = nn_blocks.InvertedBottleneckBlock(**args)
+        else:
+          args.update({
+              'middle_dw_downsample': block_def.middle_dw_downsample,
+              'start_dw_kernel_size': block_def.start_dw_kernel_size,
+              'middle_dw_kernel_size': block_def.middle_dw_kernel_size,
+              'end_dw_kernel_size': block_def.end_dw_kernel_size,
+              'use_layer_scale': block_def.use_layer_scale,
+          })
+          block = nn_blocks.UniversalInvertedBottleneckBlock(**args)
+
         if self._output_intermediate_endpoints:
           net, intermediate_endpoints = block(net)
         else:
@@ -862,8 +1459,11 @@ class MobileNet(tf_keras.Model):
         net = layers.GlobalAveragePooling2D(keepdims=True)(net)
 
       else:
-        raise ValueError('Unknown block type {} for layer {}'.format(
-            block_def.block_fn, i))
+        raise ValueError(
+            'Unknown block type {} for layer {}'.format(
+                block_def.block_fn, block_idx
+            )
+        )
 
       net = tf_keras.layers.Activation('linear', name=block_name)(net)
 
@@ -886,6 +1486,9 @@ class MobileNet(tf_keras.Model):
         'output_stride': self._output_stride,
         'divisible_by': self._divisible_by,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'flat_stochastic_depth_drop_rate': (
+            self._flat_stochastic_depth_drop_rate
+        ),
         'regularize_depthwise': self._regularize_depthwise,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
@@ -912,7 +1515,7 @@ def build_mobilenet(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None
+    l2_regularizer: tf_keras.regularizers.Regularizer | None = None,
 ) -> tf_keras.Model:
   """Builds MobileNet backbone from a config."""
   backbone_type = backbone_config.type
@@ -925,9 +1528,13 @@ def build_mobilenet(
       filter_size_scale=backbone_cfg.filter_size_scale,
       input_specs=input_specs,
       stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
+      flat_stochastic_depth_drop_rate=(
+          backbone_cfg.flat_stochastic_depth_drop_rate
+      ),
       output_stride=backbone_cfg.output_stride,
       output_intermediate_endpoints=backbone_cfg.output_intermediate_endpoints,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+  )

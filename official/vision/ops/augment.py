@@ -665,6 +665,7 @@ def _fill_rectangle_video(image,
   image_time = tf.shape(image)[0]
   image_height = tf.shape(image)[1]
   image_width = tf.shape(image)[2]
+  image_channels = tf.shape(image)[3]
 
   lower_pad = tf.maximum(0, center_height - half_height)
   upper_pad = tf.maximum(0, image_height - center_height - half_height)
@@ -681,7 +682,7 @@ def _fill_rectangle_video(image,
       padding_dims,
       constant_values=1)
   mask = tf.expand_dims(mask, -1)
-  mask = tf.tile(mask, [1, 1, 1, 3])
+  mask = tf.tile(mask, [1, 1, 1, image_channels])
 
   if replace is None:
     fill = tf.random.normal(tf.shape(image), dtype=image.dtype)
