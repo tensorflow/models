@@ -114,7 +114,8 @@ class SemanticSegmentationTask(base_task.Task):
         preserve_aspect_ratio=params.preserve_aspect_ratio,
         dtype=params.dtype,
         image_feature=params.image_feature,
-        additional_dense_features=params.additional_dense_features)
+        additional_dense_features=params.additional_dense_features,
+        centered_crop=params.centered_crop)
 
     reader = input_reader_factory.input_reader_generator(
         params,

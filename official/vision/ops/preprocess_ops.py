@@ -168,6 +168,7 @@ def resize_and_crop_image(
     seed=1,
     method=tf.image.ResizeMethod.BILINEAR,
     keep_aspect_ratio=True,
+    centered_crop=False,
 ):
   """Resizes the input image to output size (RetinaNet style).
 
@@ -195,6 +196,9 @@ def resize_and_crop_image(
     seed: seed for random scale jittering.
     method: function to resize input image to scaled image.
     keep_aspect_ratio: whether or not to keep the aspect ratio when resizing.
+    centered_crop: If `centered_crop` is set to True, then resized crop (if
+      smaller than padded size) is place in the center of the image. Default
+      behaviour is to place it at left top corner.
 
   Returns:
     output_image: `Tensor` of shape [height, width, 3] where [height, width]
@@ -266,9 +270,19 @@ def resize_and_crop_image(
 
     output_image = scaled_image
     if padded_size is not None:
-      output_image = tf.image.pad_to_bounding_box(
-          scaled_image, 0, 0, padded_size[0], padded_size[1]
-      )
+      if centered_crop:
+        scaled_image_size = tf.cast(tf.shape(scaled_image)[0:2], tf.int32)
+        output_image = tf.image.pad_to_bounding_box(
+            scaled_image,
+            tf.maximum((padded_size[0] - scaled_image_size[0]) // 2, 0),
+            tf.maximum((padded_size[1] - scaled_image_size[1]) // 2, 0),
+            padded_size[0],
+            padded_size[1],
+        )
+      else:
+        output_image = tf.image.pad_to_bounding_box(
+            scaled_image, 0, 0, padded_size[0], padded_size[1]
+        )
 
     image_info = tf.stack([
         image_size,
@@ -686,7 +700,9 @@ def resize_and_crop_boxes(boxes, image_scale, output_size, offset):
     return boxes
 
 
-def resize_and_crop_masks(masks, image_scale, output_size, offset):
+def resize_and_crop_masks(
+    masks, image_scale, output_size, offset, centered_crop: bool = False
+):
   """Resizes boxes to output size with scale and offset.
 
   Args:
@@ -697,6 +713,9 @@ def resize_and_crop_masks(masks, image_scale, output_size, offset):
       output image size.
     offset: 2D `Tensor` representing top-left corner [y0, x0] to crop scaled
       boxes.
+    centered_crop: If `centered_crop` is set to True, then resized crop (if
+      smaller than padded size) is place in the center of the image. Default
+      behaviour is to place it at left top corner.
 
   Returns:
     masks: `Tensor` of shape [N, H, W, C] representing the scaled masks.
@@ -719,6 +738,7 @@ def resize_and_crop_masks(masks, image_scale, output_size, offset):
     scaled_masks = tf.image.resize(
         masks, scaled_size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR
     )
+
     offset = tf.cast(offset, tf.int32)
     scaled_masks = scaled_masks[
         :,
@@ -727,9 +747,20 @@ def resize_and_crop_masks(masks, image_scale, output_size, offset):
         :,
     ]
 
-    output_masks = tf.image.pad_to_bounding_box(
-        scaled_masks, 0, 0, output_size[0], output_size[1]
-    )
+    if centered_crop:
+      scaled_mask_size = tf.cast(tf.shape(scaled_masks)[1:3], tf.int32)
+      output_masks = tf.image.pad_to_bounding_box(
+          scaled_masks,
+          tf.maximum((output_size[0] - scaled_mask_size[0]) // 2, 0),
+          tf.maximum((output_size[1] - scaled_mask_size[1]) // 2, 0),
+          output_size[0],
+          output_size[1],
+      )
+    else:
+      output_masks = tf.image.pad_to_bounding_box(
+          scaled_masks, 0, 0, output_size[0], output_size[1]
+      )
+
     # Remove padding.
     output_masks = output_masks[1::]
     return output_masks

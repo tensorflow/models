@@ -482,6 +482,46 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertShapeEqual(input_image, aug_image)
     self.assertDTypeEqual(aug_image, np.uint8)
 
+  @parameterized.parameters(0.25, 0.5, 0.75, 1, 1.25, 1.5)
+  def test_resize_and_crop_image_and_masks(self, scale):
+    image = tf.convert_to_tensor(np.random.rand(1024, 2048, 3))
+    label = tf.convert_to_tensor(np.ones((1, 1024, 2048, 1), dtype=np.int32))
+    image, image_info = preprocess_ops.resize_and_crop_image(
+        image, (256, 256), (256, 256), scale, scale, centered_crop=True
+    )
+    image_scale = image_info[2, :]
+    offset = image_info[3, :]
+    label = preprocess_ops.resize_and_crop_masks(
+        label, image_scale, (256, 256), offset, centered_crop=True
+    )
+    self.assertEqual(image.shape[0:2], label.shape[1:3])
+    image_arr = image.numpy()
+    label_arr = np.squeeze(label.numpy())
+
+    scaled_height = round(1024 * 256 * scale / 2048)
+    scaled_width = round(2048 * 256 * scale / 2048)
+    height_offset = max((256 - scaled_height) // 2, 0)
+    width_offset = max((256 - scaled_width) // 2, 0)
+
+    self.assertEqual(
+        label_arr[
+            height_offset : 256 - height_offset,
+            width_offset : 256 - width_offset,
+        ].mean(),
+        1,
+    )
+    self.assertEqual(label_arr[0:height_offset, :].mean(), 0)
+    self.assertEqual(image_arr[0:height_offset, :, :].mean(), 0)
+    self.assertEqual(label_arr[256 - height_offset :, :].mean(), 0)
+    self.assertEqual(image_arr[256 - height_offset :, :, :].mean(), 0)
+    if width_offset > 0:
+      self.assertEqual(label_arr[height_offset, 0:width_offset].mean(), 0)
+      self.assertEqual(label_arr[height_offset, 256 - width_offset :].mean(), 0)
+      self.assertEqual(image_arr[height_offset, 0:width_offset, :].mean(), 0)
+      self.assertEqual(
+          image_arr[height_offset, 256 - width_offset :, :].mean(), 0
+      )
+
 
 if __name__ == '__main__':
   tf.test.main()
