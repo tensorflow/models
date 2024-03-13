@@ -42,15 +42,18 @@ class DetrTest(tf.test.TestCase):
                            min_level=2,
                            max_level=5)
 
-    input_proj_1 = rngdet.InputProjection(hidden_size)
-    input_proj_2 = rngdet.InputProjection(hidden_size)
-    input_proj_3 = rngdet.InputProjection(hidden_size)
-    input_proj_4 = rngdet.InputProjection(hidden_size)
-
     transformer = rngdet.DETRTransformer(
         hidden_size= hidden_size,
         num_encoder_layers=6,
         num_decoder_layers=6)
+
+    multi_scale = rngdet.MultiScale( 
+        transformer, 
+        dim=transformer._hidden_size, 
+        nheads=transformer._num_heads, 
+        fpn_dims= [2048, 1024, 512, 256], 
+        output_size = 128 )
+
 
     model = rngdet.RNGDet(backbone,
                       backbone_history,
@@ -58,10 +61,7 @@ class DetrTest(tf.test.TestCase):
                       segment_fpn,
                       keypoint_fpn,
                       transformer,
-                      input_proj_1,
-                      input_proj_2,
-                      input_proj_3,
-                      input_proj_4,
+                      multi_scale,
                       num_queries,
                       hidden_size,
                       num_classes) 

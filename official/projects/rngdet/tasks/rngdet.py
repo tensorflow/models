@@ -67,12 +67,13 @@ class RNGDetTask(base_task.Task):
         hidden_size=self._task_config.model.hidden_size,
         num_encoder_layers=self._task_config.model.num_encoder_layers,
         num_decoder_layers=self._task_config.model.num_decoder_layers)
-
-    #input_proj = rngdet.InputProjection( self._task_config.model.hidden_size)
-    input_proj_1 = rngdet.InputProjection( self._task_config.model.hidden_size)
-    input_proj_2 = rngdet.InputProjection( self._task_config.model.hidden_size)
-    input_proj_3 = rngdet.InputProjection( self._task_config.model.hidden_size)
-    input_proj_4 = rngdet.InputProjection( self._task_config.model.hidden_size)
+    
+    multi_scale = rngdet.MultiScale( 
+        transformer, 
+        dim=transformer._hidden_size, 
+        nheads=transformer._num_heads, 
+        fpn_dims= [2048, 1024, 512, 256], 
+        output_size = 128 )
 
     model = rngdet.RNGDet(backbone,
                       backbone_history,
@@ -80,24 +81,10 @@ class RNGDetTask(base_task.Task):
                       segment_fpn,
                       keypoint_fpn,
                       transformer,
-                      input_proj_1,
-                      input_proj_2,
-                      input_proj_3,
-                      input_proj_4,
+                      multi_scale,
                       self._task_config.model.num_queries,
                       self._task_config.model.hidden_size,
-                      self._task_config.model.num_classes)
-    '''model = rngdet.RNGDet(backbone,
-                  backbone_history,
-                  self._task_config.model.backbone_endpoint_name,
-                  segment_fpn,
-                  keypoint_fpn,
-                  transformer,
-                  input_proj,
-                  self._task_config.model.num_queries,
-                  self._task_config.model.hidden_size,
-                  self._task_config.model.num_classes)'''
-        
+                      self._task_config.model.num_classes)        
 
     # Builds the model through warm-up call.
     dummy_images = tf.keras.Input(self.task_config.model.input_size)
@@ -153,29 +140,31 @@ class RNGDetTask(base_task.Task):
 
     return dataset
 
-  def _compute_cost(self, cls_outputs, box_outputs, cls_targets, box_targets):
+  def _compute_cost(self, cls_outputs, box_outputs, instance_outputs, cls_targets, box_targets, instance_targets):
     # Approximate classification cost with 1 - prob[target class].
     # The 1 is a constant that doesn't change the matching, it can be ommitted.
+    
     # background: 0
     # (gunho) background : 1 in RNGDet
     background = 1
-    cls_cost = self._task_config.losses.lambda_cls * tf.gather(
-        -tf.nn.softmax(cls_outputs), cls_targets, batch_dims=1, axis=-1)
+    cls_cost = self._task_config.losses.lambda_cls * tf.gather(-tf.nn.softmax(cls_outputs), cls_targets, batch_dims=1, axis=-1)
 
     # Compute the L1 cost between boxes,
-    paired_differences = self._task_config.losses.lambda_box * tf.abs(
-        tf.expand_dims(box_outputs, 2) - tf.expand_dims(box_targets, 1))
+    paired_differences = self._task_config.losses.lambda_box * tf.abs( tf.expand_dims(box_outputs, 2) - tf.expand_dims(box_targets, 1))
     box_cost = tf.reduce_sum(paired_differences, axis=-1)
-
-    total_cost = cls_cost + box_cost
+    
+    # Compute instacne segmenation loss 
+    bce = tf.keras.losses.BinaryCrossentropy(from_logits=True) 
+    instance_cost = self._task_config.losses.lambda_ins * bce(instance_targets, instance_outputs)
+    total_cost = cls_cost + box_cost + instance_cost
 
     max_cost = (
         self._task_config.losses.lambda_cls * 0.0 +
-        self._task_config.losses.lambda_box * 4.0)
+        self._task_config.losses.lambda_box * 4.0 + 
+        self._task_config.losses.lambda_ins * 0.0 )
 
     # Set pads to large constant
-    valid = tf.expand_dims(
-        tf.cast(tf.not_equal(cls_targets, background), dtype=total_cost.dtype), axis=1)
+    valid = tf.expand_dims( tf.cast(tf.not_equal(cls_targets, background), dtype=total_cost.dtype), axis=1)
     total_cost = (1 - valid) * max_cost + valid * total_cost
 
     # Set inf of nan to large constant
@@ -226,11 +215,15 @@ class RNGDetTask(base_task.Task):
     """Builds RNGDet losses."""
     cls_outputs = outputs['cls_outputs']
     box_outputs = outputs['box_outputs']
+    instance_outputs = outputs['pred_instance_masks']
+
     cls_targets = labels['gt_probs']
     box_targets = labels['gt_coords']
+    instance_targets = tf.transpose( labels['gt_masks'], perm=(0, 3, 1, 2)) # (B, size, size, Q)
 
     cost = self._compute_cost(
-        cls_outputs, box_outputs, cls_targets, box_targets)
+        cls_outputs, box_outputs, instance_outputs, 
+        cls_targets, box_targets, instance_targets)
 
     _, indices = matchers.hungarian_matching(cost)
     indices = tf.stop_gradient(indices)
@@ -238,51 +231,49 @@ class RNGDetTask(base_task.Task):
     target_index = tf.math.argmax(indices, axis=1)
     cls_assigned = tf.gather(cls_outputs, target_index, batch_dims=1, axis=1)
     box_assigned = tf.gather(box_outputs, target_index, batch_dims=1, axis=1)
-
+    instance_assigned =  tf.gather(instance_outputs, target_index, batch_dims=1, axis=1)
 
     # (gunho) background (eos in RNGDet) is assigned to 1
     #background = tf.equal(cls_targets, 0)
     background = tf.equal(cls_targets, 1)
-    num_boxes = tf.reduce_sum(
-        tf.cast(tf.logical_not(background), tf.float32), axis=-1)
+    num_boxes = tf.reduce_sum( tf.cast(tf.logical_not(background), tf.float32), axis=-1)
 
     # Down-weight background to account for class imbalance.
-    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        labels=cls_targets, logits=cls_assigned)
-    cls_loss = self._task_config.losses.lambda_cls * tf.where(
-        background, self._task_config.losses.background_cls_weight * xentropy,
-        xentropy)
-    cls_weights = tf.where(
-        background,
-        self._task_config.losses.background_cls_weight * tf.ones_like(cls_loss),
-        tf.ones_like(cls_loss))
+    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits( labels=cls_targets, logits=cls_assigned)
+    cls_loss = self._task_config.losses.lambda_cls * tf.where( background, self._task_config.losses.background_cls_weight * xentropy, xentropy)
+    cls_weights = tf.where( background, self._task_config.losses.background_cls_weight * tf.ones_like(cls_loss), tf.ones_like(cls_loss))
 
     # Box loss is only calculated on non-background class.
     l_1 = tf.reduce_sum(tf.abs(box_assigned - box_targets), axis=-1)
-    box_loss = self._task_config.losses.lambda_box * tf.where(
-        background, tf.zeros_like(l_1), l_1)
+    box_loss = self._task_config.losses.lambda_box * tf.where( background, tf.zeros_like(l_1), l_1)
 
     # Consider doing all reduce once in train_step to speed up.
     num_boxes_per_replica = tf.reduce_sum(num_boxes)
     cls_weights_per_replica = tf.reduce_sum(cls_weights)
+    ins_per_replica = tf.reduce_sum(cls_weights)
+
     replica_context = tf.distribute.get_replica_context()
+    
     num_boxes_sum, cls_weights_sum = replica_context.all_reduce(
         tf.distribute.ReduceOp.SUM,
         [num_boxes_per_replica, cls_weights_per_replica])
+    
     cls_loss = tf.math.divide_no_nan(
         tf.reduce_sum(cls_loss), cls_weights_sum)
     box_loss = tf.math.divide_no_nan(
         tf.reduce_sum(box_loss), num_boxes_sum)
-
+    ins_loss = tf.math.divide_no_nan(
+        tf.reduce_sum(ins_loss), ins_sum)
+    
     aux_losses = tf.add_n(aux_losses) if aux_losses else 0.0
 
-    total_loss = cls_loss + box_loss + aux_losses
-    return total_loss, cls_loss, box_loss
+    total_loss = cls_loss + box_loss + aux_losses + ins_loss
+    return total_loss, cls_loss, box_loss, ins_loss
 
   def build_metrics(self, training=True):
     """Builds detection metrics."""
     metrics = []
-    metric_names = ['cls_loss', 'box_loss', 'seg_loss']
+    metric_names = ['cls_loss', 'box_loss', 'seg_loss', 'ins_loss']
     for name in metric_names:
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
@@ -319,16 +310,17 @@ class RNGDetTask(base_task.Task):
       cls_loss = 0.0
       box_loss = 0.0
       seg_loss = 0.0
+      ins_loss = 0.0
 
       seg_loss = self.segmentation_loss(pred_segment, pred_keypoint, labels)
       loss += seg_loss
 
       # Computes per-replica loss.
-      layer_loss, layer_cls_loss, layer_box_loss = self.build_losses(
-          outputs=outputs, labels=labels, aux_losses=model.losses)
+      layer_loss, layer_cls_loss, layer_box_loss, layer_ins_loss = self.build_losses( outputs=outputs, labels=labels, aux_losses=model.losses)
       loss += layer_loss
       cls_loss += layer_cls_loss
       box_loss += layer_box_loss
+      ins_loss += layer_ins_loss
 
       # Consider moving scaling logic from build_losses to here.
       scaled_loss = loss
@@ -353,6 +345,7 @@ class RNGDetTask(base_task.Task):
     cls_loss *= num_replicas_in_sync
     box_loss *= num_replicas_in_sync
     seg_loss *= num_replicas_in_sync
+    ins_loss *= num_replicas_in_sync
 
 
     # Trainer class handles loss metric for you.
@@ -363,6 +356,7 @@ class RNGDetTask(base_task.Task):
         'cls_loss': cls_loss,
         'box_loss': box_loss,
         'seg_loss': seg_loss,
+        'ins_loss': ins_loss
     }
 
     # Metric results will be added to logs for you.

@@ -47,6 +47,7 @@ class DataConfig(cfg.DataConfig):
 class Losses(hyperparams.Config):
   lambda_cls: float = 1.0
   lambda_box: float = 5.0
+  lambda_ins: float = 1.0
   background_cls_weight: float = 0.2
 
 @dataclasses.dataclass
