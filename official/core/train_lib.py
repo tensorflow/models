@@ -300,7 +300,7 @@ class OrbitExperimentRunner:
 
     if self._run_post_eval or mode == 'train_and_post_eval':
       with self.strategy.scope():
-        return self.trainer.model, self.controller.evaluate(
+        return self.trainer.model, self.controller.evaluate(  # pytype: disable=bad-return-type  # always-use-property-annotation
             steps=params.trainer.validation_steps)
     else:
       return self.trainer.model, {}

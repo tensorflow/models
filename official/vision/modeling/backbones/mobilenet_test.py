@@ -38,6 +38,11 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
       'MobileNetMultiAVGSeg',
       'MobileNetMultiMAXSeg',
       'MobileNetV3SmallReducedFilters',
+      'MobileNetV4ConvSmall',
+      'MobileNetV4ConvMedium',
+      'MobileNetV4ConvLarge',
+      'MobileNetV4HybridMedium',
+      'MobileNetV4HybridLarge',
   )
   def test_serialize_deserialize(self, model_id):
     # Create a network object that sets all of its config options.
@@ -45,6 +50,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         model_id=model_id,
         filter_size_scale=1.0,
         stochastic_depth_drop_rate=None,
+        flat_stochastic_depth_drop_rate=True,
         use_sync_bn=False,
         kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
@@ -55,7 +61,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         min_depth=8,
         divisible_by=8,
         regularize_depthwise=False,
-        finegrain_classification_mode=True
+        finegrain_classification_mode=True,
     )
     network = mobilenet.MobileNet(**kwargs)
 
@@ -85,8 +91,14 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVGSeg',
               'MobileNetMultiMAXSeg',
               'MobileNetV3SmallReducedFilters',
+              'MobileNetV4ConvSmall',
+              'MobileNetV4ConvMedium',
+              'MobileNetV4ConvLarge',
+              'MobileNetV4HybridMedium',
+              'MobileNetV4HybridLarge',
           ],
-      ))
+      )
+  )
   def test_input_specs(self, input_dim, model_id):
     """Test different input feature dimensions."""
     tf_keras.backend.set_image_data_format('channels_last')
@@ -109,9 +121,15 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiMAX',
               'MobileNetMultiAVGSeg',
               'MobileNetV3SmallReducedFilters',
+              'MobileNetV4ConvSmall',
+              'MobileNetV4ConvMedium',
+              'MobileNetV4ConvLarge',
+              'MobileNetV4HybridMedium',
+              'MobileNetV4HybridLarge',
           ],
           [32, 224],
-      ))
+      )
+  )
   def test_mobilenet_creation(self, model_id,
                               input_size):
     """Test creation of MobileNet family models."""
@@ -130,6 +148,11 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetMultiAVGSeg': [32, 64, 160, 96],
         'MobileNetMultiMAXSeg': [32, 64, 128, 96],
         'MobileNetV3SmallReducedFilters': [16, 24, 48, 48],
+        'MobileNetV4ConvSmall': [32, 64, 96, 128],
+        'MobileNetV4ConvMedium': [48, 80, 160, 256],
+        'MobileNetV4ConvLarge': [48, 96, 192, 512],
+        'MobileNetV4HybridMedium': [48, 80, 160, 256],
+        'MobileNetV4HybridLarge': [48, 96, 192, 512],
     }
 
     network = mobilenet.MobileNet(model_id=model_id,
@@ -156,9 +179,15 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVGSeg',
               'MobileNetMultiMAXSeg',
               'MobileNetV3SmallReducedFilters',
+              'MobileNetV4ConvSmall',
+              'MobileNetV4ConvMedium',
+              'MobileNetV4ConvLarge',
+              'MobileNetV4HybridMedium',
+              'MobileNetV4HybridLarge',
           ],
           [32, 224],
-      ))
+      )
+  )
   def test_mobilenet_intermediate_layers(self, model_id, input_size):
     tf_keras.backend.set_image_data_format('channels_last')
     # Tests the mobilenet intermediate depthwise layers.
@@ -177,6 +206,11 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetMultiAVGSeg': [64, 192, 640, 384],
         'MobileNetMultiMAXSeg': [96, 128, 384, 320],
         'MobileNetV3SmallReducedFilters': [16, 88, 144, 288],
+        'MobileNetV4ConvSmall': [None, None, None, None],
+        'MobileNetV4ConvMedium': [None, None, None, None],
+        'MobileNetV4ConvLarge': [None, None, None, None],
+        'MobileNetV4HybridMedium': [None, None, None, None],
+        'MobileNetV4HybridLarge': [None, None, None, None],
     }
     network = mobilenet.MobileNet(model_id=model_id,
                                   filter_size_scale=1.0,
@@ -208,9 +242,15 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVGSeg',
               'MobileNetMultiMAXSeg',
               'MobileNetV3SmallReducedFilters',
+              'MobileNetV4ConvSmall',
+              'MobileNetV4ConvMedium',
+              'MobileNetV4ConvLarge',
+              'MobileNetV4HybridMedium',
+              'MobileNetV4HybridLarge',
           ],
           [1.0, 0.75],
-      ))
+      )
+  )
   def test_mobilenet_scaling(self, model_id,
                              filter_size_scale):
     """Test for creation of a MobileNet classifier."""
@@ -235,6 +275,16 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         ('MobileNetMultiMAXSeg', 0.75): 1216544,
         ('MobileNetV3SmallReducedFilters', 1.0): 694880,
         ('MobileNetV3SmallReducedFilters', 0.75): 505960,
+        ('MobileNetV4ConvSmall', 1.0): 2518112,
+        ('MobileNetV4ConvSmall', 0.75): 1670408,
+        ('MobileNetV4ConvMedium', 1.0): 8502416,
+        ('MobileNetV4ConvMedium', 0.75): 5096424,
+        ('MobileNetV4ConvLarge', 1.0): 31459416,
+        ('MobileNetV4ConvLarge', 0.75): 18099824,
+        ('MobileNetV4HybridMedium', 1.0): 9869488,
+        ('MobileNetV4HybridMedium', 0.75): 6072584,
+        ('MobileNetV4HybridLarge', 1.0): 36648024,
+        ('MobileNetV4HybridLarge', 0.75): 21598064,
     }
 
     input_size = 224
@@ -259,9 +309,15 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetMultiAVGSeg',
               'MobileNetMultiMAXSeg',
               'MobileNetV3SmallReducedFilters',
+              'MobileNetV4ConvSmall',
+              'MobileNetV4ConvMedium',
+              'MobileNetV4ConvLarge',
+              'MobileNetV4HybridMedium',
+              'MobileNetV4HybridLarge',
           ],
           [8, 16, 32],
-      ))
+      )
+  )
   def test_mobilenet_output_stride(self, model_id, output_stride):
     """Test for creation of a MobileNet with different output strides."""
     tf_keras.backend.set_image_data_format('channels_last')
@@ -279,6 +335,11 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetMultiAVGSeg': 448,
         'MobileNetMultiMAXSeg': 448,
         'MobileNetV3SmallReducedFilters': 48,
+        'MobileNetV4ConvSmall': 128,
+        'MobileNetV4ConvMedium': 256,
+        'MobileNetV4ConvLarge': 512,
+        'MobileNetV4HybridMedium': 256,
+        'MobileNetV4HybridLarge': 512,
     }
 
     network = mobilenet.MobileNet(

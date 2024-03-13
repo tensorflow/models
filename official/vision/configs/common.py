@@ -147,6 +147,13 @@ class Augmentation(hyperparams.OneOfConfig):
 
 
 @dataclasses.dataclass
+class RandJpegQuality(hyperparams.Config):
+  min_quality: int = 20
+  max_quality: int = 100
+  prob_to_apply: float = 0.6
+
+
+@dataclasses.dataclass
 class NormActivation(hyperparams.Config):
   activation: str = 'relu'
   use_sync_bn: bool = True

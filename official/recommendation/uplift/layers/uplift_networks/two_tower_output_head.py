@@ -21,6 +21,7 @@ from typing import Any, Callable, Mapping, MutableMapping
 import tensorflow as tf, tf_keras
 
 from official.recommendation.uplift import types
+from official.recommendation.uplift import utils
 from official.recommendation.uplift.layers.uplift_networks import base_uplift_networks
 
 
@@ -118,11 +119,26 @@ class TwoTowerOutputHead(tf_keras.layers.Layer):
     is_treatment = tf.cast(
         inputs[self._treatment_indicator_feature_name], tf.bool
     )
+
+    # Expand treatment_indicator tensor to match the logits and predictions.
+    # This is done to prevent tf.where from broadcasting the condition. For
+    # example, if is_treatment is of shape (3,) and the predictions are of shape
+    # (3, 1) then tf.where will return a tensor of shape (3, 3). However,
+    # tf.where will return a tensor of shape (3, 1) if the is_treatment tensor
+    # is also of that shape.
+    # Also, note that for generalizability the logits are allowed to have a
+    # different shape than the predictions, however the control/treatment logits
+    # shapes must be equal to each other and likewise for the control/treatment
+    # prediction shapes.
     true_logits = tf.where(
-        is_treatment, outputs.treatment_logits, outputs.control_logits
+        utils.expand_to_match_rank(is_treatment, outputs.control_logits),
+        outputs.treatment_logits,
+        outputs.control_logits,
     )
     true_predictions = tf.where(
-        is_treatment, treatment_predictions, control_predictions
+        utils.expand_to_match_rank(is_treatment, control_predictions),
+        treatment_predictions,
+        control_predictions,
     )
 
     # Create a new tensor since ExtensionTypes are immutable.

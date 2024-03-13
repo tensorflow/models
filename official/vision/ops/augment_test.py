@@ -479,12 +479,14 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllGreaterEqual(aug_labels, label_smoothing / num_classes -
                                1e4)  # With tolerance
 
-  def test_mixup_changes_video(self):
+  @parameterized.product(num_channels=[3, 4])
+  def test_mixup_changes_video(self, num_channels: int):
     batch_size = 12
     num_classes = 1000
     label_smoothing = 0.1
 
-    images = tf.random.normal((batch_size, 8, 224, 224, 3), dtype=tf.float32)
+    images = tf.random.normal(
+        (batch_size, 8, 224, 224, num_channels), dtype=tf.float32)
     labels = tf.range(batch_size)
     augmenter = augment.MixupAndCutmix(
         mixup_alpha=1., cutmix_alpha=0., num_classes=num_classes)
@@ -500,12 +502,14 @@ class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
                                1e4)  # With tolerance
     self.assertFalse(tf.math.reduce_all(images == aug_images))
 
-  def test_cutmix_changes_video(self):
+  @parameterized.product(num_channels=[3, 4])
+  def test_cutmix_changes_video(self, num_channels: int):
     batch_size = 12
     num_classes = 1000
     label_smoothing = 0.1
 
-    images = tf.random.normal((batch_size, 8, 224, 224, 3), dtype=tf.float32)
+    images = tf.random.normal(
+        (batch_size, 8, 224, 224, num_channels), dtype=tf.float32)
     labels = tf.range(batch_size)
     augmenter = augment.MixupAndCutmix(
         mixup_alpha=0., cutmix_alpha=1., num_classes=num_classes)

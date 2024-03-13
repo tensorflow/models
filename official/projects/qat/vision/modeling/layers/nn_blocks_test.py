@@ -90,6 +90,174 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
         [1, input_size // strides, input_size // strides, out_filters],
         features.shape.as_list())
 
+  @parameterized.parameters(
+      (2, True, 0, 5, 0, 12, 12, 2),
+      (2, False, 5, 0, 0, 12, 18, 4),
+      (1, True, 0, 0, 0, 12, 12, 6),
+      (1, True, 3, 0, 0, 12, 18, 2),
+      (1, True, 3, 3, 0, 12, 12, 4),
+      (1, True, 3, 3, 3, 12, 18, 6),
+      (1, True, 0, 3, 3, 12, 12, 2),
+      (1, True, 0, 0, 3, 12, 18, 4),
+      (1, True, 3, 0, 3, 12, 12, 6),
+  )
+  def test_maybedwinvertedbottleneck_block_creation(
+      self,
+      strides,
+      middle_dw_downsample,
+      start_dw_kernel_size,
+      middle_dw_kernel_size,
+      end_dw_kernel_size,
+      in_filters,
+      out_filters,
+      expand_ratio,
+  ):
+    input_size = 128
+    inputs = tf_keras.Input(
+        shape=(input_size, input_size, in_filters), batch_size=1
+    )
+    block = nn_blocks.MaybeDwInvertedBottleneckBlockQuantized(
+        in_filters=in_filters,
+        out_filters=out_filters,
+        expand_ratio=expand_ratio,
+        strides=strides,
+        middle_dw_downsample=middle_dw_downsample,
+        start_dw_kernel_size=start_dw_kernel_size,
+        middle_dw_kernel_size=middle_dw_kernel_size,
+        end_dw_kernel_size=end_dw_kernel_size,
+    )
+
+    features = block(inputs)
+
+    self.assertAllEqual(
+        [1, input_size // strides, input_size // strides, out_filters],
+        features.shape.as_list(),
+    )
+
+  @parameterized.parameters(
+      (2, True, 0, 5, 0, 12, 12, 2),
+      (2, False, 5, 0, 0, 12, 18, 4),
+      (1, True, 0, 0, 0, 12, 12, 6),
+      (1, True, 3, 0, 0, 12, 18, 2),
+      (1, True, 3, 3, 0, 12, 12, 4),
+      (1, True, 3, 3, 3, 12, 18, 6),
+      (1, True, 0, 3, 3, 12, 12, 2),
+      (1, True, 0, 0, 3, 12, 18, 4),
+      (1, True, 3, 0, 3, 12, 12, 6),
+  )
+  def test_maybedwinvertedbottleneck_block_forward_pass_no_nans(
+      self,
+      strides,
+      middle_dw_downsample,
+      start_dw_kernel_size,
+      middle_dw_kernel_size,
+      end_dw_kernel_size,
+      in_filters,
+      out_filters,
+      expand_ratio,
+  ):
+    tf.random.set_seed(42)
+
+    input_size = 128
+    input_shape = (input_size, input_size, in_filters)
+    output_shape = [
+        1,
+        input_size // strides,
+        input_size // strides,
+        out_filters,
+    ]
+    inputs = tf_keras.Input(shape=input_shape, batch_size=1)
+    block = nn_blocks.MaybeDwInvertedBottleneckBlockQuantized(
+        in_filters=in_filters,
+        out_filters=out_filters,
+        expand_ratio=expand_ratio,
+        strides=strides,
+        middle_dw_downsample=middle_dw_downsample,
+        start_dw_kernel_size=start_dw_kernel_size,
+        middle_dw_kernel_size=middle_dw_kernel_size,
+        end_dw_kernel_size=end_dw_kernel_size,
+    )
+    features = block(inputs)
+    self.assertAllEqual(features.shape.as_list(), output_shape)
+
+    model = tf_keras.Model(inputs=inputs, outputs=features)
+    input_data = tf.random.uniform(
+        (1, input_size, input_size, in_filters), minval=-1.0, maxval=1.0
+    )
+    predicted_outputs = model.predict(input_data)
+    self.assertAllEqual(
+        tf.math.is_nan(predicted_outputs),
+        tf.constant(False, shape=output_shape),
+    )
+
+  @parameterized.parameters(
+      (2, True, 0, 5, 0, 12, 12, 2),
+      (2, False, 5, 0, 0, 12, 18, 4),
+      (1, True, 0, 0, 0, 12, 12, 6),
+      (1, True, 3, 0, 0, 12, 18, 2),
+      (1, True, 3, 3, 0, 12, 12, 4),
+      (1, True, 3, 3, 3, 12, 18, 6),
+      (1, True, 0, 3, 3, 12, 12, 2),
+      (1, True, 0, 0, 3, 12, 18, 4),
+      (1, True, 3, 0, 3, 12, 12, 6),
+  )
+  def test_maybedwinvertedbottleneck_block_backward_pass_no_nans(
+      self,
+      strides,
+      middle_dw_downsample,
+      start_dw_kernel_size,
+      middle_dw_kernel_size,
+      end_dw_kernel_size,
+      in_filters,
+      out_filters,
+      expand_ratio,
+  ):
+    tf.random.set_seed(42)
+
+    input_size = 128
+    inputs = tf_keras.Input(
+        shape=(input_size, input_size, in_filters), batch_size=1
+    )
+    output_shape = [
+        1,
+        input_size // strides,
+        input_size // strides,
+        out_filters,
+    ]
+    block = nn_blocks.MaybeDwInvertedBottleneckBlockQuantized(
+        in_filters=in_filters,
+        out_filters=out_filters,
+        expand_ratio=expand_ratio,
+        strides=strides,
+        middle_dw_downsample=middle_dw_downsample,
+        start_dw_kernel_size=start_dw_kernel_size,
+        middle_dw_kernel_size=middle_dw_kernel_size,
+        end_dw_kernel_size=end_dw_kernel_size,
+    )
+    features = block(inputs)
+    self.assertAllEqual(features.shape.as_list(), output_shape)
+    model = tf_keras.Model(inputs=inputs, outputs=features)
+    model.compile(
+        optimizer=tf_keras.optimizers.Adam(),
+        loss=tf_keras.losses.MeanSquaredError(),
+        metrics=[tf_keras.metrics.MeanSquaredError()],
+    )
+    input_train = tf.random.uniform(
+        (1, input_size, input_size, in_filters), minval=-1.0, maxval=1.0
+    )
+    output_train = tf.random.uniform(output_shape, minval=-1.0, maxval=1.0)
+    input_valid = tf.random.uniform(
+        (1, input_size, input_size, in_filters), minval=-1.0, maxval=1.0
+    )
+    output_valid = tf.random.uniform(output_shape, minval=-1.0, maxval=1.0)
+    model.fit(
+        input_train,
+        output_train,
+        batch_size=1,
+        epochs=1,
+        validation_data=(input_valid, output_valid),
+    )
+
 
 if __name__ == '__main__':
   tf.test.main()
