@@ -25,48 +25,54 @@ from official.vision.ops import preprocess_ops
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for segmentation task."""
 
-  def __init__(self,
-               image_feature=config_lib.DenseFeatureConfig(),
-               additional_dense_features=None):
+  def __init__(
+      self,
+      image_feature=config_lib.DenseFeatureConfig(),
+      additional_dense_features=None,
+  ):
     self._keys_to_features = {
-        'image/encoded':
-            tf.io.FixedLenFeature((), tf.string, default_value=''),
-        'image/height':
-            tf.io.FixedLenFeature((), tf.int64, default_value=0),
-        'image/width':
-            tf.io.FixedLenFeature((), tf.int64, default_value=0),
-        'image/segmentation/class/encoded':
-            tf.io.FixedLenFeature((), tf.string, default_value=''),
-        image_feature.feature_name:
-            tf.io.FixedLenFeature((), tf.string, default_value='')
+        'image/encoded': tf.io.FixedLenFeature((), tf.string, default_value=''),
+        'image/height': tf.io.FixedLenFeature((), tf.int64, default_value=0),
+        'image/width': tf.io.FixedLenFeature((), tf.int64, default_value=0),
+        'image/segmentation/class/encoded': tf.io.FixedLenFeature(
+            (), tf.string, default_value=''
+        ),
+        image_feature.feature_name: tf.io.FixedLenFeature(
+            (), tf.string, default_value=''
+        ),
     }
     if additional_dense_features:
       for feature in additional_dense_features:
         self._keys_to_features[feature.feature_name] = tf.io.FixedLenFeature(
-            (), tf.string, default_value='')
+            (), tf.string, default_value=''
+        )
 
   def decode(self, serialized_example):
-    return tf.io.parse_single_example(serialized_example,
-                                      self._keys_to_features)
+    return tf.io.parse_single_example(
+        serialized_example, self._keys_to_features
+    )
 
 
 class Parser(parser.Parser):
   """Parser to parse an image and its annotations into a dictionary of tensors."""
 
-  def __init__(self,
-               output_size,
-               crop_size=None,
-               resize_eval_groundtruth=True,
-               gt_is_matting_map=False,
-               groundtruth_padded_size=None,
-               ignore_label=255,
-               aug_rand_hflip=False,
-               preserve_aspect_ratio=True,
-               aug_scale_min=1.0,
-               aug_scale_max=1.0,
-               dtype='float32',
-               image_feature=config_lib.DenseFeatureConfig(),
-               additional_dense_features=None):
+  def __init__(
+      self,
+      output_size,
+      crop_size=None,
+      resize_eval_groundtruth=True,
+      gt_is_matting_map=False,
+      groundtruth_padded_size=None,
+      ignore_label=255,
+      aug_rand_hflip=False,
+      preserve_aspect_ratio=True,
+      aug_scale_min=1.0,
+      aug_scale_max=1.0,
+      dtype='float32',
+      image_feature=config_lib.DenseFeatureConfig(),
+      additional_dense_features=None,
+      centered_crop=False,
+  ):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
@@ -100,13 +106,18 @@ class Parser(parser.Parser):
         dataset mean/stddev.
       additional_dense_features: `list` of DenseFeatureConfig for additional
         dense features.
+      centered_crop: If `centered_crop` is set to True, then resized crop (if
+        smaller than padded size) is place in the center of the image. Default
+        behaviour is to place it at left top corner.
     """
     self._output_size = output_size
     self._crop_size = crop_size
     self._resize_eval_groundtruth = resize_eval_groundtruth
     if (not resize_eval_groundtruth) and (groundtruth_padded_size is None):
-      raise ValueError('groundtruth_padded_size ([height, width]) needs to be'
-                       'specified when resize_eval_groundtruth is False.')
+      raise ValueError(
+          'groundtruth_padded_size ([height, width]) needs to be'
+          'specified when resize_eval_groundtruth is False.'
+      )
     self._gt_is_matting_map = gt_is_matting_map
     self._groundtruth_padded_size = groundtruth_padded_size
     self._ignore_label = ignore_label
@@ -122,6 +133,12 @@ class Parser(parser.Parser):
 
     self._image_feature = image_feature
     self._additional_dense_features = additional_dense_features
+    self._centered_crop = centered_crop
+    if self._centered_crop and not self._resize_eval_groundtruth:
+      raise ValueError(
+          'centered_crop is only supported when resize_eval_groundtruth is'
+          ' True.'
+      )
 
   def _prepare_image_and_label(self, data):
     """Prepare normalized image and label."""
@@ -129,21 +146,25 @@ class Parser(parser.Parser):
     width = data['image/width']
 
     label = tf.io.decode_image(
-        data['image/segmentation/class/encoded'], channels=1)
+        data['image/segmentation/class/encoded'], channels=1
+    )
     label = tf.reshape(label, (1, height, width))
     label = tf.cast(label, tf.float32)
 
     image = tf.io.decode_image(
         data[self._image_feature.feature_name],
         channels=self._image_feature.num_channels,
-        dtype=tf.uint8)
+        dtype=tf.uint8,
+    )
     image = tf.reshape(image, (height, width, self._image_feature.num_channels))
     # Normalizes the image feature with mean and std values, which are divided
     # by 255 because an uint8 image are re-scaled automatically. Images other
     # than uint8 type will be wrongly normalized.
     image = preprocess_ops.normalize_image(
-        image, [mean / 255.0 for mean in self._image_feature.mean],
-        [stddev / 255.0 for stddev in self._image_feature.stddev])
+        image,
+        [mean / 255.0 for mean in self._image_feature.mean],
+        [stddev / 255.0 for stddev in self._image_feature.stddev],
+    )
 
     if self._additional_dense_features:
       input_list = [image]
@@ -151,11 +172,14 @@ class Parser(parser.Parser):
         feature = tf.io.decode_image(
             data[feature_cfg.feature_name],
             channels=feature_cfg.num_channels,
-            dtype=tf.uint8)
+            dtype=tf.uint8,
+        )
         feature = tf.reshape(feature, (height, width, feature_cfg.num_channels))
         feature = preprocess_ops.normalize_image(
-            feature, [mean / 255.0 for mean in feature_cfg.mean],
-            [stddev / 255.0 for stddev in feature_cfg.stddev])
+            feature,
+            [mean / 255.0 for mean in feature_cfg.mean],
+            [stddev / 255.0 for stddev in feature_cfg.stddev],
+        )
         input_list.append(feature)
       concat_input = tf.concat(input_list, axis=2)
     else:
@@ -164,7 +188,8 @@ class Parser(parser.Parser):
     if not self._preserve_aspect_ratio:
       label = tf.reshape(label, [data['image/height'], data['image/width'], 1])
       concat_input = tf.image.resize(
-          concat_input, self._output_size, method='bilinear')
+          concat_input, self._output_size, method='bilinear'
+      )
       label = tf.image.resize(label, self._output_size, method='nearest')
       label = tf.reshape(label[:, :, -1], [1] + self._output_size)
 
@@ -195,14 +220,16 @@ class Parser(parser.Parser):
 
       image_mask = tf.concat([image, label], axis=2)
       image_mask_crop = tf.image.random_crop(
-          image_mask, self._crop_size + [tf.shape(image_mask)[-1]])
+          image_mask, self._crop_size + [tf.shape(image_mask)[-1]]
+      )
       image = image_mask_crop[:, :, :-1]
       label = tf.reshape(image_mask_crop[:, :, -1], [1] + self._crop_size)
 
     # Flips image randomly during training.
     if self._aug_rand_hflip:
       image, _, label = preprocess_ops.random_horizontal_flip(
-          image, masks=label)
+          image, masks=label
+      )
 
     train_image_size = self._crop_size if self._crop_size else self._output_size
     # Resizes and crops image.
@@ -211,7 +238,9 @@ class Parser(parser.Parser):
         train_image_size,
         train_image_size,
         aug_scale_min=self._aug_scale_min,
-        aug_scale_max=self._aug_scale_max)
+        aug_scale_max=self._aug_scale_max,
+        centered_crop=self._centered_crop,
+    )
 
     # Resizes and crops boxes.
     image_scale = image_info[2, :]
@@ -221,11 +250,17 @@ class Parser(parser.Parser):
     # The label is first offset by +1 and then padded with 0.
     label += 1
     label = tf.expand_dims(label, axis=3)
-    label = preprocess_ops.resize_and_crop_masks(label, image_scale,
-                                                 train_image_size, offset)
+    label = preprocess_ops.resize_and_crop_masks(
+        label,
+        image_scale,
+        train_image_size,
+        offset,
+        centered_crop=self._centered_crop,
+    )
     label -= 1
     label = tf.where(
-        tf.equal(label, -1), self._ignore_label * tf.ones_like(label), label)
+        tf.equal(label, -1), self._ignore_label * tf.ones_like(label), label
+    )
     label = tf.squeeze(label, axis=0)
     valid_mask = tf.not_equal(label, self._ignore_label)
 
@@ -255,30 +290,58 @@ class Parser(parser.Parser):
 
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
-        image, self._output_size, self._output_size)
+        image,
+        self._output_size,
+        self._output_size,
+        centered_crop=self._centered_crop,
+    )
 
     if self._resize_eval_groundtruth:
       # Resizes eval masks to match input image sizes. In that case, mean IoU
       # is computed on output_size not the original size of the images.
       image_scale = image_info[2, :]
       offset = image_info[3, :]
-      label = preprocess_ops.resize_and_crop_masks(label, image_scale,
-                                                   self._output_size, offset)
+      label = preprocess_ops.resize_and_crop_masks(
+          label,
+          image_scale,
+          self._output_size,
+          offset,
+          centered_crop=self._centered_crop,
+      )
     else:
-      label = tf.image.pad_to_bounding_box(label, 0, 0,
-                                           self._groundtruth_padded_size[0],
-                                           self._groundtruth_padded_size[1])
+      if self._centered_crop:
+        label_size = tf.cast(tf.shape(label)[0:2], tf.int32)
+        label = tf.image.pad_to_bounding_box(
+            label,
+            tf.maximum(
+                (self._groundtruth_padded_size[0] - label_size[0]) // 2, 0
+            ),
+            tf.maximum(
+                (self._groundtruth_padded_size[1] - label_size[1]) // 2, 0
+            ),
+            self._groundtruth_padded_size[0],
+            self._groundtruth_padded_size[1],
+        )
+      else:
+        label = tf.image.pad_to_bounding_box(
+            label,
+            0,
+            0,
+            self._groundtruth_padded_size[0],
+            self._groundtruth_padded_size[1],
+        )
 
     label -= 1
     label = tf.where(
-        tf.equal(label, -1), self._ignore_label * tf.ones_like(label), label)
+        tf.equal(label, -1), self._ignore_label * tf.ones_like(label), label
+    )
     label = tf.squeeze(label, axis=0)
 
     valid_mask = tf.not_equal(label, self._ignore_label)
     labels = {
         'masks': label,
         'valid_masks': valid_mask,
-        'image_info': image_info
+        'image_info': image_info,
     }
 
     # Cast image as self._dtype

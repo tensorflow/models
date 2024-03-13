@@ -91,6 +91,10 @@ class DataConfig(cfg.DataConfig):
   )
   additional_dense_features: List[DenseFeatureConfig] = dataclasses.field(
       default_factory=list)
+  # If `centered_crop` is set to True, then resized crop
+  # (if smaller than padded size) is place in the center of the image.
+  # Default behaviour is to place it at left top corner.
+  centered_crop: bool = False
 
 
 @dataclasses.dataclass
