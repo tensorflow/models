@@ -154,14 +154,14 @@ class RNGDetTask(base_task.Task):
     box_cost = tf.reduce_sum(paired_differences, axis=-1)
     
     # Compute instacne segmenation loss 
-    bce = tf.keras.losses.BinaryCrossentropy(from_logits=True) 
+    '''bce = tf.keras.losses.BinaryCrossentropy(from_logits=True) 
     instance_cost = self._task_config.losses.lambda_ins * bce(instance_targets, instance_outputs)
-    total_cost = cls_cost + box_cost + instance_cost
+    total_cost = cls_cost + box_cost + instance_cost'''
 
+    total_cost = cls_cost + box_cost 
     max_cost = (
         self._task_config.losses.lambda_cls * 0.0 +
-        self._task_config.losses.lambda_box * 4.0 + 
-        self._task_config.losses.lambda_ins * 0.0 )
+        self._task_config.losses.lambda_box * 4.0 )
 
     # Set pads to large constant
     valid = tf.expand_dims( tf.cast(tf.not_equal(cls_targets, background), dtype=total_cost.dtype), axis=1)
@@ -227,7 +227,7 @@ class RNGDetTask(base_task.Task):
 
     _, indices = matchers.hungarian_matching(cost)
     indices = tf.stop_gradient(indices)
-
+    
     target_index = tf.math.argmax(indices, axis=1)
     cls_assigned = tf.gather(cls_outputs, target_index, batch_dims=1, axis=1)
     box_assigned = tf.gather(box_outputs, target_index, batch_dims=1, axis=1)
@@ -247,10 +247,15 @@ class RNGDetTask(base_task.Task):
     l_1 = tf.reduce_sum(tf.abs(box_assigned - box_targets), axis=-1)
     box_loss = self._task_config.losses.lambda_box * tf.where( background, tf.zeros_like(l_1), l_1)
 
+    # BCE loss is only calculated on non-background class 
+    bce = tf.keras.losses.BinaryCrossentropy(from_logits=False) #from_logits=False -> value in [0, 1]  
+    ins = bce(instance_assigned, instance_targets)
+    ins_loss = self._task_config.losses.lambda_ins * tf.where( background, tf.zeros_like(ins), ins)
+
+    
     # Consider doing all reduce once in train_step to speed up.
     num_boxes_per_replica = tf.reduce_sum(num_boxes)
     cls_weights_per_replica = tf.reduce_sum(cls_weights)
-    ins_per_replica = tf.reduce_sum(cls_weights)
 
     replica_context = tf.distribute.get_replica_context()
     
@@ -260,10 +265,13 @@ class RNGDetTask(base_task.Task):
     
     cls_loss = tf.math.divide_no_nan(
         tf.reduce_sum(cls_loss), cls_weights_sum)
+
     box_loss = tf.math.divide_no_nan(
         tf.reduce_sum(box_loss), num_boxes_sum)
+
     ins_loss = tf.math.divide_no_nan(
-        tf.reduce_sum(ins_loss), ins_sum)
+        tf.cast( tf.reduce_sum(ins_loss) , tf.float32 ), num_boxes_sum)
+    
     
     aux_losses = tf.add_n(aux_losses) if aux_losses else 0.0
 
