@@ -46,6 +46,7 @@ from official.nlp.modeling.layers.moe import MoeLayerWithBackbone
 from official.nlp.modeling.layers.multi_channel_attention import *
 from official.nlp.modeling.layers.on_device_embedding import OnDeviceEmbedding
 from official.nlp.modeling.layers.pack_optimization import PackBertEmbeddings
+from official.nlp.modeling.layers.pack_optimization import StridedReZeroTransformer
 from official.nlp.modeling.layers.pack_optimization import StridedTransformerEncoderBlock
 from official.nlp.modeling.layers.pack_optimization import StridedTransformerScaffold
 from official.nlp.modeling.layers.per_dim_scale_attention import PerDimScaleAttention
