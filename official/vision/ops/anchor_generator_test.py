@@ -77,7 +77,7 @@ class MultiScaleAnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     levels = range(min_level, max_level + 1)
     anchor_sizes = [2**(level + 1) for level in levels]
     strides = [2**level for level in levels]
-    anchor_gen = anchor_generator.AnchorGenerator(
+    anchor_gen = anchor_generator.AnchorGeneratorv1(
         anchor_sizes=anchor_sizes,
         scales=[1.],
         aspect_ratios=aspect_ratios,
@@ -98,7 +98,7 @@ class MultiScaleAnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     levels = range(min_level, max_level + 1)
     anchor_sizes = [2**(level + 1) for level in levels]
     strides = [2**level for level in levels]
-    anchor_gen = anchor_generator.AnchorGenerator(
+    anchor_gen = anchor_generator.AnchorGeneratorv1(
         anchor_sizes=anchor_sizes,
         scales=[1.],
         aspect_ratios=aspect_ratios,
@@ -122,7 +122,7 @@ class MultiScaleAnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):
     levels = range(min_level, max_level + 1)
     anchor_sizes = dict((str(level), 2**(level + 1)) for level in levels)
     strides = dict((str(level), 2**level) for level in levels)
-    anchor_gen = anchor_generator.AnchorGenerator(
+    anchor_gen = anchor_generator.AnchorGeneratorv1(
         anchor_sizes=anchor_sizes,
         scales=[1.],
         aspect_ratios=aspect_ratios,
