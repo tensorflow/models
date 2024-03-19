@@ -109,7 +109,7 @@ class _SingleAnchorGenerator:
     return tf.reshape(result, [shape[0], shape[1], shape[2] * shape[3]])
 
 
-class AnchorGenerator():
+class AnchorGeneratorv1():
   """Utility to generate anchors for a multiple feature maps.
 
   Example:

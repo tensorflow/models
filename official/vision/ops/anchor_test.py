@@ -58,40 +58,52 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(negatives, expected_negatives)
 
   @parameterized.parameters(
-      # Single scale anchor.
-      (5, 5, 1, [1.0], 2.0,
-       [[-16, -16, 48, 48], [-16, 16, 48, 80],
-        [16, -16, 80, 48], [16, 16, 80, 80]]),
-      # Multi scale anchor.
-      (5, 6, 1, [1.0], 2.0,
-       [[-16, -16, 48, 48], [-16, 16, 48, 80],
-        [16, -16, 80, 48], [16, 16, 80, 80], [-32, -32, 96, 96]]),
-      # # Multi aspect ratio anchor.
-      (6, 6, 1, [1.0, 4.0, 0.25], 2.0,
-       [[-32, -32, 96, 96], [-0, -96, 64, 160], [-96, -0, 160, 64]]),
-
+      # Single scale anchor
+      (5, 5, 1, [1.0], 2.0, [64, 64],
+       {'5': [[[-16, -16, 48, 48], [-16, 16, 48, 80]],
+              [[16, -16, 80, 48], [16, 16, 80, 80]]]}),
+      # Multi scale anchor
+      (5, 6, 1, [1.0], 2.0, [64, 64],
+       {'5': [[[-16, -16, 48, 48], [-16, 16, 48, 80]],
+              [[16, -16, 80, 48], [16, 16, 80, 80]]],
+        '6': [[[-32, -32, 96, 96]]]}),
+      # Multi aspect ratio anchor
+      (6, 6, 1, [1.0, 4.0, 0.25], 2.0, [64, 64],
+       {'6': [[[-32, -32, 96, 96, -0, -96, 64, 160, -96, -0, 160, 64]]]}),
+      # Intermidate scales
+      (5, 5, 2, [1.0], 1.0, [32, 32],
+       {'5': [[[0, 0, 32, 32,
+                16 - 16 * 2**0.5, 16 - 16 * 2**0.5,
+                16 + 16 * 2**0.5, 16 + 16 * 2**0.5]]]}),
+      # Non-square
+      (5, 5, 1, [1.0], 1.0, [64, 32],
+       {'5': [[[0, 0, 32, 32]],
+              [[32, 0, 64, 32]]]}),
+      # Indivisible by 2^level
+      (5, 5, 1, [1.0], 1.0, [40, 32],
+       {'5': [[[-6, 0, 26, 32]],
+              [[14, 0, 46, 32]]]}),
   )
   def testAnchorGeneration(self, min_level, max_level, num_scales,
-                           aspect_ratios, anchor_size, expected_boxes):
-    image_size = [64, 64]
+                           aspect_ratios, anchor_size, image_size,
+                           expected_boxes):
     anchors = anchor.Anchor(min_level, max_level, num_scales, aspect_ratios,
                             anchor_size, image_size)
-    boxes = anchors.boxes.numpy()
-    self.assertEqual(expected_boxes, boxes.tolist())
+    self.assertAllClose(expected_boxes, anchors.multilevel_boxes)
 
   @parameterized.parameters(
       # Single scale anchor.
       (5, 5, 1, [1.0], 2.0,
-       [[-16, -16, 48, 48], [-16, 16, 48, 80],
-        [16, -16, 80, 48], [16, 16, 80, 80]]),
+       {'5': [[[-16, -16, 48, 48], [-16, 16, 48, 80]],
+              [[16, -16, 80, 48], [16, 16, 80, 80]]]}),
       # Multi scale anchor.
       (5, 6, 1, [1.0], 2.0,
-       [[-16, -16, 48, 48], [-16, 16, 48, 80],
-        [16, -16, 80, 48], [16, 16, 80, 80], [-32, -32, 96, 96]]),
-      # # Multi aspect ratio anchor.
+       {'5': [[[-16, -16, 48, 48], [-16, 16, 48, 80]],
+              [[16, -16, 80, 48], [16, 16, 80, 80]]],
+        '6': [[[-32, -32, 96, 96]]]}),
+      # Multi aspect ratio anchor.
       (6, 6, 1, [1.0, 4.0, 0.25], 2.0,
-       [[-32, -32, 96, 96], [-0, -96, 64, 160], [-96, -0, 160, 64]]),
-
+       {'6': [[[-32, -32, 96, 96, -0, -96, 64, 160, -96, -0, 160, 64]]]}),
   )
   def testAnchorGenerationWithImageSizeAsTensor(self,
                                                 min_level,
@@ -103,8 +115,25 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
     image_size = tf.constant([64, 64], tf.int32)
     anchors = anchor.Anchor(min_level, max_level, num_scales, aspect_ratios,
                             anchor_size, image_size)
-    boxes = anchors.boxes.numpy()
-    self.assertEqual(expected_boxes, boxes.tolist())
+    self.assertAllClose(expected_boxes, anchors.multilevel_boxes)
+
+  @parameterized.parameters(
+      (6, 8, 2, [1.0, 2.0, 0.5], 3.0, [320, 256]),
+  )
+  def testAnchorGenerationAreCentered(self, min_level, max_level, num_scales,
+                                      aspect_ratios, anchor_size, image_size):
+    anchors = anchor.Anchor(min_level, max_level, num_scales, aspect_ratios,
+                            anchor_size, image_size)
+    multilevel_boxes = anchors.multilevel_boxes
+    image_size = np.array(image_size)
+    for boxes in multilevel_boxes.values():
+      boxes = boxes.numpy()
+      box_centers = boxes.mean(axis=0).mean(axis=0)
+      box_centers = [
+          (box_centers[0] + box_centers[2]) / 2,
+          (box_centers[1] + box_centers[3]) / 2,
+      ]
+      self.assertAllClose(image_size / 2, box_centers)
 
   @parameterized.parameters(
       (3, 6, 2, [1.0], 2.0, False),
@@ -164,6 +193,7 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
       (3, 7, [.5, 1., 2.], 2, 8, (256, 256)),
       (3, 8, [1.], 3, 32, (512, 512)),
       (3, 3, [1.], 2, 4, (32, 32)),
+      (4, 8, [.5, 1., 2.], 2, 3, (320, 256)),
   )
   def testEquivalentResult(self, min_level, max_level, aspect_ratios,
                            num_scales, anchor_size, image_size):

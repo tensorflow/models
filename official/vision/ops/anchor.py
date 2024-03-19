@@ -22,7 +22,6 @@ from typing import Dict, Optional, Tuple
 
 import tensorflow as tf, tf_keras
 
-from official.vision.ops import anchor_generator
 from official.vision.ops import box_matcher
 from official.vision.ops import iou_similarity
 from official.vision.ops import target_gather
@@ -32,7 +31,38 @@ from official.vision.utils.object_detection import faster_rcnn_box_coder
 
 
 class Anchor(object):
-  """Anchor class for anchor-based object detectors."""
+  """Anchor class for anchor-based object detectors.
+
+  Example:
+  ```python
+  anchor_boxes = Anchor(
+      min_level=3,
+      max_level=4,
+      num_scales=2,
+      aspect_ratios=[0.5, 1., 2.],
+      anchor_size=4.,
+      image_size=[256, 256],
+  ).multilevel_boxes
+  ```
+
+  Attributes:
+    min_level: integer number of minimum level of the output feature pyramid.
+    max_level: integer number of maximum level of the output feature pyramid.
+    num_scales: integer number representing intermediate scales added on each
+      level. For instances, num_scales=2 adds one additional intermediate
+      anchor scales [2^0, 2^0.5] on each level.
+    aspect_ratios: list of float numbers representing the aspect ratio anchors
+      added on each level. The number indicates the ratio of width to height.
+      For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each
+      scale level.
+    anchor_size: float number representing the scale of size of the base
+      anchor to the feature stride 2^level.
+    image_size: a list of integer numbers or Tensors representing [height,
+      width] of the input image size.
+    multilevel_boxes: an OrderedDict from level to the generated anchor boxes of
+      shape [height_l, width_l, num_anchors_per_location * 4].
+    anchors_per_location: number of anchors per pixel location.
+  """
 
   def __init__(
       self,
@@ -43,57 +73,40 @@ class Anchor(object):
       anchor_size,
       image_size,
   ):
-    """Constructs multi-scale anchors.
-
-    Args:
-      min_level: integer number of minimum level of the output feature pyramid.
-      max_level: integer number of maximum level of the output feature pyramid.
-      num_scales: integer number representing intermediate scales added on each
-        level. For instances, num_scales=2 adds one additional intermediate
-        anchor scales [2^0, 2^0.5] on each level.
-      aspect_ratios: list of float numbers representing the aspect ratio anchors
-        added on each level. The number indicates the ratio of width to height.
-        For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each
-        scale level.
-      anchor_size: float number representing the scale of size of the base
-        anchor to the feature stride 2^level.
-      image_size: a list of integer numbers or Tensors representing [height,
-        width] of the input image size.The image_size should be divided by the
-        largest feature stride 2^max_level.
-    """
+    """Initializes the instance."""
     self.min_level = min_level
     self.max_level = max_level
     self.num_scales = num_scales
     self.aspect_ratios = aspect_ratios
     self.anchor_size = anchor_size
     self.image_size = image_size
-    self.boxes = self._generate_boxes()
+    self.multilevel_boxes = self._generate_multilevel_boxes()
 
-  def _generate_boxes(self) -> tf.Tensor:
+  def _generate_multilevel_boxes(self) -> Dict[str, tf.Tensor]:
     """Generates multi-scale anchor boxes.
 
     Returns:
-      a Tensor of shape [N, 4], representing anchor boxes of all levels
-      concatenated together.
+      An OrderedDict from level to anchor boxes of shape [height_l, width_l,
+      num_anchors_per_location * 4].
     """
-    boxes_all = []
+    multilevel_boxes = collections.OrderedDict()
     for level in range(self.min_level, self.max_level + 1):
       boxes_l = []
-      feat_size = math.ceil(self.image_size[0] / 2**level)
-      stride = tf.cast(self.image_size[0] / feat_size, tf.float32)
+      feat_size_y = math.ceil(self.image_size[0] / 2**level)
+      feat_size_x = math.ceil(self.image_size[1] / 2**level)
+      stride_y = tf.cast(self.image_size[0] / feat_size_y, tf.float32)
+      stride_x = tf.cast(self.image_size[1] / feat_size_x, tf.float32)
+      x = tf.range(stride_x / 2, self.image_size[1], stride_x)
+      y = tf.range(stride_y / 2, self.image_size[0], stride_y)
+      xv, yv = tf.meshgrid(x, y)
       for scale in range(self.num_scales):
         for aspect_ratio in self.aspect_ratios:
-          intermidate_scale = 2 ** (scale / float(self.num_scales))
-          base_anchor_size = self.anchor_size * stride * intermidate_scale
+          intermidate_scale = 2 ** (scale / self.num_scales)
+          base_anchor_size = self.anchor_size * 2**level * intermidate_scale
           aspect_x = aspect_ratio**0.5
           aspect_y = aspect_ratio**-0.5
           half_anchor_size_x = base_anchor_size * aspect_x / 2.0
           half_anchor_size_y = base_anchor_size * aspect_y / 2.0
-          x = tf.range(stride / 2, self.image_size[1], stride)
-          y = tf.range(stride / 2, self.image_size[0], stride)
-          xv, yv = tf.meshgrid(x, y)
-          xv = tf.cast(tf.reshape(xv, [-1]), dtype=tf.float32)
-          yv = tf.cast(tf.reshape(yv, [-1]), dtype=tf.float32)
           # Tensor shape Nx4.
           boxes = tf.stack(
               [
@@ -102,40 +115,17 @@ class Anchor(object):
                   yv + half_anchor_size_y,
                   xv + half_anchor_size_x,
               ],
-              axis=1,
+              axis=-1,
           )
           boxes_l.append(boxes)
-      # Concat anchors on the same level to tensor shape NxAx4.
-      boxes_l = tf.stack(boxes_l, axis=1)
-      boxes_l = tf.reshape(boxes_l, [-1, 4])
-      boxes_all.append(boxes_l)
-    return tf.concat(boxes_all, axis=0)
-
-  def unpack_labels(self, labels: tf.Tensor) -> Dict[str, tf.Tensor]:
-    """Unpacks an array of labels into multi-scales labels."""
-    unpacked_labels = collections.OrderedDict()
-    count = 0
-    for level in range(self.min_level, self.max_level + 1):
-      feat_size_y = tf.cast(
-          math.ceil(self.image_size[0] / 2**level), tf.int32
-      )
-      feat_size_x = tf.cast(
-          math.ceil(self.image_size[1] / 2**level), tf.int32
-      )
-      steps = feat_size_y * feat_size_x * self.anchors_per_location
-      unpacked_labels[str(level)] = tf.reshape(
-          labels[count : count + steps], [feat_size_y, feat_size_x, -1]
-      )
-      count += steps
-    return unpacked_labels
+      # Concat anchors on the same level to tensor shape HxWx(Ax4).
+      boxes_l = tf.concat(boxes_l, axis=-1)
+      multilevel_boxes[str(level)] = boxes_l
+    return multilevel_boxes
 
   @property
-  def anchors_per_location(self):
+  def anchors_per_location(self) -> int:
     return self.num_scales * len(self.aspect_ratios)
-
-  @property
-  def multilevel_boxes(self):
-    return self.unpack_labels(self.boxes)
 
 
 class AnchorLabeler(object):
@@ -420,24 +410,68 @@ class RpnAnchorLabeler(AnchorLabeler):
     return score_targets_dict, box_targets_dict
 
 
+class AnchorGeneratorv2:
+  """Utility to generate anchors for a multiple feature maps.
+
+  Attributes:
+    min_level: integer number of minimum level of the output feature pyramid.
+    max_level: integer number of maximum level of the output feature pyramid.
+    num_scales: integer number representing intermediate scales added on each
+      level. For instances, num_scales=2 adds one additional intermediate
+      anchor scales [2^0, 2^0.5] on each level.
+    aspect_ratios: list of float numbers representing the aspect ratio anchors
+      added on each level. The number indicates the ratio of width to height.
+      For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each
+      scale level.
+    anchor_size: float number representing the scale of size of the base
+      anchor to the feature stride 2^level.
+  """
+
+  def __init__(
+      self,
+      min_level,
+      max_level,
+      num_scales,
+      aspect_ratios,
+      anchor_size,
+    ):
+    """Initializes the instance."""
+    self.min_level = min_level
+    self.max_level = max_level
+    self.num_scales = num_scales
+    self.aspect_ratios = aspect_ratios
+    self.anchor_size = anchor_size
+
+  def __call__(self, image_size):
+    """Generate multilevel anchor boxes.
+
+    Args:
+      image_size: a list of integer numbers or Tensors representing [height,
+        width] of the input image size.
+    Returns:
+      An ordered dictionary from level to anchor boxes of shape [height_l,
+      width_l, num_anchors_per_location * 4].
+    """
+    return Anchor(
+        min_level=self.min_level,
+        max_level=self.max_level,
+        num_scales=self.num_scales,
+        aspect_ratios=self.aspect_ratios,
+        anchor_size=self.anchor_size,
+        image_size=image_size,
+    ).multilevel_boxes
+
+
 def build_anchor_generator(
     min_level, max_level, num_scales, aspect_ratios, anchor_size
 ):
   """Build anchor generator from levels."""
-  anchor_sizes = collections.OrderedDict()
-  strides = collections.OrderedDict()
-  scales = []
-  for scale in range(num_scales):
-    scales.append(2 ** (scale / float(num_scales)))
-  for level in range(min_level, max_level + 1):
-    stride = 2**level
-    strides[str(level)] = stride
-    anchor_sizes[str(level)] = anchor_size * stride
-  anchor_gen = anchor_generator.AnchorGenerator(
-      anchor_sizes=anchor_sizes,
-      scales=scales,
+  anchor_gen = AnchorGeneratorv2(
+      min_level=min_level,
+      max_level=max_level,
+      num_scales=num_scales,
       aspect_ratios=aspect_ratios,
-      strides=strides,
+      anchor_size=anchor_size,
   )
   return anchor_gen
 
