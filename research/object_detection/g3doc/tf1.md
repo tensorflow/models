@@ -45,7 +45,7 @@ python object_detection/builders/model_builder_tf1_test.py
 
 ## Quick Start
 
-### Colabs
+### Tutorials
 
 *   [Jupyter notebook for off-the-shelf inference](../colab_tutorials/object_detection_tutorial.ipynb)
 *   [Training a pet detector](running_pets.md)
