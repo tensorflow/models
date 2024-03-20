@@ -129,7 +129,7 @@ def run_epoch_training(session, model, data_loader, curr_epoch):
   curr_lr = get_lr(curr_epoch, model.hparams, iteration=0)
   tf.logging.info('lr of {} for epoch {}'.format(curr_lr, curr_epoch))
 
-  for step in xrange(steps_per_epoch):
+  for step in range(steps_per_epoch):
     curr_lr = get_lr(curr_epoch, model.hparams, iteration=(step + 1))
     # Update the lr rate variable to the current LR.
     model.lr_rate_ph.load(curr_lr, session=session)
