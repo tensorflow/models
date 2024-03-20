@@ -16,8 +16,8 @@
 import string
 
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib import slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 import model
 import data_provider
@@ -193,15 +193,13 @@ class ModelTest(tf.test.TestCase):
     h_loc = [
         tf.tile(
             tf.reshape(
-                tf.contrib.layers.one_hot_encoding(
-                    tf.constant([i]), num_classes=h), [h, 1]), [1, w])
+                tf.one_hot(tf.constant([i]), depth=h), [h, 1]), [1, w])
         for i in range(h)
     ]
     h_loc = tf.concat([tf.expand_dims(t, 2) for t in h_loc], 2)
     w_loc = [
         tf.tile(
-            tf.contrib.layers.one_hot_encoding(
-                tf.constant([i]), num_classes=w),
+            tf.one_hot(tf.constant([i]), depth=w),
             [h, 1]) for i in range(w)
     ]
     w_loc = tf.concat([tf.expand_dims(t, 2) for t in w_loc], 2)
@@ -297,4 +295,5 @@ class CharsetMapperTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
+  tf.disable_eager_execution()
   tf.test.main()
