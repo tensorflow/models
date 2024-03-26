@@ -18,11 +18,11 @@ from collections.abc import Mapping
 import dataclasses
 from typing import Any
 
-import tensorflow_models as tfm
+from official.core.config_definitions import base_config
 
 
 @dataclasses.dataclass(kw_only=True)
-class SlicedMetricConfig(tfm.core.config_definitions.base_config.Config):
+class SlicedMetricConfig(base_config.Config):
   """Sliced metric configuration.
 
   Attributes:
