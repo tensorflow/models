@@ -17,7 +17,7 @@
 
 This is a simple smoke test of a local install of VGGish and its associated
 downloaded files. We create a synthetic sound, extract log mel spectrogram
-features, run them through VGGish, post-process the embedding ouputs, and
+features, run them through VGGish, post-process the embedding outputs, and
 check some simple statistics of the results, allowing for variations that
 might occur due to platform/version differences in the libraries we use.
 
