@@ -85,3 +85,8 @@ We provide a large collection of models that are trained on COCO 2017 in the
       TPU compatible detection pipelines</a><br>
 *   <a href='tf2_training_and_evaluation.md'>
       Training and evaluation guide (CPU, GPU, or TPU)</a><br>
+
+## Community Contributed Guides
+*   [Fine-tuning a SSD_MobileNetV2 model with Cloud TPUs from Colab](https://github.com/sayakpaul/E2E-Object-Detection-in-TFLite/blob/master/Training_a_pets_detector_model_within_minutes_with_TFOD_API.ipynb) (non-eager mode)
+*   [Converting a detection model to TFLite and running inference](https://github.com/sayakpaul/E2E-Object-Detection-in-TFLite/blob/master/Object_Detection_in_TFLite.ipynb)
+*   [Preparing inputs, fine-tuning a custom object detection model in Colab, and converting to TFLite](https://github.com/sayakpaul/E2E-Object-Detection-in-TFLite/tree/master/colab_training) (non-eager mode)
