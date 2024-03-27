@@ -23,7 +23,7 @@ VGGish depends on the following Python packages:
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
 sample installation session below). Any reasonably recent version of these
-packages shold work.
+packages should work.
 
 VGGish also requires downloading two data files:
 

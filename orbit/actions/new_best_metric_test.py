@@ -61,7 +61,7 @@ class NewBestMetricTest(tf.test.TestCase):
     tempfile = self.create_tempfile().full_path
     value = {'a': 1, 'b': 2}
     persisted_value = actions.JSONPersistedValue(value, tempfile)
-    # The inital value is used since tempfile is empty.
+    # The initial value is used since tempfile is empty.
     self.assertEqual(persisted_value.read(), value)
     persisted_value = actions.JSONPersistedValue('ignored', tempfile)
     # Initial value of 'ignored' is ignored, since there's a value in tempfile.
