@@ -151,6 +151,7 @@ class SqueezeExcitation(keras.layers.Layer):
         self._spatial_axis = [2, 3, 4]
     self._activation_fn = tf_utils.get_activation(activation)
     self._gating_activation_fn = tf_utils.get_activation(gating_activation)
+    self.conv = keras.layers.Conv3D if use_3d_input else keras.layers.Conv2D
 
   def build(self, input_shape):
     num_reduced_filters = make_divisible(
@@ -158,7 +159,7 @@ class SqueezeExcitation(keras.layers.Layer):
         divisor=self._divisible_by,
         round_down_protect=self._round_down_protect)
 
-    self._se_reduce = keras.layers.Conv2D(
+    self._se_reduce = self.conv(
         filters=num_reduced_filters,
         kernel_size=1,
         strides=1,
@@ -168,7 +169,7 @@ class SqueezeExcitation(keras.layers.Layer):
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
 
-    self._se_expand = keras.layers.Conv2D(
+    self._se_expand = self.conv(
         filters=self._out_filters,
         kernel_size=1,
         strides=1,
@@ -247,9 +248,7 @@ class StochasticDepth(keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs, training=None):
-    if training is None:
-      training = keras.backend.learning_phase()
-    if not training or self._drop_rate is None or self._drop_rate == 0:
+    if training is False or self._drop_rate is None or self._drop_rate == 0:
       return inputs
 
     keep_prob = 1.0 - self._drop_rate
@@ -375,11 +374,13 @@ class PanopticFPNFusion(keras.Model):
         x = norm(groups=32, axis=norm_axis)(x)
         x = activation_fn(x)
         if level != target_level:
-          x = spatial_transform_ops.nearest_upsampling(x, scale=2)
+          x = spatial_transform_ops.nearest_upsampling(x, 
+                                                       scale=2, 
+                                                       use_keras_layer=True)
       upscaled_features.append(x)
 
-    fused_features = tf.math.add_n(upscaled_features)
-    self._output_specs = {str(target_level): fused_features.get_shape()}
+    fused_features = keras.layers.Add()(upscaled_features)
+    self._output_specs = {str(target_level): fused_features.shape}
 
     super(PanopticFPNFusion, self).__init__(
         inputs=inputs, outputs=fused_features, **kwargs)
@@ -388,7 +389,8 @@ class PanopticFPNFusion(keras.Model):
                     min_level: int, max_level: int):
     inputs = {}
     for level in range(min_level, max_level + 1):
-      inputs[str(level)] = keras.Input(shape=[None, None, num_filters])
+      inputs[str(level)] = keras.Input(shape=[None, None, num_filters], 
+                                       name=str(level))
     return inputs
 
   def get_config(self) -> Mapping[str, Any]:
@@ -1244,8 +1246,6 @@ class SpatialPyramidPooling(keras.layers.Layer):
   def call(self,
            inputs: tf.Tensor,
            training: Optional[bool] = None) -> tf.Tensor:
-    if training is None:
-      training = keras.backend.learning_phase()
     result = []
     for i, layers in enumerate(self.aspp_layers):
       x = inputs

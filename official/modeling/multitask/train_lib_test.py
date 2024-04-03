@@ -59,7 +59,7 @@ class TrainLibTest(tf.test.TestCase, parameterized.TestCase):
               strategy_combinations.one_device_strategy_gpu,
           ],
           mode='eager',
-          optimizer=['sgd_experimental', 'sgd'],
+          optimizer=['sgd'],
           flag_mode=['train', 'eval', 'train_and_eval']))
   def test_end_to_end(self, distribution_strategy, optimizer, flag_mode):
     model_dir = self.get_temp_dir()

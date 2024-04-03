@@ -26,7 +26,8 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_scale(self):
     scale = nn_layers.Scale(initializer=keras.initializers.constant(10.))
-    output = scale(3.)
+    inputs = tf.constant(3.)
+    output = scale(inputs)
     self.assertAllEqual(output, 30.)
 
   def test_temporal_softmax_pool(self):
@@ -426,7 +427,7 @@ class NNLayersTest(parameterized.TestCase, tf.test.TestCase):
     query = keras.Input(shape=(40, 80))
     value = keras.Input(shape=(20, 80))
     output = layer(query=query, value=value)
-    self.assertEqual(output.shape.as_list(), [None, 40, 80])
+    self.assertEqual(output.shape, (None, 40, 80))
 
 
 if __name__ == '__main__':

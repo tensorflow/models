@@ -62,8 +62,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual(
-        [1, input_size // strides, input_size // strides, filter_size],
-        features.shape.as_list())
+        (1, input_size // strides, input_size // strides, filter_size),
+        features.shape)
 
   def test_layerscale_call(self):
     # Set up test inputs
@@ -133,8 +133,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual(
-        [1, input_size // strides, input_size // strides, filter_size * 4],
-        features.shape.as_list())
+        (1, input_size // strides, input_size // strides, filter_size * 4),
+        features.shape)
 
   @parameterized.parameters(
       (nn_blocks.InvertedBottleneckBlock, 1, 1, None, None),
@@ -162,8 +162,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual(
-        [1, input_size // strides, input_size // strides, out_filters],
-        features.shape.as_list())
+        (1, input_size // strides, input_size // strides, out_filters),
+        features.shape)
 
   @parameterized.parameters(
       (2, True, 0, 5, 0, 12, 12, 2),
@@ -205,8 +205,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual(
-        [1, input_size // strides, input_size // strides, out_filters],
-        features.shape.as_list(),
+        (1, input_size // strides, input_size // strides, out_filters),
+        features.shape,
     )
 
   @parameterized.parameters(
@@ -245,8 +245,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual(
-        [1, input_size // strides, input_size // strides, out_filters],
-        features.shape.as_list(),
+        (1, input_size // strides, input_size // strides, out_filters),
+        features.shape,
     )
 
   @parameterized.parameters((False, 0, 3), (True, 3, 0))
@@ -285,8 +285,8 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     features = block(inputs)
 
     self.assertAllEqual(
-        [1, input_size // strides, input_size // strides, out_filters],
-        features.shape.as_list())
+        (1, input_size // strides, input_size // strides, out_filters),
+        features.shape)
 
 
 class ResidualInnerTest(parameterized.TestCase, tf.test.TestCase):
@@ -302,8 +302,8 @@ class ResidualInnerTest(parameterized.TestCase, tf.test.TestCase):
       test_layer = nn_blocks.ResidualInner(filters, strides)
 
     output = test_layer(input_tensor)
-    expected_output_shape = [bsz, h // strides, w // strides, filters]
-    self.assertEqual(expected_output_shape, output.shape.as_list())
+    expected_output_shape = (bsz, h // strides, w // strides, filters)
+    self.assertEqual(expected_output_shape, output.shape)
 
 
 class BottleneckResidualInnerTest(parameterized.TestCase, tf.test.TestCase):
@@ -319,8 +319,8 @@ class BottleneckResidualInnerTest(parameterized.TestCase, tf.test.TestCase):
       test_layer = nn_blocks.BottleneckResidualInner(filters, strides)
 
     output = test_layer(input_tensor)
-    expected_output_shape = [bsz, h // strides, w // strides, filters * 4]
-    self.assertEqual(expected_output_shape, output.shape.as_list())
+    expected_output_shape = (bsz, h // strides, w // strides, filters * 4)
+    self.assertEqual(expected_output_shape, output.shape)
 
 
 class DepthwiseSeparableConvBlockTest(parameterized.TestCase, tf.test.TestCase):
@@ -340,13 +340,13 @@ class DepthwiseSeparableConvBlockTest(parameterized.TestCase, tf.test.TestCase):
       recreate_block = nn_blocks.DepthwiseSeparableConvBlock(**config_dict)
 
     output_tensor = block(input_tensor)
-    expected_output_shape = [
+    expected_output_shape = (
         batch_size, height // strides, width // strides, num_filters
-    ]
-    self.assertEqual(output_tensor.shape.as_list(), expected_output_shape)
+    )
+    self.assertEqual(output_tensor.shape, expected_output_shape)
 
     output_tensor = recreate_block(input_tensor)
-    self.assertEqual(output_tensor.shape.as_list(), expected_output_shape)
+    self.assertEqual(output_tensor.shape, expected_output_shape)
 
 
 class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
@@ -381,9 +381,9 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
     outputs = distribution.experimental_local_results(replica_output)
 
     # Assert forward pass shape
-    expected_output_shape = [bsz, h // strides, w // strides, filters]
+    expected_output_shape = (bsz, h // strides, w // strides, filters)
     for output in outputs:
-      self.assertEqual(expected_output_shape, output.shape.as_list())
+      self.assertEqual(expected_output_shape, output.shape)
 
   @combinations.generate(distribution_strategy_combinations())
   def test_reversible_step(self, distribution):
@@ -426,9 +426,9 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
       self.assertNotAllEqual(v0, v1)
 
     # Assert forward pass shape
-    expected_output_shape = [bsz, h // strides, w // strides, filters]
+    expected_output_shape = (bsz, h // strides, w // strides, filters)
     for output in outputs:
-      self.assertEqual(expected_output_shape, output.shape.as_list())
+      self.assertEqual(expected_output_shape, output.shape)
 
   @combinations.generate(distribution_strategy_combinations())
   def test_manual_gradients_correctness(self, distribution):
@@ -579,7 +579,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     data_tensor = keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+    self.assertEqual(data_tensor.shape, output_tensor.shape)
 
     call_list = test_layer._attention_layer.get_config()['call_list']
     # If call_list[0] exists and is True, the passed layer class was
@@ -615,7 +615,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     data_tensor = keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+    self.assertEqual(data_tensor.shape, output_tensor.shape)
 
     # If call_list[0] exists and is True, the passed layer class was
     # instantiated from the given config properly.
@@ -648,7 +648,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     mask_tensor = keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+    self.assertEqual(data_tensor.shape, output_tensor.shape)
     # If call_list[0] exists and is True, the passed layer class was
     # instantiated from the given config properly.
     self.assertNotEmpty(call_list)
@@ -848,7 +848,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     data_tensor = keras.Input(shape=(sequence_length, width))
     output = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
-    self.assertEqual(data_tensor.shape.as_list(), output.shape.as_list())
+    self.assertEqual(data_tensor.shape, output.shape)
     # If call_list[0] exists and is True, the passed layer class was
     # instantiated from the given config properly.
     self.assertNotEmpty(call_list)
@@ -1017,7 +1017,7 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertAllEqual(
         [batch_size, input_size, input_size, in_filters],
-        features.shape.as_list(),
+        features.shape,
     )
 
   @parameterized.parameters(
@@ -1107,8 +1107,8 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
     )
     outputs = layer(inputs)
     self.assertAllEqual(
-        [batch_size, input_size, input_size, channel_dim],
-        outputs.shape.as_list(),
+        (batch_size, input_size, input_size, channel_dim),
+        outputs.shape,
     )
 
 

@@ -268,7 +268,7 @@ class MaskScoringLoss:
   def __init__(self, ignore_label):
     self._ignore_label = ignore_label
     self._mse_loss = keras.losses.MeanSquaredError(
-        reduction=keras.losses.Reduction.NONE)
+        reduction=None)
 
   def __call__(self, predicted_scores, logits, labels):
     actual_scores = get_actual_mask_scores(logits, labels, self._ignore_label)

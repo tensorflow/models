@@ -121,7 +121,7 @@ def minimize_using_explicit_allreduce(tape,
                 keras.mixed_precision.LossScaleOptimizer):
     # FP16 GPU code path
     with tape:
-      scaled_loss = optimizer.get_scaled_loss(loss)
+      scaled_loss = optimizer.scale_loss(loss)
     scaled_grads = tape.gradient(scaled_loss, trainable_variables)
     grads_and_vars = zip(scaled_grads, trainable_variables)
     if pre_allreduce_callbacks:
@@ -131,6 +131,7 @@ def minimize_using_explicit_allreduce(tape,
          grads_and_vars,
          allreduce_precision="float16",
          bytes_per_pack=allreduce_bytes_per_pack)
+
     allreduced_unscaled_grads = optimizer.get_unscaled_gradients(
         allreduced_scaled_grads)
     grads_and_vars = zip(allreduced_unscaled_grads, filtered_training_vars)
@@ -148,5 +149,5 @@ def minimize_using_explicit_allreduce(tape,
     grads_and_vars = zip(allreduced_grads, filtered_training_vars)
   if post_allreduce_callbacks:
     grads_and_vars = _run_callbacks(post_allreduce_callbacks, grads_and_vars)
-  optimizer.apply_gradients(
-      grads_and_vars, experimental_aggregate_gradients=False)
+  (grads, train_variables) = zip(*grads_and_vars)
+  optimizer.apply(grads, train_variables)

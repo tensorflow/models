@@ -14,6 +14,7 @@
 
 """Contains the definitions of Feature Pyramid Networks (FPN)."""
 from typing import Any, Mapping, Optional
+from functools import partial
 
 # Import libraries
 from absl import logging
@@ -45,7 +46,7 @@ class FPN(keras.Model):
       num_filters: int = 256,
       fusion_type: str = 'sum',
       use_separable_conv: bool = False,
-      use_keras_layer: bool = False,
+      use_keras_layer: bool = True,
       activation: str = 'relu',
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -95,9 +96,17 @@ class FPN(keras.Model):
         'bias_regularizer': bias_regularizer,
     }
     conv2d = (
-        keras.layers.SeparableConv2D
+        partial(
+          keras.layers.SeparableConv2D, 
+          depthwise_initializer=kernel_initializer,
+          depthwise_regularizer=kernel_regularizer)
         if use_separable_conv
-        else keras.layers.Conv2D
+        else 
+        partial(
+          keras.layers.Conv2D,
+          kernel_initializer=kernel_initializer,
+          kernel_regularizer=kernel_regularizer
+          )
     )
     norm = keras.layers.BatchNormalization
     activation_fn = tf_utils.get_activation(activation, use_keras_layer=True)
@@ -119,8 +128,6 @@ class FPN(keras.Model):
           filters=num_filters,
           kernel_size=1,
           padding='same',
-          kernel_initializer=kernel_initializer,
-          kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer,
           name=f'lateral_{level}')(
               inputs[str(level)])
@@ -154,8 +161,6 @@ class FPN(keras.Model):
           strides=1,
           kernel_size=3,
           padding='same',
-          kernel_initializer=kernel_initializer,
-          kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer,
           name=f'post_hoc_{level}')(
               feats[str(level)])
@@ -171,8 +176,6 @@ class FPN(keras.Model):
           strides=2,
           kernel_size=3,
           padding='same',
-          kernel_initializer=kernel_initializer,
-          kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer,
           name=f'coarser_{level}')(
               feats_in)
@@ -188,7 +191,7 @@ class FPN(keras.Model):
               feats[str(level)])
 
     self._output_specs = {
-        str(level): feats[str(level)].get_shape()
+        str(level): feats[str(level)].shape
         for level in range(min_level, max_level + 1)
     }
 
@@ -203,7 +206,7 @@ class FPN(keras.Model):
 
     inputs = {}
     for level, spec in input_specs.items():
-      inputs[level] = keras.Input(shape=spec[1:])
+      inputs[level] = keras.Input(shape=spec[1:], name=level)
     return inputs
 
   def get_config(self) -> Mapping[str, Any]:

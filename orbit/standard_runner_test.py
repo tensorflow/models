@@ -19,7 +19,8 @@ from absl.testing import parameterized
 from orbit import standard_runner
 from orbit import utils
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
+import keras
 
 
 def dataset_fn(input_context=None):

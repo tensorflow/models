@@ -171,7 +171,7 @@ class NASFPN(keras.Model):
                for level in range(self._min_level, self._max_level + 1)]
 
     self._output_specs = {
-        str(level): output_feats[level].get_shape()
+        str(level): output_feats[level].shape
         for level in range(min_level, max_level + 1)
     }
     output_feats = {str(level): output_feats[level]
@@ -196,7 +196,7 @@ class NASFPN(keras.Model):
                             target_level,
                             target_num_filters=256):
     x = inputs
-    _, _, _, input_num_filters = x.get_shape().as_list()
+    _, _, _, input_num_filters = x.shape
     if input_num_filters != target_num_filters:
       x = self._conv_op(
           filters=target_num_filters,
@@ -211,7 +211,10 @@ class NASFPN(keras.Model):
           pool_size=stride, strides=stride, padding='same')(x)
     if input_level > target_level:
       scale = int(2 ** (input_level - target_level))
-      return spatial_transform_ops.nearest_upsampling(x, scale=scale)
+      return spatial_transform_ops.nearest_upsampling(
+        x, 
+        scale=scale,
+        use_keras_layer=True)
 
     # Force output x to be the same dtype as mixed precision policy. This avoids
     # dtype mismatch when one input (by default float32 dtype) does not meet all
@@ -246,8 +249,8 @@ class NASFPN(keras.Model):
       }
 
   def _global_attention(self, feat0, feat1):
-    m = tf.math.reduce_max(feat0, axis=[1, 2], keepdims=True)
-    m = tf.math.sigmoid(m)
+    m = keras.ops.amax(feat0, axis=[1, 2], keepdims=True)
+    m = keras.ops.sigmoid(m)
     return feat0 + feat1 * m
 
   def _build_feature_pyramid(self, feats):

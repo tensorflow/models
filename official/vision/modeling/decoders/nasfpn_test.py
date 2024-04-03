@@ -51,8 +51,8 @@ class NASFPNTest(parameterized.TestCase, tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       self.assertIn(str(level), feats)
       self.assertAllEqual(
-          [1, input_size // 2**level, input_size // 2**level, num_filters],
-          feats[str(level)].shape.as_list())
+          (1, input_size // 2**level, input_size // 2**level, num_filters),
+          feats[str(level)].shape)
 
 
 if __name__ == '__main__':

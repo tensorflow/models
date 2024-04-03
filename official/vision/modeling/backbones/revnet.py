@@ -137,7 +137,7 @@ class RevNet(keras.Model):
           name='revblock_group_{}'.format(i + 2))
       endpoints[str(i + 2)] = x
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
 
     super(RevNet, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
@@ -185,7 +185,7 @@ class RevNet(keras.Model):
           kernel_regularizer=self._kernel_regularizer)
       x = nn_blocks.ReversibleLayer(f, g)(x)
 
-    return tf.identity(x, name=name)
+    return keras.layers.Activation('linear', name=name)(x)
 
   def get_config(self) -> Dict[str, Any]:
     config_dict = {

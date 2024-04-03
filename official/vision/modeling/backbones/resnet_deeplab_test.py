@@ -47,10 +47,10 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     print(endpoints)
-    self.assertAllEqual([
+    self.assertAllEqual((
         1, input_size / output_stride, input_size / output_stride,
         512 * endpoint_filter_scale
-    ], endpoints[str(int(np.math.log2(output_stride)))].shape.as_list())
+    ), endpoints[str(int(np.math.log2(output_stride)))].shape)
 
   @parameterized.parameters(
       ('v0', None, 0.0, False, False),
@@ -83,10 +83,10 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     print(endpoints)
-    self.assertAllEqual([
+    self.assertAllEqual((
         1, input_size / output_stride, input_size / output_stride,
         512 * endpoint_filter_scale
-    ], endpoints[str(int(np.math.log2(output_stride)))].shape.as_list())
+    ), endpoints[str(int(np.math.log2(output_stride)))].shape)
 
   @combinations.generate(
       combinations.combine(

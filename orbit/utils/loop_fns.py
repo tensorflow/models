@@ -17,7 +17,8 @@
 from absl import logging
 from orbit.utils import tpu_summaries
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
+import keras
 
 
 def create_loop_fn(step_fn):

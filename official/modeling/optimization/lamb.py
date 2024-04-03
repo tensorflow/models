@@ -28,7 +28,7 @@ FloatTensorLike = Union[tf.Tensor, float, np.float16, np.float32]
 
 
 @keras.utils.register_keras_serializable(package="Addons")
-class LAMB(keras.optimizers.legacy.Optimizer):
+class LAMB(keras.optimizers.Optimizer):
   """Optimizer that implements the Layer-wise Adaptive Moments (LAMB).
 
   See paper [Large Batch Optimization for Deep Learning: Training BERT
@@ -74,7 +74,8 @@ class LAMB(keras.optimizers.legacy.Optimizer):
           included for backward compatibility, recommended to use
           `learning_rate` instead.
     """
-    super().__init__(name, **kwargs)
+    super().__init__(learning_rate=learning_rate,
+                     name=name, **kwargs)
 
     # Just adding the square of the weights to the loss function is *not*
     # the correct way of using L2 regularization/weight decay with Adam,
@@ -82,8 +83,8 @@ class LAMB(keras.optimizers.legacy.Optimizer):
     #
     # Instead we want to decay the weights in a manner that doesn't interact
     # with the m/v parameters.
-    self._set_hyper("weight_decay_rate", weight_decay_rate)
-    self._set_hyper("learning_rate", kwargs.get("lr", learning_rate))
+    self.assign("weight_decay_rate", weight_decay_rate)
+    # self._set_hyper("learning_rate", kwargs.get("lr", learning_rate))
 
     # This is learning rate decay for using keras learning rate schedule.
     self._set_hyper("decay", self._initial_decay)

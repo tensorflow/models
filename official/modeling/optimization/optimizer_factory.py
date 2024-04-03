@@ -30,30 +30,18 @@ from official.modeling.optimization.configs import optimization_config as opt_cf
 
 # Optimizer CLS to be used in both legacy and new path.
 SHARED_OPTIMIZERS = {
-    'sgd_experimental': keras.optimizers.experimental.SGD,
-    'adam_experimental': keras.optimizers.experimental.Adam,
-    'adamw': legacy_adamw.AdamWeightDecay,
-    'adamw_experimental': keras.optimizers.experimental.AdamW,
     'lamb': lamb.LAMB,
     'lars': lars.LARS,
     'slide': slide_optimizer.SLIDE,
-    'adafactor': adafactor_optimizer.Adafactor,
-    'adafactor_keras': keras.optimizers.Adafactor,
 }
-
-LEGACY_OPTIMIZERS_CLS = {
-    'sgd': keras.optimizers.legacy.SGD,
-    'adam': keras.optimizers.legacy.Adam,
-    'rmsprop': keras.optimizers.legacy.RMSprop,
-    'adagrad': keras.optimizers.legacy.Adagrad,
-}
-LEGACY_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
 NEW_OPTIMIZERS_CLS = {
-    'sgd': keras.optimizers.experimental.SGD,
-    'adam': keras.optimizers.experimental.Adam,
-    'rmsprop': keras.optimizers.experimental.RMSprop,
-    'adagrad': keras.optimizers.experimental.Adagrad,
+    'sgd': keras.optimizers.SGD,
+    'adam': keras.optimizers.Adam,
+    'adamw': keras.optimizers.AdamW,
+    'rmsprop': keras.optimizers.RMSprop,
+    'adagrad': keras.optimizers.Adagrad,
+    'adafactor': keras.optimizers.Adafactor,
 }
 NEW_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
 
@@ -78,7 +66,6 @@ def register_optimizer_cls(key: str,
                            optimizer_config_cls: Union[
                                keras.optimizers.Optimizer,
                                keras.optimizers.legacy.Optimizer,
-                               keras.optimizers.experimental.Optimizer
                            ],
                            use_legacy_optimizer: bool = True):
   """Register customize optimizer cls.
@@ -91,14 +78,10 @@ def register_optimizer_cls(key: str,
     optimizer_config_cls: A class which inherits keras.optimizers.Optimizer.
     use_legacy_optimizer: A boolean that indicates if using legacy optimizers.
   """
-  if use_legacy_optimizer:
-    if key in LEGACY_OPTIMIZERS_CLS:
-      raise ValueError('%s already registered in LEGACY_OPTIMIZERS_CLS.' % key)
-    LEGACY_OPTIMIZERS_CLS[key] = optimizer_config_cls
-  else:
-    if key in NEW_OPTIMIZERS_CLS:
-      raise ValueError('%s already registered in NEW_OPTIMIZERS_CLS.' % key)
-    NEW_OPTIMIZERS_CLS[key] = optimizer_config_cls
+
+  if key in NEW_OPTIMIZERS_CLS:
+    raise ValueError('%s already registered in NEW_OPTIMIZERS_CLS.' % key)
+  NEW_OPTIMIZERS_CLS[key] = optimizer_config_cls
 
 
 class OptimizerFactory:
@@ -187,15 +170,14 @@ class OptimizerFactory:
   def build_optimizer(
       self,
       lr: Union[keras.optimizers.schedules.LearningRateSchedule, float],
-      gradient_aggregator: Optional[Callable[
-          [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor,
-                                                          tf.Tensor]]]] = None,
-      gradient_transformers: Optional[List[Callable[
-          [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor,
-                                                          tf.Tensor]]]]] = None,
+      # gradient_aggregator: Optional[Callable[
+      #     [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor,
+      #                                                     tf.Tensor]]]] = None,
+      # gradient_transformers: Optional[List[Callable[
+      #     [List[Tuple[tf.Tensor, tf.Tensor]]], List[Tuple[tf.Tensor,
+      #                                                     tf.Tensor]]]]] = None,
       postprocessor: Optional[Callable[[keras.optimizers.Optimizer],
-                                       keras.optimizers.Optimizer]] = None,
-      use_legacy_optimizer: bool = True):
+                                       keras.optimizers.Optimizer]] = None):
     """Build optimizer.
 
     Builds optimizer from config. It takes learning rate as input, and builds
@@ -230,39 +212,35 @@ class OptimizerFactory:
       del optimizer_dict['global_clipnorm']
 
     optimizer_dict['learning_rate'] = lr
-    if gradient_aggregator is not None:
-      optimizer_dict['gradient_aggregator'] = gradient_aggregator
-    if gradient_transformers is not None:
-      optimizer_dict['gradient_transformers'] = gradient_transformers
+    # if gradient_aggregator is not None:
+    #   optimizer_dict['gradient_aggregator'] = gradient_aggregator
+    # if gradient_transformers is not None:
+    #   optimizer_dict['gradient_transformers'] = gradient_transformers
 
-    if use_legacy_optimizer:
-      optimizer = LEGACY_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
-    else:
-      if 'decay' in optimizer_dict:
-        raise ValueError(
-            '`decay` is deprecated in new Keras optimizer, please reflect the '
-            'decay logic in `lr` or set `use_legacy_optimizer=True` to use the '
-            'legacy optimizer.')
-      optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
+    if 'decay' in optimizer_dict:
+      raise ValueError(
+          '`decay` is deprecated in new Keras optimizer, please reflect the '
+          'decay logic in `lr`')
+    optimizer = NEW_OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
 
-    if self._use_ema:
-      if not use_legacy_optimizer:
-        raise ValueError(
-            'EMA can only work with the legacy optimizer, please set '
-            '`use_legacy_optimizer=True`.')
-      optimizer = ema_optimizer.ExponentialMovingAverage(
-          optimizer, **self._ema_config.as_dict())
+    # if self._use_ema:
+    #   if not use_legacy_optimizer:
+    #     raise ValueError(
+    #         'EMA can only work with the legacy optimizer, please set '
+    #         '`use_legacy_optimizer=True`.')
+    #   optimizer = ema_optimizer.ExponentialMovingAverage(
+    #       optimizer, **self._ema_config.as_dict())
     if postprocessor:
       optimizer = postprocessor(optimizer)
     if isinstance(optimizer, keras.optimizers.Optimizer):
       return optimizer
     # The following check makes sure the function won't break in older TF
     # version because of missing the experimental/legacy package.
-    if hasattr(keras.optimizers, 'experimental'):
-      if isinstance(optimizer, keras.optimizers.experimental.Optimizer):
-        return optimizer
-    if hasattr(keras.optimizers, 'legacy'):
-      if isinstance(optimizer, keras.optimizers.legacy.Optimizer):
-        return optimizer
+    # if hasattr(keras.optimizers, 'experimental'):
+    #   if isinstance(optimizer, keras.optimizers.experimental.Optimizer):
+    #     return optimizer
+    # if hasattr(keras.optimizers, 'legacy'):
+    #   if isinstance(optimizer, keras.optimizers.legacy.Optimizer):
+    #     return optimizer
     raise TypeError('OptimizerFactory.build_optimizer returning a '
                     'non-optimizer object: {}'.format(optimizer))

@@ -197,8 +197,7 @@ class EfficientNet(keras.Model):
         endpoint_level += 1
 
     # Build output specs for downstream tasks.
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
-
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     # Build the final conv for classification.
     x = layers.Conv2D(
         filters=nn_layers.round_filters(1280, width_scale),
@@ -277,7 +276,7 @@ class EfficientNet(keras.Model):
           norm_epsilon=self._norm_epsilon)(
               x)
 
-    return tf.identity(x, name=name)
+    return keras.layers.Activation('linear', name=name)(x)
 
   def get_config(self):
     config_dict = {

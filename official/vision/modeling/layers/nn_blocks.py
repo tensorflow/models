@@ -1133,14 +1133,19 @@ class MultiQueryAttentionLayerV1(keras.layers.Layer):
     assert self._channel_dim == m_shape[-1], f'x={x_shape}, m={m_shape}'
     # Note: weight initializers are left to default
     self._query_proj = self.add_weight(
-        'query', [self._num_heads, self._channel_dim, self._key_dim]
+        name='query', 
+        shape=[self._num_heads, self._channel_dim, self._key_dim]
     )
-    self._key_proj = self.add_weight('key', [self._channel_dim, self._key_dim])
+    self._key_proj = self.add_weight(
+      name='key', 
+      shape=[self._channel_dim, self._key_dim])
     self._value_proj = self.add_weight(
-        'value', [self._channel_dim, self._value_dim]
+        name='value', 
+        shape=[self._channel_dim, self._value_dim]
     )
     self._output_proj = self.add_weight(
-        'output', [self._num_heads, self._channel_dim, self._value_dim]
+        name='output', 
+        shape=[self._num_heads, self._channel_dim, self._value_dim]
     )
     self._dropout_layer = keras.layers.Dropout(rate=self._dropout)
 
@@ -1223,14 +1228,19 @@ class MultiQueryAttentionLayerV2(keras.layers.Layer):
     self._channel_dim = x_shape[-1]
     assert self._channel_dim == m_shape[-1], f'x={x_shape}, m={m_shape}'
     self._query_proj = self.add_weight(
-        'query', [self._num_heads, self._key_dim, self._channel_dim]
+        name='query', 
+        shape=[self._num_heads, self._key_dim, self._channel_dim]
     )
-    self._key_proj = self.add_weight('key', [self._channel_dim, self._key_dim])
+    self._key_proj = self.add_weight(
+      name='key', 
+      shape=[self._channel_dim, self._key_dim])
     self._value_proj = self.add_weight(
-        'value', [self._channel_dim, self._value_dim]
+        name='value', 
+        shape=[self._channel_dim, self._value_dim]
     )
     self._output_proj = self.add_weight(
-        'output', [self._channel_dim, self._num_heads, self._value_dim]
+        name='output', 
+        shape=[self._channel_dim, self._num_heads, self._value_dim]
     )
     self._dropout_layer = keras.layers.Dropout(rate=self._dropout)
 
@@ -2053,10 +2063,10 @@ class ReversibleLayer(keras.layers.Layer):
 
   def _ckpt_non_trainable_vars(self):
     self._f_non_trainable_vars = [
-        v.read_value() for v in self._f.non_trainable_variables
+        v for v in self._f.non_trainable_variables
     ]
     self._g_non_trainable_vars = [
-        v.read_value() for v in self._g.non_trainable_variables
+        v for v in self._g.non_trainable_variables
     ]
 
   def _load_ckpt_non_trainable_vars(self):
@@ -2132,8 +2142,8 @@ class ReversibleLayer(keras.layers.Layer):
           # Index mapping from self.f/g.trainable_variables to grad_fn
           # input `variables` kwarg so that we can reorder dwf + dwg
           # variable gradient list to match `variables` order.
-          f_var_refs = [v.ref() for v in self._f.trainable_variables]
-          g_var_refs = [v.ref() for v in self._g.trainable_variables]
+          f_var_refs = [v for v in self._f.trainable_variables]
+          g_var_refs = [v for v in self._g.trainable_variables]
           fg_var_refs = f_var_refs + g_var_refs
           self_to_var_index = [fg_var_refs.index(v.ref()) for v in variables]
 
@@ -2268,8 +2278,8 @@ class DepthwiseSeparableConvBlock(keras.layers.Layer):
         padding='same',
         depth_multiplier=1,
         dilation_rate=self._dilation_rate,
-        kernel_initializer=tf_utils.clone_initializer(self._kernel_initializer),
-        kernel_regularizer=self._depthsize_regularizer,
+        depthwise_initializer=tf_utils.clone_initializer(self._kernel_initializer),
+        bias_regularizer=self._depthsize_regularizer,
         use_bias=False)
     self._norm0 = self._norm(
         axis=self._bn_axis,
@@ -2545,7 +2555,13 @@ class MNV4LayerScale(keras.layers.Layer):
 
   def build(self, inputs_shape):
     embedding_dim = inputs_shape[-1]
-    self._gamma = tf.Variable(self._init_value * tf.ones((embedding_dim,)))
+    self._gamma = self.add_weight(
+        name='gamma',
+        shape=(embedding_dim,),
+        initializer=keras.initializers.Constant(self._init_value),
+        trainable=True,
+        dtype=tf.float32,
+    )
 
   def call(self, x, training=None):
     return x * tf.cast(self._gamma, x.dtype)
@@ -2756,12 +2772,13 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
         max_attention_inference_parallelism
     )
 
-  def build(self, input_shape: Union[tf.TensorShape, List[int]]):
+  def build(self, input_shape: keras.KerasTensor):
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
           self._stochastic_depth_drop_rate)
     else:
-      self._stochastic_depth = lambda x, *args, **kwargs: tf.identity(x)
+      self._stochastic_depth = (lambda x, *args, **kwargs: 
+        keras.layers.Activation('linear')(x))
 
     super().build(input_shape)
 

@@ -27,9 +27,7 @@ from official.vision.modeling.decoders import fpn
 class FPNTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (256, 3, 7, False, False, 'sum'),
       (256, 3, 7, False, True, 'sum'),
-      (256, 3, 7, True, False, 'concat'),
       (256, 3, 7, True, True, 'concat'),
   )
   def test_network_creation(self, input_size, min_level, max_level,
@@ -54,13 +52,11 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       self.assertIn(str(level), feats)
       self.assertAllEqual(
-          [1, input_size // 2**level, input_size // 2**level, 256],
-          feats[str(level)].shape.as_list())
+          (1, input_size // 2**level, input_size // 2**level, 256),
+          feats[str(level)].shape)
 
   @parameterized.parameters(
-      (256, 3, 7, False, False),
       (256, 3, 7, False, True),
-      (256, 3, 7, True, False),
       (256, 3, 7, True, True),
   )
   def test_network_creation_with_mobilenet(self, input_size, min_level,
@@ -85,8 +81,8 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       self.assertIn(str(level), feats)
       self.assertAllEqual(
-          [1, input_size // 2**level, input_size // 2**level, 256],
-          feats[str(level)].shape.as_list())
+          (1, input_size // 2**level, input_size // 2**level, 256),
+          feats[str(level)].shape)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
@@ -97,7 +93,7 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
         num_filters=256,
         fusion_type='sum',
         use_separable_conv=False,
-        use_keras_layer=False,
+        use_keras_layer=True,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,

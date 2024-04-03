@@ -17,7 +17,8 @@ import orbit
 from orbit.examples.single_task import single_task_evaluator
 from orbit.examples.single_task import single_task_trainer
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
+import keras
 import tensorflow_datasets as tfds
 
 
@@ -28,25 +29,25 @@ class SingleTaskEvaluatorTest(tf.test.TestCase):
     iris = tfds.load('iris')
     train_ds = iris['train'].batch(32)
 
-    model = tf_keras.Sequential([
-        tf_keras.Input(shape=(4,), name='features'),
-        tf_keras.layers.Dense(10, activation=tf.nn.relu),
-        tf_keras.layers.Dense(10, activation=tf.nn.relu),
-        tf_keras.layers.Dense(3)
+    model = keras.Sequential([
+        keras.Input(shape=(4,), name='features'),
+        keras.layers.Dense(10, activation=tf.nn.relu),
+        keras.layers.Dense(10, activation=tf.nn.relu),
+        keras.layers.Dense(3)
     ])
 
     trainer = single_task_trainer.SingleTaskTrainer(
         train_ds,
         label_key='label',
         model=model,
-        loss_fn=tf_keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        optimizer=tf_keras.optimizers.SGD(learning_rate=0.01))
+        loss_fn=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        optimizer=keras.optimizers.SGD(learning_rate=0.01))
 
     evaluator = single_task_evaluator.SingleTaskEvaluator(
         train_ds,
         label_key='label',
         model=model,
-        metrics=[tf_keras.metrics.SparseCategoricalAccuracy()])
+        metrics=[keras.metrics.SparseCategoricalAccuracy()])
 
     controller = orbit.Controller(
         trainer=trainer,

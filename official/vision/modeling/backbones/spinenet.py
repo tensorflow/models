@@ -205,7 +205,7 @@ class SpineNet(keras.Model):
     self._init_block_fn = 'bottleneck'
     self._num_init_blocks = 2
 
-    self._set_activation_fn(activation)
+    self._activation = activation
     self._norm = layers.BatchNormalization
 
     if keras.backend.image_data_format() == 'channels_last':
@@ -224,16 +224,8 @@ class SpineNet(keras.Model):
     net = self._build_scale_permuted_network(net=net, input_width=input_width)
     endpoints = self._build_endpoints(net=net)
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     super(SpineNet, self).__init__(inputs=inputs, outputs=endpoints)
-
-  def _set_activation_fn(self, activation):
-    if activation == 'relu':
-      self._activation_fn = tf.nn.relu
-    elif activation == 'swish':
-      self._activation_fn = tf.nn.swish
-    else:
-      raise ValueError('Activation {} not implemented.'.format(activation))
 
   def _block_group(self,
                    inputs: tf.Tensor,
@@ -249,7 +241,7 @@ class SpineNet(keras.Model):
         'residual': nn_blocks.ResidualBlock,
     }
     block_fn = block_fn_candidates[block_fn_cand]
-    _, _, _, num_filters = inputs.get_shape().as_list()
+    _, _, _, num_filters = inputs.shape
 
     if block_fn_cand == 'bottleneck':
       use_projection = not (num_filters == (filters * 4) and strides == 1)
@@ -283,7 +275,7 @@ class SpineNet(keras.Model):
           norm_momentum=self._norm_momentum,
           norm_epsilon=self._norm_epsilon)(
               x)
-    return tf.identity(x, name=name)
+    return keras.layers.Activation('linear', name=name)(x)
 
   def _build_stem(self, inputs):
     """Builds SpineNet stem."""
@@ -303,7 +295,7 @@ class SpineNet(keras.Model):
         epsilon=self._norm_epsilon,
         synchronized=self._use_sync_bn)(
             x)
-    x = tf_utils.get_activation(self._activation_fn)(x)
+    x = tf_utils.get_activation(self._activation)(x)
     x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
     net = []
@@ -385,7 +377,8 @@ class SpineNet(keras.Model):
         ]
 
       # Fuse all parent nodes then build a new block.
-      x = tf_utils.get_activation(self._activation_fn)(tf.add_n(parents))
+      x = keras.layers.Add()(parents)
+      x = tf_utils.get_activation(self._activation)(x)
       x = self._block_group(
           inputs=x,
           filters=target_num_filters,
@@ -435,7 +428,7 @@ class SpineNet(keras.Model):
           epsilon=self._norm_epsilon,
           synchronized=self._use_sync_bn)(
               x)
-      x = tf_utils.get_activation(self._activation_fn)(x)
+      x = tf_utils.get_activation(self._activation)(x)
       endpoints[str(level)] = x
     return endpoints
 
@@ -448,7 +441,7 @@ class SpineNet(keras.Model):
                            target_block_fn,
                            alpha=0.5):
     """Matches resolution and feature dimension."""
-    _, _, _, input_num_filters = inputs.get_shape().as_list()
+    _, _, _, input_num_filters = inputs.shape
     if input_block_fn == 'bottleneck':
       input_num_filters /= 4
     new_num_filters = int(input_num_filters * alpha)
@@ -468,7 +461,7 @@ class SpineNet(keras.Model):
         epsilon=self._norm_epsilon,
         synchronized=self._use_sync_bn)(
             x)
-    x = tf_utils.get_activation(self._activation_fn)(x)
+    x = tf_utils.get_activation(self._activation)(x)
 
     # Spatial resampling.
     if input_width > target_width:
@@ -488,14 +481,17 @@ class SpineNet(keras.Model):
           epsilon=self._norm_epsilon,
           synchronized=self._use_sync_bn)(
               x)
-      x = tf_utils.get_activation(self._activation_fn)(x)
+      x = tf_utils.get_activation(self._activation)(x)
       input_width /= 2
       while input_width > target_width:
-        x = layers.MaxPool2D(pool_size=3, strides=2, padding='SAME')(x)
+        x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
         input_width /= 2
     elif input_width < target_width:
       scale = target_width // input_width
-      x = spatial_transform_ops.nearest_upsampling(x, scale=scale)
+      x = spatial_transform_ops.nearest_upsampling(
+        x, 
+        scale=scale,
+        use_keras_layer=True)
 
     # Last 1x1 conv to match filter size.
     if target_block_fn == 'bottleneck':

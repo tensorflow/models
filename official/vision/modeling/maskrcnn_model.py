@@ -240,8 +240,12 @@ class MaskRCNNModel(keras.Model):
             [tf.shape(images)[0], 1, 1, 1])
 
     # Generate RoIs.
-    current_rois, _ = self.roi_generator(rpn_boxes, rpn_scores, anchor_boxes,
-                                         image_shape, training)
+    current_rois, _ = self.roi_generator(
+      raw_boxes=rpn_boxes, 
+      raw_scores=rpn_scores, 
+      anchor_boxes=anchor_boxes,
+      image_shape=image_shape, 
+      training=training)
 
     next_rois = current_rois
     all_class_outputs = []

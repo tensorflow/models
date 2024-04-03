@@ -207,8 +207,8 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
           max_to_keep=10,
           optimizer_config=optimization.OptimizationConfig({
               'optimizer': {
-                  'type': 'adamw_experimental',
-                  'adamw_experimental': {
+                  'type': 'adamw',
+                  'adamw': {
                       'epsilon': 1.0e-08,
                       'weight_decay': 0.05,
                       'beta_1': 0.9,

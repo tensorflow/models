@@ -85,21 +85,21 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       A tf.optimizers.Optimizer object.
     """
     gradient_transformers = None
-    if dp_config is not None:
-      logging.info("Adding differential privacy transform with config %s.",
-                   dp_config.as_dict())
-      noise_stddev = dp_config.clipping_norm * dp_config.noise_multiplier
-      gradient_transformers = [
-          functools.partial(
-              ops.clip_l2_norm, l2_norm_clip=dp_config.clipping_norm),
-          functools.partial(
-              ops.add_noise, noise_stddev=noise_stddev)
-      ]
+    # if dp_config is not None:
+    #   logging.info("Adding differential privacy transform with config %s.",
+    #                dp_config.as_dict())
+    #   noise_stddev = dp_config.clipping_norm * dp_config.noise_multiplier
+    #   gradient_transformers = [
+    #       functools.partial(
+    #           ops.clip_l2_norm, l2_norm_clip=dp_config.clipping_norm),
+    #       functools.partial(
+    #           ops.add_noise, noise_stddev=noise_stddev)
+    #   ]
 
     opt_factory = optimization.OptimizerFactory(optimizer_config)
     optimizer = opt_factory.build_optimizer(
         opt_factory.build_learning_rate(),
-        gradient_transformers=gradient_transformers
+        # gradient_transformers=gradient_transformers
         )
     # Configuring optimizer when loss_scale is set in runtime config. This helps
     # avoiding overflow/underflow for float16 computations.

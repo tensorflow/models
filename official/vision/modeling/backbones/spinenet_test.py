@@ -56,8 +56,8 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
     for l in range(min_level, max_level + 1):
       self.assertIn(str(l), endpoints.keys())
       self.assertAllEqual(
-          [1, input_size / 2**l, input_size / 2**l, endpoints_num_filters],
-          endpoints[str(l)].shape.as_list())
+          (1, input_size / 2**l, input_size / 2**l, endpoints_num_filters),
+          endpoints[str(l)].shape)
 
   @parameterized.parameters(
       ((128, 128), (128, 128)),
@@ -122,14 +122,6 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
 
     # If the serialization was successful, the new config should match the old.
     self.assertAllEqual(network.get_config(), new_network.get_config())
-
-  @parameterized.parameters(
-      ('relu', tf.nn.relu),
-      ('swish', tf.nn.swish)
-  )
-  def test_activation(self, activation, activation_fn):
-    model = spinenet.SpineNet(activation=activation)
-    self.assertEqual(model._activation_fn, activation_fn)
 
   def test_invalid_activation_raises_valurerror(self):
     with self.assertRaises(ValueError):

@@ -69,8 +69,8 @@ class SpineNetMobileTest(parameterized.TestCase, tf.test.TestCase):
     for l in range(min_level, max_level + 1):
       self.assertIn(str(l), endpoints.keys())
       self.assertAllEqual(
-          [1, input_size / 2**l, input_size / 2**l, endpoints_num_filters],
-          endpoints[str(l)].shape.as_list())
+          (1, input_size / 2**l, input_size / 2**l, endpoints_num_filters),
+          endpoints[str(l)].shape)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
@@ -90,7 +90,7 @@ class SpineNetMobileTest(parameterized.TestCase, tf.test.TestCase):
         kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
         bias_regularizer=None,
-        use_keras_upsampling_2d=False,
+        use_keras_upsampling_2d=True,
     )
     network = spinenet_mobile.SpineNetMobile(**kwargs)
 

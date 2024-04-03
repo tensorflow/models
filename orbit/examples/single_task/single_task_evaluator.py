@@ -14,7 +14,8 @@
 
 """An evaluator object that can evaluate models with a single output."""
 import orbit
-import tensorflow as tf, tf_keras
+import tensorflow as tf
+import keras
 
 
 class SingleTaskEvaluator(orbit.StandardEvaluator):
@@ -22,7 +23,7 @@ class SingleTaskEvaluator(orbit.StandardEvaluator):
 
   This evaluator will handle running a model with one output on a single
   dataset, and will apply the output of that model to one or more
-  `tf_keras.metrics.Metric` objects.
+  `keras.metrics.Metric` objects.
   """
 
   def __init__(self,
@@ -43,8 +44,8 @@ class SingleTaskEvaluator(orbit.StandardEvaluator):
         dictionaries dequeued from `eval_dataset`. This key will be removed from
         the dictionary before it is passed to the model.
       model: A `tf.Module` or Keras `Model` object to evaluate.
-      metrics: A single `tf_keras.metrics.Metric` object, or a list of
-        `tf_keras.metrics.Metric` objects.
+      metrics: A single `keras.metrics.Metric` object, or a list of
+        `keras.metrics.Metric` objects.
       evaluator_options: An optional `orbit.StandardEvaluatorOptions` object.
     """
 

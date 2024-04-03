@@ -192,8 +192,6 @@ class SpatialPyramidPooling(keras.layers.Layer):
     ])
 
   def call(self, inputs, training=None):
-    if training is None:
-      training = keras.backend.learning_phase()
     result = []
     for i, layer in enumerate(self.aspp_layers):
       x = layer(inputs, training=training)

@@ -152,7 +152,7 @@ class SpineNetMobile(keras.Model):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
-      use_keras_upsampling_2d: bool = False,
+      use_keras_upsampling_2d: bool = True,
       **kwargs):
     """Initializes a Mobile SpineNet model.
 
@@ -224,7 +224,7 @@ class SpineNetMobile(keras.Model):
     net = self._build_scale_permuted_network(net=net, input_width=input_width)
     endpoints = self._build_endpoints(net=net)
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
     super().__init__(inputs=inputs, outputs=endpoints)
 
   def _block_group(self,
@@ -445,8 +445,8 @@ class SpineNetMobile(keras.Model):
             strides=2,
             padding='SAME',
             use_bias=False,
-            kernel_initializer=self._kernel_initializer,
-            kernel_regularizer=self._kernel_regularizer,
+            depthwise_initializer=self._kernel_initializer,
+            depthwise_regularizer=self._kernel_regularizer,
             bias_regularizer=self._bias_regularizer)(
                 x)
         x = self._norm(

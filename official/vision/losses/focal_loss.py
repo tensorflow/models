@@ -28,22 +28,21 @@ class FocalLoss(keras.losses.Loss):
   def __init__(self,
                alpha,
                gamma,
-               reduction=keras.losses.Reduction.AUTO,
+               reduction="sum_over_batch_size",
                name=None):
     """Initializes `FocalLoss`.
 
     Args:
       alpha: The `alpha` weight factor for binary class imbalance.
       gamma: The `gamma` focusing parameter to re-weight loss.
-      reduction: (Optional) Type of `keras.losses.Reduction` to apply to
-        loss. Default value is `AUTO`. `AUTO` indicates that the reduction
-        option will be determined by the usage context. For almost all cases
-        this defaults to `SUM_OVER_BATCH_SIZE`. When used with
-        `tf.distribute.Strategy`, outside of built-in training loops such as
-        `tf.keras` `compile` and `fit`, using `AUTO` or `SUM_OVER_BATCH_SIZE`
-        will raise an error. Please see this custom training [tutorial](
-          https://www.tensorflow.org/tutorials/distribute/custom_training) for
-            more details.
+      reduction: (Optional) 
+        However, loss class instances feature a reduction constructor argument, 
+        which defaults to "sum_over_batch_size" (i.e. average). 
+        Allowable values are "sum_over_batch_size", "sum", and "none":
+          "sum_over_batch_size" means the loss instance will return the 
+            average of the per-sample losses in the batch.
+          "sum" means the loss instance will return the sum of the per-sample losses in the batch.
+          "none" means the loss instance will return the full array of per-sample losses.
       name: Optional name for the op. Defaults to 'retinanet_class_loss'.
     """
     self._alpha = alpha

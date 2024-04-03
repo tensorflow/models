@@ -52,7 +52,7 @@ class NNBlocksTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual([
         1, temporal_size // temporal_strides, spatial_size // spatial_strides,
         spatial_size // spatial_strides, filters * 4
-    ], features.shape.as_list())
+    ], features.shape)
 
 
 if __name__ == '__main__':

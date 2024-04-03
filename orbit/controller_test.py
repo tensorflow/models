@@ -26,13 +26,14 @@ from orbit import runner
 from orbit import standard_runner
 import orbit.utils
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
+import keras
 
 
 def create_model():
-  x = tf_keras.layers.Input(shape=(3,), name="input")
-  y = tf_keras.layers.Dense(4, name="dense")(x)
-  model = tf_keras.Model(x, y)
+  x = keras.layers.Input(shape=(3,), name="input")
+  y = keras.layers.Dense(4, name="dense")(x)
+  model = keras.Model(x, y)
   return model
 
 
@@ -65,10 +66,10 @@ class TestRunner(standard_runner.StandardTrainer,
   def __init__(self, return_numpy=False):
     self.strategy = tf.distribute.get_strategy()
     self.model = create_model()
-    self.optimizer = tf_keras.optimizers.RMSprop(learning_rate=0.1)
+    self.optimizer = keras.optimizers.RMSprop(learning_rate=0.1)
     self.global_step = self.optimizer.iterations
-    self.train_loss = tf_keras.metrics.Mean("train_loss", dtype=tf.float32)
-    self.eval_loss = tf_keras.metrics.Mean("eval_loss", dtype=tf.float32)
+    self.train_loss = keras.metrics.Mean("train_loss", dtype=tf.float32)
+    self.eval_loss = keras.metrics.Mean("eval_loss", dtype=tf.float32)
     self.return_numpy = return_numpy
     train_dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
     eval_dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
@@ -82,7 +83,7 @@ class TestRunner(standard_runner.StandardTrainer,
       inputs, targets = inputs
       with tf.GradientTape() as tape:
         outputs = self.model(inputs)
-        loss = tf.reduce_mean(tf_keras.losses.MSE(targets, outputs))
+        loss = tf.reduce_mean(keras.losses.MSE(targets, outputs))
       grads = tape.gradient(loss, self.model.variables)
       self.optimizer.apply_gradients(zip(grads, self.model.variables))
       self.train_loss.update_state(loss)
@@ -107,7 +108,7 @@ class TestRunner(standard_runner.StandardTrainer,
       """Replicated evaluation step."""
       inputs, targets = inputs
       outputs = self.model(inputs)
-      loss = tf.reduce_mean(tf_keras.losses.MSE(targets, outputs))
+      loss = tf.reduce_mean(keras.losses.MSE(targets, outputs))
       self.eval_loss.update_state(loss)
 
     self.strategy.run(_replicated_step, args=(next(iterator),))
@@ -141,7 +142,7 @@ class TestEvaluator(standard_runner.StandardEvaluator):
       """Replicated evaluation step."""
       inputs, targets = inputs
       outputs = self.model(inputs)
-      loss = tf.reduce_mean(tf_keras.losses.MSE(targets, outputs))
+      loss = tf.reduce_mean(keras.losses.MSE(targets, outputs))
       return loss
 
     per_replica_losses = self.strategy.run(
@@ -170,11 +171,11 @@ class TestEvaluatorWithNestedSummary(standard_runner.StandardEvaluator):
     self.model = create_model()
     dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
     dataset2 = self.strategy.distribute_datasets_from_function(dataset_fn)
-    self.loss = tf_keras.metrics.Mean("loss", dtype=tf.float32)
-    self.accuracy = tf_keras.metrics.CategoricalAccuracy(
+    self.loss = keras.metrics.Mean("loss", dtype=tf.float32)
+    self.accuracy = keras.metrics.CategoricalAccuracy(
         "accuracy", dtype=tf.float32)
-    self.loss2 = tf_keras.metrics.Mean("loss", dtype=tf.float32)
-    self.accuracy2 = tf_keras.metrics.CategoricalAccuracy(
+    self.loss2 = keras.metrics.Mean("loss", dtype=tf.float32)
+    self.accuracy2 = keras.metrics.CategoricalAccuracy(
         "accuracy", dtype=tf.float32)
     standard_runner.StandardEvaluator.__init__(
         self, eval_dataset={
@@ -188,7 +189,7 @@ class TestEvaluatorWithNestedSummary(standard_runner.StandardEvaluator):
       """Replicated evaluation step."""
       inputs, targets = inputs
       outputs = self.model(inputs)
-      loss.update_state(tf_keras.losses.MSE(targets, outputs))
+      loss.update_state(keras.losses.MSE(targets, outputs))
       accuracy.update_state(targets, outputs)
 
     self.strategy.run(
@@ -217,9 +218,9 @@ class TestTrainerWithSummaries(standard_runner.StandardTrainer):
   def __init__(self):
     self.strategy = tf.distribute.get_strategy()
     self.model = create_model()
-    self.optimizer = tf_keras.optimizers.RMSprop(learning_rate=0.1)
+    self.optimizer = keras.optimizers.RMSprop(learning_rate=0.1)
     self.global_step = self.optimizer.iterations
-    self.train_loss = tf_keras.metrics.Mean("train_loss", dtype=tf.float32)
+    self.train_loss = keras.metrics.Mean("train_loss", dtype=tf.float32)
     train_dataset = self.strategy.distribute_datasets_from_function(dataset_fn)
     standard_runner.StandardTrainer.__init__(
         self,
@@ -237,7 +238,7 @@ class TestTrainerWithSummaries(standard_runner.StandardTrainer):
       inputs, targets = inputs
       with tf.GradientTape() as tape:
         outputs = self.model(inputs)
-        loss = tf.reduce_mean(tf_keras.losses.MSE(targets, outputs))
+        loss = tf.reduce_mean(keras.losses.MSE(targets, outputs))
       tf.summary.scalar("loss", loss)
       grads = tape.gradient(loss, self.model.variables)
       self.optimizer.apply_gradients(zip(grads, self.model.variables))

@@ -21,6 +21,7 @@ from absl import logging
 import tensorflow as tf 
 import keras
 
+from keras import ops
 from official.modeling import activations
 from official.vision.modeling.backbones import factory
 from official.vision.modeling.backbones.vit_specs import VIT_SPECS
@@ -66,7 +67,9 @@ class AddPositionEmbs(layers.Layer):
       pos_emb_length = inputs_shape[1]
     pos_emb_shape = (1, pos_emb_length, inputs_shape[2])
     self.pos_embedding = self.add_weight(
-        'pos_embedding', pos_emb_shape, initializer=self.posemb_init)
+        name='pos_embedding', 
+        shape=pos_emb_shape, 
+        initializer=self.posemb_init)
 
   def _interpolate(self, pos_embedding: tf.Tensor, from_shape: Tuple[int, int],
                    to_shape: Tuple[int, int]) -> tf.Tensor:
@@ -97,7 +100,9 @@ class TokenLayer(layers.Layer):
 
   def build(self, inputs_shape):
     self.cls = self.add_weight(
-        'cls', (1, 1, inputs_shape[-1]), initializer='zeros')
+        name='cls', 
+        shape=(1, 1, inputs_shape[-1]), 
+        initializer='zeros')
 
   def call(self, inputs):
     cls = tf.cast(self.cls, inputs.dtype)
@@ -254,13 +259,13 @@ class VisionTransformer(keras.Model):
       # transpose to that. Once the data is flattened by the reshape, the
       # data_format is irrelevant, so no need to update
       # keras.backend.image_data_format.
-      x = tf.transpose(x, perm=[0, 2, 3, 1])
+      x = ops.transpose(x, perm=[0, 2, 3, 1])
 
     pos_embed_target_shape = (x.shape[rows_axis], x.shape[cols_axis])
     feat_h = input_specs.shape[rows_axis] // patch_size
     feat_w = input_specs.shape[cols_axis] // patch_size
     seq_len = feat_h * feat_w
-    x = tf.reshape(x, [-1, seq_len, hidden_size])
+    x = ops.reshape(x, [-1, seq_len, hidden_size])
 
     # If we want to add a class token, add it here.
     if pooler == 'token':
@@ -286,10 +291,10 @@ class VisionTransformer(keras.Model):
       x = x[:, 0]
     elif pooler == 'gap':
       output_feature = x
-      x = tf.reduce_mean(x, axis=1)
+      x = ops.mean(x, axis=1)
     elif pooler == 'none':
       output_feature = x
-      x = tf.identity(x, name='encoded_tokens')
+      x = layers.Activation('linear', name='encoded_tokens')(x)
     else:
       raise ValueError(f'unrecognized pooler type: {pooler}')
 
@@ -302,8 +307,8 @@ class VisionTransformer(keras.Model):
           patch_size,
           feat_level,
       )
-      endpoints[str(feat_level)] = tf.reshape(
-          output_feature, [-1, feat_h, feat_w, x.shape.as_list()[-1]])
+      endpoints[str(feat_level)] = ops.reshape(
+          output_feature, [-1, feat_h, feat_w, x.shape[-1]])
 
       # Don"t include `pre_logits` or `encoded_tokens` to support decoders.
       self._output_specs = {k: v.shape for k, v in endpoints.items()}
@@ -315,15 +320,15 @@ class VisionTransformer(keras.Model):
           name='pre_logits',
           kernel_initializer='lecun_normal' if original_init else 'he_uniform',
       )(x)
-      x = tf.nn.tanh(x)
+      x = ops.tanh(x)
     else:
-      x = tf.identity(x, name='pre_logits')
+      x = layers.Activation('linear', name='pre_logits')(x)
 
     if pooler == 'none':
       if output_encoded_tokens:
         endpoints['encoded_tokens'] = x
     else:
-      endpoints['pre_logits'] = tf.reshape(
+      endpoints['pre_logits'] = ops.reshape(
           x, [-1, 1, 1, representation_size or hidden_size])
 
     super().__init__(inputs=inputs, outputs=endpoints)

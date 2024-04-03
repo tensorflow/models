@@ -36,28 +36,10 @@ class BaseOptimizerConfig(base_config.Config):
   global_clipnorm: Optional[float] = None
 
 
-@dataclasses.dataclass
-class SGDConfig(BaseOptimizerConfig):
-  """Configuration for SGD optimizer.
-
-  The attributes for this class matches the arguments of keras.optimizer.SGD.
-
-  Attributes:
-    name: name of the optimizer.
-    decay: decay rate for SGD optimizer.
-    nesterov: nesterov for SGD optimizer.
-    momentum: momentum for SGD optimizer.
-  """
-  name: str = "SGD"
-  decay: float = 0.0
-  nesterov: bool = False
-  momentum: float = 0.0
-
-
 # TODO(b/216129465): Merge this config with SGDConfig after the experimental
 # optimizer graduates.
 @dataclasses.dataclass
-class SGDExperimentalConfig(BaseOptimizerConfig):
+class SGDConfig(BaseOptimizerConfig):
   """Configuration for SGD optimizer.
 
   The attributes for this class matches the arguments of
@@ -72,7 +54,6 @@ class SGDExperimentalConfig(BaseOptimizerConfig):
   name: str = "SGD"
   nesterov: bool = False
   momentum: float = 0.0
-  jit_compile: bool = False
 
 
 @dataclasses.dataclass
@@ -89,7 +70,7 @@ class RMSPropConfig(BaseOptimizerConfig):
     epsilon: epsilon value for RMSprop optimizer, help with numerical stability.
     centered: Whether to normalize gradients or not.
   """
-  name: str = "RMSprop"
+  name: str = "rmsprop"
   rho: float = 0.9
   momentum: float = 0.0
   epsilon: float = 1e-7
@@ -109,35 +90,12 @@ class AdagradConfig(BaseOptimizerConfig):
       accumulators, must be non-negative.
     epsilon: A small floating point value to avoid zero denominator.
   """
-  name: str = "Adagrad"
+  name: str = "adagrad"
   initial_accumulator_value: float = 0.1
   epsilon: float = 1e-07
 
-
 @dataclasses.dataclass
 class AdamConfig(BaseOptimizerConfig):
-  """Configuration for Adam optimizer.
-
-  The attributes for this class matches the arguments of
-  keras.optimizer.Adam.
-
-  Attributes:
-    name: name of the optimizer.
-    beta_1: decay rate for 1st order moments.
-    beta_2: decay rate for 2st order moments.
-    epsilon: epsilon value used for numerical stability in Adam optimizer.
-    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
-      the paper "On the Convergence of Adam and beyond".
-  """
-  name: str = "Adam"
-  beta_1: float = 0.9
-  beta_2: float = 0.999
-  epsilon: float = 1e-07
-  amsgrad: bool = False
-
-
-@dataclasses.dataclass
-class AdamExperimentalConfig(BaseOptimizerConfig):
   """Configuration for experimental Adam optimizer.
 
   The attributes for this class matches the arguments of
@@ -152,46 +110,16 @@ class AdamExperimentalConfig(BaseOptimizerConfig):
       the paper "On the Convergence of Adam and beyond".
     jit_compile: if True, jit compile will be used.
   """
-  name: str = "Adam"
+  name: str = "adam"
   beta_1: float = 0.9
   beta_2: float = 0.999
   epsilon: float = 1e-07
   amsgrad: bool = False
-  jit_compile: bool = False
+  # jit_compile: bool = False
 
 
 @dataclasses.dataclass
 class AdamWeightDecayConfig(BaseOptimizerConfig):
-  """Configuration for Adam optimizer with weight decay.
-
-  Attributes:
-    name: name of the optimizer.
-    beta_1: decay rate for 1st order moments.
-    beta_2: decay rate for 2st order moments.
-    epsilon: epsilon value used for numerical stability in the optimizer.
-    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
-      the paper "On the Convergence of Adam and beyond".
-    weight_decay_rate: float. Weight decay rate. Default to 0.
-    include_in_weight_decay: list[str], or None. List of weight names to include
-      in weight decay.
-    exclude_from_weight_decay: list[str], or None. List of weight names to not
-      include in weight decay.
-    gradient_clip_norm: A positive float. Clips the gradients to this maximum
-      L2-norm. Default to 1.0.
-  """
-  name: str = "AdamWeightDecay"
-  beta_1: float = 0.9
-  beta_2: float = 0.999
-  epsilon: float = 1e-07
-  amsgrad: bool = False
-  weight_decay_rate: float = 0.0
-  include_in_weight_decay: Optional[List[str]] = None
-  exclude_from_weight_decay: Optional[List[str]] = None
-  gradient_clip_norm: float = 1.0
-
-
-@dataclasses.dataclass
-class AdamWeightDecayExperimentalConfig(BaseOptimizerConfig):
   """Configuration for Adam optimizer with weight decay.
 
   Attributes:
@@ -206,14 +134,12 @@ class AdamWeightDecayExperimentalConfig(BaseOptimizerConfig):
       L2-norm. Default to 1.0.
     jit_compile: if True, jit compile will be used.
   """
-  name: str = "AdamWeightDecayExperimental"
+  name: str = "adamw"
   beta_1: float = 0.9
   beta_2: float = 0.999
   epsilon: float = 1e-07
   amsgrad: bool = False
-  weight_decay: float = 0.0
-  global_clipnorm: float = 1.0
-  jit_compile: bool = False
+  weight_decay: float = 0.004
 
 
 @dataclasses.dataclass
@@ -318,30 +244,8 @@ class SLIDEConfig(BaseOptimizerConfig):
   norm_type: str = "layer"
   ratio_clip_norm: float = 1e5
 
-
 @dataclasses.dataclass
 class AdafactorConfig(BaseOptimizerConfig):
-  """Configuration for Adafactor optimizer.
-
-  The attributes for this class matches the arguments of the Adafactor
-  implementation.
-  """
-  name: str = "Adafactor"
-  factored: bool = True
-  multiply_by_parameter_scale: bool = True
-  beta1: Optional[float] = None
-  decay_rate: float = 0.8
-  step_offset: int = 0
-  clipping_threshold: float = 1.0
-  min_dim_size_to_factor: int = 128
-  epsilon1: float = 1e-30
-  epsilon2: float = 1e-3
-  weight_decay: Optional[float] = None
-  include_in_weight_decay: Optional[str] = None
-
-
-@dataclasses.dataclass
-class AdafactorKerasConfig(BaseOptimizerConfig):
   """Configuration for AdafactorKeras optimizer.
 
   The attributes for this class matches the arguments of the Adafactor

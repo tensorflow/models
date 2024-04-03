@@ -49,7 +49,7 @@ def maybe_merge_call(fn, strategy, *args, **kwargs):
     return fn(strategy, *args, **kwargs)
 
 
-class ExponentialMovingAverage(keras.optimizers.legacy.Optimizer):
+class ExponentialMovingAverage(keras.optimizers.Optimizer):
   """Optimizer that computes an exponential moving average of the variables.
 
   Empirically it has been found that using the moving average of the trained

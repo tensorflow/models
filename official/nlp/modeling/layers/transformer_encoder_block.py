@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Keras-based TransformerEncoder block layer."""
-from typing import Any, Optional, Sequence
+from typing import Any, Optional, Sequence, List, Tuple, Union
 from absl import logging
 import tensorflow as tf 
 import keras
@@ -222,18 +222,10 @@ class TransformerEncoderBlock(keras.layers.Layer):
                        "when `norm_first` is False is invalid.")
 
   def build(self, input_shape):
-    if isinstance(input_shape, tf.TensorShape):
-      input_tensor_shape = input_shape
-    elif isinstance(input_shape, (list, tuple)):
-      input_tensor_shape = tf.TensorShape(input_shape[0])
-    else:
-      raise ValueError(
-          "The type of input shape argument is not supported, got: %s" %
-          type(input_shape))
     einsum_equation = "abc,cd->abd"
-    if len(input_tensor_shape.as_list()) > 3:
+    if len(input_shape) > 3:
       einsum_equation = "...bc,cd->...bd"
-    hidden_size = input_tensor_shape[-1]
+    hidden_size = input_shape[-1]
     if hidden_size % self._num_heads != 0:
       logging.warning(
           "The input size (%d) is not a multiple of the number of attention "

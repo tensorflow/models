@@ -86,7 +86,7 @@ class VideoClassificationModel(keras.Model):
       for endpoint in endpoints.values():
         x_pool = keras.layers.GlobalAveragePooling3D()(endpoint)
         pooled_feats.append(x_pool)
-      x = tf.concat(pooled_feats, axis=1)
+      x = keras.ops.concatenate(pooled_feats, axis=1)
     else:
       if not require_endpoints:
         # Uses the last endpoint for prediction.
@@ -99,7 +99,7 @@ class VideoClassificationModel(keras.Model):
           x = endpoints[name]
           x = keras.layers.GlobalAveragePooling3D()(x)
           outputs.append(x)
-        x = tf.concat(outputs, axis=1)
+        x = keras.ops.concatenate(outputs, axis=1)
 
     x = keras.layers.Dropout(dropout_rate)(x)
     x = keras.layers.Dense(

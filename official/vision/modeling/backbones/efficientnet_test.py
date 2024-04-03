@@ -34,14 +34,14 @@ class EfficientNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
-    self.assertAllEqual([1, input_size / 2**2, input_size / 2**2, 24],
-                        endpoints['2'].shape.as_list())
-    self.assertAllEqual([1, input_size / 2**3, input_size / 2**3, 40],
-                        endpoints['3'].shape.as_list())
-    self.assertAllEqual([1, input_size / 2**4, input_size / 2**4, 112],
-                        endpoints['4'].shape.as_list())
-    self.assertAllEqual([1, input_size / 2**5, input_size / 2**5, 320],
-                        endpoints['5'].shape.as_list())
+    self.assertAllEqual((1, input_size / 2**2, input_size / 2**2, 24),
+                        endpoints['2'].shape)
+    self.assertAllEqual((1, input_size / 2**3, input_size / 2**3, 40),
+                        endpoints['3'].shape)
+    self.assertAllEqual((1, input_size / 2**4, input_size / 2**4, 112),
+                        endpoints['4'].shape)
+    self.assertAllEqual((1, input_size / 2**5, input_size / 2**5, 320),
+                        endpoints['5'].shape)
 
   @parameterized.parameters('b0', 'b3', 'b6')
   def test_network_scaling(self, model_id):

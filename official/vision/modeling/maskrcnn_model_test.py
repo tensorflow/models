@@ -136,12 +136,12 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     # Results will be checked in test_forward.
     _ = model(
         images,
-        image_shape,
-        anchor_boxes,
-        gt_boxes,
-        gt_classes,
-        gt_masks,
-        gt_outer_boxes,
+        image_shape=image_shape,
+        anchor_boxes=anchor_boxes,
+        gt_boxes=gt_boxes,
+        gt_classes=gt_classes,
+        gt_masks=gt_masks,
+        gt_outer_boxes=gt_outer_boxes,
         training=is_training)
 
   @combinations.generate(
@@ -262,14 +262,14 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         gt_masks = None
 
       results = model(
-          images,
-          image_shape,
-          anchor_boxes,
-          gt_boxes,
-          gt_classes,
-          gt_masks,
-          gt_outer_boxes,
-          training=training)
+        images,
+        image_shape=image_shape,
+        anchor_boxes=anchor_boxes,
+        gt_boxes=gt_boxes,
+        gt_classes=gt_classes,
+        gt_masks=gt_masks,
+        gt_outer_boxes=gt_outer_boxes,
+        training=training)
 
     self.assertIn('rpn_boxes', results)
     self.assertIn('rpn_scores', results)

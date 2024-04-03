@@ -47,22 +47,11 @@ class OptimizerConfig(oneof.OneOfConfig):
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = dataclasses.field(default_factory=opt_cfg.SGDConfig)
-  sgd_experimental: opt_cfg.SGDExperimentalConfig = dataclasses.field(
-      default_factory=opt_cfg.SGDExperimentalConfig
-  )
   adam: opt_cfg.AdamConfig = dataclasses.field(
       default_factory=opt_cfg.AdamConfig
   )
-  adam_experimental: opt_cfg.AdamExperimentalConfig = dataclasses.field(
-      default_factory=opt_cfg.AdamExperimentalConfig
-  )
   adamw: opt_cfg.AdamWeightDecayConfig = dataclasses.field(
       default_factory=opt_cfg.AdamWeightDecayConfig
-  )
-  adamw_experimental: opt_cfg.AdamWeightDecayExperimentalConfig = (
-      dataclasses.field(
-          default_factory=opt_cfg.AdamWeightDecayExperimentalConfig
-      )
   )
   lamb: opt_cfg.LAMBConfig = dataclasses.field(
       default_factory=opt_cfg.LAMBConfig
@@ -81,9 +70,6 @@ class OptimizerConfig(oneof.OneOfConfig):
   )
   adafactor: opt_cfg.AdafactorConfig = dataclasses.field(
       default_factory=opt_cfg.AdafactorConfig
-  )
-  adafactor_keras: opt_cfg.AdafactorKerasConfig = dataclasses.field(
-      default_factory=opt_cfg.AdafactorKerasConfig
   )
 
 

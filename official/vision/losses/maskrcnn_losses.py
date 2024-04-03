@@ -25,7 +25,7 @@ class RpnScoreLoss(object):
   def __init__(self, rpn_batch_size_per_im):
     self._rpn_batch_size_per_im = rpn_batch_size_per_im
     self._binary_crossentropy = keras.losses.BinaryCrossentropy(
-        reduction=keras.losses.Reduction.SUM, from_logits=True)
+        reduction="sum", from_logits=True)
 
   def __call__(self, score_outputs, labels):
     """Computes total RPN detection loss.
@@ -88,7 +88,7 @@ class RpnBoxLoss(object):
     # for instances, the regression targets of 512x512 input with 6 anchors on
     # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
     self._huber_loss = keras.losses.Huber(
-        delta=huber_loss_delta, reduction=keras.losses.Reduction.SUM)
+        delta=huber_loss_delta, reduction="sum")
 
   def __call__(self, box_outputs, labels):
     """Computes total RPN detection loss.
@@ -263,7 +263,7 @@ class FastrcnnBoxLoss(object):
         is performed.
     """
     self._huber_loss = keras.losses.Huber(
-        delta=huber_loss_delta, reduction=keras.losses.Reduction.SUM)
+        delta=huber_loss_delta, reduction="sum")
     self._class_agnostic_bbox_pred = class_agnostic_bbox_pred
 
   def __call__(self, box_outputs, class_targets, box_targets):
@@ -337,7 +337,7 @@ class MaskrcnnLoss(object):
 
   def __init__(self):
     self._binary_crossentropy = keras.losses.BinaryCrossentropy(
-        reduction=keras.losses.Reduction.SUM, from_logits=True)
+        reduction="sum", from_logits=True)
 
   def __call__(self, mask_outputs, mask_targets, select_class_targets):
     """Computes the mask loss of Mask-RCNN.

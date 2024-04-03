@@ -282,7 +282,7 @@ class DilatedResNet(keras.Model):
 
     endpoints[str(normal_resnet_stage + 2)] = x
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
 
     super(DilatedResNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
@@ -360,7 +360,7 @@ class DilatedResNet(keras.Model):
           norm_epsilon=self._norm_epsilon)(
               x)
 
-    return tf.identity(x, name=name)
+    return keras.layers.Activation('linear', name=name)(x)
 
   def get_config(self):
     config_dict = {

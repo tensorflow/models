@@ -346,7 +346,7 @@ class Trainer(_AsyncTrainer):
     logs = {}
     for metric in self.train_metrics + [self.train_loss]:
       logs[metric.name] = metric.result()
-      metric.reset_states()
+      metric.reset_state()
     if callable(self.optimizer.learning_rate):
       # Maybe a self-implemented optimizer does not have `optimizer.iterations`.
       # So just to be safe here.
@@ -403,7 +403,7 @@ class Trainer(_AsyncTrainer):
   def eval_begin(self):
     """Sets up metrics."""
     for metric in self.validation_metrics + [self.validation_loss]:
-      metric.reset_states()
+      metric.reset_state()
     # Swaps weights to test on weights moving average.
     if self.optimizer and isinstance(self.optimizer,
                                      optimization.ExponentialMovingAverage):

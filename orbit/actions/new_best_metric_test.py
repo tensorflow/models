@@ -18,7 +18,8 @@ import os
 
 from orbit import actions
 
-import tensorflow as tf, tf_keras
+import tensorflow as tf
+import keras
 
 
 class NewBestMetricTest(tf.test.TestCase):

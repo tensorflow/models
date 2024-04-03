@@ -115,12 +115,12 @@ def get_activation(identifier, use_keras_layer=False, **kwargs):
           "identity": "linear",
           "swish": "swish",
           "sigmoid": "sigmoid",
-          "relu6": tf.nn.relu6,
-          "leaky_relu": functools.partial(tf.nn.leaky_relu, **kwargs),
-          "hard_swish": activations.hard_swish,
-          "hard_sigmoid": activations.hard_sigmoid,
-          "mish": activations.mish,
-          "gelu": functools.partial(tf.nn.gelu, **kwargs),
+          "relu6": "relu6",
+          "leaky_relu": "leaky_relu",
+          "hard_swish": "hard_swish",
+          "hard_sigmoid": "hard_sigmoid",
+          "mish": "mish",
+          "gelu": "gelu",
       }
       if identifier in keras_layer_allowlist:
         return keras.layers.Activation(keras_layer_allowlist[identifier])

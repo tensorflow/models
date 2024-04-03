@@ -137,7 +137,10 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
         aspect_ratios=aspect_ratios,
         anchor_size=anchor_size)
 
-    _ = model(images, image_shape, anchor_boxes, training=is_training)
+    _ = model(images, 
+              image_shape=image_shape, 
+              anchor_boxes=anchor_boxes, 
+              training=is_training)
 
   @combinations.generate(
       combinations.combine(

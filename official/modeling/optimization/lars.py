@@ -23,7 +23,7 @@ import keras
 # pylint: disable=protected-access
 
 
-class LARS(keras.optimizers.legacy.Optimizer):
+class LARS(keras.optimizers.Optimizer):
   """Layer-wise Adaptive Rate Scaling for large batch training.
 
   Introduced by "Large Batch Training of Convolutional Networks" by Y. You,

@@ -424,7 +424,7 @@ class MobileDet(keras.Model):
 
     x, endpoints, next_endpoint_level = self._mobiledet_base(inputs=inputs)
 
-    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    self._output_specs = {l: endpoints[l].shape for l in endpoints}
 
     super(MobileDet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
@@ -443,8 +443,7 @@ class MobileDet(keras.Model):
     Returns:
       A tuple of output Tensor and dictionary that collects endpoints.
     """
-
-    input_shape = inputs.get_shape().as_list()
+    input_shape = inputs.shape
     if len(input_shape) != 4:
       raise ValueError('Expected rank 4 input, was: %d' % len(input_shape))
 
@@ -472,8 +471,7 @@ class MobileDet(keras.Model):
         )(net)
 
       elif block_def.block_fn == 'invertedbottleneck':
-
-        in_filters = net.shape.as_list()[-1]
+        in_filters = net.shape.shape[-1]
         net = nn_blocks.InvertedBottleneckBlock(
             in_filters=in_filters,
             out_filters=block_def.filters,
@@ -499,8 +497,7 @@ class MobileDet(keras.Model):
         )(net)
 
       elif block_def.block_fn == 'tucker':
-
-        in_filters = net.shape.as_list()[-1]
+        in_filters = net.shape[-1]
         net = nn_blocks.TuckerConvBlock(
             in_filters=in_filters,
             out_filters=block_def.filters,

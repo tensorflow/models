@@ -124,18 +124,11 @@ class TransformerScaffold(keras.layers.Layer):
     self._bias_regularizer = keras.regularizers.get(bias_regularizer)
     self._kernel_constraint = keras.constraints.get(kernel_constraint)
     self._bias_constraint = keras.constraints.get(bias_constraint)
+    self._activity_regularizer =  keras.regularizers.get(activity_regularizer)
 
   def build(self, input_shape):
-    if isinstance(input_shape, tf.TensorShape):
-      input_tensor_shape = input_shape
-    elif isinstance(input_shape, (list, tuple)):
-      input_tensor_shape = tf.TensorShape(input_shape[0])
-    else:
-      raise ValueError(
-          "The type of input shape argument is not supported, got: %s" %
-          type(input_shape))
-
-    if len(input_tensor_shape.as_list()) != 3:
+    input_tensor_shape = input_shape
+    if len(input_tensor_shape) != 3:
       raise ValueError(
           "TransformerScaffold expects a three-dimensional input of "
           "shape [batch, sequence, width].")

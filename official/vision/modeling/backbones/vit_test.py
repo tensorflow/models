@@ -68,16 +68,16 @@ class VisionTransformerTest(parameterized.TestCase, tf.test.TestCase):
     output = network(inputs)
     if pooler == 'none':
       self.assertEqual(
-          output['encoded_tokens'].shape, [1, num_patch_rows**2, 16])
+          output['encoded_tokens'].shape, (1, num_patch_rows**2, 16))
     else:
-      self.assertEqual(output['pre_logits'].shape, [1, 1, 1, 16])
+      self.assertEqual(output['pre_logits'].shape, (1, 1, 1, 16))
 
     if output_2d_feature_maps:
       self.assertIn(expected_feat_level, output)
       self.assertIn(expected_feat_level, network.output_specs)
       self.assertEqual(
           network.output_specs[expected_feat_level][1:],
-          [num_patch_rows, num_patch_rows, 8])
+          (num_patch_rows, num_patch_rows, 8))
     else:
       self.assertNotIn(expected_feat_level, output)
 
@@ -94,7 +94,7 @@ class VisionTransformerTest(parameterized.TestCase, tf.test.TestCase):
 
     inputs = keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     output = network(inputs)['pre_logits']
-    self.assertEqual(output.shape, [1, 1, 1, 768])
+    self.assertEqual(output.shape, (1, 1, 1, 768))
 
 
 if __name__ == '__main__':
