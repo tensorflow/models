@@ -2772,7 +2772,7 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
         max_attention_inference_parallelism
     )
 
-  def build(self, input_shape: keras.KerasTensor):
+  def build(self, input_shape):
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
           self._stochastic_depth_drop_rate)
