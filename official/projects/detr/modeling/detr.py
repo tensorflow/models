@@ -265,12 +265,21 @@ class DETR(tf_keras.Model):
 class DETRTransformer(tf_keras.layers.Layer):
   """Encoder and Decoder of DETR."""
 
-  def __init__(self, num_encoder_layers=6, num_decoder_layers=6,
-               dropout_rate=0.1, **kwargs):
+  def __init__(
+      self,
+      num_encoder_layers=6,
+      num_decoder_layers=6,
+      num_attention_heads=8,
+      intermediate_size=2048,
+      dropout_rate=0.1,
+      **kwargs
+  ):
     super().__init__(**kwargs)
     self._dropout_rate = dropout_rate
     self._num_encoder_layers = num_encoder_layers
     self._num_decoder_layers = num_decoder_layers
+    self._num_attention_heads = num_attention_heads
+    self._intermediate_size = intermediate_size
 
   def build(self, input_shape=None):
     if self._num_encoder_layers > 0:
@@ -279,7 +288,10 @@ class DETRTransformer(tf_keras.layers.Layer):
           dropout_rate=self._dropout_rate,
           intermediate_dropout=self._dropout_rate,
           norm_first=False,
-          num_layers=self._num_encoder_layers)
+          num_layers=self._num_encoder_layers,
+          num_attention_heads=self._num_attention_heads,
+          intermediate_size=self._intermediate_size,
+      )
     else:
       self._encoder = None
 
@@ -288,7 +300,10 @@ class DETRTransformer(tf_keras.layers.Layer):
         dropout_rate=self._dropout_rate,
         intermediate_dropout=self._dropout_rate,
         norm_first=False,
-        num_layers=self._num_decoder_layers)
+        num_layers=self._num_decoder_layers,
+        num_attention_heads=self._num_attention_heads,
+        intermediate_size=self._intermediate_size,
+    )
     super().build(input_shape)
 
   def get_config(self):
