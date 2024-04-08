@@ -39,11 +39,11 @@ class Parser(parser.Parser):
 
   def __init__(self,
                output_size,
-               min_level,
+               min_level: int | None,
                max_level,
-               num_scales,
-               aspect_ratios,
-               anchor_size,
+               num_scales: int | None,
+               aspect_ratios: list[float] | None,
+               anchor_size: float | None,
                match_threshold=0.5,
                unmatched_threshold=0.5,
                box_coder_weights=None,
@@ -63,20 +63,28 @@ class Parser(parser.Parser):
                keep_aspect_ratio=True):
     """Initializes parameters for parsing annotations in the dataset.
 
+    If one provides `input_anchor` when calling `_parse_eval_data()` and
+    `_parse_train_data()`, the `min_level`, `num_scales`, `aspect_ratios`, and
+    `anchor_size` can be `None`.
+
     Args:
       output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
       min_level: `int` number of minimum level of the output feature pyramid.
+        Can be `None` if `input_anchor` is provided in `_parse_*_data()`.
       max_level: `int` number of maximum level of the output feature pyramid.
       num_scales: `int` number representing intermediate scales added on each
         level. For instances, num_scales=2 adds one additional intermediate
-        anchor scales [2^0, 2^0.5] on each level.
+        anchor scales [2^0, 2^0.5] on each level. Can be `None` if
+        `input_anchor` is provided in `_parse_*_data()`.
       aspect_ratios: `list` of float numbers representing the aspect ratio
         anchors added on each level. The number indicates the ratio of width to
         height. For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors
-        on each scale level.
+        on each scale level. Can be `None` if `input_anchor` is provided in
+        `_parse_*_data()`.
       anchor_size: `float` number representing the scale of size of the base
-        anchor to the feature stride 2^level.
+        anchor to the feature stride 2^level. Can be `None` if `input_anchor` is
+        provided in `_parse_*_data()`.
       match_threshold: `float` number between 0 and 1 representing the
         lower-bound threshold to assign positive labels for anchors. An anchor
         with a score over the threshold is labeled positive.
