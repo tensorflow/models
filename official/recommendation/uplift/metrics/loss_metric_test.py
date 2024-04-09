@@ -25,7 +25,7 @@ from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import loss_metric
 
 
-class TrueLogitsTreatmentLossTest(
+class LossMetricTest(
     keras_test_case.KerasTestCase, parameterized.TestCase
 ):
 
@@ -65,6 +65,20 @@ class TrueLogitsTreatmentLossTest(
           },
       },
       {
+          "testcase_name": "unweighted_metric",
+          "loss_fn": tf_keras.metrics.MeanSquaredError(name="loss"),
+          "from_logits": False,
+          "y_true": tf.constant([[0], [0], [2], [2]]),
+          "y_pred": tf.constant([[1], [2], [3], [4]]),
+          "is_treatment": tf.constant([[True], [False], [True], [False]]),
+          "sample_weight": None,
+          "expected_losses": {
+              "loss": 2.5,
+              "loss/control": 4.0,
+              "loss/treatment": 1.0,
+          },
+      },
+      {
           "testcase_name": "weighted",
           "loss_fn": tf_keras.losses.mean_absolute_error,
           "from_logits": False,
@@ -72,6 +86,20 @@ class TrueLogitsTreatmentLossTest(
           "y_pred": tf.constant([[1], [2], [3], [4]]),
           "is_treatment": tf.constant([[True], [False], [True], [False]]),
           "sample_weight": tf.constant([0.5, 0.5, 0.7, 1.8]),
+          "expected_losses": {
+              "loss": np.average([1, 2, 1, 3], weights=[0.5, 0.5, 0.7, 1.8]),
+              "loss/control": np.average([2, 3], weights=[0.5, 1.8]),
+              "loss/treatment": 1.0,
+          },
+      },
+      {
+          "testcase_name": "weighted_keras_metric",
+          "loss_fn": tf_keras.metrics.MeanAbsoluteError(name="loss"),
+          "from_logits": False,
+          "y_true": tf.constant([[0], [0], [2], [7]]),
+          "y_pred": tf.constant([[1], [2], [3], [4]]),
+          "is_treatment": tf.constant([[True], [False], [True], [False]]),
+          "sample_weight": tf.constant([[0.5], [0.5], [0.7], [1.8]]),
           "expected_losses": {
               "loss": np.average([1, 2, 1, 3], weights=[0.5, 0.5, 0.7, 1.8]),
               "loss/control": np.average([2, 3], weights=[0.5, 1.8]),
@@ -93,8 +121,36 @@ class TrueLogitsTreatmentLossTest(
           },
       },
       {
+          "testcase_name": "only_control_metric",
+          "loss_fn": tf_keras.metrics.MeanSquaredError(name="loss"),
+          "from_logits": False,
+          "y_true": tf.constant([[0], [1], [5]]),
+          "y_pred": tf.constant([[1], [2], [5]]),
+          "is_treatment": tf.constant([[False], [False], [False]]),
+          "sample_weight": tf.constant([1, 0, 1]),
+          "expected_losses": {
+              "loss": 0.5,
+              "loss/control": 0.5,
+              "loss/treatment": 0.0,
+          },
+      },
+      {
           "testcase_name": "only_treatment",
           "loss_fn": tf_keras.metrics.mean_absolute_error,
+          "from_logits": False,
+          "y_true": tf.constant([[0], [1], [5]]),
+          "y_pred": tf.constant([[1], [2], [5]]),
+          "is_treatment": tf.constant([[True], [True], [True]]),
+          "sample_weight": tf.constant([1, 0, 1]),
+          "expected_losses": {
+              "loss": 0.5,
+              "loss/control": 0.0,
+              "loss/treatment": 0.5,
+          },
+      },
+      {
+          "testcase_name": "only_treatment_metric",
+          "loss_fn": tf_keras.metrics.MeanAbsoluteError(name="loss"),
           "from_logits": False,
           "y_true": tf.constant([[0], [1], [5]]),
           "y_pred": tf.constant([[1], [2], [5]]),
@@ -135,6 +191,48 @@ class TrueLogitsTreatmentLossTest(
           "expected_losses": {
               "loss": 0.0,
               "loss/control": 0.0,
+              "loss/treatment": 0.0,
+          },
+      },
+      {
+          "testcase_name": "no_entry_metric",
+          "loss_fn": tf_keras.metrics.BinaryCrossentropy(name="loss"),
+          "from_logits": False,
+          "y_true": tf.constant([[]]),
+          "y_pred": tf.constant([[]]),
+          "is_treatment": tf.constant([[]]),
+          "sample_weight": tf.constant([[]]),
+          "expected_losses": {
+              "loss": 0.0,
+              "loss/control": 0.0,
+              "loss/treatment": 0.0,
+          },
+      },
+      {
+          "testcase_name": "auc_metric",
+          "loss_fn": tf_keras.metrics.AUC(from_logits=True, name="loss"),
+          "from_logits": True,
+          "y_true": tf.constant([[0], [0], [1], [1]]),
+          "y_pred": tf.constant([[0], [0.5], [0.3], [0.9]]),
+          "is_treatment": tf.constant([[1], [1], [1], [1]]),
+          "sample_weight": None,
+          "expected_losses": {
+              "loss": 0.75,
+              "loss/control": 0.0,
+              "loss/treatment": 0.75,
+          },
+      },
+      {
+          "testcase_name": "loss_fn_with_from_logits",
+          "loss_fn": tf_keras.losses.binary_crossentropy,
+          "from_logits": True,
+          "y_true": tf.constant([[0.0, 1.0]]),
+          "y_pred": tf.constant([[0.0, 1.0]]),
+          "is_treatment": tf.constant([[0], [0]]),
+          "sample_weight": None,
+          "expected_losses": {
+              "loss": 0.50320446,
+              "loss/control": 0.50320446,
               "loss/treatment": 0.0,
           },
       },
@@ -237,10 +335,17 @@ class TrueLogitsTreatmentLossTest(
     metric.reset_states()
     self.assertEqual(expected_initial_result, metric.result())
 
-  def test_metric_is_configurable(self):
-    metric = loss_metric.LossMetric(
-        tf_keras.losses.binary_crossentropy, from_logits=True, name="bce_loss"
-    )
+  @parameterized.parameters(
+      tf_keras.losses.binary_crossentropy,
+      tf_keras.metrics.BinaryCrossentropy(from_logits=True, name="bce_loss"),
+  )
+  def test_metric_is_configurable(
+      self,
+      loss_fn: (
+          Callable[[tf.Tensor, tf.Tensor], tf.Tensor] | tf_keras.metrics.Metric
+      ),
+  ):
+    metric = loss_metric.LossMetric(loss_fn, from_logits=True, name="bce_loss")
     self.assertLayerConfigurable(
         layer=metric,
         y_true=tf.constant([[1], [1], [0]]),
@@ -260,6 +365,19 @@ class TrueLogitsTreatmentLossTest(
         TypeError, "y_pred must be of type `TwoTowerTrainingOutputs`"
     ):
       metric.update_state(y_true=tf.ones((3, 1)), y_pred=tf.ones((3, 1)))
+
+  def test_passing_loss_object_raises_error(self):
+    with self.assertRaisesRegex(
+        TypeError, "`loss_fn` cannot be a Keras `Loss` object"
+    ):
+      loss_metric.LossMetric(loss_fn=tf_keras.losses.MeanAbsoluteError())
+
+  def test_conflicting_from_logits_values_raises_error(self):
+    with self.assertRaises(ValueError):
+      loss_metric.LossMetric(
+          loss_fn=tf_keras.metrics.BinaryCrossentropy(from_logits=True),
+          from_logits=False,
+      )
 
 
 if __name__ == "__main__":
