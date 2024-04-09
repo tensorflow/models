@@ -62,6 +62,7 @@ class LossMetric(tf_keras.metrics.Metric):
           Callable[[tf.Tensor, tf.Tensor], tf.Tensor] | tf_keras.metrics.Metric
       ),
       from_logits: bool = True,
+      slice_by_treatment: bool = True,
       name: str = "loss",
       dtype: tf.DType = tf.float32,
       **loss_fn_kwargs,
@@ -76,6 +77,10 @@ class LossMetric(tf_keras.metrics.Metric):
       from_logits: Specifies whether the true logits or true predictions should
         be used from the model outputs to compute the loss. Defaults to using
         the true logits.
+      slice_by_treatment: Specifies whether the loss should be sliced by the
+        treatment indicator tensor. If `True`, `loss_fn` will be wrapped in a
+        `TreatmentSlicedMetric` to report the loss values sliced by the
+        treatment group.
       name: Optional name for the instance. If `loss_fn` is a Keras metric then
         its name will be used instead.
       dtype: Optional data type for the instance. If `loss_fn` is a Keras metric
@@ -99,6 +104,7 @@ class LossMetric(tf_keras.metrics.Metric):
     self._loss_fn = loss_fn
     self._from_logits = from_logits
     self._loss_fn_kwargs = loss_fn_kwargs
+    self._slice_by_treatment = slice_by_treatment
 
     if isinstance(loss_fn, tf_keras.metrics.Metric):
       metric_from_logits = loss_fn.get_config().get("from_logits", from_logits)
@@ -108,20 +114,17 @@ class LossMetric(tf_keras.metrics.Metric):
             " the `from_logits` value passed to the `loss_fn` metric"
             f" ({metric_from_logits}). Ensure that they have the same value."
         )
-
-      self._treatment_sliced_loss = (
-          treatment_sliced_metric.TreatmentSlicedMetric(loss_fn)
-      )
+      loss_metric = loss_fn
 
     else:
       if "from_logits" in inspect.signature(loss_fn).parameters:
         self._loss_fn_kwargs.update({"from_logits": from_logits})
+      loss_metric = tf_keras.metrics.Mean(name=name, dtype=dtype)
 
-      self._treatment_sliced_loss = (
-          treatment_sliced_metric.TreatmentSlicedMetric(
-              tf_keras.metrics.Mean(name=name, dtype=dtype)
-          )
-      )
+    if slice_by_treatment:
+      self._loss = treatment_sliced_metric.TreatmentSlicedMetric(loss_metric)
+    else:
+      self._loss = loss_metric
 
   def update_state(
       self,
@@ -151,27 +154,32 @@ class LossMetric(tf_keras.metrics.Metric):
 
     pred = y_pred.true_logits if self._from_logits else y_pred.true_predictions
 
+    is_treatment = {}
+    if self._slice_by_treatment:
+      is_treatment["is_treatment"] = y_pred.is_treatment
+
     if isinstance(self._loss_fn, tf_keras.metrics.Metric):
-      self._treatment_sliced_loss.update_state(
+      self._loss.update_state(
           y_true,
           y_pred=pred,
-          is_treatment=y_pred.is_treatment,
           sample_weight=sample_weight,
+          **is_treatment,
       )
     else:
-      self._treatment_sliced_loss.update_state(
+      self._loss.update_state(
           values=self._loss_fn(y_true, pred, **self._loss_fn_kwargs),
-          is_treatment=y_pred.is_treatment,
           sample_weight=sample_weight,
+          **is_treatment,
       )
 
-  def result(self) -> dict[str, tf.Tensor]:
-    return self._treatment_sliced_loss.result()
+  def result(self) -> tf.Tensor | dict[str, tf.Tensor]:
+    return self._loss.result()
 
   def get_config(self) -> dict[str, Any]:
     config = super().get_config()
     config["loss_fn"] = tf_keras.utils.serialize_keras_object(self._loss_fn)
     config["from_logits"] = self._from_logits
+    config["slice_by_treatment"] = self._slice_by_treatment
     config.update(self._loss_fn_kwargs)
     return config
 
@@ -180,4 +188,4 @@ class LossMetric(tf_keras.metrics.Metric):
     config["loss_fn"] = tf_keras.utils.deserialize_keras_object(
         config["loss_fn"]
     )
-    return LossMetric(**config)
+    return cls(**config)

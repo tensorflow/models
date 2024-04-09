@@ -25,9 +25,7 @@ from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import loss_metric
 
 
-class LossMetricTest(
-    keras_test_case.KerasTestCase, parameterized.TestCase
-):
+class LossMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
 
   def _get_outputs(
       self,
@@ -236,6 +234,28 @@ class LossMetricTest(
               "loss/treatment": 0.0,
           },
       },
+      {
+          "testcase_name": "no_treatment_slice",
+          "loss_fn": tf_keras.losses.binary_crossentropy,
+          "from_logits": True,
+          "y_true": tf.constant([[0.0, 1.0]]),
+          "y_pred": tf.constant([[0.0, 1.0]]),
+          "is_treatment": tf.constant([[0], [0]]),
+          "sample_weight": None,
+          "expected_losses": 0.50320446,
+          "slice_by_treatment": False,
+      },
+      {
+          "testcase_name": "no_treatment_slice_metric",
+          "loss_fn": tf_keras.metrics.BinaryCrossentropy(from_logits=False),
+          "from_logits": False,
+          "y_true": tf.constant([[0.0, 1.0]]),
+          "y_pred": tf.constant([[0.0, 1.0]]),
+          "is_treatment": tf.constant([[0], [0]]),
+          "sample_weight": None,
+          "expected_losses": 0,
+          "slice_by_treatment": False,
+      },
   )
   def test_metric_computes_sliced_losses(
       self,
@@ -245,7 +265,8 @@ class LossMetricTest(
       y_pred: tf.Tensor,
       is_treatment: tf.Tensor,
       sample_weight: tf.Tensor | None,
-      expected_losses: dict[str, float],
+      expected_losses: float | dict[str, float],
+      slice_by_treatment: bool = True,
   ):
     if from_logits:
       true_logits = y_pred
@@ -254,7 +275,11 @@ class LossMetricTest(
       true_logits = tf.zeros_like(y_pred)  # Irrelevant for testing.
       true_predictions = y_pred
 
-    metric = loss_metric.LossMetric(loss_fn=loss_fn, from_logits=from_logits)
+    metric = loss_metric.LossMetric(
+        loss_fn=loss_fn,
+        from_logits=from_logits,
+        slice_by_treatment=slice_by_treatment,
+    )
     outputs = self._get_outputs(
         true_logits=true_logits,
         true_predictions=true_predictions,
@@ -335,17 +360,28 @@ class LossMetricTest(
     metric.reset_states()
     self.assertEqual(expected_initial_result, metric.result())
 
-  @parameterized.parameters(
-      tf_keras.losses.binary_crossentropy,
-      tf_keras.metrics.BinaryCrossentropy(from_logits=True, name="bce_loss"),
+  @parameterized.product(
+      loss_fn=(
+          tf_keras.losses.binary_crossentropy,
+          tf_keras.metrics.BinaryCrossentropy(
+              from_logits=True, name="bce_loss"
+          ),
+      ),
+      slice_by_treatment=(True, False),
   )
   def test_metric_is_configurable(
       self,
       loss_fn: (
           Callable[[tf.Tensor, tf.Tensor], tf.Tensor] | tf_keras.metrics.Metric
       ),
+      slice_by_treatment: bool,
   ):
-    metric = loss_metric.LossMetric(loss_fn, from_logits=True, name="bce_loss")
+    metric = loss_metric.LossMetric(
+        loss_fn,
+        from_logits=True,
+        slice_by_treatment=slice_by_treatment,
+        name="bce_loss",
+    )
     self.assertLayerConfigurable(
         layer=metric,
         y_true=tf.constant([[1], [1], [0]]),
