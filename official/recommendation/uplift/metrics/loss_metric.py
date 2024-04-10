@@ -19,6 +19,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable
 
+import numpy as np
 import tensorflow as tf, tf_keras
 
 from official.recommendation.uplift import types
@@ -28,9 +29,6 @@ from official.recommendation.uplift.metrics import treatment_sliced_metric
 @tf_keras.utils.register_keras_serializable(package="Uplift")
 class LossMetric(tf_keras.metrics.Metric):
   """Computes a loss sliced by treatment group.
-
-  Note that the prediction tensor is expected to be of type
-  `TwoTowerTrainingOutputs`.
 
   Example standalone usage:
 
@@ -74,9 +72,10 @@ class LossMetric(tf_keras.metrics.Metric):
         `__call__(y_true: tf,Tensor, y_pred: tf.Tensor, **loss_fn_kwargs)`. Note
         that the `loss_fn_kwargs` will not be passed to the `__call__` method if
         `loss_fn` is a Keras metric.
-      from_logits: Specifies whether the true logits or true predictions should
-        be used from the model outputs to compute the loss. Defaults to using
-        the true logits.
+      from_logits: When `y_pred` is of type `TwoTowerTrainingOutputs`, specifies
+        whether the true logits or true predictions should be used to compute
+        the loss (defaults to using the true logits). Othwerwise, this argument
+        will be ignored if `y_pred` is of type `tf.Tensor`.
       slice_by_treatment: Specifies whether the loss should be sliced by the
         treatment indicator tensor. If `True`, `loss_fn` will be wrapped in a
         `TreatmentSlicedMetric` to report the loss values sliced by the
@@ -129,16 +128,16 @@ class LossMetric(tf_keras.metrics.Metric):
   def update_state(
       self,
       y_true: tf.Tensor,
-      y_pred: types.TwoTowerTrainingOutputs,
+      y_pred: types.TwoTowerTrainingOutputs | tf.Tensor | np.ndarray,
       sample_weight: tf.Tensor | None = None,
   ):
     """Updates the overall, control and treatment losses.
 
     Args:
       y_true: A `tf.Tensor` with the targets.
-      y_pred: Two tower training outputs. The treatment indicator tensor is used
-        to slice the true logits or true predictions into control and treatment
-        losses.
+      y_pred: Model outputs. If of type `TwoTowerTrainingOutputs`, the treatment
+        indicator tensor is used to slice the true logits or true predictions
+        into control and treatment losses.
       sample_weight: Optional sample weight to compute weighted losses. If
         given, the sample weight will also be sliced by the treatment indicator
         tensor to compute the weighted control and treatment losses.
@@ -146,13 +145,22 @@ class LossMetric(tf_keras.metrics.Metric):
     Raises:
       TypeError: if `y_pred` is not of type `TwoTowerTrainingOutputs`.
     """
-    if not isinstance(y_pred, types.TwoTowerTrainingOutputs):
-      raise TypeError(
-          "y_pred must be of type `TwoTowerTrainingOutputs` but got type"
-          f" {type(y_pred)} instead."
+    if isinstance(y_pred, (tf.Tensor, np.ndarray)):
+      if self._slice_by_treatment:
+        raise ValueError(
+            "`slice_by_treatment` must be False when y_pred is a `tf.Tensor` or"
+            " `np.ndarray`."
+        )
+      pred = y_pred
+    elif isinstance(y_pred, types.TwoTowerTrainingOutputs):
+      pred = (
+          y_pred.true_logits if self._from_logits else y_pred.true_predictions
       )
-
-    pred = y_pred.true_logits if self._from_logits else y_pred.true_predictions
+    else:
+      raise TypeError(
+          "y_pred must be of type `TwoTowerTrainingOutputs`, `tf.Tensor` or"
+          f" `np.ndarray` but got type {type(y_pred)} instead."
+      )
 
     is_treatment = {}
     if self._slice_by_treatment:
