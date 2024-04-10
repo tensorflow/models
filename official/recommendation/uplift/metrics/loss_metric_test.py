@@ -288,6 +288,19 @@ class LossMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
     metric(y_true, outputs, sample_weight=sample_weight)
     self.assertEqual(expected_losses, metric.result())
 
+  def test_metric_with_y_pred_tensor(self):
+    y_true = tf.constant([[0], [0], [2], [7]])
+    y_pred = tf.constant([[1], [2], [3], [4]])
+    sample_weight = tf.constant([[0.5], [0.5], [0.7], [1.8]])
+
+    metric = loss_metric.LossMetric(
+        loss_fn=tf_keras.metrics.mae, slice_by_treatment=False
+    )
+    metric(y_true, y_pred, sample_weight)
+
+    expected_loss = np.average([1, 2, 1, 3], weights=[0.5, 0.5, 0.7, 1.8])
+    self.assertAllClose(expected_loss, metric.result())
+
   def test_multiple_update_batches_returns_aggregated_sliced_losses(self):
     metric = loss_metric.LossMetric(
         loss_fn=tf_keras.losses.mean_absolute_error,
@@ -397,8 +410,26 @@ class LossMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
     metric = loss_metric.LossMetric(
         tf_keras.metrics.mean_absolute_percentage_error
     )
+    y_true = tf.ones((3, 1))
+    y_pred = types.TwoTowerNetworkOutputs(
+        shared_embedding=tf.ones((3, 5)),
+        control_logits=tf.ones((3, 1)),
+        treatment_logits=tf.ones((3, 1)),
+    )
     with self.assertRaisesRegex(
-        TypeError, "y_pred must be of type `TwoTowerTrainingOutputs`"
+        TypeError,
+        "y_pred must be of type `TwoTowerTrainingOutputs`, `tf.Tensor` or"
+        " `np.ndarray`",
+    ):
+      metric.update_state(y_true=y_true, y_pred=y_pred)
+
+  def test_slice_by_treatment_with_y_pred_tensor_raises_error(self):
+    metric = loss_metric.LossMetric(
+        tf_keras.metrics.mae, slice_by_treatment=True
+    )
+    with self.assertRaisesRegex(
+        ValueError,
+        "`slice_by_treatment` must be False when y_pred is a `tf.Tensor`.",
     ):
       metric.update_state(y_true=tf.ones((3, 1)), y_pred=tf.ones((3, 1)))
 
