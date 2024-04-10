@@ -43,6 +43,12 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
         trainer_options=trainer_options)
     self._task_sampler = task_sampler
 
+    # TODO(haozhangthu): Add taskwise step counter to train_loop_end for logging
+    # on TensorBoard.
+    self._task_step_counters = {
+        name: orbit.utils.create_global_step() for name in self.multi_task.tasks
+    }
+
     # Build per task train step.
     def _get_task_step(task_name, task):
 
@@ -57,18 +63,14 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
             optimizer=self.optimizer,
             metrics=self.training_metrics[task_name])
         self.training_losses[task_name].update_state(task_logs[task.loss])
+        self.global_step.assign_add(1)
+        self.task_step_counter(task_name).assign_add(1)
 
       return step_fn
 
     self._task_train_step_map = {
         name: _get_task_step(name, task)
         for name, task in self.multi_task.tasks.items()
-    }
-
-    # TODO(haozhangthu): Add taskwise step counter to train_loop_end for logging
-    # on TensorBoard.
-    self._task_step_counters = {
-        name: orbit.utils.create_global_step() for name in self.multi_task.tasks
     }
 
     # If the new Keras optimizer is used, we require all model variables are
@@ -97,8 +99,6 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
       if rn >= begin and rn < end:
         self._strategy.run(
             self._task_train_step_map[name], args=(next(iterator_map[name]),))
-        self.global_step.assign_add(1)
-        self.task_step_counter(name).assign_add(1)
 
   def train_loop_end(self):
     """Record loss and metric values per task."""
