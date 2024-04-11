@@ -17,7 +17,7 @@
 import enum
 
 
-class TwoTowerOutputKeys(enum.StrEnum):
+class TwoTowerOutputKeys(str, enum.Enum):
   """Keys for training and inference output tensors."""
 
   CONTROL_PREDICTIONS = "control_predictions"
