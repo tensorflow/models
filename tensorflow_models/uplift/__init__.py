@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TensorFlow Models Libraries."""
-# pylint: disable=wildcard-import
-from tensorflow_models import nlp
-from tensorflow_models import uplift
-from tensorflow_models import vision
+"""TensorFlow Models Uplift Libraries."""
 
-from official import core
-from official.modeling import hyperparams
-from official.modeling import optimization
-from official.modeling import tf_utils as utils
+from official.recommendation.uplift import keys
+from official.recommendation.uplift import layers
+from official.recommendation.uplift import losses
+from official.recommendation.uplift import metrics
+from official.recommendation.uplift import models
+from official.recommendation.uplift import types
+from official.recommendation.uplift import utils
