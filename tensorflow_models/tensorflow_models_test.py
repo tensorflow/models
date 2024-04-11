@@ -35,6 +35,17 @@ class TensorflowModelsTest(tf.test.TestCase):
     _ = tfm.optimization.LinearWarmup(
         after_warmup_lr_sched=0.0, warmup_steps=10, warmup_learning_rate=0.1)
 
+  def testUpliftImports(self):
+    _ = tfm.uplift.keys.TwoTowerOutputKeys.CONTROL_PREDICTIONS
+    _ = tfm.uplift.types.TwoTowerNetworkOutputs(
+        shared_embedding=tf.ones((10, 10)),
+        control_logits=tf.ones((10, 1)),
+        treatment_logits=tf.ones((10, 1)),
+    )
+    _ = tfm.uplift.layers.encoders.concat_features.ConcatFeatures(['feature'])
+    _ = tfm.uplift.metrics.treatment_fraction.TreatmentFraction()
+    _ = tfm.uplift.losses.true_logits_loss.TrueLogitsLoss(tf_keras.losses.mse)
+
 
 if __name__ == '__main__':
   tf.test.main()
