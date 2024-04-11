@@ -24,7 +24,7 @@ import tensorflow as tf, tf_keras
 
 
 @enum.unique
-class LayeringMethod(enum.StrEnum):
+class LayeringMethod(str, enum.Enum):
   """Layering method between the control and treatment towers."""
 
   # No layering.
