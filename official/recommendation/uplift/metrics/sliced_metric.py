@@ -193,6 +193,11 @@ class SlicedMetric(tf_keras.metrics.Metric):
         f"{metric_result}."
     )
 
+  def reset_state(self):
+    self._metric.reset_state()
+    for metric in self._sliced_metrics:
+      metric.reset_state()
+
   def get_config(self):
     return {
         "name": self.name,
