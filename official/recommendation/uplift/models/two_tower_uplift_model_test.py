@@ -21,6 +21,7 @@ from official.recommendation.uplift import keras_test_case
 from official.recommendation.uplift import keys
 from official.recommendation.uplift.layers.uplift_networks import two_tower_uplift_network
 from official.recommendation.uplift.losses import true_logits_loss
+from official.recommendation.uplift.metrics import loss_metric
 from official.recommendation.uplift.models import two_tower_uplift_model
 
 
@@ -126,6 +127,53 @@ class TwoTowerUpliftModelTest(
         keys.TwoTowerOutputKeys.UPLIFT_PREDICTIONS: 3 * tf.ones((10, 1)),
     }
     self.assertAllClose(expected_predictions, model.predict(dataset))
+
+  def test_classification_model_trains(self):
+    tf_keras.utils.set_random_seed(1)
+
+    # Create binary classifier uplift model.
+    uplift_network = self._get_uplift_network(
+        control_feature_encoder=None, control_input_combiner=None
+    )
+    model = two_tower_uplift_model.TwoTowerUpliftModel(
+        treatment_indicator_feature_name="is_treatment",
+        uplift_network=uplift_network,
+        inverse_link_fn=tf.math.sigmoid,
+    )
+    model.compile(
+        optimizer=tf_keras.optimizers.SGD(0.1),
+        loss=true_logits_loss.TrueLogitsLoss(
+            loss_fn=tf_keras.losses.binary_crossentropy, from_logits=True
+        ),
+        metrics=[
+            loss_metric.LossMetric(
+                tf_keras.metrics.AUC(curve="PR", from_logits=True, name="aucpr")
+            ),
+        ],
+    )
+
+    # Create toy classification dataset.
+    treatment = tf.constant([[1], [1], [0], [1], [1], [1], [0], [1], [0], [1]])
+    y = treatment
+    dataset = tf.data.Dataset.from_tensor_slices((
+        {
+            "shared_feature": np.random.normal(size=(10, 1)),
+            "treatment_feature": np.random.normal(size=(10, 1)),
+            "is_treatment": treatment,
+        },
+        y,
+    )).batch(5)
+
+    # Test model training.
+    history = model.fit(dataset, epochs=100)
+    self.assertIn("loss", history.history)
+    self.assertLen(history.history["loss"], 100)
+    self.assertBetween(
+        history.history["loss"][-1], 0.0, history.history["loss"][0]
+    )
+    self.assertIn("aucpr", history.history)
+    self.assertLess(history.history["aucpr"][0], 1.0)
+    self.assertEqual(history.history["aucpr"][-1], 1.0)
 
   @parameterized.named_parameters(
       {

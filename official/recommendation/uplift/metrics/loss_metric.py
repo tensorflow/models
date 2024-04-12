@@ -183,6 +183,9 @@ class LossMetric(tf_keras.metrics.Metric):
   def result(self) -> tf.Tensor | dict[str, tf.Tensor]:
     return self._loss.result()
 
+  def reset_state(self):
+    self._loss.reset_state()
+
   def get_config(self) -> dict[str, Any]:
     config = super().get_config()
     config["loss_fn"] = tf_keras.utils.serialize_keras_object(self._loss_fn)

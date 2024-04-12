@@ -315,6 +315,33 @@ class SlicedMetricTest(keras_test_case.KerasTestCase, parameterized.TestCase):
     }
     self.assertDictEqual(expected_result, metric.result())
 
+  def test_reset_state(self):
+    metric = sliced_metric.SlicedMetric(
+        metric=tf_keras.metrics.AUC(curve="PR", from_logits=False, name="auc"),
+        slicing_spec={"control": False, "treatment": True},
+    )
+
+    expected_initial_result = {
+        "auc": 0.0,
+        "auc/control": 0.0,
+        "auc/treatment": 0.0,
+    }
+    self.assertAllClose(expected_initial_result, metric.result())
+
+    metric.update_state(
+        tf.constant([[0], [0], [1], [1]]),  # y_true
+        tf.constant([[0.2], [0.6], [0.3], [0.7]]),  # y_pred
+        slicing_feature=tf.constant([[True], [False], [True], [False]]),
+    )
+
+    result = metric.result()
+    self.assertGreater(result["auc"], 0.0)
+    self.assertGreater(result["auc/control"], 0.0)
+    self.assertGreater(result["auc/treatment"], 0.0)
+
+    metric.reset_state()
+    self.assertAllClose(expected_initial_result, metric.result())
+
   def test_metric_config(self):
     metric = sliced_metric.SlicedMetric(
         tf_keras.metrics.SparseTopKCategoricalAccuracy(k=2, name="accuracy@2"),
