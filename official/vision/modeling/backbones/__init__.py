@@ -14,6 +14,7 @@
 
 """Backbones package definition."""
 
+from official.projects.maskconver.modeling.resnet_unet import ResNetUNet
 from official.vision.modeling.backbones.efficientnet import EfficientNet
 from official.vision.modeling.backbones.mobiledet import MobileDet
 from official.vision.modeling.backbones.mobilenet import MobileNet
