@@ -23,7 +23,8 @@ from official.recommendation.uplift.metrics import poisson_metrics
 
 
 def _get_two_tower_outputs(
-    true_logits: tf.Tensor, is_treatment: tf.Tensor
+    is_treatment: tf.Tensor,
+    true_logits: tf.Tensor | None = None,
 ) -> types.TwoTowerTrainingOutputs:
   # Only the true_logits and is_treatment tensors are needed for testing.
   return types.TwoTowerTrainingOutputs(
@@ -33,7 +34,9 @@ def _get_two_tower_outputs(
       uplift=tf.ones_like(is_treatment),
       control_logits=tf.ones_like(is_treatment),
       treatment_logits=tf.ones_like(is_treatment),
-      true_logits=true_logits,
+      true_logits=(
+          true_logits if true_logits is not None else tf.ones_like(is_treatment)
+      ),
       true_predictions=tf.ones_like(is_treatment),
       is_treatment=is_treatment,
   )
@@ -173,6 +176,82 @@ class LogLossTest(keras_test_case.KerasTestCase, parameterized.TestCase):
         layer=metric,
         y_true=tf.constant([[0], [0], [2], [7]], dtype=tf.float32),
         y_pred=tf.constant([[1], [2], [3], [4]], dtype=tf.float32),
+        serializable=True,
+    )
+
+
+class LogLossMeanBaselineTest(
+    keras_test_case.KerasTestCase, parameterized.TestCase
+):
+
+  @parameterized.named_parameters(
+      {
+          "testcase_name": "label_zero",
+          "expected_loss": 0.0,
+          "y_true": tf.constant([0], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "small_positive_label",
+          "expected_loss": 0.0,
+          "y_true": tf.constant([1e-10], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "label_one",
+          "expected_loss": 1.0,
+          "y_true": tf.constant([1], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "weighted_loss",
+          "expected_loss": 1.0,
+          "y_true": tf.constant([[0], [1]], dtype=tf.float32),
+          "sample_weight": tf.constant([[0], [1]], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "two_tower_outputs",
+          "expected_loss": 0.5 - 0.5 * tf.math.log(0.5),
+          "y_true": tf.constant([[0], [1]], dtype=tf.float32),
+          "y_pred": _get_two_tower_outputs(
+              is_treatment=tf.constant([[0], [1]], dtype=tf.float32),
+          ),
+      },
+      {
+          "testcase_name": "two_tower_outputs_sliced_loss",
+          "expected_loss": {
+              "loss": 0.5 - 0.5 * tf.math.log(0.5),
+              "loss/control": 0.0,
+              "loss/treatment": 1.0,
+          },
+          "y_true": tf.constant([[0], [1]], dtype=tf.float32),
+          "y_pred": _get_two_tower_outputs(
+              is_treatment=tf.constant([[0], [1]], dtype=tf.float32),
+          ),
+          "slice_by_treatment": True,
+      },
+  )
+  def test_metric_computes_correct_loss(
+      self,
+      expected_loss: tf.Tensor,
+      y_true: tf.Tensor,
+      y_pred: types.TwoTowerTrainingOutputs | tf.Tensor | None = None,
+      sample_weight: tf.Tensor | None = None,
+      slice_by_treatment: bool = False,
+  ):
+    metric = poisson_metrics.LogLossMeanBaseline(
+        slice_by_treatment=slice_by_treatment, name="loss"
+    )
+    metric.update_state(y_true, y_pred, sample_weight=sample_weight)
+    self.assertAllClose(expected_loss, metric.result())
+
+  def test_negative_label_returns_nan_loss(self):
+    metric = poisson_metrics.LogLossMeanBaseline(slice_by_treatment=False)
+    metric.update_state(tf.constant([-1.0]))
+    self.assertTrue(tf.math.is_nan(metric.result()).numpy().item())
+
+  def test_metric_is_configurable(self):
+    metric = poisson_metrics.LogLossMeanBaseline(slice_by_treatment=False)
+    self.assertLayerConfigurable(
+        layer=metric,
+        y_true=tf.constant([[0], [0], [2], [7]], dtype=tf.float32),
         serializable=True,
     )
 
