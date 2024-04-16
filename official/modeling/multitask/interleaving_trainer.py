@@ -81,6 +81,15 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
   def task_step_counter(self, name):
     return self._task_step_counters[name]
 
+  def _task_train_step(self, name):
+    """Runs one training step and updates counters."""
+    def _step_fn(inputs):
+      self._task_train_step_map[name](inputs)
+      self.global_step.assign_add(1)
+      self.task_step_counter(name).assign_add(1)
+
+    return _step_fn
+
   def train_step(self, iterator_map):
     # Sample one task to train according to a multinomial distribution
     rn = tf.random.stateless_uniform(shape=[], seed=(0, self.global_step))
@@ -96,9 +105,7 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
       end = cumulative_sample_distribution[idx + 1]
       if rn >= begin and rn < end:
         self._strategy.run(
-            self._task_train_step_map[name], args=(next(iterator_map[name]),))
-        self.global_step.assign_add(1)
-        self.task_step_counter(name).assign_add(1)
+            self._task_train_step(name), args=(next(iterator_map[name]),))
 
   def train_loop_end(self):
     """Record loss and metric values per task."""
