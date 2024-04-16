@@ -22,6 +22,7 @@ import tensorflow as tf, tf_keras
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import loss_metric
+from official.recommendation.uplift.metrics import treatment_sliced_metric
 
 
 @tf_keras.utils.register_keras_serializable(package="Uplift")
@@ -120,4 +121,80 @@ class LogLoss(loss_metric.LossMetric):
 
   @classmethod
   def from_config(cls, config: dict[str, Any]) -> LogLoss:
+    return cls(**config)
+
+
+def _safe_x_minus_xlogx(x: tf.Tensor) -> tf.Tensor:
+  """Computes x - x * log(x) with 0 as its continuity point when x equals 0."""
+  values = x * (1.0 - tf.math.log(x))
+  return tf.where(tf.equal(x, 0.0), tf.zeros_like(x), values)
+
+
+class LogLossMeanBaseline(tf_keras.metrics.Metric):
+  """Computes the (weighted) poisson log loss for a mean predictor."""
+
+  def __init__(
+      self,
+      compute_full_loss: bool = False,
+      slice_by_treatment: bool = True,
+      name: str = "poisson_log_loss_mean_baseline",
+      dtype: tf.DType = tf.float32,
+  ):
+    """Initializes the instance.
+
+    Args:
+      compute_full_loss: Specifies whether to compute the full poisson log loss
+        for the mean predictor or not. Defaults to `False`.
+      slice_by_treatment: Specifies whether the loss should be sliced by the
+        treatment indicator tensor. If `True`, the metric's result will return
+        the loss values sliced by the treatment group. Note that this can only
+        be set to `True` when `y_pred` is of type `TwoTowerTrainingOutputs`.
+      name: Optional name for the instance.
+      dtype: Optional data type for the instance.
+    """
+    super().__init__(name=name, dtype=dtype)
+
+    if compute_full_loss:
+      raise NotImplementedError("Full loss computation is not yet supported.")
+
+    self._compute_full_loss = compute_full_loss
+    self._slice_by_treatment = slice_by_treatment
+
+    if slice_by_treatment:
+      self._mean_label = treatment_sliced_metric.TreatmentSlicedMetric(
+          metric=tf_keras.metrics.Mean(name=name, dtype=dtype)
+      )
+    else:
+      self._mean_label = tf_keras.metrics.Mean(name=name, dtype=dtype)
+
+  def update_state(
+      self,
+      y_true: tf.Tensor,
+      y_pred: types.TwoTowerTrainingOutputs | tf.Tensor | None = None,
+      sample_weight: tf.Tensor | None = None,
+  ):
+    is_treatment = {}
+    if self._slice_by_treatment:
+      if not isinstance(y_pred, types.TwoTowerTrainingOutputs):
+        raise ValueError(
+            "`slice_by_treatment` must be set to `False` when `y_pred` is not"
+            " of type `TwoTowerTrainingOutputs`."
+        )
+      is_treatment["is_treatment"] = y_pred.is_treatment
+
+    self._mean_label.update_state(
+        y_true, sample_weight=sample_weight, **is_treatment
+    )
+
+  def result(self) -> tf.Tensor | dict[str, tf.Tensor]:
+    return tf.nest.map_structure(_safe_x_minus_xlogx, self._mean_label.result())
+
+  def get_config(self) -> dict[str, Any]:
+    config = super().get_config()
+    config["compute_full_loss"] = self._compute_full_loss
+    config["slice_by_treatment"] = self._slice_by_treatment
+    return config
+
+  @classmethod
+  def from_config(cls, config: dict[str, Any]) -> LogLossMeanBaseline:
     return cls(**config)
