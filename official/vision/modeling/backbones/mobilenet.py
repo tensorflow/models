@@ -625,6 +625,14 @@ MNV3SmallReducedFilters = {
 }
 
 
+"""
+Architecture: https://arxiv.org/abs/2404.10518
+
+"MobileNetV4 - Universal Models for the Mobile Ecosystem"
+Danfeng Qin, Chas Leichner, Manolis Delakis, Marco Fornoni, Shixin Luo, Fan
+Yang, Weijun Wang, Colby Banbury, Chengxi Ye, Berkin Akin, Vaibhav Aggarwal,
+Tenghui Zhu, Daniele Moro, Andrew Howard
+"""
 MNV4ConvSmall_BLOCK_SPECS = {
     'spec_name': 'MobileNetV4ConvSmall',
     'block_spec_schema': [
