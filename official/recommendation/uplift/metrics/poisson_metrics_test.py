@@ -330,5 +330,120 @@ class LogLossMinimumTest(keras_test_case.KerasTestCase, parameterized.TestCase):
     )
 
 
+class PseudoRSquaredTest(keras_test_case.KerasTestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      {
+          "testcase_name": "no_data",
+          "expected_loss": 0.0,
+          "y_true": tf.constant([], dtype=tf.float32),
+          "y_pred": tf.constant([], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "one_correct_prediction",
+          "expected_loss": 0.0,
+          "y_true": tf.constant([1], dtype=tf.float32),
+          "y_pred": tf.constant([1], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "one_wrong_prediction",
+          "expected_loss": 0.0,  # LLmax and LLbaseline are equal.
+          "y_true": tf.constant([0], dtype=tf.float32),
+          "y_pred": tf.constant([1], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "all_correct_predictions",
+          "expected_loss": 1.0,
+          "y_true": tf.constant([[1], [2], [3]], dtype=tf.float32),
+          "y_pred": tf.constant([[1], [2], [3]], dtype=tf.float32),
+          "from_logits": False,
+      },
+      {
+          "testcase_name": "almost_correct_predictions",
+          "expected_loss": 1.0,
+          "y_true": tf.constant([[1], [2], [3]], dtype=tf.float32),
+          "y_pred": tf.constant([[1], [1.9999], [3.0001]], dtype=tf.float32),
+      },
+      {
+          "testcase_name": "from_logits",
+          "expected_loss": (
+              (tf.math.exp(1.0) / 2) - (0.5 - 0.5 * tf.math.log(0.5))
+          ) / (0.5 - (0.5 - 0.5 * tf.math.log(0.5))),
+          "y_true": tf.constant([[0], [1]], dtype=tf.float32),
+          "y_pred": tf.constant([[0], [1]], dtype=tf.float32),
+          "from_logits": True,
+      },
+      {
+          "testcase_name": "two_tower_outputs",
+          "expected_loss": (
+              ((tf.math.exp(1.0) - 1) + 1) / 2 - (0.5 - 0.5 * tf.math.log(0.5))
+          ) / (0.5 - (0.5 - 0.5 * tf.math.log(0.5))),
+          "y_true": tf.constant([[0], [1]], dtype=tf.float32),
+          "y_pred": _get_two_tower_outputs(
+              true_logits=tf.constant([[0], [1]], dtype=tf.float32),
+              is_treatment=tf.constant([[0], [1]], dtype=tf.float32),
+          ),
+          "from_logits": True,
+      },
+      {
+          "testcase_name": "two_tower_outputs_sliced_loss",
+          "expected_loss": {
+              "r2": (
+                  ((tf.math.exp(1.0) - 1) + 1) / 2  # LLfit
+                  - (0.5 - 0.5 * tf.math.log(0.5))  # LLbaseline
+              ) / (0.5 - (0.5 - 0.5 * tf.math.log(0.5))),
+              "r2/control": 0.0,
+              "r2/treatment": 0.0,
+          },
+          "y_true": tf.constant([[0], [1]], dtype=tf.float32),
+          "y_pred": _get_two_tower_outputs(
+              true_logits=tf.constant([[0], [1]], dtype=tf.float32),
+              is_treatment=tf.constant([[0], [1]], dtype=tf.float32),
+          ),
+          "from_logits": True,
+          "slice_by_treatment": True,
+      },
+  )
+  def test_metric_computation_is_correct(
+      self,
+      expected_loss: tf.Tensor,
+      y_true: tf.Tensor,
+      y_pred: types.TwoTowerTrainingOutputs | tf.Tensor,
+      sample_weight: tf.Tensor | None = None,
+      from_logits: bool = False,
+      slice_by_treatment: bool = False,
+  ):
+    metric = poisson_metrics.PseudoRSquared(
+        from_logits=from_logits,
+        slice_by_treatment=slice_by_treatment,
+        name="r2",
+    )
+    metric.update_state(y_true, y_pred, sample_weight=sample_weight)
+    self.assertAllClose(expected_loss, metric.result())
+
+  def test_slicing_raises_error_when_input_is_tensor(self):
+    metric = poisson_metrics.PseudoRSquared()
+    y_true = tf.constant([[0], [0], [2], [7]], dtype=tf.float32)
+    y_pred = tf.constant([[1], [2], [3], [4]], dtype=tf.float32)
+    with self.assertRaisesRegex(
+        ValueError,
+        "`slice_by_treatment` must be set to `False` when `y_pred` is not of"
+        " type `TwoTowerTrainingOutputs`.",
+    ):
+      metric(y_true, y_pred)
+
+  @parameterized.parameters(True, False)
+  def test_metric_is_configurable(self, from_logits: bool):
+    metric = poisson_metrics.PseudoRSquared(
+        from_logits=from_logits, slice_by_treatment=False
+    )
+    self.assertLayerConfigurable(
+        layer=metric,
+        y_true=tf.constant([[0], [0], [2], [7]], dtype=tf.float32),
+        y_pred=tf.constant([[1], [2], [3], [4]], dtype=tf.float32),
+        serializable=True,
+    )
+
+
 if __name__ == "__main__":
   tf.test.main()
