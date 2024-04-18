@@ -18,6 +18,7 @@ from official.recommendation.uplift.metrics import label_mean
 from official.recommendation.uplift.metrics import label_variance
 from official.recommendation.uplift.metrics import loss_metric
 from official.recommendation.uplift.metrics import metric_configs
+from official.recommendation.uplift.metrics import poisson_metrics
 from official.recommendation.uplift.metrics import sliced_metric
 from official.recommendation.uplift.metrics import treatment_fraction
 from official.recommendation.uplift.metrics import treatment_sliced_metric
