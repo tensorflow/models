@@ -19,6 +19,7 @@ This module does not support Keras de/serialization. Please use
 tf.train.Checkpoint for object based saving and loading and tf.saved_model.save
 for graph serializaiton.
 """
+
 import math
 from typing import Any, List, Mapping, Optional, Union
 
@@ -316,7 +317,8 @@ class Pix2Seq(tf_keras.Model):
 
   @property
   def checkpoint_items(
-      self) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
+      self,
+  ) -> Mapping[str, Union[tf_keras.Model, tf_keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, transformer=self.transformer)
     return items
@@ -352,7 +354,8 @@ class Pix2Seq(tf_keras.Model):
     batch_size, h, w, num_channels = get_shape(features)
     features = tf.reshape(features, [batch_size, h * w, num_channels])
     features = self._stem_ln(
-        self._stem_projection(self._dropout(features, training)))
+        self._stem_projection(self._dropout(features, training))
+    )
 
     pos_emb = position_embedding_sine(
         mask[:, :, :, 0], num_pos_features=self._hidden_size
@@ -533,7 +536,8 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     self_attention_mask = 1.0 - get_ar_mask(seq_len, target_emb.dtype)
 
     decoded, _ = self._decoder(
-        target_emb, encoded, None, self_attention_mask, None, training)
+        target_emb, encoded, None, self_attention_mask, None, training
+    )
     decoded = self._output_ln_dec(decoded)
 
     decoded = tf.cast(decoded, seq_pos_emb.dtype)
@@ -577,8 +581,9 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
         sampling. Default to `None` with standard free-form sampling.
       eos_token: if not None, stop inference early based on this end-of-sequence
         (EOS) token. This won't change sequence length. However, for each
-        sequence, the tokens and logit values after the EOS token will have
-        undefined behavior based on implementation detail.
+        sequence, the tokens after the EOS token will be set to the EOS token
+        and logit values will have undefined behavior based on implementation
+        detail.
 
     Returns:
       sampled tokens with shape of (bsz, max_seq_len-prompt_len).
@@ -631,7 +636,8 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
         self_attention_mask = tf.ones([1, 1, 1, 1])
         caches_in = tf.transpose(caches[:step], [1, 2, 0, 3])
       decoded, caches_out = self._decoder(
-          x, encoded, caches_in, self_attention_mask, None, training=False)
+          x, encoded, caches_in, self_attention_mask, None, training=False
+      )
       decoded = self._output_ln_dec(decoded)
 
       # (gunho) transformer.py uses tf.float32 for numeric stability.
@@ -665,7 +671,8 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       return (next_step, caches, tokens, logits)
 
     caches_var = tf.zeros(
-        [seq_len-1, self._num_decoder_layers, bsz, self._hidden_size])
+        [seq_len - 1, self._num_decoder_layers, bsz, self._hidden_size]
+    )
     tokens_var = tf.zeros([seq_len, bsz], dtype=tf.int64)
     logits_var = tf.zeros([seq_len, bsz, self._vocab_size], dtype=tf.float32)
     indices = tf.expand_dims(tf.range(prompt_len), -1)
@@ -677,13 +684,22 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     step, caches_var, tokens_var, logits_var = loop_body(
         step, caches_var, tokens_var, logits_var, is_prompt=True
     )
-    _, _, tokens_var, logits_var = tf.while_loop(
+    step, _, tokens_var, logits_var = tf.while_loop(
         cond=_create_cond_fn(
             seq_len=seq_len, eos_token=eos_token, prompt_len=prompt_len
         ),
         body=loop_body,
         loop_vars=[step, caches_var, tokens_var, logits_var],
     )
+
+    # If stopping early based on eos_token, assign eos_token to all tokens after
+    # stopping occurs.
+    if eos_token is not None:
+      tokens_var = tf.where(
+          tf.range(seq_len)[:, tf.newaxis] >= step,
+          tf.cast(eos_token, tokens_var.dtype),
+          tokens_var,
+      )
 
     sampled_tokens = tf.transpose(tokens_var[prompt_len:], [1, 0])
     sampled_tokens_logits = tf.transpose(logits_var[prompt_len:], [1, 0, 2])
