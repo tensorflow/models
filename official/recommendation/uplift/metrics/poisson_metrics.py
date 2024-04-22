@@ -130,6 +130,7 @@ def _safe_x_minus_xlogx(x: tf.Tensor) -> tf.Tensor:
   return tf.where(tf.equal(x, 0.0), tf.zeros_like(x), values)
 
 
+@tf_keras.utils.register_keras_serializable(package="Uplift")
 class LogLossMeanBaseline(tf_keras.metrics.Metric):
   """Computes the (weighted) poisson log loss for a mean predictor."""
 
@@ -200,6 +201,7 @@ class LogLossMeanBaseline(tf_keras.metrics.Metric):
     return cls(**config)
 
 
+@tf_keras.utils.register_keras_serializable(package="Uplift")
 class LogLossMinimum(tf_keras.metrics.Metric):
   """Computes the minimum achievable (weighted) poisson log loss.
 
@@ -278,6 +280,7 @@ class LogLossMinimum(tf_keras.metrics.Metric):
     return cls(**config)
 
 
+@tf_keras.utils.register_keras_serializable(package="Uplift")
 class PseudoRSquared(tf_keras.metrics.Metric):
   """Computes the pseudo R-squared metric for poisson regression.
 
