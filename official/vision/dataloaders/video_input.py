@@ -44,6 +44,7 @@ def process_image(image: tf.Tensor,
                   max_aspect_ratio: float = 2,
                   min_area_ratio: float = 0.49,
                   max_area_ratio: float = 1.0,
+                  random_rotation: bool = False,
                   augmenter: Optional[augment.ImageAugment] = None,
                   seed: Optional[int] = None,
                   input_image_format: Optional[str] = 'jpeg') -> tf.Tensor:
@@ -77,10 +78,11 @@ def process_image(image: tf.Tensor,
     max_aspect_ratio: The maximum aspect range for cropping.
     min_area_ratio: The minimum area range for cropping.
     max_area_ratio: The maximum area range for cropping.
+    random_rotation: Use uniform random rotation augmentation or not.
     augmenter: Image augmenter to distort each image.
     seed: A deterministic seed to use when sampling.
     input_image_format: The format of input image which could be jpeg, png or
-          none for unknown or mixed datasets.
+      none for unknown or mixed datasets.
 
   Returns:
     Processed frames. Tensor of shape
@@ -136,6 +138,8 @@ def process_image(image: tf.Tensor,
         (min_aspect_ratio, max_aspect_ratio),
         (min_area_ratio, max_area_ratio))
     image = preprocess_ops_3d.random_flip_left_right(image, seed)
+    if random_rotation:
+      image = preprocess_ops_3d.random_rotation(image, seed)
 
     if augmenter is not None:
       image = augmenter.distort(image)
@@ -303,6 +307,7 @@ class Parser(parser.Parser):
     self._min_area_ratio = input_params.aug_min_area_ratio
     self._max_area_ratio = input_params.aug_max_area_ratio
     self._input_image_format = input_params.input_image_format
+    self._random_rotation = input_params.aug_random_rotation
     if self._output_audio:
       self._audio_feature = input_params.audio_feature
       self._audio_shape = input_params.audio_feature_shape
@@ -329,6 +334,10 @@ class Parser(parser.Parser):
             'Augmentation policy {} not supported.'.format(aug_type.type))
     else:
       self._augmenter = None
+      if self._random_rotation:
+        logging.info('Using standard augmentation with rotation.')
+      else:
+        logging.info('Using standard augmentation without rotation.')
 
   def _parse_train_data(
       self, decoded_tensors: Dict[str, tf.Tensor]
@@ -350,6 +359,7 @@ class Parser(parser.Parser):
         max_aspect_ratio=self._max_aspect_ratio,
         min_area_ratio=self._min_area_ratio,
         max_area_ratio=self._max_area_ratio,
+        random_rotation=self._random_rotation,
         augmenter=self._augmenter,
         zero_centering_image=self._zero_centering_image,
         input_image_format=self._input_image_format)
