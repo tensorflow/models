@@ -17,7 +17,7 @@
 Model paper: https://arxiv.org/abs/2109.10852
 This module does not support Keras de/serialization. Please use
 tf.train.Checkpoint for object based saving and loading and tf.saved_model.save
-for graph serializaiton.
+for graph serialization.
 """
 
 import math
@@ -198,7 +198,7 @@ def top_logits(
       keep, where their cumulative probability is no less than p (actually in
       the following version, it is "...cumulative probability is the largest but
       no more than p").
-    mask: an value that's used to replace logits that don't satisfy the keep
+    mask: a value that's used to replace logits that don't satisfy the keep
       conditions.
 
   Returns:
@@ -574,7 +574,7 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       temperature: `float` scalar for scaling the logits before sampling.
       top_k: `int` scalar for truncating top-k tokens according to logits before
         token sampling.
-      top_p: `float` scalar specifying the threshold of cumulative probablity
+      top_p: `float` scalar specifying the threshold of cumulative probability
         for truncating tokens before token sampling.
       sampling_callback: a callbak `function` that take `next_logits`, and
         return `next_token`. This is used when users need a specific logic for
