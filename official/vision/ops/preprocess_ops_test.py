@@ -36,30 +36,34 @@ def _encode_image(image_array, fmt):
 class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ([1], 10),
-      ([1, 2], 10),
-      ([1, 2, 3], 10),
-      ([11], 10),
-      ([12, 2], 10),
-      ([13, 2, 3], 10),
+      ([1], 10, 1.0, 0.0),
+      ([1, 2], 10, 1.0, 0.0),
+      ([1, 2, 3], 10, 1.0, 0.0),
+      ([11], 10, 1.0, 0.0),
+      ([12, 2], 10, 1.0, 0.0),
+      ([13, 2, 3], 10, 1.0, 0.0),
+      ([1, 2], 10, 'test', 'pad'),
   )
-  def test_pad_to_fixed_size(self, input_shape, output_size):
+  def test_pad_to_fixed_size(
+      self, input_shape, output_size, original_val, pad_val
+  ):
     # Copies input shape to padding shape.
     clip_shape = input_shape[:]
     clip_shape[0] = min(output_size, clip_shape[0])
     padding_shape = input_shape[:]
     padding_shape[0] = max(output_size - input_shape[0], 0)
     expected_outputs = np.concatenate(
-        [np.ones(clip_shape), np.zeros(padding_shape)], axis=0
+        [np.full(clip_shape, original_val), np.full(padding_shape, pad_val)],
+        axis=0,
     )
 
-    data = tf.ones(input_shape)
+    data = tf.fill(input_shape, original_val)
     output_data = preprocess_ops.clip_or_pad_to_fixed_size(
-        data, output_size, constant_values=0
+        data, output_size, constant_values=pad_val
     )
     output_data = output_data.numpy()
-    self.assertAllClose(output_size, output_data.shape[0])
-    self.assertAllClose(expected_outputs, output_data)
+    self.assertAllEqual(output_size, output_data.shape[0])
+    self.assertAllEqual(expected_outputs, output_data)
 
   @parameterized.named_parameters(
       dict(
