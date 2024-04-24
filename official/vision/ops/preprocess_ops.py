@@ -43,7 +43,7 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
   Args:
     input_tensor: `Tensor` with any dimension.
     size: `int` number for the first dimension of output Tensor.
-    constant_values: `int` value assigned to the paddings.
+    constant_values: `int` or `str` value assigned to the paddings.
 
   Returns:
     `Tensor` with the first dimension padded to `size`.
@@ -66,7 +66,7 @@ def clip_or_pad_to_fixed_size(input_tensor, size, constant_values=0):
 
   # Pads input tensor to the fixed first dimension.
   paddings = tf.cast(
-      constant_values * tf.ones(padding_shape), input_tensor.dtype
+      tf.fill(dims=padding_shape, value=constant_values), input_tensor.dtype
   )
   padded_tensor = tf.concat([input_tensor, paddings], axis=0)
   output_shape = input_shape
