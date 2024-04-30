@@ -190,10 +190,11 @@ def build_qat_retinanet(
               head.get_config()))
 
   optimized_model = retinanet_model.RetinaNetModel(
-      optimized_backbone,
-      decoder,
-      head,
-      model.detection_generator,
+      backbone=optimized_backbone,
+      decoder=decoder,
+      head=head,
+      detection_generator=model.detection_generator,
+      anchor_boxes=model.anchor_boxes,
       min_level=model_config.min_level,
       max_level=model_config.max_level,
       num_scales=model_config.anchor.num_scales,

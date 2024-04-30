@@ -239,6 +239,10 @@ class RetinaNetModel(tf_keras.Model):
   def detection_generator(self) -> tf_keras.layers.Layer:
     return self._detection_generator
 
+  @property
+  def anchor_boxes(self) -> Mapping[str, tf.Tensor] | None:
+    return self._anchor_boxes
+
   def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
