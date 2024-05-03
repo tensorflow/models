@@ -67,9 +67,9 @@ def _get_tpu_embedding_feature_config(
     table_config = tf.tpu.experimental.embedding.TableConfig(
         vocabulary_size=vocab_size,
         dim=embedding_dim[i],
-        combiner='mean',
-        initializer=tf.initializers.TruncatedNormal(
-            mean=0.0, stddev=1 / math.sqrt(embedding_dim[i])),
+        combiner='sum',
+        initializer=tf.initializers.RandomUniform(
+            minval= - 1.0 / math.sqrt(vocab_size, maxval = 1.0 / math.sqrt(vocab_size))),
         name=table_name_prefix + '_%02d' % i)
     feature_config[str(i)] = tf.tpu.experimental.embedding.FeatureConfig(
         name=str(i),
@@ -149,29 +149,17 @@ class RankingTask(base_task.Task):
       A Ranking model instance.
     """
     lr_config = self.optimizer_config.lr_config
-    lr_callable = common.WarmUpAndPolyDecay(
-        batch_size=self.task_config.train_data.global_batch_size,
-        decay_exp=lr_config.decay_exp,
+    embedding_optimizer = tf.kears.optimizers.legacy.Adagrad(
         learning_rate=lr_config.learning_rate,
-        warmup_steps=lr_config.warmup_steps,
-        decay_steps=lr_config.decay_steps,
-        decay_start_steps=lr_config.decay_start_steps)
-    embedding_optimizer = tf_keras.optimizers.get(
-        self.optimizer_config.embedding_optimizer, use_legacy_optimizer=True)
-    embedding_optimizer.learning_rate = lr_callable
+        initial_accumulator_value=lr_config.initial_accumulator_value,
+        epsilon=lr_config.epsilon,
+    )
 
-    dense_optimizer = tf_keras.optimizers.get(
-        self.optimizer_config.dense_optimizer, use_legacy_optimizer=True)
-    if self.optimizer_config.dense_optimizer == 'SGD':
-      dense_lr_config = self.optimizer_config.dense_sgd_config
-      dense_lr_callable = common.WarmUpAndPolyDecay(
-          batch_size=self.task_config.train_data.global_batch_size,
-          decay_exp=dense_lr_config.decay_exp,
-          learning_rate=dense_lr_config.learning_rate,
-          warmup_steps=dense_lr_config.warmup_steps,
-          decay_steps=dense_lr_config.decay_steps,
-          decay_start_steps=dense_lr_config.decay_start_steps)
-      dense_optimizer.learning_rate = dense_lr_callable
+    dense_optimizer = tf.kears.optimizers.legacy.Adagrad(
+        learning_rate=lr_config.learning_rate,
+        initial_accumulator_value=lr_config.initial_accumulator_value,
+        epsilon=lr_config.epsilon,
+    )
 
     feature_config = _get_tpu_embedding_feature_config(
         embedding_dim=self.task_config.model.embedding_dim,
@@ -208,9 +196,6 @@ class RankingTask(base_task.Task):
           tfrs.layers.feature_interaction.MultiLayerDCN(
               projection_dim=self.task_config.model.dcn_low_rank_dim,
               num_layers=self.task_config.model.dcn_num_layers,
-              use_bias=self.task_config.model.dcn_use_bias,
-              kernel_initializer=self.task_config.model.dcn_kernel_initializer,
-              bias_initializer=self.task_config.model.dcn_bias_initializer,
           ),
       ])
     else:
@@ -226,7 +211,7 @@ class RankingTask(base_task.Task):
         ),
         feature_interaction=feature_interaction,
         top_stack=tfrs.layers.blocks.MLP(
-            units=self.task_config.model.top_mlp, final_activation='sigmoid'
+            units=self.task_config.model.top_mlp
         ),
         concat_dense=self.task_config.model.concat_dense,
     )
