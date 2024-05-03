@@ -151,14 +151,14 @@ class RankingTask(base_task.Task):
     lr_config = self.optimizer_config.lr_config
     embedding_optimizer = tf.keras.optimizers.legacy.Adagrad(
         learning_rate=lr_config.learning_rate,
-        initial_accumulator_value=lr_config.initial_accumulator_value,
-        epsilon=lr_config.epsilon,
+        initial_accumulator_value=self.optimizer_config.initial_accumulator_value,
+        epsilon=self.optimizer_config.epsilon,
     )
 
     dense_optimizer = tf.keras.optimizers.legacy.Adagrad(
         learning_rate=lr_config.learning_rate,
-        initial_accumulator_value=lr_config.initial_accumulator_value,
-        epsilon=lr_config.epsilon,
+        initial_accumulator_value=self.optimizer_config.initial_accumulator_value,
+        epsilon=self.optimizer_config.epsilon,
     )
 
     feature_config = _get_tpu_embedding_feature_config(
