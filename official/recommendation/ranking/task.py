@@ -69,7 +69,7 @@ def _get_tpu_embedding_feature_config(
         dim=embedding_dim[i],
         combiner='sum',
         initializer=tf.initializers.RandomUniform(
-            minval= - 1.0 / math.sqrt(vocab_size, maxval = 1.0 / math.sqrt(vocab_size))),
+            minval= - 1.0 / math.sqrt(vocab_size), maxval = 1.0 / math.sqrt(vocab_size)),
         name=table_name_prefix + '_%02d' % i)
     feature_config[str(i)] = tf.tpu.experimental.embedding.FeatureConfig(
         name=str(i),
