@@ -43,7 +43,7 @@ class CriteoTFRecordReader(object):
     self.sparse_features = ['categorical-feature-%d' % x for x in range(14, 40)]
 
   def __call__(self, ctx: tf.distribute.InputContext):
-    tf._logging.info(f'file pattern: {self._file_pattern}')
+    
     params = self._params
     # Per replica batch size.
     batch_size = (

@@ -69,10 +69,6 @@ def main(_) -> None:
     # may race against the train job for writing the same file.
     train_utils.serialize_config(params, model_dir)
 
-  if FLAGS.seed is not None:
-    logging.info('Setting tf seed.')
-    tf.random.set_seed(FLAGS.seed)
-
   task = RankingTask(
       params=params.task,
       trainer_config=params.trainer,
