@@ -910,7 +910,7 @@ def _generate_detections_tflite(
     dummy_num_detections = tf.constant(
         0.0, dtype=tf.float32, name='num_detections')
     return boxes, dummy_classes, scores, dummy_num_detections
-  return dummy_post_processing(boxes, scores, anchors)[::-1]
+  return dummy_post_processing(boxes, scores, anchors)
 
 
 @tf_keras.utils.register_keras_serializable(package='Vision')
@@ -1481,10 +1481,10 @@ class MultilevelDetectionGenerator(tf_keras.layers.Layer):
           self._config_dict['box_coder_weights'],
       )
       return {
-          'num_detections': num_detections,
           'detection_boxes': boxes,
           'detection_classes': classes,
           'detection_scores': scores,
+          'num_detections': num_detections,
       }
 
     if self._config_dict['nms_version'] != 'v3':
