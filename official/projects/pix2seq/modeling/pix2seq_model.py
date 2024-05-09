@@ -664,8 +664,14 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       # Update internal states.
       next_step = step + (prompt_len if is_prompt else 1)
       caches_out = tf.transpose(caches_out, [2, 0, 1, 3])
-
-      caches = tf.tensor_scatter_nd_update(caches, [[step]], caches_out)
+      if is_prompt:
+        caches = tf.tensor_scatter_nd_update(
+            caches,
+            tf.range(prompt_len)[:, tf.newaxis],
+            caches_out,
+        )
+      else:
+        caches = tf.tensor_scatter_nd_update(caches, [[step]], caches_out)
       tokens = tf.tensor_scatter_nd_update(tokens, [[next_step]], [next_token])
       logits = tf.tensor_scatter_nd_update(logits, [[next_step]], [next_logits])
       return (next_step, caches, tokens, logits)
@@ -703,9 +709,4 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
 
     sampled_tokens = tf.transpose(tokens_var[prompt_len:], [1, 0])
     sampled_tokens_logits = tf.transpose(logits_var[prompt_len:], [1, 0, 2])
-    sampled_tokens_logits = tf.reshape(
-        sampled_tokens_logits, [bsz, self._max_seq_len, self._vocab_size]
-    )
-
-    # sampled_tokens_logits : [bsz, max_seq_len-prompt_len, vocab_size]
     return sampled_tokens, sampled_tokens_logits
