@@ -23,7 +23,7 @@ from setuptools import setup
 version = '2.16.0'
 tf_version = '2.16.1'  # Major version.
 
-project_name = 'tf-models-official-no-deps'
+project_name = 'tf-models-no-deps'
 
 long_description = """The TensorFlow official models are a collection of
 models that use TensorFlow's high-level APIs.
