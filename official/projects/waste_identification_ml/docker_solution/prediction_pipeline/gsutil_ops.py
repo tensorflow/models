@@ -29,7 +29,7 @@ def copy(path: str) -> None:
   Args:
     path: path of the video in GCS bucket.
   """
-  gsutil_command = f"gsutil cp {path} ."
+  gsutil_command = f"gsutil cp -r {path} ."
   subprocess.run(gsutil_command, shell=True, check=True)
 
 
