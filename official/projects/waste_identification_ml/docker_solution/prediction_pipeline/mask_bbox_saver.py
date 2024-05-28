@@ -60,10 +60,6 @@ def save_bbox_masks_labels(
     threshold: Value between 0 and 1 to filter out the prediction results.
   """
   image_new = image.copy()
-  if 'detection_masks_reframed' in result:
-    result['detection_masks_reframed'] = result[
-        'detection_masks_reframed'
-    ].astype(np.uint8)
 
   viz_utils.visualize_boxes_and_labels_on_image_array(
       image_new,
@@ -72,11 +68,11 @@ def save_bbox_masks_labels(
       result['detection_scores'][0],
       category_index=category_index,
       use_normalized_coordinates=True,
-      max_boxes_to_draw=100,
+      max_boxes_to_draw=70,
       min_score_thresh=threshold,
       agnostic_mode=False,
-      instance_masks=result.get('detection_masks_reframed', None),
-      line_thickness=2,
+      instance_masks=result.get('detection_masks_resized', None),
+      line_thickness=4,
   )
 
   cv2.imwrite(
@@ -101,7 +97,7 @@ def save_binary_masks(
     file_name: The filename for saving the output mask image.
     folder: The folder path where the output mask image will be saved.
   """
-  mask = np.zeros_like(result['detection_masks_reframed'][0])
+  mask = np.zeros_like(result['detection_masks_reframed'][0], dtype=np.uint8)
   result['detection_masks_reframed'] = result[
       'detection_masks_reframed'
   ].astype(np.uint8)
