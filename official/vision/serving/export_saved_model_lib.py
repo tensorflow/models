@@ -15,7 +15,7 @@
 r"""Vision models export utility function for serving/inference."""
 
 import os
-from typing import Optional, List, Union, Text, Dict
+from typing import Dict, List, Optional, Union
 
 from absl import logging
 import tensorflow as tf, tf_keras
@@ -45,7 +45,7 @@ def export_inference_graph(
     log_model_flops_and_params: bool = False,
     checkpoint: Optional[tf.train.Checkpoint] = None,
     input_name: Optional[str] = None,
-    function_keys: Optional[Union[List[Text], Dict[Text, Text]]] = None,
+    function_keys: Optional[Union[List[str], Dict[str, str]]] = None,
     add_tpu_function_alias: Optional[bool] = False,
 ):
   """Exports inference graph for the model specified in the exp config.
@@ -83,57 +83,68 @@ def export_inference_graph(
 
   if export_checkpoint_subdir:
     output_checkpoint_directory = os.path.join(
-        export_dir, export_checkpoint_subdir)
+        export_dir, export_checkpoint_subdir
+    )
   else:
     output_checkpoint_directory = None
 
   if export_saved_model_subdir:
     output_saved_model_directory = os.path.join(
-        export_dir, export_saved_model_subdir)
+        export_dir, export_saved_model_subdir
+    )
   else:
     output_saved_model_directory = export_dir
 
   # TODO(arashwan): Offers a direct path to use ExportModule with Task objects.
   if not export_module:
-    if isinstance(params.task,
-                  configs.image_classification.ImageClassificationTask):
+    if isinstance(
+        params.task, configs.image_classification.ImageClassificationTask
+    ):
       export_module = image_classification.ClassificationModule(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
           num_channels=num_channels,
-          input_name=input_name)
+          input_name=input_name,
+      )
     elif isinstance(params.task, configs.retinanet.RetinaNetTask) or isinstance(
-        params.task, configs.maskrcnn.MaskRCNNTask):
+        params.task, configs.maskrcnn.MaskRCNNTask
+    ):
       export_module = detection.DetectionModule(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
           num_channels=num_channels,
-          input_name=input_name)
-    elif isinstance(params.task,
-                    configs.semantic_segmentation.SemanticSegmentationTask):
+          input_name=input_name,
+      )
+    elif isinstance(
+        params.task, configs.semantic_segmentation.SemanticSegmentationTask
+    ):
       export_module = semantic_segmentation.SegmentationModule(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
           num_channels=num_channels,
-          input_name=input_name)
-    elif isinstance(params.task,
-                    configs.video_classification.VideoClassificationTask):
+          input_name=input_name,
+      )
+    elif isinstance(
+        params.task, configs.video_classification.VideoClassificationTask
+    ):
       export_module = video_classification.VideoClassificationModule(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
           input_type=input_type,
           num_channels=num_channels,
-          input_name=input_name)
+          input_name=input_name,
+      )
     else:
-      raise ValueError('Export module not implemented for {} task.'.format(
-          type(params.task)))
+      raise ValueError(
+          'Export module not implemented for {} task.'.format(type(params.task))
+      )
 
   if add_tpu_function_alias:
     if input_type == 'image_tensor':
@@ -160,7 +171,8 @@ def export_inference_graph(
       checkpoint=checkpoint,
       checkpoint_path=checkpoint_path,
       timestamped=False,
-      save_options=save_options)
+      save_options=save_options,
+  )
 
   if output_checkpoint_directory:
     ckpt = tf.train.Checkpoint(model=export_module.model)
@@ -171,16 +183,16 @@ def export_inference_graph(
     inputs_kwargs = None
     if isinstance(
         params.task,
-        (configs.retinanet.RetinaNetTask, configs.maskrcnn.MaskRCNNTask)):
+        (configs.retinanet.RetinaNetTask, configs.maskrcnn.MaskRCNNTask),
+    ):
       # We need to create inputs_kwargs argument to specify the input shapes for
       # subclass model that overrides model.call to take multiple inputs,
       # e.g., RetinaNet model.
       inputs_kwargs = {
-          'images':
-              tf.TensorSpec([1] + input_image_size + [num_channels],
-                            tf.float32),
-          'image_shape':
-              tf.TensorSpec([1, 2], tf.float32)
+          'images': tf.TensorSpec(
+              [1] + input_image_size + [num_channels], tf.float32
+          ),
+          'image_shape': tf.TensorSpec([1, 2], tf.float32),
       }
       dummy_inputs = {
           k: tf.ones(v.shape.as_list(), tf.float32)
@@ -191,9 +203,14 @@ def export_inference_graph(
     else:
       logging.info(
           'Logging model flops and params not implemented for %s task.',
-          type(params.task))
+          type(params.task),
+      )
       return
-    train_utils.try_count_flops(export_module.model, inputs_kwargs,
-                                os.path.join(export_dir, 'model_flops.txt'))
-    train_utils.write_model_params(export_module.model,
-                                   os.path.join(export_dir, 'model_params.txt'))
+    train_utils.try_count_flops(
+        export_module.model,
+        inputs_kwargs,
+        os.path.join(export_dir, 'model_flops.txt'),
+    )
+    train_utils.write_model_params(
+        export_module.model, os.path.join(export_dir, 'model_params.txt')
+    )
