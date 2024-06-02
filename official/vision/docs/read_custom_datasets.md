@@ -25,7 +25,8 @@ we have outlined the steps in the following sections to <br>
 [tf.train.Example](https://www.tensorflow.org/api_docs/python/tf/train/Example)
 message, and then serialize, write, and read
 [tf.train.Example](https://www.tensorflow.org/api_docs/python/tf/train/Example)
-messages to and from <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; `.tfrecord` files.<br>
+messages to and from `.tfrecord` files.
+<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &nbsp;&nbsp;&nbsp;&nbsp;  Customize the dataloader to reads, decodes and parses the input data.
 
 ## Convert the dataset into tf.train.Example and TFRecord
@@ -56,8 +57,10 @@ To convert a dataset into TFRecord format in TensorFlow, you need to<br>
 
 More concretely,:<br>
 
-&nbsp;&nbsp; 1. Convert your data to TensorFlow's Feature format using `tf.train.Feature`:<br>
+&nbsp;&nbsp; 1. Convert your data to TensorFlow's Feature format using `tf.train.Feature`:
+<br>
 <dl><dd>
+
 A `tf.train.Feature` is a dictionary containing data types that can be
 serialized to a TFRecord format. The `tf.train.Feature` message type can accept
 one of the following three types:
@@ -68,7 +71,7 @@ one of the following three types:
 
 Based on the type of values in the dataset, the user must first convert them
 into above types. Below are the simple helper functions that help in the
-conversion and return a `tf.train.Feature` object.Refer to the helper builder
+conversion and return a `tf.train.Feature` object. Refer to the helper builder
 [class](https://github.com/tensorflow/models/blob/ea1054c5885ad8b8ff847db02c010f8b51e25f5b/official/core/tf_example_builder.py#L100)
 here.
 
@@ -84,6 +87,7 @@ def add_ints_feature(self, key: str,
 ```
 
 <br>
+
 **tf.train.BytesList:** This type is used to represent a list of byte strings,
 which can be used to store arbitrary data as a string of bytes.
 
@@ -96,6 +100,7 @@ def add_bytes_feature(self, key: str,
 ```
 
 <br>
+
 **tf.train.FloatList:** This type is used to represent a list of floating-point values. Below is a conversion example.
 
 ```python
@@ -112,9 +117,14 @@ Feature objects for each record, depending on the number of features in your
 data. </dd></dl>
 
 <br>
- &nbsp;&nbsp; 2. Map the features using `tf.train.Example`:<br>
 
-<dd><dl> Fundamentally, a tf.train.Example is a {"string": tf.train.Feature}
+ &nbsp;&nbsp; 2. Map the features using `tf.train.Example`:
+ 
+ <br>
+
+<dd><dl> 
+
+Fundamentally, a `tf.train.Example` is a {"string": tf.train.Feature}
 mapping. From above we have `tf.train.Feature` values, we can now map them in a
 `tf.train.Example`. The format for keys to features mapping of tf.train.Example
 varies based on the use case.
@@ -132,6 +142,7 @@ tf.train.Example(features=tf.train.Features(feature=feature))
 ```
 
 <br>
+
 The sample usage of helper builder [class](https://github.com/tensorflow/models/blob/ea1054c5885ad8b8ff847db02c010f8b51e25f5b/official/core/tf_example_builder.py#L100) is<br>
 
 ```python
@@ -146,7 +157,9 @@ The sample usage of helper builder [class](https://github.com/tensorflow/models/
 <br>
 &nbsp;&nbsp; 3. Serialize the data: <br>
 
-<dd><dl> Serialize the `tf.train.Example` message into a TFRecord file, use
+<dd><dl> 
+
+Serialize the `tf.train.Example` message into a TFRecord file, use
 TensorFlow API’s `tf.io.TFRecordWriter` and `SerializeToString()`to serialize
 the data. Here is some code to iterate over annotations, process them and write
 into TFRecords. Refer to the
@@ -197,6 +210,7 @@ steps:
     <br>
 
 <dd><dl>
+
 Create  `class CustomizeDecoder(decoder.Decoder)`.The CustomizeDecoder class should be a subclass of the [generic decoder interface](https://github.com/tensorflow/models/blob/master/official/vision/dataloaders/decoder.py) and must implement all the abstract methods. In particular, it should have the implementation of abstract method `decode`, to decode the serialized example into tensors.<br>
 
 The constructor defines the mapping between the field name and the value from an input tf.Example. There is no limit on the number of fields to decode based on the usecase.<br>
@@ -249,7 +263,9 @@ class Decoder(decoder.Decoder):
 
 *   **Abstract Method Implementation and Return Type**<br>
 
-<dd><dl> The implementation method `decode()` decodes the serialized example
+<dd><dl>
+
+ The implementation method `decode()` decodes the serialized example
 into tensors. It takes in a serialized string tensor argument that encodes the
 data. And returns decoded tensors i.e a dictionary of field key name and decoded
 tensor mapping. The output will be consumed by methods in Parser.
@@ -276,7 +292,7 @@ Creating a Decoder is an optional step and it varies with the use case. Below
 are some use cases where we have included the Decoder and Parser based on the
 requirements.
 
-                                                                                                                                                         |     |
+ Use case|  Decoder/Parser |
 -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---
 [Classification](https://github.com/tensorflow/models/blob/master/official/vision/dataloaders/classification_input.py) | Both Decoder and Parser
 [Object Detection](https://github.com/tensorflow/models/blob/master/official/vision/dataloaders/tf_example_decoder.py) | Only Decoder
