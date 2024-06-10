@@ -72,6 +72,10 @@ class StridedTransformerEncoderBlock(
     if self._output_range is not None:
       raise ValueError('StridedTransformerEncoderBlock does not '
                        'support `output_range` argument.')
+    # TODO(b/337888023): Support block sparse attention with strided inputs.
+    if self._src_block_size is not None:
+      raise ValueError('StridedTransformerEncoderBlock does not '
+                       'support block sparse attention.')
 
   def call(self, inputs, stride: tf.Tensor):
     if isinstance(inputs, (list, tuple)):
@@ -137,6 +141,10 @@ class StridedReZeroTransformer(rezero_transformer.ReZeroTransformer):
     if self._output_range is not None:
       raise ValueError(f'{self.__class__} does not '
                        'support `output_range` argument.')
+    # TODO(b/337888023): Support block sparse attention with strided inputs.
+    if self._src_block_size is not None:
+      raise ValueError(f'{self.__class__} does not '
+                       'support block sparse attention.')
 
   def call(self, inputs, stride: tf.Tensor):
     if isinstance(inputs, (list, tuple)):

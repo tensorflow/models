@@ -18,6 +18,8 @@ from absl import logging
 import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
+from official.nlp.modeling.layers import block_sparse_attention
+from official.nlp.modeling.layers import multi_query_attention
 from official.nlp.modeling.layers import util
 
 
@@ -107,6 +109,9 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
                output_last_dim=None,
                diff_q_kv_att_layer_norm=False,
                return_attention_scores=False,
+               num_kv_heads=None,
+               src_block_size=None,
+               tgt_block_size=None,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
@@ -174,6 +179,12 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       return_attention_scores: If `True`, the output of this layer will be a
         tuple and additionally contain the attention scores in the shape of
         `[batch_size, num_attention_heads, seq_dim, seq_dim]`.
+      num_kv_heads: Number of key-value heads for multi-query attention. Refer
+        to `multi_query_attention.MultiHeadAttention` for more details.
+      src_block_size: Source block size. Refer to
+        `block_sparse_attention.MultiHeadAttention` for more details.
+      tgt_block_size: Target block size. Refer to
+        `block_sparse_attention.MultiHeadAttention` for more details.
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -208,6 +219,14 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._output_last_dim = output_last_dim
     self._diff_q_kv_att_layer_norm = diff_q_kv_att_layer_norm
     self._return_attention_scores = return_attention_scores
+    self._num_kv_heads = num_kv_heads
+    self._src_block_size = src_block_size
+    self._tgt_block_size = tgt_block_size
+    if self._num_kv_heads is not None and self._src_block_size is not None:
+      raise ValueError(
+          "Block sparse attention does not support Multi-query attention."
+          " Specify only one of them."
+      )
     if attention_initializer:
       self._attention_initializer = tf_keras.initializers.get(
           attention_initializer)
@@ -244,12 +263,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     else:
       last_output_shape = self._output_last_dim
 
-    common_kwargs = dict(
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint)
-    self._attention_layer = tf_keras.layers.MultiHeadAttention(
+    attention_layer_kwargs = dict(
         num_heads=self._num_heads,
         key_dim=self._key_dim,
         value_dim=self._value_dim,
@@ -260,7 +274,30 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         attention_axes=self._attention_axes,
         output_shape=self._output_last_dim,
         name="self_attention",
-        **common_kwargs
+    )
+    common_kwargs = dict(
+        bias_regularizer=self._bias_regularizer,
+        activity_regularizer=self._activity_regularizer,
+        kernel_constraint=self._kernel_constraint,
+        bias_constraint=self._bias_constraint,
+    )
+    if self._src_block_size is not None:
+      attention_layer_kwargs.update(
+          src_block_size=self._src_block_size,
+          tgt_block_size=self._tgt_block_size,
+          name="block_sparse_attention",
+      )
+      attention_fn = block_sparse_attention.MultiHeadAttention
+    elif self._num_kv_heads is not None:
+      attention_layer_kwargs.update(
+          num_kv_heads=self._num_kv_heads,
+          name="multi_query_attention",
+      )
+      attention_fn = multi_query_attention.MultiHeadAttention
+    else:
+      attention_fn = tf_keras.layers.MultiHeadAttention
+    self._attention_layer = attention_fn(
+        **attention_layer_kwargs, **common_kwargs
     )
     self._attention_dropout = tf_keras.layers.Dropout(
         rate=self._attention_dropout_rate
@@ -373,6 +410,9 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         "value_dim": self._value_dim,
         "output_last_dim": self._output_last_dim,
         "diff_q_kv_att_layer_norm": self._diff_q_kv_att_layer_norm,
+        "num_kv_heads": self._num_kv_heads,
+        "src_block_size": self._src_block_size,
+        "tgt_block_size": self._tgt_block_size,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
