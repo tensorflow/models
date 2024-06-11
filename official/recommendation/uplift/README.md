@@ -15,6 +15,10 @@ The library is divided into the following key directories:
 -   **metrics**: Keras metrics used in uplift modeling.
 -   **losses**: Keras losses used in uplift modeling.
 
+See the [uplift_modeling_intro.ipynb](uplift_modeling_intro.ipynb) for an
+introduction to uplift modeling and how to use the library to build, train and
+evaluate an uplift model on large scale data.
+
 ## Two Tower Uplift Model
 The initial release focuses on the family of models that follow a two tower
 uplift network architecture. The architecture draws inspiration from several
