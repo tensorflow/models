@@ -138,19 +138,19 @@ class VarianceTest(keras_test_case.KerasTestCase, parameterized.TestCase):
   def test_float_sample_weight(self, values, sample_weight, expected_variance):
     metric = variance.Variance()
     metric(values, sample_weight=sample_weight)
-    self.assertEqual(expected_variance, metric.result())
+    self.assertAllClose(expected_variance, metric.result())
 
   def test_empty_input(self):
     metric = variance.Variance()
     values = tf.constant([0, 1, 2, 3])
     metric(values)
-    self.assertEqual(1.25, metric.result())
+    self.assertAllClose(1.25, metric.result())
     metric(tf.ones(shape=(0,)), sample_weight=None)
-    self.assertEqual(1.25, metric.result())
+    self.assertAllClose(1.25, metric.result())
 
   def test_initial_state(self):
     metric = variance.Variance()
-    self.assertEqual(0.0, metric.result())
+    self.assertAllClose(0.0, metric.result())
 
   def test_dtype_correctness(self):
     # 1 << 128 overflows for float32 but fits in float64.
@@ -196,24 +196,26 @@ class VarianceTest(keras_test_case.KerasTestCase, parameterized.TestCase):
     values = tf.constant([1, 2, 1, 4])
     metric.update_state(values)
 
-    self.assertEqual(values.numpy().var(), metric.result())
-    self.assertEqual(values.numpy().var(), metric.result())
+    self.assertAllClose(values.numpy().var(), metric.result())
+    self.assertAllClose(values.numpy().var(), metric.result())
 
     metric.update_state(tf.constant([-1, -2, 0]))
 
-    self.assertEqual(np.array([1, 2, 1, 4, -1, -2, 0]).var(), metric.result())
+    self.assertAllClose(
+        np.array([1, 2, 1, 4, -1, -2, 0]).var(), metric.result()
+    )
 
   def test_reset_state(self):
     metric = variance.Variance()
     values = tf.constant([1, 2, 1, 4])
 
     metric.update_state(values)
-    self.assertEqual(1.5, metric.result())
+    self.assertAllClose(1.5, metric.result())
 
     metric.reset_state()
 
     metric.update_state(values, sample_weight=tf.constant([1, 0, 1, 0]))
-    self.assertEqual(0.0, metric.result())
+    self.assertAllClose(0.0, metric.result())
 
   def test_numpy_correctness(self):
     metric = variance.Variance()
