@@ -148,8 +148,32 @@ def get_distribution_strategy(distribution_strategy="mirrored",
 
   if distribution_strategy == "tpu":
     # When tpu_address is an empty string, we communicate with local TPUs.
-    cluster_resolver = tpu_initialize(tpu_address)
-    return tf.distribute.TPUStrategy(cluster_resolver)
+    # Bug workaround that in v5p we need to explicitly specify the device
+    # assignment when using tpu strategy, adding device assignment to the
+    # strategy.
+    cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+        tpu=tpu_address
+    )
+    if tpu_address not in ("", "local"):
+      tf.config.experimental_connect_to_cluster(cluster_resolver)
+    topology = tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+
+    device_assignment = None
+    if hasattr(tf.tpu.experimental, "HardWareFeature"):
+      hardware_feature = tf.tpu.experimental.HardWareFeature(
+          cluster_resolver.tpu_hardware_feature
+      )
+      if (
+          hardware_feature.embedding_feature
+          == tf.tpu.experimental.HardwareFeature.EmbeddingFeature.V2
+      ):
+        tpu_metadata = cluster_resolver.get_tpu_system_metadata()
+        device_assignment = tf.tpu.experimental.DeviceAssignment.build(
+            topology, num_replicas=tpu_metadata.num_cores
+        )
+
+    return tf.distribute.TPUStrategy(
+        cluster_resolver, experimental_device_assignment=device_assignment)
 
   if distribution_strategy == "multi_worker_mirrored":
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
