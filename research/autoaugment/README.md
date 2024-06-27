@@ -40,7 +40,7 @@ PyramidNet + ShakeDrop | 0.05          | 5e-5         | 1800        | 64
 
 <b>Prerequisite:</b>
 
-1.  Install TensorFlow. Be sure to run the code using python2 and not python3.
+1.  Install TensorFlow.
 
 2.  Download CIFAR-10/CIFAR-100 dataset.
 
