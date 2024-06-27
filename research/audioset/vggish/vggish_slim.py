@@ -111,7 +111,7 @@ def load_vggish_slim_checkpoint(session, checkpoint_path):
 
   This function can be used as an initialization function (referred to as
   init_fn in TensorFlow documentation) which is called in a Session after
-  initializating all variables. When used as an init_fn, this will load
+  initializing all variables. When used as an init_fn, this will load
   a pre-trained checkpoint that is compatible with the VGGish model
   definition. Only variables defined by VGGish will be loaded.
 

@@ -80,7 +80,7 @@ def export_model(export_dir,
                  crop_image_height=None):
   """Exports a model to the named directory.
 
-  Note that --datatset_name and --checkpoint are required and parsed by the
+  Note that --dataset_name and --checkpoint are required and parsed by the
   underlying module common_flags.
 
   Args:

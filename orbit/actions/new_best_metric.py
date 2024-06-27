@@ -40,7 +40,7 @@ class NewBestMetric:
   if it is achieved. These separate methods enable the same `NewBestMetric`
   instance to be reused as a condition multiple times, and can also provide
   additional preemption/failure safety. For example, to avoid updating the best
-  metric if a model export fails or is pre-empted:
+  metric if a model export fails or is pre-emptied:
 
       new_best_metric = orbit.actions.NewBestMetric(
         'accuracy', filename='/model/dir/best_metric')
