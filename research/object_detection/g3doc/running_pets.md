@@ -121,14 +121,14 @@ detector trained on a different dataset (COCO), and reuse some of it's
 parameters to initialize our new model.
 
 Download our [COCO-pretrained Faster R-CNN with Resnet-101
-model](http://storage.googleapis.com/download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_11_06_2017.tar.gz).
+model](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_2018_01_28.tar.gz).
 Unzip the contents of the folder and copy the `model.ckpt*` files into your GCS
 Bucket.
 
 ``` bash
-wget http://storage.googleapis.com/download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_11_06_2017.tar.gz
-tar -xvf faster_rcnn_resnet101_coco_11_06_2017.tar.gz
-gsutil cp faster_rcnn_resnet101_coco_11_06_2017/model.ckpt.* gs://${YOUR_GCS_BUCKET}/data/
+wget http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_2018_01_28.tar.gz
+tar -xvf faster_rcnn_resnet101_coco_2018_01_28.tar.gz
+gsutil cp faster_rcnn_resnet101_coco_2018_01_28/model.ckpt.* gs://${YOUR_GCS_BUCKET}/data/
 ```
 
 Remember the path where you uploaded the model checkpoint to, as we will need it
