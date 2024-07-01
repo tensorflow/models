@@ -393,7 +393,7 @@ def load_fine_tune_checkpoint(model, checkpoint_path, checkpoint_type,
     ValueError: if `checkpoint_version` is not train_pb2.CheckpointVersion.V2
   """
   if not is_object_based_checkpoint(checkpoint_path):
-    raise IOError('Checkpoint is expected to be an object-based checkpoint.')
+    raise IOError('Checkpoint is expected to be an object-based checkpoint. Although config points to /path/ckpt, ckpt.index needs not to be renamed.')
   if checkpoint_version == train_pb2.CheckpointVersion.V1:
     raise ValueError('Checkpoint version should be V2')
 
