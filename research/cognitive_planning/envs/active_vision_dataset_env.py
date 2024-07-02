@@ -27,7 +27,7 @@ import collections
 import copy
 import json
 import os
-from StringIO import StringIO
+from io import StringIO
 import time
 import gym
 from gym.envs.registration import register
@@ -80,7 +80,7 @@ def _init_category_index(label_map_path):
   """
 
   label_map = label_map_util.load_labelmap(label_map_path)
-  num_classes = np.max(x.id for x in label_map.item)
+  num_classes = max(x.id for x in label_map.item)
   categories = label_map_util.convert_label_map_to_categories(
       label_map, max_num_classes=num_classes, use_display_name=True)
   category_index = label_map_util.create_category_index(categories)
@@ -937,7 +937,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
                               self._cur_graph.id_to_index[image_id],
                               super_source)
     except:
-      print 'path not found, image_id = ', self._cur_world, self._cur_image_id
+      print('path not found, image_id = ', self._cur_world, self._cur_image_id)
       raise
     return path[:-1]
 
@@ -996,10 +996,10 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
     """
     obs = self._reset_env(new_world=world, new_goal=goal)
     if not obs:
-      print '{} is not availble in {}'.format(goal, world)
+      print('{} is not availble in {}'.format(goal, world))
       return True
     for image_id in self._world_id_dict[self._cur_world]:
-      print 'check image_id = {}'.format(image_id)
+      print('check image_id = {}'.format(image_id))
       self._cur_image_id = image_id
       path = self.path_to_goal()
       actions = []
