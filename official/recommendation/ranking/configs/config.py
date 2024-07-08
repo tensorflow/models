@@ -112,6 +112,11 @@ class ModelConfig(hyperparams.Config):
       module
     dcn_use_bias: Flag to determine whether to use bias for the dcn interaction
       module
+    use_partial_tpu_embedding: Flag to determine whether to use partial tpu
+      embedding layer or not.
+    max_ids_per_chip_per_sample: Maximum number of ids per chip per sample.
+    max_ids_per_table: Maximum number of ids per table.
+    max_unique_ids_per_table: Maximum number of unique ids per table.
   """
   num_dense_features: int = 13
   vocab_sizes: List[int] = dataclasses.field(default_factory=list)
@@ -128,6 +133,10 @@ class ModelConfig(hyperparams.Config):
   dcn_kernel_initializer: str = 'truncated_normal'
   dcn_bias_initializer: str = 'zeros'
   dcn_use_bias: bool = True
+  use_partial_tpu_embedding: bool = True
+  max_ids_per_chip_per_sample: int | None = None
+  max_ids_per_table: Union[int, List[int]] | None = None
+  max_unique_ids_per_table: Union[int, List[int]] | None = None
 
 
 @dataclasses.dataclass
@@ -424,6 +433,7 @@ def dlrm_dcn_v2_criteo_tb_config() -> Config:
               dcn_use_bias=True,
               concat_dense=False,
               use_multi_hot=True,
+              use_partial_tpu_embedding=False,
               multi_hot_sizes=multi_hot_sizes,
               ),
           loss=Loss(label_smoothing=0.0),
