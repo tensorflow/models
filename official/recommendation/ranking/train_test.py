@@ -35,6 +35,7 @@ def _get_params_override(vocab_sizes,
                          concat_dense=True,
                          dcn_num_layers=3,
                          dcn_low_rank_dim=64,
+                         use_partial_tpu_embedding=True,
                          ):
   # Update `data_dir` if `synthetic_data=False`.
   data_dir = ''
@@ -53,6 +54,7 @@ def _get_params_override(vocab_sizes,
               'dcn_num_layers': dcn_num_layers,
               'dcn_low_rank_dim': dcn_low_rank_dim,
               'use_multi_hot': use_multi_hot,
+              'use_partial_tpu_embedding': use_partial_tpu_embedding,
               'multi_hot_sizes': multi_hot_sizes,
           },
           'train_data': {
@@ -90,10 +92,20 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
     super().tearDown()
 
   @parameterized.named_parameters(
-      ('DlrmOneDeviceCTL', 'one_device', 'dot', True, True, 3, False),
-      ('DlrmOneDevice', 'one_device', 'dot', False, True, 3, False),
-      ('DcnOneDeviceCTL', 'one_device', 'cross', True, True, 3, False),
-      ('DcnOneDevice', 'one_device', 'cross', False, True, 3, False),
+      ('DlrmOneDeviceCTL', 'one_device', 'dot', True, True, 3, 64, False, True),
+      ('DlrmOneDevice', 'one_device', 'dot', False, True, 3, 64, False, True),
+      (
+          'DcnOneDeviceCTL',
+          'one_device',
+          'cross',
+          True,
+          True,
+          3,
+          64,
+          False,
+          True,
+      ),
+      ('DcnOneDevice', 'one_device', 'cross', False, True, 3, 64, False, True),
       (
           'DlrmDcnV2OneDeviceCTL',
           'one_device',
@@ -102,7 +114,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
       (
           'DlrmDcnV2OneDevice',
@@ -112,12 +125,13 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
-      ('DlrmTPUCTL', 'tpu', 'dot', True, True, 3, 64, False),
-      ('DlrmTPU', 'tpu', 'dot', False, True, 3, 64, False),
-      ('DcnTPUCTL', 'tpu', 'cross', True, True, 3, 64, False),
-      ('DcnTPU', 'tpu', 'cross', False, True, 3, 64, False),
+      ('DlrmTPUCTL', 'tpu', 'dot', True, True, 3, 64, False, True),
+      ('DlrmTPU', 'tpu', 'dot', False, True, 3, 64, False, True),
+      ('DcnTPUCTL', 'tpu', 'cross', True, True, 3, 64, False, True),
+      ('DcnTPU', 'tpu', 'cross', False, True, 3, 64, False, True),
       (
           'DlrmDcnV2TPUCTL',
           'tpu',
@@ -126,7 +140,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
       (
           'DlrmDcnV2TPU',
@@ -136,12 +151,13 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
-      ('DlrmMirroredCTL', 'Mirrored', 'dot', True, True, 3, 64, False),
-      ('DlrmMirrored', 'Mirrored', 'dot', False, True, 3, 64, False),
-      ('DcnMirroredCTL', 'Mirrored', 'cross', True, True, 3, 64, False),
-      ('DcnMirrored', 'Mirrored', 'cross', False, True, 3, 64, False),
+      ('DlrmMirroredCTL', 'Mirrored', 'dot', True, True, 3, 64, False, True),
+      ('DlrmMirrored', 'Mirrored', 'dot', False, True, 3, 64, False, True),
+      ('DcnMirroredCTL', 'Mirrored', 'cross', True, True, 3, 64, False, True),
+      ('DcnMirrored', 'Mirrored', 'cross', False, True, 3, 64, False, True),
       (
           'DlrmDcnV2MirroredCTL',
           'Mirrored',
@@ -150,7 +166,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
       (
           'DlrmDcnV2Mirrored',
@@ -160,7 +177,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
   )
   def testTrainEval(
@@ -172,6 +190,7 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
       dcn_num_layers=3,
       dcn_low_rank_dim=64,
       use_multi_hot=False,
+      use_partial_tpu_embedding=True,
   ):
     # Set up simple trainer with synthetic data.
     # By default the mode must be `train_and_eval`.
@@ -190,23 +209,45 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
         concat_dense=concat_dense,
         dcn_num_layers=dcn_num_layers,
         dcn_low_rank_dim=dcn_low_rank_dim,
+        use_partial_tpu_embedding=use_partial_tpu_embedding,
     )
+
     train.main('unused_args')
     self.assertNotEmpty(
         tf.io.gfile.glob(os.path.join(self._model_dir, 'params.yaml'))
     )
 
   @parameterized.named_parameters(
-      ('DlrmTPUCTL', 'tpu', 'dot', True, True, 3, 64, False),
-      ('DlrmTPU', 'tpu', 'dot', False, True, 3, 64, False),
-      ('DcnTPUCTL', 'tpu', 'cross', True, True, 3, 64, False),
-      ('DcnTPU', 'tpu', 'cross', False, True, 3, 64, False),
-      ('DlrmDcnV2TPUCTL', 'tpu', 'multi_layer_dcn', True, False, 3, 64, True),
-      ('DlrmDcnV2TPU', 'tpu', 'multi_layer_dcn', False, False, 3, 64, True),
-      ('DlrmMirroredCTL', 'Mirrored', 'dot', True, True, 3, 64, False),
-      ('DlrmMirrored', 'Mirrored', 'dot', False, True, 3, 64, False),
-      ('DcnMirroredCTL', 'Mirrored', 'cross', True, True, 3, 64, False),
-      ('DcnMirrored', 'Mirrored', 'cross', False, True, 3, 64, False),
+      ('DlrmTPUCTL', 'tpu', 'dot', True, True, 3, 64, False, True),
+      ('DlrmTPU', 'tpu', 'dot', False, True, 3, 64, False, True),
+      ('DcnTPUCTL', 'tpu', 'cross', True, True, 3, 64, False, True),
+      ('DcnTPU', 'tpu', 'cross', False, True, 3, 64, False, True),
+      (
+          'DlrmDcnV2TPUCTL',
+          'tpu',
+          'multi_layer_dcn',
+          True,
+          False,
+          3,
+          64,
+          True,
+          False,
+      ),
+      (
+          'DlrmDcnV2TPU',
+          'tpu',
+          'multi_layer_dcn',
+          False,
+          False,
+          3,
+          64,
+          True,
+          False,
+      ),
+      ('DlrmMirroredCTL', 'Mirrored', 'dot', True, True, 3, 64, False, True),
+      ('DlrmMirrored', 'Mirrored', 'dot', False, True, 3, 64, False, True),
+      ('DcnMirroredCTL', 'Mirrored', 'cross', True, True, 3, 64, False, True),
+      ('DcnMirrored', 'Mirrored', 'cross', False, True, 3, 64, False, True),
       (
           'DlrmDcnV2MirroredCTL',
           'Mirrored',
@@ -215,7 +256,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
       (
           'DlrmDcnV2Mirrored',
@@ -225,7 +267,8 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
           False,
           3,
           64,
-          True
+          True,
+          False,
       ),
   )
   def testTrainThenEval(
@@ -237,6 +280,7 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
       dcn_num_layers=3,
       dcn_low_rank_dim=64,
       use_multi_hot=False,
+      use_partial_tpu_embedding=True,
   ):
     # Set up simple trainer with synthetic data.
     vocab_sizes = [40, 12, 11, 13]
@@ -252,6 +296,7 @@ class TrainTest(parameterized.TestCase, tf.test.TestCase):
         dcn_num_layers=dcn_num_layers,
         dcn_low_rank_dim=dcn_low_rank_dim,
         use_multi_hot=use_multi_hot,
+        use_partial_tpu_embedding=use_partial_tpu_embedding,
     )
 
     default_mode = FLAGS.mode
