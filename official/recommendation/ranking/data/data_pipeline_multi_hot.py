@@ -45,13 +45,15 @@ class CriteoTsvReaderMultiHot:
                num_dense_features: int,
                vocab_sizes: List[int],
                multi_hot_sizes: List[int],
-               use_synthetic_data: bool = False):
+               use_synthetic_data: bool = False,
+               use_cached_data: bool = False):
     self._file_pattern = file_pattern
     self._params = params
     self._num_dense_features = num_dense_features
     self._vocab_sizes = vocab_sizes
     self._use_synthetic_data = use_synthetic_data
     self._multi_hot_sizes = multi_hot_sizes
+    self._use_cached_data = use_cached_data
 
   def __call__(self, ctx: tf.distribute.InputContext) -> tf.data.Dataset:
     params = self._params
@@ -144,6 +146,8 @@ class CriteoTsvReaderMultiHot:
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    if self._use_cached_data:
+      dataset = dataset.take(1).cache().repeat()
 
     return dataset
 
@@ -215,12 +219,14 @@ class CriteoTFRecordReader(object):
                params: config.DataConfig,
                num_dense_features: int,
                vocab_sizes: List[int],
-               multi_hot_sizes: List[int],):
+               multi_hot_sizes: List[int],
+               use_cached_data: bool = False):
     self._file_pattern = file_pattern
     self._params = params
     self._num_dense_features = num_dense_features
     self._vocab_sizes = vocab_sizes
     self._multi_hot_sizes = multi_hot_sizes
+    self._use_cached_data = use_cached_data
 
     self.label_features = 'label'
     self.dense_features = ['dense-feature-%d' % x for x in range(1, 14)]
@@ -307,6 +313,8 @@ class CriteoTFRecordReader(object):
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
     )
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    if self._use_cached_data:
+      dataset = dataset.take(1).cache().repeat()
 
     return dataset
 

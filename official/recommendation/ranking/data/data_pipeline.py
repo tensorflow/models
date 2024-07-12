@@ -38,12 +38,14 @@ class CriteoTsvReader:
                params: config.DataConfig,
                num_dense_features: int,
                vocab_sizes: List[int],
-               use_synthetic_data: bool = False):
+               use_synthetic_data: bool = False,
+               use_cached_data: bool = False):
     self._file_pattern = file_pattern
     self._params = params
     self._num_dense_features = num_dense_features
     self._vocab_sizes = vocab_sizes
     self._use_synthetic_data = use_synthetic_data
+    self._use_cached_data = use_cached_data
 
   def __call__(self, ctx: tf.distribute.InputContext) -> tf.data.Dataset:
     params = self._params
@@ -117,6 +119,8 @@ class CriteoTsvReader:
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    if self._use_cached_data:
+      dataset = dataset.take(1).cache().repeat()
 
     return dataset
 
@@ -172,6 +176,9 @@ class CriteoTsvReader:
     dataset = dataset.cache()
     if params.is_training:
       dataset = dataset.repeat()
+
+    if self._use_cached_data:
+      dataset = dataset.take(1).cache().repeat()
 
     return dataset.batch(batch_size, drop_remainder=True)
 
