@@ -74,6 +74,7 @@ class DataConfig(hyperparams.Config):
   cycle_length: int = 10
   sharding: bool = True
   num_shards_per_host: int = 8
+  use_cached_data: bool = False
 
 
 @dataclasses.dataclass

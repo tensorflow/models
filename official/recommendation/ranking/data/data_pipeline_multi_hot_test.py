@@ -23,9 +23,13 @@ from official.recommendation.ranking.data import data_pipeline_multi_hot
 
 class DataPipelineTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.named_parameters(('Train', True),
-                                  ('Eval', False))
-  def testSyntheticDataPipeline(self, is_training):
+  @parameterized.named_parameters(
+      ('TrainCached', True, True),
+      ('EvalNotCached', False, False),
+      ('TrainNotCached', True, False),
+      ('EvalCached', False, True),
+  )
+  def testSyntheticDataPipeline(self, is_training, use_cached_data):
     task = config.Task(
         model=config.ModelConfig(
             embedding_dim=4,
@@ -39,8 +43,10 @@ class DataPipelineTest(parameterized.TestCase, tf.test.TestCase):
             dcn_low_rank_dim=64,
             bottom_mlp=[64, 32, 4],
             top_mlp=[64, 32, 1]),
-        train_data=config.DataConfig(global_batch_size=16),
-        validation_data=config.DataConfig(global_batch_size=16),
+        train_data=config.DataConfig(global_batch_size=16,
+                                     use_cached_data=use_cached_data),
+        validation_data=config.DataConfig(global_batch_size=16,
+                                          use_cached_data=use_cached_data),
         use_synthetic_data=True)
 
     num_dense_features = task.model.num_dense_features
