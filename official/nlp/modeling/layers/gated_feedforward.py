@@ -37,7 +37,7 @@ class GatedFeedforward(tf_keras.layers.Layer):
     dropout: Dropout probability for the output dropout.
     use_gate: Whether to use gated linear units. If True, assuming `GELU` as the
       activation and omitting bias, will apply
-      `GEGLU(x, W, V, W_2) = (GEGLU(xW) * xV)W2`; if False, will follow
+      `GEGLU(x, W, V, W_2) = (GELU(xW) * xV)W2`; if False, will follow
       "Attention Is All You Need" (https://arxiv.org/abs/1706.03762) paper and
         apply `FFN(x, W, W_2) = GELU(xW_1)W_2.`
     num_blocks: The number of feedforward blocks to stack. Each block contains a
