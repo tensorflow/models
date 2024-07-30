@@ -467,7 +467,7 @@ class GroundtruthFilterTest(test_case.TestCase):
     input_area = np.array([32, 48], dtype=np.float32)
     input_difficult = np.array([True, False], dtype=bool)
     input_label_types = np.array(['APPROPRIATE', 'INCORRECT'],
-                                 dtype=np.string_)
+                                 dtype=np.bytes_)
     input_confidences = np.array([0.99, 0.5], dtype=np.float32)
     valid_indices = np.array([0], dtype=np.int32)
 
@@ -637,7 +637,7 @@ class RetainGroundTruthWithPositiveClasses(test_case.TestCase):
     input_area = np.array([32, 48], dtype=np.float32)
     input_difficult = np.array([True, False], dtype=bool)
     input_label_types = np.array(['APPROPRIATE', 'INCORRECT'],
-                                 dtype=np.string_)
+                                 dtype=np.bytes_)
     input_confidences = np.array([0.99, 0.5], dtype=np.float32)
 
     expected_tensors = {
