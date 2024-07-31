@@ -12,7 +12,7 @@
     "autoprefixer": "^10.4.15",
     "babel-eslint": "^10.1.0",
     "babel-loader": "^9.1.3",
-    "browser-sync": "~2.29.3",
+    "browser-sync": "~3.0.2",
     "chokidar-cli": "^3.0.0",
     "core-js": "^3.32.1",
     "cross-env": "^7.0.3",
