@@ -20,7 +20,7 @@
     "es6-promise": "~4.2.8",
     "eslint": "^8.47.0",
     "flexbox-grid-mixins": "~0.3.4",
-    "gulp": "^3.9.1",
+    "gulp": "^5.0.0",
     "gulp-autoprefixer": "^6.1.0",
     "gulp-cssnano": "~2.1.3",
     "gulp-eslint": "^6.0.0",
