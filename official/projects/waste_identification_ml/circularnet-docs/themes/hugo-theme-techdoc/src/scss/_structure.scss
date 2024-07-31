@@ -1,0 +1,73 @@
+// Built-In Modules
+@use 'sass:map';
+
+// Custom Modules
+@use '../../node_modules/flexbox-grid-mixins/dart-sass/flexbox-grid-mixins';
+
+// Included Modules
+@use 'variable';
+
+/*-----------------------*
+		Structure
+*-----------------------*/
+html,
+body {
+  height: 100%;
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  @include flexbox-grid-mixins.grid($flex-flow: column nowrap);
+  margin: auto;
+}
+
+.content-container {
+  @include flexbox-grid-mixins.grid-col(
+    $flex-grow: 1,
+    $flex-shrink: 0,
+    $flex-basis: auto
+  );
+  @include flexbox-grid-mixins.grid($justify-content: center);
+}
+
+main {
+  @include flexbox-grid-mixins.grid-col(
+    $col: 9,
+    $flex-shrink: 0,
+    $max-width: 75%
+  );
+
+  &:only-child {
+    @include flexbox-grid-mixins.grid-col(
+      $col: 12,
+      $flex-shrink: 0,
+      $max-width: 100%
+    );
+  }
+}
+
+.sidebar {
+  @include flexbox-grid-mixins.grid-col($col: 3, $order: -1);
+  // position: fixed;
+  // overflow-x: hidden;
+  overflow-x: hidden;
+  // overflow-y: scroll;
+}
+
+@media screen and (max-width: #{map.get(variable.$default-breakpoints, xs )} ) {
+  .content-container {
+    @include flexbox-grid-mixins.grid($flex-flow: column nowrap);
+  }
+
+  main {
+    @include flexbox-grid-mixins.grid-col(
+      $col: none,
+      $flex-shrink: 0,
+      $min-width: 100%
+    );
+  }
+  .sidebar {
+    @include flexbox-grid-mixins.grid-col($col: none, $order: 1);
+  }
+}

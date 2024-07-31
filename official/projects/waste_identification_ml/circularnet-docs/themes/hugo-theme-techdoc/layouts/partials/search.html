@@ -1,0 +1,57 @@
+<script src="https://cdn.jsdelivr.net/npm/algoliasearch@4.0.0/dist/algoliasearch-lite.umd.js" integrity="sha256-MfeKq2Aw9VAkaE9Caes2NOxQf6vUa8Av0JqcUXUGkd0=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/instantsearch.js@4.0.0/dist/instantsearch.production.min.js" integrity="sha256-6S7q0JJs/Kx4kb/fv0oMjS855QTz5Rc2hh9AkIUjUsk=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.3/dayjs.min.js" integrity="sha256-iu/zLUB+QgISXBLCW/mcDi/rnf4m4uEDO0wauy76x7U=" crossorigin="anonymous"></script>
+
+<div id="searchbox"></div>
+<div id="stats"></div>
+<div id="hits"></div>
+<div id="pagination"></div>
+
+<script>
+var search = instantsearch({
+  indexName: '{{ .Site.Params.algolia_indexName }}',
+  searchClient: algoliasearch(
+    '{{ .Site.Params.algolia_appId }}',
+    '{{ .Site.Params.algolia_apiKey }}'
+  ),
+  routing: true,
+});
+
+const renderHits = (renderOptions, isFirstRender) => {
+  const { hits } = renderOptions;
+
+  document.querySelector('#hits').innerHTML = `
+    ${hits
+      .map(
+        item =>
+          `<div class="ais-Hits-item"><h3><a href="${ item.permalink }">${ item.title }</a></h3><p><span class="lastmod">${ dayjs(item.lastmod).format("YYYY/MM/DD") }</span> - ${ item.description ? item.description : item.content.length > 200 ? item.content.substring( 0, 200 ) + '...' : item.content }</p></div>`
+      )
+      .join('')}
+  `;
+};
+
+const customHits = instantsearch.connectors.connectHits( renderHits );
+
+search.addWidgets([
+  instantsearch.widgets.searchBox({
+    container: '#searchbox',
+    showReset: false,
+  }),
+
+  instantsearch.widgets.stats({
+    container: '#stats',
+  }),
+
+  customHits({
+    container: document.querySelector('#hits'),
+  }),
+
+  instantsearch.widgets.pagination({
+    container: '#pagination',
+    maxPages: 20,
+  })
+]);
+
+search.start();
+
+</script>

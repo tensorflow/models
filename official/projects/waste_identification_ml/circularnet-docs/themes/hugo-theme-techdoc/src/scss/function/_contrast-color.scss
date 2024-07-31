@@ -1,0 +1,34 @@
+@charset "utf-8";
+
+// Built-In Modules
+@use 'sass:math';
+@use 'sass:color';
+
+// ===================================================================
+// contrast color
+// ===================================================================
+
+@function contrast-color($color: null, $dark: #000, $light: #fff) {
+  @if $color == null {
+    @return null;
+  } @else {
+    $color-brightness: brightness($color);
+    $light-color-brightness: brightness($light);
+    $dark-color-brightness: brightness($dark);
+
+    @return if(
+      math.abs($color-brightness - $light-color-brightness) >
+        math.abs($color-brightness - $dark-color-brightness),
+      $light,
+      $dark
+    );
+  }
+}
+
+@function brightness($color: null) {
+  @return math.div(
+    (color.red($color) * 299) + (color.green($color) * 587) +
+      (color.blue($color) * 114),
+    1000
+  );
+}

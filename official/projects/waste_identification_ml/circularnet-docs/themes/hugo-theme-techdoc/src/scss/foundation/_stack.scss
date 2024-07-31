@@ -1,0 +1,65 @@
+@use '../variable';
+
+/*-----------------------*
+		stack
+*-----------------------*/
+:root {
+  --const-stack: #{variable.$default-stack};
+  --stack-top: #{variable.$default-stack};
+  --stack-bottom: 0;
+  --first-stack-top: 0;
+  --first-stack-bottom: 0;
+  --last-stack-top: 0;
+  --last-stack-bottom: 0;
+}
+
+.first-stack,
+%first-stack {
+  margin-top: var(--first-stack-top, unset);
+  margin-bottom: var(--first-stack-bottom, unset);
+}
+
+.stack,
+%stack {
+  margin-top: var(--stack-top, unset);
+  margin-bottom: var(--stack-bottom, unset);
+}
+
+.last-stack,
+%last-stack {
+  margin-top: var(--last-stack-top, unset);
+  margin-bottom: var(--last-stack-bottom, unset);
+}
+
+.stack-multi--by2,
+%stack-multi--by2 {
+  margin-top: calc(var(--first-stack-top, unset) * 2);
+  margin-bottom: calc(var(--first-stack-bottom, unset) * 2);
+}
+
+.stack-multi--by4,
+%stack-multi--by4 {
+  margin-top: calc(var(--first-stack-top, unset) * 4);
+  margin-bottom: calc(var(--first-stack-bottom, unset) * 4);
+}
+
+.stack-divi--by2,
+%stack-divi--by2 {
+  margin-top: calc(var(--first-stack-top, unset) / 2);
+  margin-bottom: calc(var(--first-stack-bottom, unset) / 2);
+}
+
+.none-stack,
+%none-stack {
+  margin-top: 0;
+}
+
+.unset-stack,
+%unset-stack {
+  margin-top: unset;
+}
+
+.reverse-stack %reverse-stack {
+  margin-top: var(--stack-bottom, unset);
+  margin-bottom: var(--stack-top, unset);
+}

@@ -1,0 +1,13 @@
+name = "Techdoc"
+license = "MIT"
+licenselink = "https://github.com/thingsym/hugo-theme-techdoc/blob/master/LICENSE.md"
+description = "The Techdoc is a Hugo Theme for technical documentation."
+homepage = "https://github.com/thingsym/hugo-theme-techdoc"
+repo = "https://github.com/thingsym/hugo-theme-techdoc"
+tags = ["Documentation", "Docs", "Responsive", "Google analytics", "Table Of Contents"]
+features = ["documentation", "menu"]
+min_version = "0.60.0"
+
+[author]
+  name = "thingsym"
+  homepage = "https://blog.thingslabo.com/"

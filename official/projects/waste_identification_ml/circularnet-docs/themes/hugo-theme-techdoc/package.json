@@ -1,0 +1,122 @@
+{
+  "name": "hugo-theme-techdoc",
+  "version": "1.0.0",
+  "description": "The Techdoc is a Hugo Theme for technical documentation.",
+  "main": "gulpfile.js",
+  "author": "Thingsym",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.22.10",
+    "@babel/plugin-transform-runtime": "^7.22.10",
+    "@babel/preset-env": "^7.22.10",
+    "autoprefixer": "^10.4.15",
+    "babel-eslint": "^10.1.0",
+    "babel-loader": "^9.1.3",
+    "browser-sync": "~2.29.3",
+    "chokidar-cli": "^3.0.0",
+    "core-js": "^3.32.1",
+    "cross-env": "^7.0.3",
+    "cssnano": "^6.0.1",
+    "es6-promise": "~4.2.8",
+    "eslint": "^8.47.0",
+    "flexbox-grid-mixins": "~0.3.4",
+    "gulp": "^3.9.1",
+    "gulp-autoprefixer": "^6.1.0",
+    "gulp-cssnano": "~2.1.3",
+    "gulp-eslint": "^6.0.0",
+    "gulp-load-plugins": "~2.0.8",
+    "gulp-plumber": "~1.2.1",
+    "gulp-rename": "~2.0.0",
+    "gulp-sass": "~5.1.0",
+    "gulp-stylelint": "^13.0.0",
+    "gulp-util": "^1.0.0",
+    "gulp-watch": "^4.0.1",
+    "npm-check-updates": "^16.12.2",
+    "npm-run-all": "^4.1.5",
+    "postcss-cli": "^10.1.0",
+    "run-sequence": "~2.2.1",
+    "sass": "^1.66.1",
+    "stylelint": "^15.10.3",
+    "stylelint-config-recommended": "^13.0.0",
+    "stylelint-config-recommended-scss": "^12.0.0",
+    "stylelint-scss": "^5.1.0",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-stream": "^7.0.0"
+  },
+  "browserslist": [
+    "last 2 versions"
+  ],
+  "postcss": {
+    "map": true,
+    "plugins": {
+      "postcss-import": {},
+      "autoprefixer": {
+        "browsers": [
+          "last 2 Chrome versions",
+          "last 2 Firefox versions",
+          "last 2 Safari versions",
+          "last 2 Edge versions",
+          "last 2 Opera versions",
+          "last 2 iOS versions",
+          "last 1 Android version",
+          "last 1 ChromeAndroid version",
+          "ie 11",
+          "> 1%"
+        ]
+      }
+    }
+  },
+  "stylelint": {
+    "extends": [
+      "stylelint-config-recommended",
+      "stylelint-scss",
+      "stylelint-config-recommended-scss"
+    ],
+    "rules": {
+      "no-descending-specificity": null,
+      "no-duplicate-selectors": null,
+      "block-no-empty": null
+    }
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es6": true
+    },
+    "extends": "eslint:recommended",
+    "globals": {
+      "Atomics": "readonly",
+      "SharedArrayBuffer": "readonly",
+      "jQuery": true,
+      "$": false
+    },
+    "parserOptions": {
+      "ecmaVersion": 2018
+    },
+    "rules": {
+      "no-unused-vars": "off"
+    }
+  },
+  "scripts": {
+    "default": "gulp --tasks",
+    "ncu": "ncu",
+    "gulp": "gulp",
+    "build": "run-p build:*",
+    "build:js": "npm-run-all -p webpack",
+    "build:css": "run-p sass:**",
+    "webpack": "cross-env BABEL_ENV=default NODE_ENV=production webpack",
+    "sass:style": "sass src/scss/theme.scss static/css/theme.css --style expanded --no-source-map && postcss --use autoprefixer --no-map -r static/css/theme.css",
+    "sass:style:minify": "sass src/scss/theme.scss static/css/theme.min.css --style expanded --no-source-map && postcss --use autoprefixer --use cssnano --no-map -r static/css/theme.min.css",
+    "sass:chroma": "sass src/scss/chroma.scss static/css/chroma.css --style expanded --no-source-map && postcss --use autoprefixer --no-map -r static/css/chroma.css",
+    "sass:chroma:minify": "sass src/scss/chroma.scss static/css/chroma.min.css --style expanded --no-source-map && postcss --use autoprefixer --use cssnano --no-map -r static/css/chroma.min.css",
+    "lint": "run-p lint:*",
+    "lint:es": "eslint static/js/bundle.js",
+    "lint:es:fix": "eslint static/js/bundle.js --fix",
+    "lint:css": "stylelint static/css/*.css css/**/*.css !static/css/*.min.css !css/**/*.min.css",
+    "lint:scss": "stylelint src/scss/*.scss src/scss/**/*.scss",
+    "watch": "run-p watch:*",
+    "watch:css": "chokidar \"src/scss/*.scss\" \"src/scss/**/*.scss\" -c \"npm run build:css\" --initial --polling",
+    "watch:js": "chokidar \"src/js/*.js\" \"src/js/**/*.js\" -c \"npm run build:js\" --initial --polling"
+  }
+}

@@ -1,0 +1,12 @@
+<header>
+<h1>{{ .Site.Title }}</h1>
+{{- with .Site.Params.version -}}
+ <span class="version">Version {{ . }}</span>
+{{- end -}}
+{{- with .Site.Params.github_repository -}}
+<a href="{{ . }}" class="github"><i class="fab fa-github"></i></a>
+{{- end -}}
+{{ with .Site.Params.description }}
+<p class="description">{{ . }}</p>
+{{end}}
+</header>
