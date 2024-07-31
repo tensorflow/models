@@ -1,0 +1,4 @@
+{{- .Inner -}}
+{{ if and .Site.Params.algolia_search_enable .Site.Params.algolia_indexName .Site.Params.algolia_appId .Site.Params.algolia_apiKey }}
+{{- partial "search.html" . -}}
+{{ end }}

@@ -1,0 +1,15 @@
+{{ define "main" }}
+{{- if .Site.Home.Content -}}
+{{- .Site.Home.Content -}}
+{{- partial "pagination.html" . -}}
+{{- partial "edit-meta.html" . -}}
+{{- else -}}
+<h1>Customize your own home page</h1>
+<p>The site is working. Don't forget to customize this homepage with your own. You typically have 2 choices :</p>
+<ol>
+<li>Create an _index.md document in <b>content</b> folder and fill it with Markdown content</li>
+<li>Create an <b>index.html</b> file in the <b>static</b> folder and fill the file with HTML content</li>
+<li>Configure your server to automatically redirect home page to one your documentation page</li>
+</ol>
+{{- end -}}
+{{- end -}}

@@ -1,0 +1,222 @@
+// Built-In Modules
+@use 'sass:map';
+
+// Custom Modules
+@use '../../node_modules/flexbox-grid-mixins/dart-sass/flexbox-grid-mixins';
+
+// Included Modules
+@use 'variable';
+
+header {
+  color: var(--custom-font-color, #fff);
+  background: var(--custom-background-color, #000);
+  padding: 0.5rem variable.$default-layout-padding;
+
+  h1 {
+    font-size: 140%;
+    display: inline-block;
+  }
+
+  .version {
+    margin-left: 0.4rem;
+    font-size: 80%;
+  }
+
+  .github {
+    color: currentColor;
+    margin-left: 0.4rem;
+    font-size: 180%;
+  }
+}
+
+.global-menu {
+  color: var(--custom-font-color, #fff);
+  background: var(--custom-background-color, #000);
+  padding: 0.2rem variable.$default-layout-padding;
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  li {
+    display: inline-block;
+    margin-right: 1.8rem;
+    position: relative;
+  }
+
+  ul.sub-menu {
+    display: none;
+    margin: 0;
+    position: absolute;
+    top: 1.8rem;
+    left: 0;
+    z-index: 99999;
+
+    li {
+      padding: 0.2rem variable.$default-layout-padding;
+      background: var(--custom-background-color, #000);
+      width: 140px;
+      font-size: 80%;
+      a {
+        color: var(--custom-font-color, #fff);
+      }
+    }
+  }
+
+  .fa-angle-right {
+    margin-left: 0.4rem;
+    font-size: 80%;
+  }
+  li.parent:hover > ul.sub-menu {
+    @include flexbox-grid-mixins.grid($flex-flow: column nowrap);
+  }
+
+  @media screen and (max-width: #{map.get(variable.$default-breakpoints, xs )} ) {
+    // Hide the sub-menu on small screens.
+    li {
+      display: block;
+      margin-right: 0;
+      border-bottom: 1px solid currentColor;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .fa-angle-right {
+      display: none;
+    }
+
+    ul.sub-menu {
+      display: block;
+      position: static;
+
+      li {
+        width: auto;
+        background: transparent;
+        padding: 0 0.4rem;
+        + li {
+          padding-top: 0.2rem;
+        }
+        a {
+          color: currentColor;
+        }
+      }
+    }
+  }
+
+  a {
+    display: block;
+    color: currentColor;
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+main {
+  padding: 3rem;
+}
+
+@media screen and (max-width: #{map.get(variable.$default-breakpoints, xs )} ) {
+  main {
+    padding: 1rem;
+  }
+}
+
+.sidebar {
+  font-size: 90%;
+  line-height: 1.8;
+  background: variable.$sidebar-background-color;
+  border-right: 1px solid variable.$sidebar-active-color;
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  a {
+    position: relative;
+    display: block;
+    color: #404040;
+    text-decoration: none;
+    padding: 0.2rem 1rem;
+    border-left: solid 4px variable.$sidebar-background-color;
+    border-bottom: solid 1px variable.$sidebar-active-color;
+
+    &:hover {
+      color: #404040;
+      background: variable.$sidebar-hover-color;
+      border-left: solid 4px #ccc;
+    }
+  }
+
+  nav > ul > li li a {
+    padding-left: 1rem + 1rem * 1;
+  }
+  nav > ul ul > li li a {
+    padding-left: 1rem + 1rem * 2;
+  }
+  nav > ul ul ul > li li a {
+    padding-left: 1rem + 1rem * 3;
+  }
+  nav > ul ul ul ul > li li a {
+    padding-left: 1rem + 1rem * 4;
+  }
+  nav > ul ul ul ul ul > li li a {
+    padding-left: 1rem + 1rem * 5;
+  }
+
+  @media screen and (max-width: #{map.get(variable.$default-breakpoints, xs )} ) {
+    nav > ul > li:first-child a {
+      border-top: solid 1px variable.$sidebar-active-color;
+    }
+  }
+
+  .active > a {
+    background: variable.$sidebar-active-color;
+    border-left: solid 4px #ccc;
+  }
+
+  .slide-menu {
+    .has-sub-menu:not(.parent) ul {
+      display: none;
+    }
+
+    .has-sub-menu > a span.mark {
+      position: absolute;
+      top: 0;
+      right: 0;
+      display: inline-block;
+      height: 32px;
+      width: 32px;
+      line-height: 2;
+      text-align: center;
+      color: #979797;
+      background: #f2f2f2;
+      border-left: 1px solid #e7e7e7;
+    }
+  }
+}
+
+.sidebar-footer {
+  padding: variable.$default-layout-padding;
+}
+
+.edit-meta {
+  font-size: 80%;
+  text-align: right;
+}
+
+.edit-page {
+  font-weight: bold;
+}
+
+.powered {
+  font-size: 80%;
+  text-align: right;
+  color: #999;
+}

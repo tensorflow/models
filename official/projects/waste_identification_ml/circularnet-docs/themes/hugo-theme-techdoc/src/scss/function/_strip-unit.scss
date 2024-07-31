@@ -1,0 +1,17 @@
+@charset "utf-8";
+
+// Built-In Modules
+@use 'sass:meta';
+@use 'sass:math';
+
+@function strip-unit($value) {
+  @if meta.type-of($value) == 'number' and math.is-unitless($value) == false {
+    @return math.div($value, $value * 0 + 1);
+  } @else if meta.type-of($value) == 'number' {
+    @return $value;
+  } @else {
+    @warn $value;
+    @warn meta.type-of($value);
+    @error "error strip unit";
+  }
+}

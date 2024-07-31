@@ -1,0 +1,221 @@
+@use '../variable';
+@use '../function/calc-stack';
+
+/*-----------------------*
+		Element v1.0.0-custom
+*-----------------------*/
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-size: variable.$default-font-size;
+  line-height: calc-stack.line-height(
+    variable.$default-line-space,
+    variable.$default-font-size
+  );
+  color: variable.$default-font-color;
+  font-family: var(--custom-font-family-base, variable.$default-font-family);
+  font-feature-settings: 'pwid';
+}
+
+body {
+  background-color: variable.$default-background-color;
+  margin: variable.$default-layout-margin;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(
+    --custom-font-family-headings,
+    variable.$default-font-family
+  );
+  font-weight: bold;
+  line-height: variable.$default-line-height;
+
+  > small {
+    font-size: 75%;
+    font-weight: normal;
+  }
+}
+
+h1 {
+  font-size: 240%;
+  line-height: calc-stack.line-height(variable.$default-line-space, 240%);
+}
+
+h2 {
+  font-size: 200%;
+  line-height: calc-stack.line-height(variable.$default-line-space, 200%);
+}
+
+h3 {
+  font-size: 160%;
+  line-height: calc-stack.line-height(variable.$default-line-space, 160%);
+}
+
+h4 {
+  font-size: 125%;
+  line-height: calc-stack.line-height(variable.$default-line-space, 125%);
+}
+
+h5 {
+  font-size: 100%;
+  line-height: calc-stack.line-height(variable.$default-line-space, 100%);
+}
+
+h6 {
+  font-size: 80%;
+  line-height: calc-stack.line-height(variable.$default-line-space, 80%);
+}
+
+a {
+  color: var(--custom-link-text-color, variable.$default-link-text-color);
+  text-decoration: none;
+
+  &:focus,
+  &:active,
+  &:hover {
+    color: var(
+      --custom-link-text-hover-color,
+      variable.$default-link-text-hover-color
+    );
+    text-decoration: underline;
+  }
+}
+
+hr {
+  background-color: #ccc;
+  height: 2px;
+  border: 0;
+}
+
+p {
+  font-size: variable.$default-font-size;
+}
+
+img {
+  display: inline-block;
+  line-height: 0;
+}
+
+img,
+video {
+  height: auto;
+  max-width: 100%;
+}
+
+table {
+  border-collapse: collapse;
+  border: 1px solid variable.$default-border-color;
+  width: 100%;
+}
+
+th,
+td {
+  border-top: 1px solid variable.$default-border-color;
+  border-right: 1px solid variable.$default-border-color;
+  tr:nth-child(even) & {
+    background: #f8f8f8;
+  }
+  padding: 0.6rem;
+}
+
+th {
+  background: #eee;
+  font-weight: bold;
+  text-align: left;
+}
+
+ul {
+  list-style-type: disc;
+}
+
+ul {
+  &.no-style {
+    list-style: none;
+    padding-left: 0;
+  }
+  &.inline {
+    list-style: none;
+    padding-left: 0;
+    li {
+      display: inline;
+      padding-right: 2rem;
+    }
+  }
+}
+
+dt {
+  font-weight: bold;
+}
+
+dd {
+  margin-left: 2rem;
+}
+
+blockquote {
+  color: #999;
+  padding: variable.$default-layout-padding;
+  background-color: #f4f4f4;
+  border-left: 4px solid variable.$default-border-color;
+  border-radius: 0.2rem;
+}
+
+code,
+pre,
+kbd {
+  font-family: Menlo, Monaco, 'Courier New', monospace;
+}
+
+code,
+kbd {
+  padding: 0.2rem;
+  border-radius: 0.2rem;
+}
+
+code {
+  background-color: #f4f4f4;
+}
+
+kbd {
+  color: #fff;
+  background-color: #333;
+}
+
+pre {
+  background-color: #f4f4f4;
+  padding: variable.$default-layout-padding;
+  overflow: auto;
+  white-space: pre-wrap;
+  border-radius: 0.2rem;
+
+  code {
+    padding: 0;
+    background-color: unset;
+  }
+
+  &.wrap {
+    white-space: pre;
+    white-space: pre-wrap;
+    word-break: break-all;
+    word-wrap: break-word;
+  }
+  &.scrollable {
+    max-height: 240px;
+    overflow-y: scroll;
+  }
+}
+
+figcaption {
+  color: #333;
+  font-size: variable.$default-font-size;
+  line-height: calc-stack.line-height(
+    variable.$default-line-space,
+    variable.$default-font-size
+  );
+}

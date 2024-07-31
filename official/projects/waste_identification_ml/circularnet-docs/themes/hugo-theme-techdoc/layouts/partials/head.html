@@ -1,0 +1,30 @@
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+{{- if eq .Title "" }}
+<title>{{ .Site.Title }}</title>
+{{- else }}
+<title>{{ .Title }} - {{ .Site.Title }}</title>
+{{- end }}
+{{- if ne .Description "" }}
+<meta name="description" content="{{ .Description }}">
+{{- else if isset .Site.Params "description" }}
+<meta name="description" content="{{ .Site.Params.description }}">
+{{- end }}
+{{ hugo.Generator }}
+<link href="{{ .Site.BaseURL }}/index.xml" rel="alternate" type="application/rss+xml">
+<link rel="canonical" href="{{ .Permalink }}">
+<link rel="stylesheet" href="{{"css/theme.min.css" | absURL}}">
+{{ partial "meta/chroma.html" . -}}
+<script defer src="{{ .Site.BaseURL }}/js/fontawesome6/all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery.easing@1.4.1/jquery.easing.min.js" integrity="sha256-H3cjtrm/ztDeuhCN9I4yh4iN2Ybx/y1RM7rMmAesA0k=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js" integrity="sha256-4XodgW4TwIJuDtf+v6vDJ39FVxI0veC/kSCCmnFp7ck=" crossorigin="anonymous"></script>
+<script src="{{ "js/bundle.js" | absURL }}"></script>
+{{- partial "meta/google-analytics-async.html" . -}}
+{{- partial "meta/tag-manager.html" . -}}
+{{- partial "meta/google-site-verification.html" . -}}
+{{- partial "custom-css.html" . -}}
+{{- template "_internal/opengraph.html" . -}}
+{{- template "_internal/twitter_cards.html" . -}}
+{{- template "_internal/schema.html" . -}}

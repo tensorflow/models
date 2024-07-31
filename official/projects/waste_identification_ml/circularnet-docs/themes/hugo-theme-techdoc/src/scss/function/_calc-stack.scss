@@ -1,0 +1,41 @@
+@charset "utf-8";
+
+// Built-In Modules
+@use 'sass:math';
+
+// Included Modules
+@use 'calc-font-size';
+@use 'strip-unit';
+
+@function stack($line-height: 1, $font-size: 16px, $base-size: 16px) {
+  @if math.unit($font-size) == '%' {
+    $font-size: calc-font-size.percent2px($font-size, $base-size);
+  } @else if math.unit($font-size) == 'em' {
+    $font-size: calc-font-size.em2px($font-size, $base-size);
+  } @else if math.unit($font-size) == 'rem' {
+    $font-size: calc-font-size.rem2px($font-size, $base-size);
+  }
+
+  $line-height-px-unit: strip-unit.strip-unit($line-height) *
+    strip-unit.strip-unit($font-size);
+
+  $stack: calc-font-size.px2rem($line-height-px-unit, $base-size);
+
+  @return $stack;
+}
+
+@function line-height($line-space: 4px, $font-size: 16px, $base-size: 16px) {
+  @if math.unit($font-size) == '%' {
+    $font-size: calc-font-size.percent2px($font-size, $base-size);
+  } @else if math.unit($font-size) == 'em' {
+    $font-size: calc-font-size.em2px($font-size, $base-size);
+  } @else if math.unit($font-size) == 'rem' {
+    $font-size: calc-font-size.rem2px($font-size, $base-size);
+  }
+
+  $font-size: strip-unit.strip-unit($font-size);
+  $line-space: strip-unit.strip-unit($line-space);
+  $line-height: math.div(($line-space * 2) + $font-size, $font-size);
+
+  @return $line-height;
+}

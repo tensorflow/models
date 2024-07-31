@@ -1,0 +1,3 @@
+{{- if and .Site.Params.github_doc_repository .File -}}
+<a href="{{ .Site.Params.github_doc_repository }}/edit/{{ .Site.Params.github_doc_repository_branch | default "master" }}/{{ .Site.Params.github_doc_repository_path }}{{ .File.Path }}" class="edit-page"><i class="fas fa-pen-square"></i>&nbsp;Edit on GitHub</a>
+{{- end -}}

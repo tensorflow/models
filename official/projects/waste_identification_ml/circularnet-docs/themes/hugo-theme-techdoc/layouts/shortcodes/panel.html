@@ -1,0 +1,10 @@
+<div class="panel {{ with .Get "status" }}panel-{{ . }}{{ else }}panel-primary{{ end }}">
+{{- with .Get "title" -}}
+<div class="panel-header">
+<h3>{{ if $.Get "icon" }}<i class="{{ $.Get "icon" }}"></i>&nbsp;{{ end }}{{- htmlUnescape . | markdownify -}}</h3>
+</div>
+{{- end -}}
+<div class="panel-body">
+{{.Inner}}
+</div>
+</div>

@@ -1,0 +1,7 @@
+{{ if ne ( .Lastmod.Format "2006-01-02" ) "0001-01-01" }}
+Last updated on {{ .Lastmod.Format ( $.Site.Params.dateformat | default "2 Jan 2006") }}
+{{ end }}
+{{ if ne ( .PublishDate.Format "2006-01-02" ) "0001-01-01" }}
+<br>
+Published on {{ .PublishDate.Format ( $.Site.Params.dateformat | default "2 Jan 2006") -}}
+{{ end }}

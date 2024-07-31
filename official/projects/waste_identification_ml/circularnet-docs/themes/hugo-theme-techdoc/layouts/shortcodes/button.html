@@ -1,0 +1,3 @@
+<a href="{{ with .Get "url" }}{{ . }}{{ end }}" class="button {{ with .Get "status" }}button-{{ . }}{{ else }}button-primary{{ end }}">
+{{ with .Get "icon" }}<i class="{{ . }}"></i>&nbsp;{{ end }}{{- .Inner -}}
+</a>

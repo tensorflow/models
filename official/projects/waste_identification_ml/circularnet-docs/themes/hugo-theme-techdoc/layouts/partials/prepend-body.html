@@ -1,0 +1,10 @@
+{{ if hugo.IsServer }}
+<!-- only production, not generate Google Analytics with Hugo’s built-in server -->
+{{ else }}
+{{- with .Site.Params.tag_manager_container_id -}}
+<!-- BEGIN: Tag Manager -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ . }}"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- END: Tag Manager -->
+{{- end -}}
+{{- end -}}
