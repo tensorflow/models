@@ -14,7 +14,10 @@
 
 """Tests for resnet_deeplab models."""
 
+import math
+
 # Import libraries
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras
@@ -46,10 +49,15 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     print(endpoints)
-    self.assertAllEqual([
-        1, input_size / output_stride, input_size / output_stride,
-        512 * endpoint_filter_scale
-    ], endpoints[str(int(np.math.log2(output_stride)))].shape.as_list())
+    self.assertAllEqual(
+        [
+            1,
+            input_size / output_stride,
+            input_size / output_stride,
+            512 * endpoint_filter_scale,
+        ],
+        endpoints[str(int(math.log2(output_stride)))].shape.as_list(),
+    )
 
   @parameterized.parameters(
       ('v0', None, 0.0, False, False),
@@ -82,10 +90,15 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf_keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
     print(endpoints)
-    self.assertAllEqual([
-        1, input_size / output_stride, input_size / output_stride,
-        512 * endpoint_filter_scale
-    ], endpoints[str(int(np.math.log2(output_stride)))].shape.as_list())
+    self.assertAllEqual(
+        [
+            1,
+            input_size / output_stride,
+            input_size / output_stride,
+            512 * endpoint_filter_scale,
+        ],
+        endpoints[str(int(math.log2(output_stride)))].shape.as_list(),
+    )
 
   @combinations.generate(
       combinations.combine(
