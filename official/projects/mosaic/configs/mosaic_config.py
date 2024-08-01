@@ -14,10 +14,9 @@
 
 """Configuration definition for Semantic Segmentation with MOSAIC."""
 import dataclasses
+import math
 import os
 from typing import List, Optional, Union
-
-import numpy as np
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -133,7 +132,7 @@ def mosaic_mnv35_cityscapes() -> cfg.ExperimentConfig:
   steps_per_epoch = CITYSCAPES_TRAIN_EXAMPLES // train_batch_size
   output_stride = 16
 
-  backbone_output_level = int(np.math.log2(output_stride))
+  backbone_output_level = int(math.log2(output_stride))
   config = cfg.ExperimentConfig(
       task=MosaicSemanticSegmentationTask(
           model=MosaicSemanticSegmentationModel(
