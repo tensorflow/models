@@ -83,6 +83,9 @@ GENERIC_COLORS = [
     ('red', '#E9967A'),  # darkSalmon
     ('red', '#FFA07A'),  # lightSalmon
     ('gray', '#c0c0c0'),  # silver,
+    ('gray', '#a9a9a9'),  # +darkgray
+    ('gray', '#708090'),   # +slategray
+    ('blue', '#778899'),    # +lightslategray
     ('white', '#ffffff'),
     ('white', '#F5F5DC'),  # beige
     ('white', '#FFFAFA'),  # snow
