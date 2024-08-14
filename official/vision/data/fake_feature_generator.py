@@ -90,7 +90,10 @@ def generate_instance_masks_np(height: int,
 def generate_semantic_mask_np(height: int, width: int,
                               num_classes: int) -> np.ndarray:
   """Returns a fake numpy semantic mask array."""
-  return generate_image_np(height, width, num_channels=1) % num_classes
+  out = generate_image_np(height, width, num_channels=1)
+  if np.iinfo(out.dtype).max > num_classes:
+    out = out % num_classes
+  return out
 
 
 def generate_panoptic_masks_np(
