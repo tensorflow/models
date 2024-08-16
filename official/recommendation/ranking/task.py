@@ -39,6 +39,8 @@ def _get_tpu_embedding_feature_config(
     max_ids_per_chip_per_sample: Optional[int] = None,
     max_ids_per_table: Optional[Union[int, List[int]]] = None,
     max_unique_ids_per_table: Optional[Union[int, List[int]]] = None,
+    allow_id_dropping: bool = False,
+    initialize_tables_on_host: bool = False,
 ) -> Tuple[
     Dict[str, tf.tpu.experimental.embedding.FeatureConfig],
     Optional[tf.tpu.experimental.embedding.SparseCoreEmbeddingConfig],
@@ -57,6 +59,10 @@ def _get_tpu_embedding_feature_config(
       sample.
     max_ids_per_table: Maximum number of embedding ids per table.
     max_unique_ids_per_table: Maximum number of unique embedding ids per table.
+    allow_id_dropping: bool to allow id dropping.
+    initialize_tables_on_host: bool : if the embedding table size is more than 
+      what HBM can handle, this flag will help initialize the full embedding
+      tables on host and then copy shards to HBM.
 
   Returns:
     A dictionary of feature_name, FeatureConfig pairs.
@@ -140,7 +146,8 @@ def _get_tpu_embedding_feature_config(
         max_ids_per_chip_per_sample=max_ids_per_chip_per_sample,
         max_ids_per_table=max_ids_per_table_dict,
         max_unique_ids_per_table=max_unique_ids_per_table_dict,
-        allow_id_dropping=False,
+        allow_id_dropping=allow_id_dropping,
+        initialize_tables_on_host=initialize_tables_on_host,
     )
 
   return feature_config, sparsecore_config
@@ -248,6 +255,8 @@ class RankingTask(base_task.Task):
             max_ids_per_chip_per_sample=self.task_config.model.max_ids_per_chip_per_sample,
             max_ids_per_table=self.task_config.model.max_ids_per_table,
             max_unique_ids_per_table=self.task_config.model.max_unique_ids_per_table,
+            allow_id_dropping=self.task_config.model.allow_id_dropping,
+            initialize_tables_on_host=self.task_config.model.initialize_tables_on_host,
         )
     )
 
