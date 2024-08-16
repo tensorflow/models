@@ -138,6 +138,8 @@ class ModelConfig(hyperparams.Config):
   max_ids_per_chip_per_sample: int | None = None
   max_ids_per_table: Union[int, List[int]] | None = None
   max_unique_ids_per_table: Union[int, List[int]] | None = None
+  allow_id_dropping: bool = False
+  initialize_tables_on_host: bool = False
 
 
 @dataclasses.dataclass
