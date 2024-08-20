@@ -1,0 +1,88 @@
+# Train on 4x8 TPU and eval on GPU.
+# http://tb/6152990635147738742 - PQ 47.
+# Note: Above tensorboard has the best number, but using a different config compared to this file.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  init_checkpoint: 'gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080'
+  init_checkpoint_modules: ['backbone']
+  losses:
+    l2_weight_decay: 1.0e-5
+    mask_weight: 5.0
+  model:
+    input_size: [640, 640, 3]
+    embedding_size: 256
+    padded_output_size: [640, 640]
+    min_level: 3
+    max_level: 7
+    num_instances: 100
+    norm_activation:
+      activation: swish
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+    backbone:
+      type: resnet
+    decoder:
+      fpn:
+        num_filters: 256
+      type: fpn
+    class_head:
+      num_convs: 2
+      num_filters: 256
+      prediction_kernel_size: 3
+      use_depthwise_convolution: false
+      upsample_factor: 1
+    per_pixel_embedding_head:
+      decoder_min_level: 3
+      decoder_max_level: 7
+      level: 2
+      num_convs: 2
+      num_filters: 256
+      feature_fusion: panoptic_fpn_fusion
+      prediction_kernel_size: 3
+      use_depthwise_convolution: false
+      upsample_factor: 1
+    mask_embedding_head:
+      num_convs: 2
+      num_filters: 256
+      prediction_kernel_size: 3
+      use_depthwise_convolution: false
+      upsample_factor: 1
+    panoptic_generator:
+      object_mask_threshold: 0.01
+      overlap_threshold: 0.7
+      small_area_threshold: 4
+  train_data:
+    global_batch_size: 64
+    parser:
+      gaussaian_iou: 0.7
+      aug_scale_max: 1.9
+      aug_scale_min: 0.1
+      max_num_stuff_centers: 1
+  validation_data:
+    global_batch_size: 16
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        decay_steps: 200000
+        initial_learning_rate: 0.04
+      type: cosine
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 2000
+      type: linear
+  train_steps: 200000
+  validation_steps: 312
+  steps_per_loop: 154
+  validation_interval: 308
+  checkpoint_interval: 308
+  summary_interval: 308

@@ -1,0 +1,112 @@
+# Train and eval on 4x4 TPU. Best mIoU 76.4%
+# http://tb/1941403217464639568
+runtime:
+  distribution_strategy: tpu
+  mixed_precision_dtype: float32
+task:
+  init_checkpoint: 'maskconver_seg_mnetv3p5rf_coco_conv_bn997/44073905'
+  init_checkpoint_modules: [backbone, decoder]
+  losses:
+    l2_weight_decay: 1.0e-04
+    mask_weight: 5.0
+  model:
+    input_size: [512, 512, 3]
+    num_classes: 21
+    level: 4
+    embedding_size: 256
+    padded_output_size: [512, 512]
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.001
+      norm_momentum: 0.997
+      use_sync_bn: true
+    backbone:
+      mobilenet:
+        model_id: MobileNetMultiAVGSeg
+        output_stride: 16
+      type: mobilenet
+    decoder:
+      aspp:
+        level: 4
+        dilation_rates: [6, 12, 18]
+        num_filters: 256
+        use_depthwise_convolution: true
+      type: aspp
+    class_head:
+      feature_fusion: deeplabv3plus_sum_to_merge
+      level: 4
+      low_level: 4
+      low_level_num_filters: 256
+      num_convs: 2
+      use_depthwise_convolution: true
+    per_pixel_embedding_head:
+      feature_fusion: deeplabv3plus_sum_to_merge
+      level: 4
+      low_level: 4
+      low_level_num_filters: 256
+      num_convs: 1
+      use_depthwise_convolution: true
+    mask_embedding_head:
+      feature_fusion: deeplabv3plus_sum_to_merge
+      level: 4
+      low_level: 4
+      low_level_num_filters: 256
+      num_convs: 1
+      use_depthwise_convolution: true
+    panoptic_generator:
+      object_mask_threshold: 0.1
+      small_area_threshold: 256
+      overlap_threshold: 0.0
+      rescale_predictions: false
+  train_data:
+    input_path: gs://**/pascal_voc_seg/train_aug*
+    is_training: true
+    global_batch_size: 32
+    output_size: [512, 512]
+    gaussaian_iou: 0.7
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+    aug_type:
+      autoaug:
+        augmentation_name: panoptic_deeplab_policy
+        cutout_const: 100
+        translate_const: 250
+      type: autoaug
+  validation_data:
+    input_path: gs://**/pascal_voc_seg/val*
+    is_training: false
+    drop_remainder: false
+    global_batch_size: 32
+    output_size: [512, 512]
+    resize_eval_groundtruth: true
+    groundtruth_padded_size: [512, 512]
+trainer:
+  best_checkpoint_eval_metric: mean_iou
+  best_checkpoint_export_subdir: best_ckpt
+  best_checkpoint_metric_comp: higher
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      polynomial:
+        decay_steps: 33000
+        initial_learning_rate: 0.007
+        power: 0.9
+      type: polynomial
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 660
+      type: linear
+  train_steps: 33000
+  validation_steps: 22
+  steps_per_loop: 165
+  validation_interval: 165
+  checkpoint_interval: 165
+  summary_interval: 165

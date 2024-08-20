@@ -1,0 +1,116 @@
+# Train on 4x8 TPU and eval on 4x4 TPU. Best mIoU: 75.54%
+# http://tb/2097099367278640078
+runtime:
+  distribution_strategy: tpu
+  mixed_precision_dtype: float32
+task:
+  init_checkpoint: 'maskconver_seg_mnv3p5rf_coco_200k/43437096'
+  init_checkpoint_modules: [backbone]
+  losses:
+    l2_weight_decay: 0.0001
+    mask_weight: 5.0
+  model:
+    input_size: [1024, 2048, 3]
+    num_classes: 19
+    level: 4
+    embedding_size: 128
+    padded_output_size: [1024, 2048]
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+    backbone:
+      mobilenet:
+        model_id: MobileNetMultiAVGSeg
+        output_intermediate_endpoints: true
+        output_stride: 16
+      type: mobilenet
+    decoder:
+      aspp:
+        level: 4
+        dilation_rates: [6, 12, 18]
+        num_filters: 128
+        pool_kernel_size: [512, 1024]
+        use_depthwise_convolution: true
+      type: aspp
+    class_head:
+      feature_fusion: deeplabv3plus
+      level: 4
+      low_level: '4'
+      low_level_num_filters: 48
+      num_convs: 2
+      num_filters: 128
+      use_depthwise_convolution: true
+    per_pixel_embedding_head:
+      feature_fusion: deeplabv3plus
+      level: 4
+      low_level: '4'
+      low_level_num_filters: 48
+      num_convs: 2
+      num_filters: 128
+      use_depthwise_convolution: true
+    mask_embedding_head:
+      feature_fusion: deeplabv3plus
+      level: 4
+      low_level: '4'
+      low_level_num_filters: 48
+      num_convs: 2
+      num_filters: 128
+      use_depthwise_convolution: true
+    panoptic_generator:
+      object_mask_threshold: 0.01
+      small_area_threshold: 256
+      overlap_threshold: 0.0
+      rescale_predictions: false
+  train_data:
+    input_path: 'dataset/cityscapes/tfrecord/train_fine'
+    is_training: true
+    global_batch_size: 64
+    output_size: [1024, 2048]
+    gaussaian_iou: 0.7
+    aug_scale_max: 1.9
+    aug_scale_min: 0.1
+    aug_type:
+      autoaug:
+        augmentation_name: panoptic_deeplab_policy
+        cutout_const: 100
+        translate_const: 250
+      type: autoaug
+    max_num_stuff_centers: 5
+  validation_data:
+    input_path: 'dataset/cityscapes/tfrecord/val_fine'
+    is_training: false
+    drop_remainder: false
+    global_batch_size: 16
+    output_size: [1024, 2048]
+    resize_eval_groundtruth: true
+    groundtruth_padded_size: [1024, 2048]
+trainer:
+  best_checkpoint_eval_metric: mean_iou
+  best_checkpoint_export_subdir: best_ckpt
+  best_checkpoint_metric_comp: higher
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      cosine:
+        decay_steps: 100000
+        initial_learning_rate: 0.1
+      type: cosine
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        warmup_learning_rate: 0
+        warmup_steps: 925
+      type: linear
+  train_steps: 100000
+  validation_steps: 31
+  steps_per_loop: 185
+  validation_interval: 185
+  checkpoint_interval: 185
+  summary_interval: 185

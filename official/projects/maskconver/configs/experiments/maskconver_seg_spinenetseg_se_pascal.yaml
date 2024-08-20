@@ -1,0 +1,107 @@
+# Train and eval on 4x4 TPU. Best mIoU: 83.95%
+# http://tb/6094566970421137074
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  init_checkpoint: 'maskconver_seg_sn49_coco_200k/40849575'  # maskconver seg coco things
+  init_checkpoint_modules: ['backbone', 'decoder']
+  losses:
+    l2_weight_decay: 0.00001
+    mask_weight: 10.0
+    ignore_label: 255
+  model:
+    input_size: [512, 512, 3]
+    embedding_size: 256
+    padded_output_size: [512, 512]
+    norm_activation:
+      activation: 'swish'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+    backbone:
+      type: 'spinenet_seg'
+      spinenet_seg:
+        model_id: '49'
+        stem_type: 'v1'
+        resnetd_shortcut: true
+        se_ratio: 0.25
+        replace_stem_max_pool: true
+        stochastic_depth_drop_rate: 0.1
+    decoder:
+      aspp:
+        level: 3
+        pool_kernel_size: null
+        dilation_rates: [12, 24, 36]
+        use_depthwise_convolution: false
+      type: aspp
+    class_head:
+      level: 3
+      num_convs: 2
+      feature_fusion: 'deeplabv3'
+      prediction_kernel_size: 3
+      use_depthwise_convolution: false
+      upsample_factor: 1
+    per_pixel_embedding_head:
+      level: 3
+      num_convs: 2
+      feature_fusion: 'deeplabv3'
+      prediction_kernel_size: 3
+      use_depthwise_convolution: false
+      upsample_factor: 1
+    mask_embedding_head:
+      level: 3
+      num_convs: 2
+      feature_fusion: 'deeplabv3'
+      prediction_kernel_size: 3
+      use_depthwise_convolution: false
+      upsample_factor: 1
+    panoptic_generator:
+      object_mask_threshold: 0.1
+      overlap_threshold: 0.0
+      rescale_predictions: false
+      small_area_threshold: 256
+  train_data:
+    global_batch_size: 32
+    gaussaian_iou: 0.7
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+    aug_type:
+      autoaug:
+        augmentation_name: panoptic_deeplab_policy
+        cutout_const: 100
+        translate_const: 250
+      type: autoaug
+  validation_data:
+    global_batch_size: 32
+    resize_eval_groundtruth: true
+    groundtruth_padded_size: [512, 512]
+trainer:
+  best_checkpoint_eval_metric: 'mean_iou'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      stepwise:
+        boundaries: [25000]
+        values: [0.001, 0.0001]
+      type: stepwise
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 500
+      type: linear
+  train_steps: 30000
+  validation_steps: 45
+  steps_per_loop: 100
+  validation_interval: 1000
+  checkpoint_interval: 1000
+  summary_interval: 100
