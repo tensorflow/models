@@ -18,7 +18,7 @@ import statistics
 import tempfile
 import time
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import tensorflow_datasets as tfds
 
 from official.benchmark import perfzero_benchmark
@@ -73,15 +73,15 @@ def _run_benchmark():
                batch_size).prefetch(1))
 
   with tf.distribute.MirroredStrategy().scope():
-    model = tf.keras.applications.ResNet50(weights=None)
+    model = tf_keras.applications.ResNet50(weights=None)
     model.compile(
         optimizer=tf.compat.v1.mixed_precision
         .enable_mixed_precision_graph_rewrite(
-            tf.keras.optimizers.Adam(), loss_scale="dynamic"),
+            tf_keras.optimizers.Adam(), loss_scale="dynamic"),
         loss="sparse_categorical_crossentropy",
     )
 
-  tb_cbk = tf.keras.callbacks.TensorBoard(
+  tb_cbk = tf_keras.callbacks.TensorBoard(
       f"{tmp_dir}/{tf.__version__}", profile_batch=300)
   model.fit(dataset, verbose=2, epochs=3, callbacks=[tb_cbk])
   end_time = time.time()

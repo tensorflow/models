@@ -23,7 +23,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_model
 from official.benchmark.models import synthetic_util
@@ -67,7 +67,7 @@ def learning_rate_schedule(current_epoch,
   return learning_rate
 
 
-class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
+class LearningRateBatchScheduler(tf_keras.callbacks.Callback):
   """Callback to update learning rate on every batch (not epoch boundaries).
 
   N.B. Only support Keras optimizers, not TF optimizers.
@@ -140,7 +140,7 @@ def run(flags_obj):
   if data_format is None:
     data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
                    else 'channels_last')
-  tf.keras.backend.set_image_data_format(data_format)
+  tf_keras.backend.set_image_data_format(data_format)
 
   strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
@@ -196,7 +196,7 @@ def run(flags_obj):
   lr_schedule = 0.1
   if flags_obj.use_tensor_lr:
     initial_learning_rate = common.BASE_LEARNING_RATE * flags_obj.batch_size / 128
-    lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+    lr_schedule = tf_keras.optimizers.schedules.PiecewiseConstantDecay(
         boundaries=list(p[1] * steps_per_epoch for p in LR_SCHEDULE),
         values=[initial_learning_rate] +
         list(p[0] * initial_learning_rate for p in LR_SCHEDULE))
@@ -235,7 +235,7 @@ def run(flags_obj):
     if flags_obj.set_learning_phase_to_train:
       # TODO(haoyuzhang): Understand slowdown of setting learning phase when
       # not using distribution strategy.
-      tf.keras.backend.set_learning_phase(1)
+      tf_keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
 

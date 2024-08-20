@@ -24,7 +24,7 @@ import time
 
 import numpy as np
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
@@ -33,7 +33,7 @@ from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 FLAGS = flags.FLAGS
 
 
-class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
+class BenchmarkTimerCallback(tf_keras.callbacks.Callback):
   """Callback that records time it takes to run each batch."""
 
   def __init__(self, num_batches_to_skip=10):

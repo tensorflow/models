@@ -17,7 +17,7 @@
 import time
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from tqdm import tqdm
 
 from official.benchmark import perfzero_benchmark
@@ -33,7 +33,7 @@ def gen_batches(num_batches, batch_size, units):
     yield x, y
 
 
-class MyModel(tf.keras.models.Model):
+class MyModel(tf_keras.models.Model):
   """Test model."""
 
   def __init__(self, units):
@@ -46,7 +46,7 @@ class MyModel(tf.keras.models.Model):
     self.transition_param = self.add_weight(
         name="transition_param", shape=(units, units))
 
-    self.optimizer = tf.keras.optimizers.Adam()
+    self.optimizer = tf_keras.optimizers.Adam()
     self._training = False
 
   def _loss_fn_with_scan(self, inputs, transition_params):

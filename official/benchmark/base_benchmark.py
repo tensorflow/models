@@ -21,7 +21,7 @@ from typing import Optional
 
 from absl import logging
 import gin
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.platform import benchmark  # pylint: disable=unused-import
 from official.common import registry_imports  # pylint: disable=unused-import

@@ -22,7 +22,7 @@ import random
 import string
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 
 # The `SyntheticDataset` is a temporary solution for generating synthetic data

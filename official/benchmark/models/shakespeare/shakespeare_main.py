@@ -25,7 +25,7 @@ import os
 from absl import app
 from absl import flags
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.common import distribute_utils
 # pylint: enable=wrong-import-order
 
@@ -140,7 +140,7 @@ def build_model(vocab_size,
   Returns:
     A Keras Model.
   """
-  LSTM = functools.partial(tf.keras.layers.LSTM, implementation=2)
+  LSTM = functools.partial(tf_keras.layers.LSTM, implementation=2)
 
   # By indirecting the activation through a lambda layer, the logic to dispatch
   # to CuDNN in V2 doesn't trigger and we force the LSTM to run in non-CuDNN
@@ -149,16 +149,16 @@ def build_model(vocab_size,
                      lambda x: tf.math.tanh(x))
 
   batch_shape = [batch_size if stateful else None, None]
-  return tf.keras.Sequential([
-      tf.keras.layers.Embedding(vocab_size, embedding_dim,
+  return tf_keras.Sequential([
+      tf_keras.layers.Embedding(vocab_size, embedding_dim,
                                 batch_input_shape=batch_shape),
       LSTM(rnn_units,
            activation=lstm_activation,
            return_sequences=True,
            stateful=stateful,
            recurrent_initializer='glorot_uniform'),
-      tf.keras.layers.Dense(vocab_size),
-      tf.keras.layers.Softmax(dtype=tf.float32)])
+      tf_keras.layers.Dense(vocab_size),
+      tf_keras.layers.Softmax(dtype=tf.float32)])
 
 
 def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
@@ -187,16 +187,16 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
     # Model.fit() automatically applies loss scaling so we don't need to create
     # a LossScaleOptimizer.
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(),
-        loss=tf.keras.losses.CategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.Recall(top_k=1, name='RecallAt1'),
-                 tf.keras.metrics.Recall(top_k=5, name='RecallAt5')],
+        optimizer=tf_keras.optimizers.Adam(),
+        loss=tf_keras.losses.CategoricalCrossentropy(),
+        metrics=[tf_keras.metrics.Recall(top_k=1, name='RecallAt1'),
+                 tf_keras.metrics.Recall(top_k=5, name='RecallAt5')],
         run_eagerly=flags_obj.run_eagerly)
 
   callbacks = []
   if checkpoint_dir:
     checkpoint_prefix = os.path.join(checkpoint_dir, 'ckpt_{epoch}')
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+    checkpoint_callback = tf_keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_prefix,
         save_weights_only=True)
     callbacks.append(checkpoint_callback)
@@ -240,7 +240,7 @@ def make_prediction(checkpoint_dir, length, context, idx2char, char2idx):
     predictions = tf.squeeze(predictions, 0)
 
     # We applied a softmax to the output of the model so that
-    # tf.keras.metrics.Recall would work. We need logits for
+    # tf_keras.metrics.Recall would work. We need logits for
     # tf.random.categorical, so we convert the probabilities back to log odds
     predictions = tf.math.log(predictions / (1 - predictions))
 
@@ -268,7 +268,7 @@ def run(flags_obj):
         'shakespeare.txt')
 
   if flags_obj.dtype == 'fp16':
-    tf.keras.mixed_precision.set_global_policy('mixed_float16')
+    tf_keras.mixed_precision.set_global_policy('mixed_float16')
 
   keras_utils.set_session_config(
       enable_xla=flags_obj.enable_xla)

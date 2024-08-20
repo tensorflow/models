@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.legacy.image_classification.resnet import imagenet_preprocessing
 

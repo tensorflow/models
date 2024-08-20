@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.eager import context
 from official.benchmark.models import resnet_imagenet_main
@@ -91,12 +91,12 @@ class KerasImagenetTest(tf.test.TestCase):
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
     imagenet_preprocessing.NUM_IMAGES["validation"] = 4
-    self.policy = tf.keras.mixed_precision.global_policy()
+    self.policy = tf_keras.mixed_precision.global_policy()
 
   def tearDown(self):
     super(KerasImagenetTest, self).tearDown()
     tf.io.gfile.rmtree(self.get_temp_dir())
-    tf.keras.mixed_precision.set_global_policy(self.policy)
+    tf_keras.mixed_precision.set_global_policy(self.policy)
 
   def get_extra_flags_dict(self, flags_key):
     return self._extra_flags_dict[flags_key] + self._default_flags_dict

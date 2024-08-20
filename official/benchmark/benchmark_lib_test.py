@@ -16,7 +16,7 @@
 # pylint: disable=g-direct-tensorflow-import
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations

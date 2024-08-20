@@ -20,7 +20,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.common import distribute_utils
 from official.legacy.image_classification import test_utils
 from official.legacy.image_classification.resnet import common
@@ -37,7 +37,7 @@ def _cluster_last_three_conv2d_layers(model):
   import tensorflow_model_optimization as tfmot  # pylint: disable=g-import-not-at-top
   last_three_conv2d_layers = [
       layer for layer in model.layers
-      if isinstance(layer, tf.keras.layers.Conv2D)
+      if isinstance(layer, tf_keras.layers.Conv2D)
     ][-3:]
 
   cluster_weights = tfmot.clustering.keras.cluster_weights
@@ -58,7 +58,7 @@ def _cluster_last_three_conv2d_layers(model):
       print('Clustered {} with 32 clusters'.format(layer.name))
     return clustered
 
-  return tf.keras.models.clone_model(model, clone_function=cluster_fn)
+  return tf_keras.models.clone_model(model, clone_function=cluster_fn)
 
 
 def run(flags_obj):
@@ -91,7 +91,7 @@ def run(flags_obj):
   if data_format is None:
     data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
                    else 'channels_last')
-  tf.keras.backend.set_image_data_format(data_format)
+  tf_keras.backend.set_image_data_format(data_format)
 
   # Configures cluster spec for distribution strategy.
   _ = distribute_utils.configure_cluster(flags_obj.worker_hosts,
@@ -181,8 +181,8 @@ def run(flags_obj):
           flags_obj.initial_learning_rate_per_sample * flags_obj.batch_size
       if flags_obj.optimizer == 'mobilenet_fine_tune':
         initial_learning_rate = 1e-5
-      optimizer = tf.keras.optimizers.SGD(
-          learning_rate=tf.keras.optimizers.schedules.ExponentialDecay(
+      optimizer = tf_keras.optimizers.SGD(
+          learning_rate=tf_keras.optimizers.schedules.ExponentialDecay(
               initial_learning_rate,
               decay_steps=steps_per_epoch * flags_obj.num_epochs_per_decay,
               decay_rate=flags_obj.lr_decay_factor,
@@ -208,10 +208,10 @@ def run(flags_obj):
       else:
         classes_labels = imagenet_preprocessing.NUM_CLASSES
         initial_weights = None
-      model = tf.keras.applications.mobilenet.MobileNet(
+      model = tf_keras.applications.mobilenet.MobileNet(
           weights=initial_weights,
           classes=classes_labels,
-          layers=tf.keras.layers)
+          layers=tf_keras.layers)
 
     if flags_obj.pretrained_filepath:
       model.load_weights(flags_obj.pretrained_filepath)
@@ -275,7 +275,7 @@ def run(flags_obj):
     if flags_obj.set_learning_phase_to_train:
       # TODO(haoyuzhang): Understand slowdown of setting learning phase when
       # not using distribution strategy.
-      tf.keras.backend.set_learning_phase(1)
+      tf_keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
 

@@ -20,7 +20,7 @@ import os  # pylint: disable=unused-import
 import time
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.benchmark import owner_utils
 from official.legacy.image_classification.resnet import common

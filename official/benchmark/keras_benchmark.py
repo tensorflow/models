@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.utils.flags import core as flags_core
 

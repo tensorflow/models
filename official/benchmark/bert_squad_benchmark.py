@@ -20,7 +20,7 @@ import time
 from absl import flags
 from absl import logging
 from absl.testing import flagsaver
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.benchmark import benchmark_wrappers
 from official.benchmark import bert_benchmark_utils as benchmark_utils

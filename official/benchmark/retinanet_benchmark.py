@@ -24,7 +24,7 @@ import time
 
 from absl import flags
 from absl.testing import flagsaver
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 # pylint: enable=g-bad-import-order
 
 from official.benchmark import benchmark_wrappers

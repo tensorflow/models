@@ -23,7 +23,7 @@ import time
 from typing import Any, MutableMapping, Optional
 
 from absl import flags
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf, tf_keras  # pylint: disable=g-bad-import-order
 
 from official.benchmark import benchmark_wrappers
 from official.benchmark import keras_benchmark
@@ -665,7 +665,6 @@ class KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
   def benchmark_2x2_tpu_bf16_mlir(self):
     """Test Keras model with 2x2 TPU, bf16."""
     self._setup()
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark(
         experiment_name='benchmark_2x2_tpu_bf16_mlir',
         dtype='bfloat16',
@@ -676,7 +675,6 @@ class KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
   def benchmark_4x4_tpu_bf16_mlir(self):
     """Test Keras model with 4x4 TPU, bf16."""
     self._setup()
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark(
         experiment_name='benchmark_4x4_tpu_bf16_mlir',
         dtype='bfloat16',

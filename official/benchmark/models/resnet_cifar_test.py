@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tempfile
 
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest

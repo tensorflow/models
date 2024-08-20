@@ -19,7 +19,7 @@ from typing import Any, Mapping, Optional
 
 from absl import logging
 import orbit
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 from official.benchmark import tflite_utils
 from official.common import distribute_utils
 from official.core import config_definitions

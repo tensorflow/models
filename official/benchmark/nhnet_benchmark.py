@@ -20,7 +20,7 @@ import time
 from typing import Optional
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.benchmark import benchmark_wrappers
 from official.benchmark import owner_utils

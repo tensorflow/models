@@ -21,7 +21,7 @@ import os
 import time
 
 from absl import flags
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf, tf_keras  # pylint: disable=g-bad-import-order
 
 from official.benchmark.models.shakespeare import shakespeare_main
 from official.utils.flags import core as flags_core

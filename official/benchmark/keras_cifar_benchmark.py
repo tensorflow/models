@@ -21,7 +21,7 @@ import os
 import time
 
 from absl import flags
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
 from official.benchmark import keras_benchmark
 from official.benchmark import benchmark_wrappers
