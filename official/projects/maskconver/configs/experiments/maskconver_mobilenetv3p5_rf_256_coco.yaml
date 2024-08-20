@@ -1,0 +1,111 @@
+# Train on 4x8 TPU and eval on GPU. PQ: 29.66
+# http://tb/7684098868201894928
+# Note: Get PQ 29.7 with official evaluation.
+# Note: We pad the model output to 640x640 for better eval.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  init_checkpoint: 'maskconver_seg_mnv3p5rf_coco_200k/43437096'
+  init_checkpoint_modules: ['backbone', 'decoder']
+  losses:
+    l2_weight_decay: 0.00001
+    mask_weight: 5.0
+  model:
+    input_size: [256, 256, 3]
+    level: 3
+    embedding_size: 256
+    padded_output_size: [640, 640]
+    num_instances: 50
+    norm_activation:
+      activation: 'relu'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+    backbone:
+      mobilenet:
+        filter_size_scale: 1.0
+        model_id: MobileNetMultiAVGSeg
+        stochastic_depth_drop_rate: 0.0
+        output_stride: 16
+      type: mobilenet
+    decoder:
+      aspp:
+        dilation_rates: [6, 12, 18]
+        dropout_rate: 0.0
+        level: 4
+        num_filters: 256
+        spp_layer_version: v1
+        use_depthwise_convolution: true
+      type: 'aspp'
+    class_head:
+      feature_fusion: deeplabv3plus_sum_to_merge
+      level: 4
+      low_level: 3
+      low_level_num_filters: 256
+      num_filters: 256
+      prediction_kernel_size: 1
+      upsample_factor: 1
+      use_depthwise_convolution: true
+      num_convs: 2
+    per_pixel_embedding_head:
+      feature_fusion: deeplabv3plus_sum_to_merge
+      level: 4
+      low_level: 3
+      low_level_num_filters: 256
+      num_filters: 256
+      prediction_kernel_size: 1
+      upsample_factor: 1
+      use_depthwise_convolution: true
+      num_convs: 2
+    mask_embedding_head:
+      feature_fusion: deeplabv3plus_sum_to_merge
+      level: 4
+      low_level: 3
+      low_level_num_filters: 256
+      num_filters: 256
+      prediction_kernel_size: 1
+      upsample_factor: 1
+      use_depthwise_convolution: true
+      num_convs: 2
+    panoptic_generator:
+      object_mask_threshold: 0.01
+      overlap_threshold: 0.7
+      rescale_predictions: true
+      small_area_threshold: 256
+  train_data:
+    global_batch_size: 64
+    parser:
+      max_num_stuff_centers: 1
+      gaussaian_iou: 0.7
+      aug_scale_max: 1.9
+      aug_scale_min: 0.1
+      aug_type: null
+  validation_data:
+    global_batch_size: 1
+    parser:
+      segmentation_resize_eval_groundtruth: false
+      segmentation_groundtruth_padded_size: [640, 640]
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        decay_steps: 500000
+        initial_learning_rate: 0.04
+      type: cosine
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 2000
+      type: linear
+  steps_per_loop: 100
+  summary_interval: 1000
+  train_steps: 500000
+  validation_interval: 1000
+  validation_steps: 5000
+  checkpoint_interval: 1000

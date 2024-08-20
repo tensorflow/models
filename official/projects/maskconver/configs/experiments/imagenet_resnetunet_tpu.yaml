@@ -1,0 +1,40 @@
+# --experiment_type=deit_imagenet_pretrain
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  model:
+    num_classes: 1001
+    input_size: [384, 384, 3]
+    backbone:
+      type: 'resnet_unet'
+      resnet_unet:
+        model_id: 50
+        stochastic_depth_drop_rate: 0.1
+        classification_output: true
+        upsample_kernel_sizes: [7, 7, 7]
+        upsample_repeats: [18, 1, 1]
+        upsample_filters: [384, 384, 384]
+    norm_activation:
+      activation: 'gelu'
+      norm_momentum: 0.0
+      norm_epsilon: 0.00001
+      use_sync_bn: true
+    dropout_rate: 0.0
+  validation_data:
+    global_batch_size: 1024
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        alpha: 0.0
+        initial_learning_rate: 0.004
+        name: CosineDecay
+        offset: 0
+      type: cosine
+    optimizer:
+      adamw:
+        weight_decay_rate: 0.05
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false

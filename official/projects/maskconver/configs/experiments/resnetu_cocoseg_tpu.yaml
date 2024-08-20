@@ -1,0 +1,111 @@
+# --experiment_type=seg_deeplabv3_pascal
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  model:
+    min_level: 2
+    max_level: 7
+    num_classes: 91
+    input_size: [1024, 1024, 3]
+    backbone:
+      type: 'resnet_unet'
+      resnet_unet:
+        model_id: 50
+        stochastic_depth_drop_rate: 0.1
+        classification_output: false
+        bn_trainable: false
+        upsample_filters: [384, 384, 384]
+        upsample_kernel_sizes: [7, 7, 7]
+        upsample_repeats: [18, 1, 1]
+    decoder:
+      fpn:
+        num_filters: 256
+        use_separable_conv: true
+      type: fpn
+    head:
+      feature_fusion: pyramid_fusion
+      level: 2
+      num_convs: 4
+      use_depthwise_convolution: true
+      prediction_kernel_size: 1
+    norm_activation:
+      activation: 'gelu'
+      norm_epsilon: 0.001
+      norm_momentum: 0.0
+      use_sync_bn: true
+  init_checkpoint: 'res50unet_imgnet_1811_se0625/78934910/ema_checkpoints'
+  init_checkpoint_modules: 'backbone'
+  losses:
+    l2_weight_decay: 0.0
+    top_k_percent_pixels: 1.0  # only backpropagate loss for the topk 100% pixels.
+  train_data:
+    output_size: [1024, 1024]
+    input_path: 'image_segmentation/dataset/mscoco/mscoco_alltasks_trainvalminusminival2014'
+    is_training: true
+    global_batch_size: 256
+    dtype: 'float32'
+    aug_rand_hflip: true
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+  validation_data:
+    output_size: [1024, 1024]
+    input_path: 'image_segmentation/dataset/mscoco/mscoco_alltasks_minival2014''
+    is_training: false
+    global_batch_size: 16
+    dtype: 'float32'
+    drop_remainder: false
+    resize_eval_groundtruth: true
+trainer:
+  allow_tpu_summary: false
+  best_checkpoint_eval_metric: 'mean_iou'
+  best_checkpoint_export_subdir: ''
+  best_checkpoint_metric_comp: higher
+  checkpoint_interval: 200
+  continuous_eval_timeout: 3600
+  eval_tf_function: true
+  eval_tf_while_loop: false
+  loss_upper_bound: 1000000.0
+  max_to_keep: 5
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+      trainable_weights_only: false
+    learning_rate:
+      cosine:
+        alpha: 0.03
+        decay_steps: 64000
+        initial_learning_rate: 0.0003
+        name: CosineDecay
+        offset: 0
+      type: cosine
+    optimizer:
+      adamw:
+        amsgrad: false
+        beta_1: 0.9
+        beta_2: 0.999
+        clipnorm: null
+        clipvalue: null
+        epsilon: 1.0e-07
+        exclude_from_weight_decay: null
+        global_clipnorm: null
+        gradient_clip_norm: 1.0
+        include_in_weight_decay: .*(kernel|weight):0$
+        weight_decay_rate: 0.05
+      type: adamw
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0.000001
+        warmup_steps: 2000
+      type: linear
+  recovery_begin_steps: 0
+  recovery_max_trials: 0
+  steps_per_loop: 50
+  summary_interval: 100
+  train_steps: 64000
+  train_tf_function: true
+  train_tf_while_loop: true
+  validation_interval: 308
+  validation_steps: 312
+  validation_summary_subdir: validation

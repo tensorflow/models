@@ -1,0 +1,240 @@
+runtime:
+  mixed_precision_dtype: float32
+task:
+  differential_privacy_config: null
+  init_checkpoint: 'resnetubn_fpn_seg_coco1024_1811se/48546144/ema_checkpoints'
+  init_checkpoint_modules: ["backbone"]
+  losses:
+    alpha: 2.0
+    beta: 4.0
+    ignore_label: 0
+    l2_weight_decay:  0.0
+    loss_weight: 1.0
+    mask_weight: 10.0
+    top_k_percent_pixels_category: 1.0
+    top_k_percent_pixels_instance: 1.0
+    use_groundtruth_dimension: true
+  model:
+    anchor:
+      anchor_size: 8.0
+      aspect_ratios: [0.5, 1.0, 2.0]
+      num_scales: 1
+    backbone:
+      type: 'resnet_unet'
+      resnet_unet:
+        model_id: 50
+        stochastic_depth_drop_rate: 0.1
+        classification_output: false
+        bn_trainable: false
+        upsample_kernel_sizes: [7, 7, 7]
+        upsample_repeats: [18, 1, 1]
+        upsample_filters: [384, 384, 384]
+    class_head:
+      num_convs: 4
+      num_filters: 256
+      prediction_kernel_size: 1
+      upsample_factor: 1
+      use_depthwise_convolution: true
+      depthwise_kernel_size: 7
+    decoder:
+      maskconver_fpn:
+        num_filters: 256
+        use_separable_conv: true
+        fusion_type: concat
+      type: maskconver_fpn
+    mask_decoder: null
+    embedding_size: 256
+    input_size: [1280, 1280, 3]
+    level: 3
+    mask_embedding_head:
+      num_convs: 4
+      num_filters: 256
+      prediction_kernel_size: 1
+      upsample_factor: 1
+      depthwise_kernel_size: 7
+      use_depthwise_convolution: true
+    max_level: 7
+    min_level: 3
+    norm_activation:
+      activation:  gelu
+      norm_epsilon: 0.001
+      norm_momentum: 0.0
+      use_sync_bn: true
+    num_anchors: 100
+    num_classes: 201
+    num_instances: 256
+    num_thing_classes: 91
+    padded_output_size: [640, 640]
+    panoptic_fusion_num_filters: 256
+    panoptic_generator:
+      object_mask_threshold: 0.2
+      overlap_threshold: 0.75
+      rescale_predictions: true
+      small_area_threshold: 16
+      use_hardware_optimization: false
+    per_pixel_embedding_head:
+      decoder_max_level: 7
+      decoder_min_level: 3
+      feature_fusion: pyramid_fusion
+      level: 2
+      low_level: 2
+      low_level_num_filters: 48
+      num_convs: 4
+      num_filters: 256
+      prediction_kernel_size: 1
+      upsample_factor: 1
+      use_depthwise_convolution: true
+      depthwise_kernel_size: 7
+  name: null
+  panoptic_quality_evaluator:
+    ignored_label: 0
+    max_instances_per_category: 256
+    num_categories: 201
+    offset: 16777216
+    report_per_class_metrics: false
+    rescale_predictions: true
+  train_data:
+    apply_tf_data_service_before_batching: false
+    block_length: 1
+    cache: false
+    cycle_length: null
+    decoder:
+      simple_decoder:
+        include_panoptic_masks: true
+        mask_binarize_threshold: null
+        panoptic_category_mask_key: image/panoptic/category_mask
+        panoptic_instance_mask_key: image/panoptic/instance_mask
+        regenerate_source_id: false
+      type: simple_decoder
+    deterministic: null
+    drop_remainder: true
+    dtype: float32
+    enable_shared_tf_data_service_between_parallel_trainers: false
+    enable_tf_data_service: false
+    file_type: tfrecord
+    global_batch_size: 128
+    input_path: 'datasets/coco/tfrecords/train-nocrowd'
+    is_training: true
+    num_examples: -1
+    parser:
+      copypaste:
+        copypaste_aug_scale_max: 1.5
+        copypaste_aug_scale_min: 0.025
+        aug_scale_max: 2.9
+        aug_scale_min: 0.05
+        copypaste_frequency: 0.5
+      aug_rand_hflip: true
+      aug_scale_max: 1.0
+      aug_scale_min: 1.0
+      aug_type:
+        autoaug:
+          augmentation_name: panoptic_deeplab_policy
+          cutout_const: 100
+          translate_const: 250
+        type: autoaug
+      fpn_low_range: [0, 100, 200, 400, 800]
+      fpn_high_range: [100, 200, 400, 800, 12500000]
+      gaussaian_iou: 0.7
+      panoptic_ignore_label: 0
+      segmentation_groundtruth_padded_size: []
+      segmentation_ignore_label: 0
+      segmentation_resize_eval_groundtruth: true
+    prefetch_buffer_size: 2
+    seed: null
+    sharding: true
+    shuffle_buffer_size: 10000
+    tf_data_service_address: null
+    tf_data_service_job_name: null
+    tfds_as_supervised: false
+    tfds_data_dir: ''
+    tfds_name: ''
+    tfds_skip_decoding_feature: ''
+    tfds_split: ''
+    trainer_id: null
+  validation_data:
+    apply_tf_data_service_before_batching: false
+    block_length: 1
+    cache: false
+    cycle_length: null
+    decoder:
+      simple_decoder:
+        include_panoptic_masks: true
+        mask_binarize_threshold: null
+        panoptic_category_mask_key: image/panoptic/category_mask
+        panoptic_instance_mask_key: image/panoptic/instance_mask
+        regenerate_source_id: false
+      type: simple_decoder
+    deterministic: null
+    drop_remainder: false
+    dtype: float32
+    enable_shared_tf_data_service_between_parallel_trainers: false
+    enable_tf_data_service: false
+    file_type: tfrecord
+    global_batch_size: 16
+    input_path: 'datasets/coco/tfrecords/val-nocrowd'
+    is_training: false
+    num_examples: -1
+    parser:
+      aug_rand_hflip: false
+      aug_scale_max: 1.0
+      aug_scale_min: 1.0
+      aug_type:
+        type: null
+      fpn_high_range: []
+      fpn_low_range: []
+      panoptic_ignore_label: 0
+      segmentation_groundtruth_padded_size: [640, 640]
+      segmentation_ignore_label: 0
+      segmentation_resize_eval_groundtruth: false
+    prefetch_buffer_size: 8
+trainer:
+  best_checkpoint_eval_metric: 'panoptic_quality/All_pq'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  allow_tpu_summary: false
+  checkpoint_interval: 1000
+  continuous_eval_timeout: 3600
+  eval_tf_function: true
+  eval_tf_while_loop: false
+  loss_upper_bound: 1000000.0
+  max_to_keep: 5
+  optimizer_config:
+    ema:
+      average_decay: 0.99996
+      trainable_weights_only: false
+    learning_rate:
+      cosine:
+        alpha: 0.0
+        decay_steps: 270000
+        initial_learning_rate: 0.001
+        name: CosineDecay
+        offset: 0
+      type: cosine
+    optimizer:
+      adamw:
+        amsgrad: false
+        beta_1: 0.9
+        beta_2: 0.999
+        clipnorm: null
+        clipvalue: null
+        epsilon: 1.0e-07
+        exclude_from_weight_decay: null
+        global_clipnorm: null
+        gradient_clip_norm: 1.0
+        include_in_weight_decay: .*(kernel|weight):0$
+        weight_decay_rate: 0.05
+      type: adamw
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0.0
+        warmup_steps: 500
+      type: linear
+  steps_per_loop: 25
+  summary_interval: 100
+  train_steps: 270000
+  train_tf_function: true
+  train_tf_while_loop: true
+  validation_interval: 308
+  validation_steps: 312
+  validation_summary_subdir: validation
