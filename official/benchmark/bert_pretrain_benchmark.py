@@ -228,7 +228,6 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
         'benchmark_perf_2x2_tpu_bf16_seq128_10k_steps_mlir')
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
-    tf.config.experimental.enable_mlir_bridge()
     # Disable accuracy check.
     self._run_and_report_benchmark(
         summary_path=summary_path,
@@ -267,7 +266,6 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
         'benchmark_perf_4x4_tpu_bf16_seq128_10k_steps_mlir')
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
-    tf.config.experimental.enable_mlir_bridge()
     # Disable accuracy check.
     self._run_and_report_benchmark(
         summary_path=summary_path,

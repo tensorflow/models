@@ -414,7 +414,6 @@ class NCFKerasBenchmarkReal(NCFKerasBenchmarkBase):
     FLAGS.keras_use_ctl = True
     FLAGS.num_gpus = 0
     FLAGS.train_epochs = 1
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
 

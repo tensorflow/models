@@ -299,7 +299,6 @@ class DetectionBenchmarkReal(DetectionAccuracy):
     params['train']['iterations_per_loop'] = 500
     FLAGS.model_dir = self._get_model_dir('real_benchmark_2x2_tpu_coco_mlir')
     FLAGS.strategy_type = 'tpu'
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark(params, do_eval=False, warmup=0)
 
   @flagsaver.flagsaver
@@ -312,7 +311,6 @@ class DetectionBenchmarkReal(DetectionAccuracy):
     params['train']['iterations_per_loop'] = 500
     FLAGS.model_dir = self._get_model_dir('real_benchmark_4x4_tpu_coco_mlir')
     FLAGS.strategy_type = 'tpu'
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark(params, do_eval=False, warmup=0)
 
   @flagsaver.flagsaver

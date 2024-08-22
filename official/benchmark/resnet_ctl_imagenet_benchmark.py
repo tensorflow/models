@@ -403,7 +403,6 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._set_df_common()
     FLAGS.batch_size = 1024
     FLAGS.dtype = 'bf16'
-    tf.config.experimental.enable_mlir_bridge()
     FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_bf16_mlir')
     self._run_and_report_benchmark()
 
@@ -426,7 +425,6 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.batch_size = 4096
     FLAGS.dtype = 'bf16'
     FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16_mlir')
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
   def benchmark_8x8_tpu_bf16(self):
@@ -444,7 +442,6 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.batch_size = 8192
     FLAGS.dtype = 'bf16'
     FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu_bf16_mlir')
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
   def benchmark_8x8_tpu(self):
@@ -460,7 +457,6 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._set_df_common()
     FLAGS.batch_size = 8192
     FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu_mlir')
-    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
   def benchmark_8x16_tpu_bf16(self):
