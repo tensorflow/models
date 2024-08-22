@@ -183,9 +183,6 @@ def train(params, strategy, dataset=None):
 
 def run():
   """Runs NHNet using Keras APIs."""
-  if FLAGS.enable_mlir_bridge:
-    tf.config.experimental.enable_mlir_bridge()
-
   strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy, tpu_address=FLAGS.tpu)
   if strategy:
