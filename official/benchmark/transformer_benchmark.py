@@ -693,7 +693,6 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
     self._set_df_common()
     FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_mlir')
     FLAGS.batch_size = 6144
-    tf.config.experimental.enable_mlir_bridge()
 
     self._run_and_report_benchmark(
         total_batch_size=FLAGS.batch_size,
@@ -717,7 +716,6 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
     self._set_df_common()
     FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_mlir')
     FLAGS.batch_size = 24576
-    tf.config.experimental.enable_mlir_bridge()
 
     self._run_and_report_benchmark(
         total_batch_size=FLAGS.batch_size,
