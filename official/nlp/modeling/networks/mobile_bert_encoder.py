@@ -162,7 +162,10 @@ class MobileBERTEncoder(tf_keras.Model):
         pooled_output=first_token,
         encoder_outputs=all_layer_outputs,
         attention_scores=all_attention_scores)
+    super().__init__(
+        inputs=self.inputs, outputs=outputs, **kwargs)
     self._config = dict(
+        name=self.name,
         word_vocab_size=word_vocab_size,
         word_embed_size=word_embed_size,
         type_vocab_size=type_vocab_size,
@@ -182,10 +185,8 @@ class MobileBERTEncoder(tf_keras.Model):
         normalization_type=normalization_type,
         classifier_activation=classifier_activation,
         input_mask_dtype=input_mask_dtype,
+        **kwargs,
     )
-
-    super().__init__(
-        inputs=self.inputs, outputs=outputs, **kwargs)
 
   def get_config(self):
     return dict(self._config)
