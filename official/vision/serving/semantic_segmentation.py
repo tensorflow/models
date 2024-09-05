@@ -26,7 +26,8 @@ class SegmentationModule(export_base.ExportModule):
 
   def _build_model(self):
     input_specs = tf_keras.layers.InputSpec(
-        shape=[self._batch_size] + self._input_image_size + [3])
+        shape=[self._batch_size] + self._input_image_size + [self._num_channels]
+    )
 
     return factory.build_segmentation_model(
         input_specs=input_specs,
@@ -72,7 +73,9 @@ class SegmentationModule(export_base.ExportModule):
     if self._input_type != 'tflite':
       with tf.device('cpu:0'):
         images_spec = tf.TensorSpec(
-            shape=self._input_image_size + [3], dtype=tf.float32)
+            shape=self._input_image_size + [self._num_channels],
+            dtype=tf.float32,
+        )
         image_info_spec = tf.TensorSpec(shape=[4, 2], dtype=tf.float32)
 
         images, image_info = tf.nest.map_structure(
