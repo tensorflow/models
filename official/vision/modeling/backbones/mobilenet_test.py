@@ -43,6 +43,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
       'MobileNetV4ConvLarge',
       'MobileNetV4HybridMedium',
       'MobileNetV4HybridLarge',
+      'MobileNetV4ConvMediumSeg',
   )
   def test_serialize_deserialize(self, model_id):
     # Create a network object that sets all of its config options.
@@ -96,6 +97,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV4ConvLarge',
               'MobileNetV4HybridMedium',
               'MobileNetV4HybridLarge',
+              'MobileNetV4ConvMediumSeg',
           ],
       )
   )
@@ -126,6 +128,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV4ConvLarge',
               'MobileNetV4HybridMedium',
               'MobileNetV4HybridLarge',
+              'MobileNetV4ConvMediumSeg',
           ],
           [32, 224],
       )
@@ -153,6 +156,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetV4ConvLarge': [48, 96, 192, 512],
         'MobileNetV4HybridMedium': [48, 80, 160, 256],
         'MobileNetV4HybridLarge': [48, 96, 192, 512],
+        'MobileNetV4ConvMediumSeg': [48, 80, 160, 448],
     }
 
     network = mobilenet.MobileNet(model_id=model_id,
@@ -184,6 +188,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV4ConvLarge',
               'MobileNetV4HybridMedium',
               'MobileNetV4HybridLarge',
+              'MobileNetV4ConvMediumSeg',
           ],
           [32, 224],
       )
@@ -211,6 +216,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetV4ConvLarge': [None, None, None, None],
         'MobileNetV4HybridMedium': [None, None, None, None],
         'MobileNetV4HybridLarge': [None, None, None, None],
+        'MobileNetV4ConvMediumSeg': [None, None, None, None],
     }
     network = mobilenet.MobileNet(model_id=model_id,
                                   filter_size_scale=1.0,
@@ -247,6 +253,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV4ConvLarge',
               'MobileNetV4HybridMedium',
               'MobileNetV4HybridLarge',
+              'MobileNetV4ConvMediumSeg',
           ],
           [1.0, 0.75],
       )
@@ -285,6 +292,8 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         ('MobileNetV4HybridMedium', 0.75): 6072584,
         ('MobileNetV4HybridLarge', 1.0): 36648024,
         ('MobileNetV4HybridLarge', 0.75): 21598064,
+        ('MobileNetV4ConvMediumSeg', 1.0): 3787024,
+        ('MobileNetV4ConvMediumSeg', 0.75): 2302536,
     }
 
     input_size = 224
@@ -314,6 +323,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV4ConvLarge',
               'MobileNetV4HybridMedium',
               'MobileNetV4HybridLarge',
+              'MobileNetV4ConvMediumSeg',
           ],
           [8, 16, 32],
       )
@@ -340,6 +350,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
         'MobileNetV4ConvLarge': 512,
         'MobileNetV4HybridMedium': 256,
         'MobileNetV4HybridLarge': 512,
+        'MobileNetV4ConvMediumSeg': 448,
     }
 
     network = mobilenet.MobileNet(

@@ -766,6 +766,77 @@ def _mnv4_conv_medium_block_specs():
   }
 
 
+def _mnv4_conv_medium_seg_block_specs():
+  """Tailored MobileNetV4ConvMedium for dense prediction, e.g. segmentation."""
+
+  def convbn(kernel_size, strides, filters, output=False):
+    return BlockSpec(
+        block_fn='convbn',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        is_output=output,
+    )
+
+  def fused_ib(kernel_size, strides, filters, output=False):
+    return BlockSpec(
+        block_fn='fused_ib',
+        kernel_size=kernel_size,
+        filters=filters,
+        strides=strides,
+        expand_ratio=4.0,
+        is_output=output,
+    )
+
+  def uib(
+      start_dw_ks, middle_dw_ks, strides, filters, expand_ratio, output=False
+  ):
+    return BlockSpec(
+        block_fn='uib',
+        start_dw_kernel_size=start_dw_ks,
+        middle_dw_kernel_size=middle_dw_ks,
+        filters=filters,
+        strides=strides,
+        expand_ratio=expand_ratio,
+        use_layer_scale=False,
+        is_output=output,
+    )
+
+  blocks = [
+      convbn(3, 2, 32),
+      fused_ib(3, 2, 48, output=True),
+      # 3rd stage
+      uib(3, 5, 2, 80, 4.0),
+      uib(3, 3, 1, 80, 2.0, output=True),
+      # 4th stage
+      uib(3, 5, 2, 160, 6.0),
+      uib(3, 3, 1, 160, 4.0),
+      uib(3, 3, 1, 160, 4.0),
+      uib(3, 5, 1, 160, 4.0),
+      uib(3, 3, 1, 160, 4.0),
+      uib(3, 0, 1, 160, 4.0),
+      uib(3, 0, 1, 160, 4.0, output=True),
+      # 5th stage
+      uib(5, 5, 2, 256, 6.0),
+      uib(5, 5, 1, 128, 4.0),
+      uib(3, 5, 1, 128, 4.0),
+      uib(3, 5, 1, 128, 4.0),
+      uib(3, 0, 1, 128, 4.0),
+      uib(3, 5, 1, 128, 2.0),
+      uib(5, 5, 1, 128, 4.0),
+      uib(5, 0, 1, 128, 2.0, output=False),
+      # FC layers
+      convbn(1, 1, 448, output=True),
+      BlockSpec(block_fn='gpooling', is_output=False),
+      convbn(1, 1, 1280),
+  ]
+  return {
+      'spec_name': 'MobileNetV4ConvMediumSeg',
+      'block_spec_schema': block_spec_field_list(),
+      'block_specs': block_spec_values_to_list(blocks),
+  }
+
+
 MNV4ConvLarge_BLOCK_SPECS = {
     'spec_name': 'MobileNetV4ConvLarge',
     'block_spec_schema': [
@@ -1077,6 +1148,7 @@ SUPPORTED_SPECS_MAP = {
     'MobileNetV4ConvLarge': MNV4ConvLarge_BLOCK_SPECS,
     'MobileNetV4HybridMedium': _mnv4_hybrid_medium_block_specs(),
     'MobileNetV4HybridLarge': _mnv4_hybrid_large_block_specs(),
+    'MobileNetV4ConvMediumSeg': _mnv4_conv_medium_seg_block_specs(),
 }
 
 
