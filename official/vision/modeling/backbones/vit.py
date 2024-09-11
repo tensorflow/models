@@ -108,22 +108,25 @@ class TokenLayer(layers.Layer):
 class Encoder(layers.Layer):
   """Transformer Encoder."""
 
-  def __init__(self,
-               num_layers,
-               mlp_dim,
-               num_heads,
-               dropout_rate=0.1,
-               attention_dropout_rate=0.1,
-               kernel_regularizer=None,
-               inputs_positions=None,
-               init_stochastic_depth_rate=0.0,
-               kernel_initializer='glorot_uniform',
-               add_pos_embed=True,
-               pos_embed_origin_shape=None,
-               pos_embed_target_shape=None,
-               layer_scale_init_value=0.0,
-               transformer_partition_dims=None,
-               **kwargs):
+  def __init__(
+      self,
+      num_layers,
+      mlp_dim,
+      num_heads,
+      dropout_rate=0.1,
+      attention_dropout_rate=0.1,
+      kernel_regularizer=None,
+      inputs_positions=None,
+      init_stochastic_depth_rate=0.0,
+      kernel_initializer='glorot_uniform',
+      add_pos_embed=True,
+      pos_embed_origin_shape=None,
+      pos_embed_target_shape=None,
+      layer_scale_init_value=0.0,
+      transformer_partition_dims=None,
+      output_attention_scores=False,
+      **kwargs,
+  ):
     super().__init__(**kwargs)
     self._num_layers = num_layers
     self._mlp_dim = mlp_dim
@@ -139,6 +142,7 @@ class Encoder(layers.Layer):
     self._pos_embed_target_shape = pos_embed_target_shape
     self._layer_scale_init_value = layer_scale_init_value
     self._transformer_partition_dims = transformer_partition_dims
+    self._output_attention_scores = output_attention_scores
 
   def build(self, input_shape):
     if self._add_pos_embed:
@@ -163,10 +167,13 @@ class Encoder(layers.Layer):
           kernel_initializer=self._kernel_initializer,
           norm_first=True,
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
-              self._init_stochastic_depth_rate, i + 1, self._num_layers),
+              self._init_stochastic_depth_rate, i + 1, self._num_layers
+          ),
           norm_epsilon=1e-6,
           layer_scale_init_value=self._layer_scale_init_value,
-          transformer_partition_dims=self._transformer_partition_dims)
+          transformer_partition_dims=self._transformer_partition_dims,
+          return_attention_scores=self._output_attention_scores,
+      )
       self._encoder_layers.append(encoder_layer)
     self._norm = layers.LayerNormalization(epsilon=1e-6)
     super().build(input_shape)
@@ -177,9 +184,16 @@ class Encoder(layers.Layer):
       x = self._pos_embed(x, inputs_positions=self._inputs_positions)
     x = self._dropout(x, training=training)
 
+    attention_scores = None  # Needed to suppress undefined-variable warning.
     for encoder_layer in self._encoder_layers:
-      x = encoder_layer(x, training=training)
+      if self._output_attention_scores:
+        x, attention_scores = encoder_layer(x, training=training)
+      else:
+        x = encoder_layer(x, training=training)
     x = self._norm(x)
+
+    if self._output_attention_scores:
+      return x, attention_scores
     return x
 
   def get_config(self):
@@ -199,6 +213,7 @@ class Encoder(layers.Layer):
         'pos_embed_target_shape': self._pos_embed_target_shape,
         'layer_scale_init_value': self._layer_scale_init_value,
         'transformer_partition_dims': self._transformer_partition_dims,
+        'output_attention_scores': self._output_attention_scores,
     }
     config.update(updates)
     return config
@@ -227,6 +242,7 @@ class VisionTransformer(tf_keras.Model):
       pos_embed_shape: Optional[Tuple[int, int]] = None,
       layer_scale_init_value: float = 0.0,
       transformer_partition_dims: Optional[Tuple[int, int, int, int]] = None,
+      output_attention_scores: bool = False,
   ):
     """VisionTransformer initialization function."""
     self._mlp_dim = mlp_dim
@@ -265,20 +281,29 @@ class VisionTransformer(tf_keras.Model):
     if pooler == 'token':
       x = TokenLayer(name='cls')(x)
 
-    x = Encoder(
+    encoder_output = Encoder(
         num_layers=num_layers,
         mlp_dim=mlp_dim,
         num_heads=num_heads,
         dropout_rate=dropout_rate,
         attention_dropout_rate=attention_dropout_rate,
         kernel_regularizer=kernel_regularizer,
-        kernel_initializer='glorot_uniform' if original_init else dict(
-            class_name='TruncatedNormal', config=dict(stddev=.02)),
+        kernel_initializer='glorot_uniform'
+        if original_init
+        else dict(class_name='TruncatedNormal', config=dict(stddev=0.02)),
         init_stochastic_depth_rate=init_stochastic_depth_rate,
         pos_embed_origin_shape=pos_embed_shape,
         pos_embed_target_shape=pos_embed_target_shape,
-        layer_scale_init_value=layer_scale_init_value)(
-            x)
+        layer_scale_init_value=layer_scale_init_value,
+        output_attention_scores=output_attention_scores,
+    )(x)
+
+    endpoints = {}
+    if output_attention_scores:
+      x, attention_scores = encoder_output
+      endpoints['attention_scores'] = attention_scores
+    else:
+      x = encoder_output
 
     if pooler == 'token':
       output_feature = x[:, 1:]
@@ -292,7 +317,6 @@ class VisionTransformer(tf_keras.Model):
     else:
       raise ValueError(f'unrecognized pooler type: {pooler}')
 
-    endpoints = {}
     if output_2d_feature_maps:
       # Use the closest feature level.
       feat_level = round(math.log2(patch_size))
@@ -376,4 +400,6 @@ def build_vit(input_specs,
       output_2d_feature_maps=backbone_cfg.output_2d_feature_maps,
       layer_scale_init_value=backbone_cfg.layer_scale_init_value,
       pos_embed_shape=backbone_cfg.pos_embed_shape,
-      transformer_partition_dims=backbone_cfg.transformer_partition_dims)
+      transformer_partition_dims=backbone_cfg.transformer_partition_dims,
+      output_attention_scores=backbone_cfg.output_attention_scores,
+  )

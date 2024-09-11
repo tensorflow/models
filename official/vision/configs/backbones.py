@@ -52,6 +52,8 @@ class VisionTransformer(hyperparams.Config):
   layer_scale_init_value: float = 0.0
   # Transformer encoder spatial partition dimensions.
   transformer_partition_dims: Optional[Tuple[int, int, int, int]] = None
+  # If True, output attention scores.
+  output_attention_scores: bool = False
 
 
 @dataclasses.dataclass
