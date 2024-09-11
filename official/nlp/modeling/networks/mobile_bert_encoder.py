@@ -165,7 +165,6 @@ class MobileBERTEncoder(tf_keras.Model):
     super().__init__(
         inputs=self.inputs, outputs=outputs, **kwargs)
     self._config = dict(
-        name=self.name,
         word_vocab_size=word_vocab_size,
         word_embed_size=word_embed_size,
         type_vocab_size=type_vocab_size,
@@ -187,6 +186,8 @@ class MobileBERTEncoder(tf_keras.Model):
         input_mask_dtype=input_mask_dtype,
         **kwargs,
     )
+    if 'name' not in self._config:
+      self._config['name'] = self.name
 
   def get_config(self):
     return dict(self._config)
