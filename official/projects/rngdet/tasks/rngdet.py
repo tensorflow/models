@@ -30,6 +30,7 @@ from official.vision.evaluation import coco_evaluator
 from official.vision.modeling import backbones
 from official.vision.modeling import decoders
 from official.vision.ops import box_ops
+from PIL import Image, ImageDraw
 
 @task_factory.register_task_cls(rngdet_cfg.RngdetTask)
 class RNGDetTask(base_task.Task):
@@ -115,8 +116,7 @@ class RNGDetTask(base_task.Task):
       ckpt = tf.train.Checkpoint(backbone=model.backbone_history)
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
-    logging.info('Finished loading pretrained checkpoint from %s',
-                 ckpt_dir_or_file)
+    logging.info('Finished loading pretrained checkpoint from %s', ckpt_dir_or_file)
 
   def build_inputs(self,
                    params,
@@ -140,7 +140,7 @@ class RNGDetTask(base_task.Task):
 
     return dataset
 
-  def _compute_cost(self, cls_outputs, box_outputs, instance_outputs, cls_targets, box_targets, instance_targets):
+  def _compute_cost(self, cls_outputs, box_outputs, cls_targets, box_targets):
     # Approximate classification cost with 1 - prob[target class].
     # The 1 is a constant that doesn't change the matching, it can be ommitted.
     
@@ -154,10 +154,6 @@ class RNGDetTask(base_task.Task):
     box_cost = tf.reduce_sum(paired_differences, axis=-1)
     
     # Compute instacne segmenation loss 
-    '''bce = tf.keras.losses.BinaryCrossentropy(from_logits=True) 
-    instance_cost = self._task_config.losses.lambda_ins * bce(instance_targets, instance_outputs)
-    total_cost = cls_cost + box_cost + instance_cost'''
-
     total_cost = cls_cost + box_cost 
     max_cost = (
         self._task_config.losses.lambda_cls * 0.0 +
@@ -215,15 +211,15 @@ class RNGDetTask(base_task.Task):
     """Builds RNGDet losses."""
     cls_outputs = outputs['cls_outputs']
     box_outputs = outputs['box_outputs']
-    instance_outputs = outputs['pred_instance_masks']
+    instance_outputs = outputs['pred_instance_masks']    
 
     cls_targets = labels['gt_probs']
     box_targets = labels['gt_coords']
-    instance_targets = tf.transpose( labels['gt_masks'], perm=(0, 3, 1, 2)) # (B, size, size, Q)
+    instance_targets = tf.transpose( labels['gt_masks'], perm=(0, 3, 1, 2)) # (B, size, size, Q) -> (B, Q, size, size)
 
     cost = self._compute_cost(
-        cls_outputs, box_outputs, instance_outputs, 
-        cls_targets, box_targets, instance_targets)
+        cls_outputs, box_outputs,  
+        cls_targets, box_targets)
 
     _, indices = matchers.hungarian_matching(cost)
     indices = tf.stop_gradient(indices)
@@ -234,7 +230,6 @@ class RNGDetTask(base_task.Task):
     instance_assigned =  tf.gather(instance_outputs, target_index, batch_dims=1, axis=1)
 
     # (gunho) background (eos in RNGDet) is assigned to 1
-    #background = tf.equal(cls_targets, 0)
     background = tf.equal(cls_targets, 1)
     num_boxes = tf.reduce_sum( tf.cast(tf.logical_not(background), tf.float32), axis=-1)
 
@@ -248,20 +243,19 @@ class RNGDetTask(base_task.Task):
     box_loss = self._task_config.losses.lambda_box * tf.where( background, tf.zeros_like(l_1), l_1)
 
     # BCE loss is only calculated on non-background class 
-    bce = tf.keras.losses.BinaryCrossentropy(from_logits=False) #from_logits=False -> value in [0, 1]  
-    ins = bce(instance_assigned, instance_targets)
-    ins_loss = self._task_config.losses.lambda_ins * tf.where( background, tf.zeros_like(ins), ins)
+    bce = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)  
+    ins_loss_before_reduce = self._task_config.losses.lambda_ins * bce(instance_targets, instance_assigned, sample_weight = tf.cast(tf.logical_not(background), tf.float32) )
+    ins_loss =  tf.reduce_sum ( ins_loss_before_reduce, axis=-1)  
 
-    
     # Consider doing all reduce once in train_step to speed up.
     num_boxes_per_replica = tf.reduce_sum(num_boxes)
     cls_weights_per_replica = tf.reduce_sum(cls_weights)
-
+    ins_loss_per_replica = tf.reduce_sum(ins_loss)
     replica_context = tf.distribute.get_replica_context()
     
-    num_boxes_sum, cls_weights_sum = replica_context.all_reduce(
+    num_boxes_sum, cls_weights_sum, ins_loss_sum = replica_context.all_reduce(
         tf.distribute.ReduceOp.SUM,
-        [num_boxes_per_replica, cls_weights_per_replica])
+        [num_boxes_per_replica, cls_weights_per_replica, ins_loss_per_replica])
     
     cls_loss = tf.math.divide_no_nan(
         tf.reduce_sum(cls_loss), cls_weights_sum)
@@ -271,7 +265,6 @@ class RNGDetTask(base_task.Task):
 
     ins_loss = tf.math.divide_no_nan(
         tf.cast( tf.reduce_sum(ins_loss) , tf.float32 ), num_boxes_sum)
-    
     
     aux_losses = tf.add_n(aux_losses) if aux_losses else 0.0
 

@@ -57,7 +57,7 @@ class Rngdet(hyperparams.Config):
   hidden_size: int = 256
   num_classes: int = 2  # 0: vertices, 1: background
   num_encoder_layers: int = 6
-  num_decoder_layers: int = 6
+  num_decoder_layers: int = 6 
   input_size: List[int] = dataclasses.field(default_factory=list)
   roi_size: int = 128
   backbone: backbones.Backbone = dataclasses.field(default_factory=lambda:backbones.Backbone(
@@ -83,16 +83,16 @@ class RngdetTask(cfg.TaskConfig):
 
 
 CITYSCALE_TRAIN_EXAMPLES = 420140
-CITYSCALE_INPUT_PATH_BASE = '/home/mjyun/01_ghpark/tfrecord/'
+CITYSCALE_INPUT_PATH_BASE = '/home/mjyun/cityscale/tfrecord/'
 CITYSCALE_VAL_EXAMPLES = 5000
 
 @exp_factory.register_config_factory('rngdet_cityscale')
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 16
+  train_batch_size = 32
   eval_batch_size = 16
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 10 * steps_per_epoch  # 50 epochs
+  train_steps = 50 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',
@@ -140,7 +140,7 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
                       'end_learning_rate': 0.000001,
                       'offset': 0,
                       'power': 1.0,
-                      'decay_steps': 50 * steps_per_epoch,
+                      'decay_steps': 10 * steps_per_epoch,
                   },
               },
               'warmup': {
@@ -161,10 +161,10 @@ def rngdet_cityscale() -> cfg.ExperimentConfig:
 @exp_factory.register_config_factory('rngdet_cityscale_detr')
 def rngdet_cityscale() -> cfg.ExperimentConfig:
   """Config to get results that matches the paper."""
-  train_batch_size = 16
+  train_batch_size = 32
   eval_batch_size = 16
   steps_per_epoch = CITYSCALE_TRAIN_EXAMPLES // train_batch_size
-  train_steps = 10 * steps_per_epoch  # 50 epochs
+  train_steps = 50 * steps_per_epoch  # 50 epochs
   config = cfg.ExperimentConfig(
       task=RngdetTask(
           init_checkpoint='gs://ghpark-imagenet-tfrecord/ckpt/resnet50_imagenet',

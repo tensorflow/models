@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 import sys
 sys.path.append("/home/mjyun/01_ghpark/models")
@@ -72,10 +72,9 @@ class Graph():
             self.edges[f'{v2.id}_{v1.id}'] = Edge(v2,v1,self.edge_num)
             self.edge_num += 1
 
-ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/ckpt/01_multi_scale_class/'
-#ckpt_dir_or_file = '/home/mjyun/01_ghpark/ckpt/06_test_please_final/'
+ckpt_dir_or_file = '/home/mjyun/02_rngdet_project/models/official/projects/rngdet/ckpt/01_pr_ready/'
 
-'''ckpt = tf.train.Checkpoint(
+ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
     backbone_history=model.backbone_history,
     transformer=model.transformer,
@@ -86,9 +85,9 @@ ckpt_dir_or_file = '/home/mjyun/01_ghpark/models/official/projects/rngdet/ckpt/0
     keypoint_head=model._keypoint_head,
     class_embed=model._class_embed,
     bbox_embed=model._bbox_embed,
-    input_proj=model.input_proj)'''
+    input_proj=model._input_proj)
 
-ckpt = tf.train.Checkpoint(
+'''ckpt = tf.train.Checkpoint(
     backbone=model.backbone,
     backbone_history=model.backbone_history,
     transformer=model.transformer,
@@ -99,7 +98,7 @@ ckpt = tf.train.Checkpoint(
     segment_head=model._segment_head,
     keypoint_head=model._keypoint_head,
     class_embed=model._class_embed,
-    bbox_embed=model._bbox_embed)
+    bbox_embed=model._bbox_embed)'''
 
 status = ckpt.restore(tf.train.latest_checkpoint(ckpt_dir_or_file))
 status.expect_partial().assert_existing_objects_matched()
@@ -113,7 +112,7 @@ from PIL import Image, ImageDraw
 from official.projects.rngdet.eval import agent
 
 pad_size = 128
-sat_image = np.array(Image.open(os.path.join('/home/mjyun/01_ghpark/data/20cities/region_9_sat.png')))
+sat_image = np.array(Image.open(os.path.join('/home/mjyun/cityscale/20cities/region_9_sat.png')))
 
 print(f'STEP 1: Initialize agent and extract candidate initial vertices...')
 sat_image = tf.cast(sat_image, tf.float32)

@@ -105,15 +105,15 @@ class MHAttentionMap(tf.keras.layers.Layer):
         self.q_linear = tf.keras.layers.Dense(hidden_dim, use_bias=bias)
         self.k_linear = tf.keras.layers.Conv2D(hidden_dim, kernel_size=1, use_bias=bias)
         
-        self.q_linear.build((None, query_dim))
-        self.k_linear.build((None, query_dim))
+        #self.q_linear.build((None, query_dim))
+        #self.k_linear.build((None, query_dim))
 
         self.normalize_fact = float(hidden_dim / self.num_heads) ** -0.5
 
     def call(self, q, k, mask=None):
         
         batch_size = tf.shape(q)[0]
-
+        #print(k.shape)
         q = self.q_linear(q)  # pe [batch, Q, self.hidden_dim] 
         k = self.k_linear(k)  # memory [batch, n, n, self.hidden_dim] 
 
@@ -351,7 +351,7 @@ class RNGDet(tf.keras.Model):
 
     
     self._query_embeddings = self.add_weight(
-        "detr/query_embeddings",
+        name = "detr/query_embeddings",
         shape=[self._num_queries, self._hidden_size],
         initializer=tf.keras.initializers.RandomNormal(mean=0., stddev=1.),
         dtype=tf.float32)

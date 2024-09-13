@@ -12,40 +12,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for detr."""
-
-# pylint: disable=unused-import
-from absl.testing import parameterized
+"""Tests for tensorflow_models.official.projects.detr.detr."""
 import tensorflow as tf
-
-from official.core import config_definitions as cfg
-from official.core import exp_factory
-from official.projects.detr.configs import detr as exp_cfg
-from official.projects.detr.dataloaders import coco
+from official.projects.rngdet.modeling import rngdet
+from official.vision.modeling.backbones import resnet
+from official.vision.modeling.decoders import fpn
 
 
-class DetrTest(tf.test.TestCase, parameterized.TestCase):
+class DetrTest(tf.test.TestCase):
 
-  @parameterized.parameters(('detr_coco',))
-  def test_detr_configs_tfds(self, config_name):
-    config = exp_factory.get_exp_config(config_name)
-    self.assertIsInstance(config, cfg.ExperimentConfig)
-    self.assertIsInstance(config.task, exp_cfg.DetrTask)
-    self.assertIsInstance(config.task.train_data, coco.COCODataConfig)
-    config.task.train_data.is_training = None
-    with self.assertRaises(KeyError):
-      config.validate()
+  def test_forward(self):
+    num_queries = 10
+    hidden_size = 128
+    num_classes = 2
+    image_size = 128
+    input_size = [image_size,image_size,3]
+    batch_size = 64
 
-  @parameterized.parameters(('detr_coco_tfrecord'), ('detr_coco_tfds'))
-  def test_detr_configs(self, config_name):
-    config = exp_factory.get_exp_config(config_name)
-    self.assertIsInstance(config, cfg.ExperimentConfig)
-    self.assertIsInstance(config.task, exp_cfg.DetrTask)
-    self.assertIsInstance(config.task.train_data, cfg.DataConfig)
-    config.task.train_data.is_training = None
-    with self.assertRaises(KeyError):
-      config.validate()
+    backbone = resnet.ResNet(50, bn_trainable=False)
+    backbone_endpoint_name = '5'
+    history_specs = tf.keras.layers.InputSpec(
+        shape=[None] + input_size[:2] + [3])
+    backbone_history = resnet.ResNet(50,
+                                     input_specs=history_specs,
+                                     bn_trainable=False)
+    segment_fpn = fpn.FPN(backbone.output_specs,
+                           min_level=2,
+                           max_level=5)
+    keypoint_fpn = fpn.FPN(backbone.output_specs,
+                           min_level=2,
+                           max_level=5)
 
+    transformer = rngdet.DETRTransformer(
+        hidden_size= hidden_size,
+        num_encoder_layers=6,
+        num_decoder_layers=6)
+
+    multi_scale = rngdet.MultiScale( 
+        transformer, 
+        dim=transformer._hidden_size, 
+        nheads=transformer._num_heads, 
+        fpn_dims= [2048, 1024, 512, 256], 
+        output_size = 128  )
+
+    model = rngdet.RNGDet(backbone,
+                      backbone_history,
+                      backbone_endpoint_name,
+                      segment_fpn,
+                      keypoint_fpn,
+                      transformer,
+                      multi_scale,
+                      num_queries,
+                      hidden_size,
+                      num_classes  ) 
+
+    test_input = tf.ones((batch_size, image_size, image_size, 3))
+    test_history = tf.ones((batch_size, image_size, image_size, 1))
+    outs = model(test_input, test_history, training=True)
+
+    self.assertLen(outs, 3)  # intermediate decoded outputs.
+
+    self.assertAllEqual(
+        tf.shape(outs[0]['cls_outputs']), (batch_size, num_queries, num_classes))
+    self.assertAllEqual(
+        tf.shape(outs[0]['box_outputs']), (batch_size, num_queries, num_classes))
+    self.assertAllEqual(
+        tf.shape(outs[1]), (batch_size, hidden_size, hidden_size, 1))
+    self.assertAllEqual(
+        tf.shape(outs[2]), (batch_size, hidden_size, hidden_size, 1))
 
 if __name__ == '__main__':
   tf.test.main()

@@ -198,8 +198,7 @@ class Pix2SeqParserTest(tf.test.TestCase):
 
 
 def main(_):
-  raw_dataset_train = tf.data.TFRecordDataset(
-    './train-noise-8-00000-of-00032.tfrecord')
+  raw_dataset_train = tf.data.TFRecordDataset( '/home/mjyun/cityscale/tfrecord/train-noise-8-00000-of-00032.tfrecord')
 
   decoder = rngdet_input.Decoder()
   parser = rngdet_input.Parser(
