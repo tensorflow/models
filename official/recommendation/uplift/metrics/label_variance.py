@@ -20,6 +20,7 @@ from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 from official.recommendation.uplift.metrics import variance
 
+from typing import Union
 
 @tf_keras.utils.register_keras_serializable(package="Uplift")
 class LabelVariance(tf_keras.metrics.Metric):
@@ -72,7 +73,7 @@ class LabelVariance(tf_keras.metrics.Metric):
       self,
       y_true: tf.Tensor,
       y_pred: types.TwoTowerTrainingOutputs,
-      sample_weight: tf.Tensor | None = None,
+      sample_weight: Union[tf.Tensor, None] = None,
   ):
     """Updates the overall, control and treatment label variances.
 

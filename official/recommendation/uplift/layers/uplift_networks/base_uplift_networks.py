@@ -20,6 +20,8 @@ import tensorflow as tf, tf_keras
 
 from official.recommendation.uplift import types
 
+from typing import Union
+
 
 class BaseTwoTowerUpliftNetwork(tf_keras.layers.Layer, metaclass=abc.ABCMeta):
   """Abstract class for uplift layers that compute control and treatment logits.
@@ -33,7 +35,7 @@ class BaseTwoTowerUpliftNetwork(tf_keras.layers.Layer, metaclass=abc.ABCMeta):
   def call(
       self,
       inputs: types.DictOfTensors,
-      training: bool | None = None,
-      mask: tf.Tensor | None = None,
+      training: Union[bool, None] = None,
+      mask: Union[tf.Tensor, None] = None,
   ) -> types.TwoTowerTrainingOutputs:
     raise NotImplementedError()

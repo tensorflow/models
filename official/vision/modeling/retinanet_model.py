@@ -31,7 +31,7 @@ class RetinaNetModel(tf_keras.Model):
                decoder: tf_keras.Model,
                head: tf_keras.layers.Layer,
                detection_generator: tf_keras.layers.Layer,
-               anchor_boxes: Mapping[str, tf.Tensor] | None = None,
+               anchor_boxes: Union[Mapping[str, tf.Tensor], None] = None,
                min_level: Optional[int] = None,
                max_level: Optional[int] = None,
                num_scales: Optional[int] = None,
@@ -85,7 +85,7 @@ class RetinaNetModel(tf_keras.Model):
   def call(self,
            images: Union[tf.Tensor, Sequence[tf.Tensor]],
            image_shape: Optional[tf.Tensor] = None,
-           anchor_boxes: Mapping[str, tf.Tensor] | None = None,
+           anchor_boxes: Union[Mapping[str, tf.Tensor], None] = None,
            output_intermediate_features: bool = False,
            training: bool = None) -> Mapping[str, tf.Tensor]:
     """Forward pass of the RetinaNet model.
@@ -240,7 +240,7 @@ class RetinaNetModel(tf_keras.Model):
     return self._detection_generator
 
   @property
-  def anchor_boxes(self) -> Mapping[str, tf.Tensor] | None:
+  def anchor_boxes(self) -> Union[Mapping[str, tf.Tensor], None]:
     return self._anchor_boxes
 
   def get_config(self) -> Mapping[str, Any]:

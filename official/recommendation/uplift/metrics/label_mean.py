@@ -19,6 +19,7 @@ import tensorflow as tf, tf_keras
 from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 
+from typing import Union
 
 @tf_keras.utils.register_keras_serializable(package="Uplift")
 class LabelMean(tf_keras.metrics.Metric):
@@ -71,7 +72,7 @@ class LabelMean(tf_keras.metrics.Metric):
       self,
       y_true: tf.Tensor,
       y_pred: types.TwoTowerTrainingOutputs,
-      sample_weight: tf.Tensor | None = None,
+      sample_weight: Union[tf.Tensor, None] = None,
   ):
     """Updates the overall, control and treatment label means.
 

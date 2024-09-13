@@ -1217,9 +1217,9 @@ def random_crop(
 
 def random_jpeg_quality(
     image: tf.Tensor,
-    min_quality: int | tf.Tensor = 20,
-    max_quality: int | tf.Tensor = 100,
-    prob_to_apply: float | tf.Tensor = 0.6,
+    min_quality: Union[int, tf.Tensor] = 20,
+    max_quality: Union[int, tf.Tensor] = 100,
+    prob_to_apply: Union[float, tf.Tensor] = 0.6,
 ) -> tf.Tensor:
   """Randomly encode the image as jpeg and decode it.
 

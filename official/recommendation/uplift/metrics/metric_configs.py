@@ -16,12 +16,12 @@
 
 from collections.abc import Mapping
 import dataclasses
-from typing import Any
+from typing import Any, Union
 
 from official.core.config_definitions import base_config
 
 
-@dataclasses.dataclass(kw_only=True)
+@dataclasses.dataclass
 class SlicedMetricConfig(base_config.Config):
   """Sliced metric configuration.
 
@@ -33,9 +33,9 @@ class SlicedMetricConfig(base_config.Config):
       values to slice on.
   """
 
-  slicing_feature: str | None = None
-  slicing_spec: Mapping[str, int] | None = None
-  slicing_feature_dtype: str | None = None
+  slicing_feature: Union[str, None] = None
+  slicing_spec: Union[Mapping[str, int], None] = None
+  slicing_feature_dtype: Union[str, None ]= None
 
   def __post_init__(
       self, default_params: dict[str, Any], restrictions: list[str]
