@@ -14,14 +14,42 @@
 
 """Block sparse attention converts query/key/value into blocks and performs diagonal block sparse attention."""
 import collections
+import logging
 
 import tensorflow as tf, tf_keras
+
+
+def _large_compatible_negative(tensor_type):
+  """Large negative number as Tensor.
+
+  This function is necessary because the standard value for epsilon
+  in this module (-1e9) cannot be represented using tf.float16
+
+  Args:
+      tensor_type: a dtype to determine the type.
+
+  Returns:
+      a large negative number.
+  """
+  # In case of dtype=float16 (e.g., for mixed-precision), the largest
+  # negative number (dtypes.float16.min) is divided by 2, in order to
+  # avoid overflows when summing negative inputs.
+  if tensor_type == tf.float16:
+    return tf.float16.min / 2.0
+  return -1e9
 
 
 class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
   """Multi-head block sparse attention layer."""
 
-  def __init__(self, src_block_size=None, tgt_block_size=None, **kwargs):
+  def __init__(
+      self,
+      src_block_size=None,
+      tgt_block_size=None,
+      use_sigmoid_attn=False,
+      sigmoid_attn_bias=None,
+      **kwargs
+  ):
     """Initializes the block sparse attention layer.
 
     Args:
@@ -30,6 +58,9 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
       tgt_block_size: The block size of the key/value. An integer that divides
         the sequence length into blocks. The number of blocks in the source and
         target must be the same.
+      use_sigmoid_attn: If enabled, uses sigmoid instead of softmax to compute
+        attn probs. https://arxiv.org/pdf/2409.04431
+      sigmoid_attn_bias: Bias for sigmoid attn. Suggested value -ln(seq_len).
       **kwargs: Args passed to the base class.
     """
     super().__init__(**kwargs)
@@ -37,11 +68,24 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
       raise ValueError("src_block_size must be specified.")
     self._src_block_size = src_block_size
     self._tgt_block_size = tgt_block_size or self._src_block_size
+    self._use_sigmoid_attn = use_sigmoid_attn
+    self._sigmoid_attn_bias = sigmoid_attn_bias
+    if self._use_sigmoid_attn:
+      if self._sigmoid_attn_bias is None:
+        raise ValueError(
+            "sigmoid_attn_bias must be specified for sigmoid attn."
+        )
 
   def _build_from_signature(self, query, value, key=None):
     # pytype: disable=attribute-error
     super()._build_from_signature(query, value, key)
     # pytype: enable=attribute-error
+    # If block sizes are same as sequence lengths, we defer to default attn.
+    if (
+        self._query_shape[-2] == self._src_block_size
+        and self._key_shape[-2] == self._tgt_block_size
+    ):
+      return
     # The following capital letters are used to denote the tensor dimension
     # parameters:
     # B = batch size
@@ -127,11 +171,38 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
     if attention_mask is not None:
       # `attention_mask` = [B, 1, L, T, S]
       attention_mask = tf.expand_dims(attention_mask, axis=1)
-    return self._softmax(attention_scores, attention_mask)
+    if self._use_sigmoid_attn:
+      if attention_mask is not None:
+        adder = (1.0 - tf.cast(attention_mask, attention_scores.dtype)) * (
+            _large_compatible_negative(attention_scores.dtype)
+        )
+        attention_scores += adder
+      attention_scores += self._sigmoid_attn_bias
+      return tf_keras.activations.sigmoid(attention_scores)
+    else:
+      return self._softmax(attention_scores, attention_mask)
 
   def _compute_attention(
       self, query, key, value, attention_mask=None, training=None
   ):
+    # If block sizes are same as sequence lengths, we defer to default attn.
+    if (
+        self._query_shape[-2] == self._src_block_size
+        and self._key_shape[-2] == self._tgt_block_size
+    ):
+      logging.info(
+          "Computing default attention as block sizes are equal to sequence"
+          " lengths."
+      )
+      # pytype: disable=attribute-error
+      return super()._compute_attention(
+          query,
+          key,
+          value,
+          attention_mask=attention_mask,
+          training=training,
+      )
+      # pytype: enable=attribute-error
     # src_num_blocks and tgt_num_blocks are the number of blocks in the source
     # and target. Care should be taken to ensure that the number of blocks in
     # the source and target are the same.
