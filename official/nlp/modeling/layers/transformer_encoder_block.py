@@ -112,6 +112,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
                num_kv_heads=None,
                src_block_size=None,
                tgt_block_size=None,
+               use_sigmoid_attn=False,
+               sigmoid_attn_bias=None,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
@@ -185,6 +187,10 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         `block_sparse_attention.MultiHeadAttention` for more details.
       tgt_block_size: Target block size. Refer to
         `block_sparse_attention.MultiHeadAttention` for more details.
+      use_sigmoid_attn: This param is only used in
+        `block_sparse_attention.MultiHeadAttention`
+      sigmoid_attn_bias: This param is only used in
+        `block_sparse_attention.MultiHeadAttention`
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -222,6 +228,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._num_kv_heads = num_kv_heads
     self._src_block_size = src_block_size
     self._tgt_block_size = tgt_block_size
+    self._use_sigmoid_attn = use_sigmoid_attn
+    self._sigmoid_attn_bias = sigmoid_attn_bias
     if self._num_kv_heads is not None and self._src_block_size is not None:
       raise ValueError(
           "Block sparse attention does not support Multi-query attention."
@@ -285,6 +293,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       attention_layer_kwargs.update(
           src_block_size=self._src_block_size,
           tgt_block_size=self._tgt_block_size,
+          use_sigmoid_attn=self._use_sigmoid_attn,
+          sigmoid_attn_bias=self._sigmoid_attn_bias,
           name="block_sparse_attention",
       )
       attention_fn = block_sparse_attention.MultiHeadAttention
@@ -413,6 +423,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         "num_kv_heads": self._num_kv_heads,
         "src_block_size": self._src_block_size,
         "tgt_block_size": self._tgt_block_size,
+        "use_sigmoid_attn": self._use_sigmoid_attn,
+        "sigmoid_attn_bias": self._sigmoid_attn_bias,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
