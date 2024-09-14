@@ -14,6 +14,8 @@
 
 """Tests for Keras-based transformer block layer."""
 
+import math
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras
@@ -751,7 +753,11 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         output_tensor[1].shape.as_list(), expected_attention_scores_shape
     )
 
-  def test_block_sparse_attention(self):
+  @parameterized.named_parameters(
+      ('use_softmax_attn', False),
+      ('use_sigmoid_attn', True),
+  )
+  def test_block_sparse_attention(self, use_sigmoid_attn):
     num_attention_heads = 8
     sequence_length = 21
     width = 80
@@ -765,6 +771,10 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         return_attention_scores=True,
         src_block_size=src_block_size,
         tgt_block_size=tgt_block_size,
+        use_sigmoid_attn=use_sigmoid_attn,
+        sigmoid_attn_bias=-math.log(sequence_length)
+        if use_sigmoid_attn
+        else None,
     )
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf_keras.Input(shape=(sequence_length, width))
