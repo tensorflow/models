@@ -25,7 +25,6 @@ from official.modeling import optimization
 from official.vision.configs import common
 from official.vision.configs import decoders
 from official.vision.configs import backbones
-#from official.projects.rngdet import optimization as optimization_detr
 
 
 @dataclasses.dataclass
@@ -83,7 +82,8 @@ class RngdetTask(cfg.TaskConfig):
 
 
 CITYSCALE_TRAIN_EXAMPLES = 420140
-CITYSCALE_INPUT_PATH_BASE = '/home/mjyun/cityscale/tfrecord/'
+datapath = os.getenv("DATAPATH", "/data2/cityscale/tfrecord/")
+CITYSCALE_INPUT_PATH_BASE = datapath 
 CITYSCALE_VAL_EXAMPLES = 5000
 
 @exp_factory.register_config_factory('rngdet_cityscale')

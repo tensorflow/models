@@ -28,7 +28,8 @@ import sys
 import pdb;
 _NUM_EXAMPLES = 10
 
-CITYSCALE_INPUT_PATH_BASE = '/home/mjyun/cityscale/tfrecord/'
+datapath = os.getenv("DATAPATH", "/data2/cityscale/tfrecord/")
+CITYSCALE_INPUT_PATH_BASE = datapath 
 
 def _gen_fn():
   h = 128
@@ -117,7 +118,7 @@ class RngdetTest(tf.test.TestCase):
       iterator = iter(dataset) 
 
       task.train_step(next(iterator), model, optimizer)
-      dummy_images = tf.keras.Input([128, 128, 3]) 
+      dummy_images = tf.keras.Input([128, 128, 3])
       dummy_history = tf.keras.Input([128, 128, 1])
       _ = model(dummy_images, dummy_history, training=False)  
 
