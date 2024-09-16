@@ -800,6 +800,42 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         output_tensor[1].shape.as_list(), expected_attention_scores_shape
     )
 
+  def test_low_rank_attention(self):
+    num_attention_heads = 8
+    sequence_length = 21
+    linformer_dim = 7
+    width = 80
+
+    test_layer = TransformerEncoderBlock(
+        num_attention_heads=num_attention_heads,
+        inner_dim=2048,
+        inner_activation='relu',
+        return_attention_scores=True,
+        linformer_dim=linformer_dim,
+    )
+    # Create a 3-dimensional input (the first dimension is implicit).
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    output_tensor = test_layer(data_tensor)
+
+    expected_layer_output_shape = [None, sequence_length, width]
+    expected_attention_scores_shape = [
+        None,
+        num_attention_heads,
+        sequence_length,
+        linformer_dim,
+    ]
+
+    self.assertIsInstance(output_tensor, tuple)
+    self.assertLen(output_tensor, 2)
+    # First is the standard output.
+    self.assertEqual(
+        output_tensor[0].shape.as_list(), expected_layer_output_shape
+    )
+    # Second is the attention scores.
+    self.assertEqual(
+        output_tensor[1].shape.as_list(), expected_attention_scores_shape
+    )
+
 
 if __name__ == '__main__':
   tf.test.main()
