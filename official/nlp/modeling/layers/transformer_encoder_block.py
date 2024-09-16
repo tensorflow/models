@@ -30,7 +30,7 @@ class RMSNorm(tf_keras.layers.Layer):
       self,
       axis: Union[int , Sequence[int]] = -1,
       epsilon: float = 1e-6,
-      **kwargs,
+      **kwargs
   ):
     """Initializes RMSNorm.
 
