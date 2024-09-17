@@ -115,6 +115,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
                use_sigmoid_attn=False,
                sigmoid_attn_bias=None,
                linformer_dim=None,
+               linformer_shared_kv_projection=True,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
@@ -194,6 +195,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         `block_sparse_attention.MultiHeadAttention`
       linformer_dim: Applies low-rank factorization on keys/values as in
         https://arxiv.org/pdf/2006.04768.
+      linformer_shared_kv_projection: If set, projection layer is shared for
+        keys and values.
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -234,6 +237,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._use_sigmoid_attn = use_sigmoid_attn
     self._sigmoid_attn_bias = sigmoid_attn_bias
     self._linformer_dim = linformer_dim
+    self._linformer_shared_kv_projection = linformer_shared_kv_projection
     if self._num_kv_heads is not None and self._src_block_size is not None:
       raise ValueError(
           "Block sparse attention does not support Multi-query attention."
@@ -383,11 +387,13 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         dtype=tf.float32,
     )
     if self._linformer_dim is not None:
-      # Current implementation uses the same weights for keys and values.
-      # TODO(akandoor): Explore using different weights for keys and values.
+      if self._linformer_shared_kv_projection:
+        low_rank_dim = self._linformer_dim
+      else:
+        low_rank_dim = 2 * self._linformer_dim
       self._lowrank_kv_projection = tf_keras.layers.EinsumDense(
           "...bc,cd->...bd",
-          output_shape=(None, self._linformer_dim),
+          output_shape=(None, low_rank_dim),
           kernel_initializer=tf_utils.clone_initializer(
               self._kernel_initializer
           ),
@@ -444,6 +450,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         "tgt_block_size": self._tgt_block_size,
         "use_sigmoid_attn": self._use_sigmoid_attn,
         "sigmoid_attn_bias": self._sigmoid_attn_bias,
+        "linformer_dim": self._linformer_dim,
+        "linformer_shared_kv_projection": self._linformer_shared_kv_projection,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -499,6 +507,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     if key_value is None:
       key_value = input_tensor
 
+    key = key_value
+    value = key_value
     if self._linformer_dim is not None:
       if attention_mask is not None:
         # Applying mask before the low rank factorization so that padding is
@@ -510,17 +520,28 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         attention_mask = None
       key_value = tf.transpose(key_value, [0, 2, 1])
       key_value = self._lowrank_kv_projection(key_value)
-      key_value = tf.transpose(key_value, [0, 2, 1])
-
+      if self._linformer_shared_kv_projection:
+        key_value = tf.transpose(key_value, [0, 2, 1])
+        key = key_value
+        value = key_value
+      else:
+        key = tf.transpose(key_value[:, :, :self._linformer_dim], [0, 2, 1])
+        value = tf.transpose(key_value[:, :, self._linformer_dim:], [0, 2, 1])
     if self._return_attention_scores:
       attention_output, attention_scores = self._attention_layer(
           query=target_tensor,
-          value=key_value,
+          key=key,
+          value=value,
           attention_mask=attention_mask,
-          return_attention_scores=True)
+          return_attention_scores=True,
+      )
     else:
       attention_output = self._attention_layer(
-          query=target_tensor, value=key_value, attention_mask=attention_mask)
+          query=target_tensor,
+          key=key,
+          value=value,
+          attention_mask=attention_mask,
+      )
     attention_output = self._attention_dropout(attention_output)
 
     if self._norm_first:
