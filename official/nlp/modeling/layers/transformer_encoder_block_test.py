@@ -800,7 +800,11 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         output_tensor[1].shape.as_list(), expected_attention_scores_shape
     )
 
-  def test_low_rank_attention(self):
+  @parameterized.named_parameters(
+      ('unshared_kv_projection', False),
+      ('shared_kv_projection', True),
+  )
+  def test_low_rank_attention(self, shared_kv_projection):
     num_attention_heads = 8
     sequence_length = 21
     linformer_dim = 7
@@ -812,6 +816,7 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation='relu',
         return_attention_scores=True,
         linformer_dim=linformer_dim,
+        linformer_shared_kv_projection=shared_kv_projection,
     )
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf_keras.Input(shape=(sequence_length, width))
