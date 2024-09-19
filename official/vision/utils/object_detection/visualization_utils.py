@@ -438,6 +438,11 @@ def visualize_outputs(
       )
     return tf.cast(images, dtype=tf.uint8)
 
+  if images.shape[3] > 3:
+    images = images[:, :, :, 0:3]
+  elif images.shape[3] == 1:
+    images = tf.image.grayscale_to_rgb(images)
+
   images = tf.nest.map_structure(
       tf.identity,
       tf.map_fn(
