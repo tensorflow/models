@@ -15,11 +15,13 @@ YAMNet depends on the following Python packages:
 * [`numpy`](http://www.numpy.org/)
 * [`resampy`](http://resampy.readthedocs.io/en/latest/)
 * [`tensorflow`](http://www.tensorflow.org/)
+* [`tf_keras`](https://github.com/keras-team/tf-keras)
 * [`pysoundfile`](https://pysoundfile.readthedocs.io/)
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
 example command sequence below). Any reasonably recent version of these
-packages should work.
+packages should work. Note that YAMNet currently relies on Keras 2 and is
+incompatible with Keras 3 (the default as of TF 2.16).
 
 YAMNet also requires downloading the following data file:
 
