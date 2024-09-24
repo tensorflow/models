@@ -1,9 +1,7 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="4"
+os.environ["CUDA_VISIBLE_DEVICES"]="7"
 
-import sys
-sys.path.append("/home/mjyun/01_ghpark/models")
 
 import tensorflow as tf
 import numpy as np
@@ -19,7 +17,7 @@ from PIL import Image, ImageDraw
 from official.projects.rngdet.eval import agent
 
 parser = argparse.ArgumentParser() 
-parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default='/home/mjyun_2024/01_master/ckpt/02_rngdet_basic/' , dest='ckpt_dir')  
+parser.add_argument('--ckpt_dir', '-ckpt', nargs='*', help='ckpt_dir', default='/home/mjyun_2024/01_master/models/official/projects/rngdet/ckpt/01_pr_ready/' , dest='ckpt_dir')  
 ckpt_dir_or_file = parser.parse_args().ckpt_dir  
 
 class Vertex():
