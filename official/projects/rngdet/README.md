@@ -51,11 +51,6 @@ sh do_train.sh
 To evaluate one image with internal step visualization,  
 
 ```
-python run_test.py -ckpt ./CKPT_DIR_NAME
+python run_rungdet_basic.py -ckpt ./CKPT_DIR_NAME
 ```
-
-To evaluate all images in the test dataset, and see score(P-P, P-R, R-F) for each images, 
-
-```
-python run_test_all.py -ckpt ./CKPT_DIR_NAME
-```
+ 

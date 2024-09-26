@@ -35,7 +35,7 @@ python create_cityscale_tf_record.py \
 To edit training options of RNGDet, you can edit following commands in do_train.sh :
 
 ```
-CUDA_VISIBLE_DEVICES=4 python3 train.py \
+CUDA_VISIBLE_DEVICES=4 python3 train_plus.py \
   --mode=train \
   --experiment=rngdet_cityscale  \
   --model_dir=./CKPT_DIR_NAME \
@@ -51,11 +51,6 @@ sh do_train.sh
 To evaluate one image with internal step visualization,  
 
 ```
-python run_test.py -ckpt ./CKPT_DIR_NAME
+python run_rngdet_plus.py -ckpt ./CKPT_DIR_NAME
 ```
-
-To evaluate all images in the test dataset, and see score(P-P, P-R, R-F) for each images, 
-
-```
-python run_test_all.py -ckpt ./CKPT_DIR_NAME
-```
+ 
