@@ -51,6 +51,6 @@ sh do_train.sh
 To evaluate one image with internal step visualization,  
 
 ```
-python run_rungdet_basic.py -ckpt ./CKPT_DIR_NAME
+python run_rngdet_basic.py -ckpt ./CKPT_DIR_NAME
 ```
  
