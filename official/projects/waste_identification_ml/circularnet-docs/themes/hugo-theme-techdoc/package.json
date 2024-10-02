@@ -40,7 +40,7 @@
     "stylelint-config-recommended": "^13.0.0",
     "stylelint-config-recommended-scss": "^12.0.0",
     "stylelint-scss": "^5.1.0",
-    "webpack": "^5.88.2",
+    "webpack": "^5.95.0",
     "webpack-cli": "^5.1.4",
     "webpack-stream": "^7.0.0"
   },
