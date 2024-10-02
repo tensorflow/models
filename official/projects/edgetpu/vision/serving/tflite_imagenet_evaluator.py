@@ -21,6 +21,10 @@ from absl import logging
 import numpy as np
 import tensorflow as tf, tf_keras
 
+# pylint: disable=g-direct-tensorflow-import
+from tensorflow.lite.python import interpreter as tfl_interpreter
+# pylint: enable=g-direct-tensorflow-import
+
 
 @dataclasses.dataclass
 class EvaluationInput():
@@ -58,8 +62,9 @@ class AccuracyEvaluator():
     Returns:
       Whether the estimation is correct.
     """
-    interpreter = tf.lite.Interpreter(
-        model_content=self._model_content, num_threads=1)
+    interpreter = tfl_interpreter.Interpreter(
+        model_content=self._model_content, num_threads=1
+    )
     interpreter.allocate_tensors()
     # Get input and output tensors and quantization details.
     input_details = interpreter.get_input_details()
