@@ -40,7 +40,7 @@ def run_experiment(
     *,
     distribution_strategy: tf.distribute.Strategy,
     task: multitask.MultiTask,
-    model: base_model.MultiTaskBaseModel,
+    model: base_model.MultiTaskBaseModel | tf_keras.Model,
     mode: str,
     params: configs.MultiTaskExperimentConfig,
     model_dir: str,
