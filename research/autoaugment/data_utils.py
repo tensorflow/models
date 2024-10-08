@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-import cPickle
+import _pickle
 import os
 import augmentation_transforms
 import numpy as np
@@ -84,14 +84,14 @@ class DataSet(object):
       for file_num, f in enumerate(datafiles):
         d = unpickle(os.path.join(hparams.data_path, f))
         if f == 'test':
-          test_data[0] = copy.deepcopy(d['data'])
+          test_data[0] = copy.deepcopy(d[b'data'])
           all_data = np.concatenate([all_data, test_data], axis=1)
         else:
-          all_data[file_num] = copy.deepcopy(d['data'])
+          all_data[file_num] = copy.deepcopy(d[b'data'])
         if hparams.dataset == 'cifar10':
-          labels = np.array(d['labels'])
+          labels = np.array(d[b'labels'])
         else:
-          labels = np.array(d['fine_labels'])
+          labels = np.array(d[b'fine_labels'])
         nsamples = len(labels)
         for idx in range(nsamples):
           all_labels.append(labels[idx])
@@ -178,7 +178,7 @@ class DataSet(object):
 
 def unpickle(f):
   tf.logging.info('loading file: {}'.format(f))
-  fo = tf.gfile.Open(f, 'r')
-  d = cPickle.load(fo)
+  fo = tf.gfile.Open(f, 'rb')
+  d = _pickle.load(fo, encoding='bytes')
   fo.close()
   return d
