@@ -92,3 +92,6 @@ the [Model Zoo](tf1_detection_zoo.md).
       Running object detection on mobile devices with TensorFlow Lite</a><br>
 *   <a href='context_rcnn.md'>
       Context R-CNN documentation for data preparation, training, and export</a><br>
+
+## Community Contributed Guides
+*   [Preparing inputs, fine-tuning a custom object detection model in Colab, and converting to TFLite](https://github.com/sayakpaul/E2E-Object-Detection-in-TFLite/tree/master/colab_training) (non-eager mode)
