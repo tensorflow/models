@@ -46,8 +46,8 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 import numpy as np
 import os
-from pyglib import app
-from pyglib import flags
+from absl import app
+from absl import flags
 import gin
 import cv2
 from envs import active_vision_dataset_env
@@ -95,7 +95,7 @@ def benchmark(env, targets):
     for a in new_actions:
       all_actions[a] += new_actions[a] / FLAGS.benchmark_iter
     start_image_id, world, goal = env.get_init_config(path)
-    print world
+    print(world)
     if world not in all_init_configs:
       all_init_configs[world] = set()
     all_init_configs[world].add((start_image_id, goal, len(actions)))
@@ -137,7 +137,7 @@ def human(env, targets):
     steps = -1
     action = None
     while True:
-      print 'distance = ', obs[task_env.ModalityTypes.DISTANCE]
+      print('distance = ', obs[task_env.ModalityTypes.DISTANCE])
       steps += 1
       depth_value = obs[task_env.ModalityTypes.DEPTH][:, :, 0]
       depth_mask = obs[task_env.ModalityTypes.DEPTH][:, :, 1]
@@ -173,14 +173,14 @@ def human(env, targets):
           action = key_map[s]
           break
         else:
-          print 'invalid action'
-      print 'action = {}'.format(action)
+          print('invalid action')
+      print('action = {}'.format(action))
       if action == 'stop':
-        print 'dist to goal: {}'.format(len(env.path_to_goal()) - 2)
+        print('dist to goal: {}'.format(len(env.path_to_goal()) - 2))
         break
       obs, reward, done, info = env.step(action)
-      print 'reward = {}, done = {}, success = {}'.format(
-          reward, done, info['success'])
+      print('reward = {}, done = {}, success = {}'.format(
+          reward, done, info['success']))
 
 
 def visualize_random_step_sequence(env):
@@ -188,7 +188,7 @@ def visualize_random_step_sequence(env):
   plt.ion()
   for _ in range(20):
     path, actions, _, step_outputs = env.random_step_sequence(max_len=30)
-    print 'path = {}'.format(path)
+    print('path = {}'.format(path))
     for action, step_output in zip(actions, step_outputs):
       obs, _, done, _ = step_output
       depth_value = obs[task_env.ModalityTypes.DEPTH][:, :, 0]
@@ -212,8 +212,8 @@ def visualize_random_step_sequence(env):
       plt.imshow(det_mask)
       plt.title('det')
       plt.subplot(236)
-      print 'action = {}'.format(action)
-      print 'done = {}'.format(done)
+      print('action = {}'.format(action))
+      print('done = {}'.format(done))
       plt.draw()
       if raw_input('press \'n\' to go to the next random sequence. Otherwise, '
                    'press any key to continue...') == 'n':
@@ -246,13 +246,13 @@ def visualize(env, input_folder, output_root_folder):
       if name.find('npy') >= 0
   ]
   for i, npy_file in enumerate(npy_files):
-    print 'saving images {}/{}'.format(i, len(npy_files))
+    print('saving images {}/{}'.format(i, len(npy_files)))
     pure_name = npy_file[npy_file.rfind('/') + 1:-4]
     output_folder = os.path.join(output_images_folder, pure_name)
     if not tf.gfile.IsDirectory(output_folder):
       tf.gfile.MakeDirs(output_folder)
-    print '*******'
-    print pure_name[0:pure_name.find('_')]
+    print('*******')
+    print(pure_name[0:pure_name.find('_')])
     env.reset_for_eval(which_env(pure_name),
                        which_goal(pure_name),
                        pure_name[0:pure_name.find('_')],
@@ -265,7 +265,7 @@ def visualize(env, input_folder, output_root_folder):
       for j, img in enumerate(images):
         cv2.imwrite(os.path.join(output_folder, '{0:03d}'.format(j) + '.jpg'),
                     img[:, :, ::-1])
-      print 'converting to gif'
+      print('converting to gif')
       os.system(
           'convert -set delay 20 -colors 256 -dispose 1 {}/*.jpg {}.gif'.format(
               output_folder,
@@ -288,7 +288,7 @@ def evaluate_folder(env, folder_path):
 
   def evaluate_iteration(folder):
     """Evaluates the data from the folder of certain eval iteration."""
-    print folder
+    print(folder)
     npy_files = [
         os.path.join(folder, name)
         for name in tf.gfile.ListDirectory(folder)
@@ -303,7 +303,7 @@ def evaluate_folder(env, folder_path):
       eval_stats[category].append(float(dist <= 5))
     for c in eval_stats:
       if not eval_stats[c]:
-        print 'incomplete eval {}: empty class {}'.format(folder_path, c)
+        print('incomplete eval {}: empty class {}'.format(folder_path, c))
         return None
       eval_stats[c] = np.mean(eval_stats[c])
 
@@ -316,36 +316,36 @@ def evaluate_folder(env, folder_path):
       if tf.gfile.IsDirectory(folder_path + x)
   ]
 
-  print '{} folders found'.format(len(checkpoint_folders))
-  print '------------------------'
+  print('{} folders found'.format(len(checkpoint_folders)))
+  print('------------------------')
   all_iters = []
   all_accs = []
   for i, folder in enumerate(checkpoint_folders):
-    print 'processing {}/{}'.format(i, len(checkpoint_folders))
+    print('processing {}/{}'.format(i, len(checkpoint_folders)))
     eval_stats = evaluate_iteration(folder)
     if eval_stats is None:
       continue
     else:
       iter_no = int(folder[folder.rfind('/') + 1:])
-      print 'result ', iter_no, eval_stats['mean']
+      print('result ', iter_no, eval_stats['mean'])
       all_accs.append(eval_stats['mean'])
       all_iters.append(iter_no)
 
   all_accs = np.asarray(all_accs)
   all_iters = np.asarray(all_iters)
   idx = np.argmax(all_accs)
-  print 'best result at iteration {} was {}'.format(all_iters[idx],
-                                                    all_accs[idx])
+  print('best result at iteration {} was {}'.format(all_iters[idx],
+                                                    all_accs[idx]))
   order = np.argsort(all_iters)
   all_iters = all_iters[order]
   all_accs = all_accs[order]
   #plt.plot(all_iters, all_accs)
   #plt.show()
-  #print 'done plotting'
+  #print('done plotting')
 
   best_iteration_folder = os.path.join(folder_path, str(all_iters[idx]))
 
-  print 'generating gifs and images for {}'.format(best_iteration_folder)
+  print('generating gifs and images for {}'.format(best_iteration_folder))
   visualize(env, best_iteration_folder, FLAGS.output_folder)
 
 
