@@ -14,12 +14,13 @@
 
 """Keras metric for computing the mean uplift sliced by treatment group."""
 
+from typing import Union
+
 import tensorflow as tf, tf_keras
 
 from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 
-from typing import Union
 
 @tf_keras.utils.register_keras_serializable(package="Uplift")
 class UpliftMean(tf_keras.metrics.Metric):

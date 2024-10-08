@@ -13,12 +13,11 @@
 # limitations under the License.
 
 """Defines types used by the keras uplift modeling library."""
-
-import tensorflow as tf, tf_keras
 from typing import Union
 
-TensorType = Union[tf.Tensor, tf.SparseTensor, tf.RaggedTensor]
+import tensorflow as tf, tf_keras
 
+TensorType = Union[tf.Tensor, tf.SparseTensor, tf.RaggedTensor]
 ListOfTensors = list[TensorType]
 TupleOfTensors = tuple[TensorType, ...]
 DictOfTensors = dict[str, TensorType]

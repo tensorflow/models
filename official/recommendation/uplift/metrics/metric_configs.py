@@ -35,7 +35,7 @@ class SlicedMetricConfig(base_config.Config):
 
   slicing_feature: Union[str, None] = None
   slicing_spec: Union[Mapping[str, int], None] = None
-  slicing_feature_dtype: Union[str, None ]= None
+  slicing_feature_dtype: Union[str, None] = None
 
   def __post_init__(
       self, default_params: dict[str, Any], restrictions: list[str]

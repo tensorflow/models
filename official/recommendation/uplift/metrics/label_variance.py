@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Keras metric for computing the label variance sliced by treatment group."""
+from typing import Union
 
 import tensorflow as tf, tf_keras
 
@@ -20,7 +21,6 @@ from official.recommendation.uplift import types
 from official.recommendation.uplift.metrics import treatment_sliced_metric
 from official.recommendation.uplift.metrics import variance
 
-from typing import Union
 
 @tf_keras.utils.register_keras_serializable(package="Uplift")
 class LabelVariance(tf_keras.metrics.Metric):

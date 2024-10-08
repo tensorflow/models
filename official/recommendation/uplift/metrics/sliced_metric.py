@@ -15,10 +15,9 @@
 """Keras metric for reporting metrics sliced by a feature."""
 
 import copy
+from typing import Union
 
 import tensorflow as tf, tf_keras
-
-from typing import Union
 
 
 class SlicedMetric(tf_keras.metrics.Metric):

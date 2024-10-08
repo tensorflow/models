@@ -15,12 +15,11 @@
 """Defines base abstract uplift network layers."""
 
 import abc
+from typing import Union
 
 import tensorflow as tf, tf_keras
 
 from official.recommendation.uplift import types
-
-from typing import Union
 
 
 class BaseTwoTowerUpliftNetwork(tf_keras.layers.Layer, metaclass=abc.ABCMeta):

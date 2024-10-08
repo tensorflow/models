@@ -28,7 +28,7 @@ class RMSNorm(tf_keras.layers.Layer):
 
   def __init__(
       self,
-      axis: Union[int , Sequence[int]] = -1,
+      axis: Union[int, Sequence[int]] = -1,
       epsilon: float = 1e-6,
       **kwargs
   ):
@@ -43,7 +43,8 @@ class RMSNorm(tf_keras.layers.Layer):
     self.axis = [axis] if isinstance(axis, int) else axis
     self.epsilon = epsilon
 
-  def build(self, input_shape: Union[tf.TensorShape, Sequence[Union[int, None]]]):
+  def build(self, 
+            input_shape: Union[tf.TensorShape, Sequence[Union[int, None]]]):
     input_shape = tf.TensorShape(input_shape)
     scale_shape = [1] * input_shape.rank
     for dim in self.axis:
