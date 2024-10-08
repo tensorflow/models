@@ -18,8 +18,8 @@
 
 import os
 import re
-import tensorflow as tf
-from tensorflow.contrib import slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 import logging
 
 DEFAULT_DATASET_DIR = os.path.join(os.path.dirname(__file__), 'data', 'fsns')
