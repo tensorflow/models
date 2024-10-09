@@ -49,6 +49,33 @@ Material Form Model V2 | Resnet | saved model | [click here](https://storage.goo
 Material Type Model V2| MobileNet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/mobilenet_material.zip)
 Material Form Model V2| MobileNet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/mobilenet_material_form.zip)
 
+
+## Training Guide
+
+1.  Create a VM instance in Compute Engine of Google Cloud Platform with desired
+    number of GPUs.
+2.  Make sure compatible Cuda version is installed. Check your GPU devices using
+    `nvidia-smi` command.
+3.  SSH to your VM instance in the Compute Engine and create a conda environment
+    `conda create -n circularnet-train python=3.11`
+4. Activate your conda environment
+    `conda activate circularnet-train`
+5. Install the following libraries
+    `pip install tensorflow[and-cuda] tf-models-official`
+6. Move your data in GCP bucket or inside the VM instance. I moved it inside
+   the VM instance. Your data should be in the TFRecords format.
+7. Move the configuration file for model training inside the VM as well.
+8. Your configuration file contains all the parameters and path to your datasets
+   Example of configuration file for GPU training has been uploaded in the same
+   directory with name config.yaml
+8. Create a directory where you want to save the output checkpoints.
+9. Run the following command to initiate the training -
+    `python -m official.vision.train --experiment="maskrcnn_resnetfpn_coco"
+    --mode="train_and_eval" --model_dir="output_directory"
+    --config_file="config.yaml"`
+10. You can also start a screen session and run the training in the background.
+
+
 ## Authors and Maintainers
 - Umair Sabir
 - Sujit Sanjeev
