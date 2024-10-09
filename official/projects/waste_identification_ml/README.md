@@ -67,7 +67,7 @@ Material Form Model V2| MobileNet | saved model | [click here](https://storage.g
 7. Move the configuration file for model training inside the VM as well.
 8. Your configuration file contains all the parameters and path to your datasets
    Example of configuration file for GPU training has been uploaded in the same
-   directory with name config.yaml
+   directory with name `config.yaml`
 8. Create a directory where you want to save the output checkpoints.
 9. Run the following command to initiate the training -
     `python -m official.vision.train --experiment="maskrcnn_resnetfpn_coco"
