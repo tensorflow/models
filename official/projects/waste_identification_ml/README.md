@@ -110,7 +110,8 @@ Material Form Model V2| MobileNet | saved model | [click here](https://storage.g
 
 A common practice to calculate the parameters are below:
 
-`total_training_samples = 4389
+```python
+total_training_samples = 4389
 total_validation_samples = 485
 
 train_batch_size = 512
@@ -137,7 +138,8 @@ print(f'warmup_steps: {warmup_steps}')
 print(f'warmup_learning_rate: {warmup_learning_rate}')
 print(f'initial_learning_rate: {initial_learning_rate}')
 print(f'decay_steps: {decay_steps}')
-print(f'checkpoint_interval: {checkpoint_interval}')`
+print(f'checkpoint_interval: {checkpoint_interval}')
+```
 
 ## Authors and Maintainers
 - Umair Sabir
