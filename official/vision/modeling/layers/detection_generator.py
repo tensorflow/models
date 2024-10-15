@@ -14,7 +14,7 @@
 
 """Contains definitions of generators to generate the final detections."""
 import contextlib
-from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Mapping, Sequence, Tuple, Union
 
 # Import libraries
 
@@ -794,7 +794,7 @@ def _generate_detections_tflite(
     raw_scores: Mapping[str, tf.Tensor],
     anchor_boxes: Mapping[str, tf.Tensor],
     config: Dict[str, Any],
-    box_coder_weights: List[float] | None = None,
+    box_coder_weights: Union[List[float], None] = None,
 ) -> Sequence[Any]:
   """Generate detections for conversion to TFLite.
 

@@ -2856,7 +2856,7 @@ class SSDRandomCrop(ImageAugment):
 
   def __init__(
       self,
-      params: Sequence[configs.SSDRandomCropParam] | None = None,
+      params: Union[Sequence[configs.SSDRandomCropParam], None] = None,
       aspect_ratio_range: tuple[float, float] = (0.5, 2.0),
       area_range: tuple[float, float] = (0.1, 1.0),
   ):
