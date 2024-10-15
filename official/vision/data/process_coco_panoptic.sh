@@ -16,7 +16,7 @@ mkdir $DATA_DIR/zips && mv $DATA_DIR/*.zip $DATA_DIR/zips;
 unzip $DATA_DIR/annotations/panoptic_train2017.zip -d $DATA_DIR
 unzip $DATA_DIR/annotations/panoptic_val2017.zip -d $DATA_DIR
 
-python3 official/vision/beta/data/create_coco_tf_record.py \
+python3 official/vision/data/create_coco_tf_record.py \
   --logtostderr  \
   --image_dir="$DATA_DIR/val2017" \
   --object_annotations_file="$DATA_DIR/annotations/instances_val2017.json"  \
@@ -28,7 +28,7 @@ python3 official/vision/beta/data/create_coco_tf_record.py \
   --include_panoptic_masks
 
 
-python3 official/vision/beta/data/create_coco_tf_record.py \
+python3 official/vision/data/create_coco_tf_record.py \
   --logtostderr  \
   --image_dir="$DATA_DIR/train2017" \
   --object_annotations_file="$DATA_DIR/annotations/instances_train2017.json"  \
