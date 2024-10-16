@@ -32,11 +32,11 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string(
     'train_image_folder',
     './ADE20K/ADEChallengeData2016/images/training',
-    'Folder containing trainng images')
+    'Folder containing training images')
 tf.app.flags.DEFINE_string(
     'train_image_label_folder',
     './ADE20K/ADEChallengeData2016/annotations/training',
-    'Folder containing annotations for trainng images')
+    'Folder containing annotations for training images')
 
 tf.app.flags.DEFINE_string(
     'val_image_folder',
