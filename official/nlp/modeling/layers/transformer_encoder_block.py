@@ -238,22 +238,30 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._sigmoid_attn_bias = sigmoid_attn_bias
     self._linformer_dim = linformer_dim
     self._linformer_shared_kv_projection = linformer_shared_kv_projection
-    if self._num_kv_heads is not None and self._src_block_size is not None:
+    if (
+        self._src_block_size is not None
+        and self._num_kv_heads is not None
+        and self._num_kv_heads != 1
+    ):
       raise ValueError(
-          "Block sparse attention does not support Multi-query attention."
-          " Specify only one of them."
+          "Block sparse attention only supports Multi-query attention.Please"
+          " set num_kv_heads to 1 to enable MQA with block sparse attention."
       )
     if attention_initializer:
       self._attention_initializer = tf_keras.initializers.get(
-          attention_initializer)
+          attention_initializer
+      )
     else:
       self._attention_initializer = tf_utils.clone_initializer(
-          self._kernel_initializer)
+          self._kernel_initializer
+      )
     self._attention_axes = attention_axes
 
     if self._diff_q_kv_att_layer_norm and not self._norm_first:
-      raise ValueError("Setting `diff_q_and_kv_attention_layer_norm` to True"
-                       "when `norm_first` is False is invalid.")
+      raise ValueError(
+          "Setting `diff_q_and_kv_attention_layer_norm` to True"
+          "when `norm_first` is False is invalid."
+      )
 
   def build(self, input_shape):
     if isinstance(input_shape, tf.TensorShape):
@@ -303,6 +311,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
           tgt_block_size=self._tgt_block_size,
           use_sigmoid_attn=self._use_sigmoid_attn,
           sigmoid_attn_bias=self._sigmoid_attn_bias,
+          num_kv_heads=self._num_kv_heads,
           name="block_sparse_attention",
       )
       attention_fn = block_sparse_attention.MultiHeadAttention

@@ -755,9 +755,11 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('use_softmax_attn', False),
+      ('use_softmax_attn_mqa', False, 1),
       ('use_sigmoid_attn', True),
+      ('use_sigmoid_attn_mqa', True, 1),
   )
-  def test_block_sparse_attention(self, use_sigmoid_attn):
+  def test_block_sparse_attention(self, use_sigmoid_attn, num_kv_heads=None):
     num_attention_heads = 8
     sequence_length = 21
     width = 80
@@ -771,6 +773,7 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         return_attention_scores=True,
         src_block_size=src_block_size,
         tgt_block_size=tgt_block_size,
+        num_kv_heads=num_kv_heads,
         use_sigmoid_attn=use_sigmoid_attn,
         sigmoid_attn_bias=-math.log(sequence_length)
         if use_sigmoid_attn

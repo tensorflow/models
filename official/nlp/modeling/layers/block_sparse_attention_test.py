@@ -27,12 +27,35 @@ class BlockSparseAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ("key_value_same_proj", None, None, [40, 80]),
+      ("key_value_same_proj_mqa", None, None, [40, 80], False, 1),
       ("key_value_same_proj_multi_query_blocks", None, None, [40, 80], True),
+      (
+          "key_value_same_proj_multi_query_blocks_mqa",
+          None,
+          None,
+          [40, 80],
+          True,
+          1,
+      ),
       ("key_value_different_proj", 32, 60, [40, 60]),
+      ("key_value_different_proj_mqa", 32, 60, [40, 60], False, 1),
       ("key_value_different_proj_multi_query_blocks", 32, 60, [40, 60], True),
+      (
+          "key_value_different_proj_multi_query_blocks_mqa",
+          32,
+          60,
+          [40, 60],
+          True,
+          1,
+      ),
   )
   def test_non_masked_attention(
-      self, value_dim, output_shape, output_dims, multi_query_blocks=False
+      self,
+      value_dim,
+      output_shape,
+      output_dims,
+      multi_query_blocks=False,
+      num_kv_heads=None,
   ):
     """Test that the attention layer can be created without a mask tensor."""
     test_layer = block_sparse_attention.MultiHeadAttention(
@@ -42,6 +65,7 @@ class BlockSparseAttentionTest(tf.test.TestCase, parameterized.TestCase):
         output_shape=output_shape,
         src_block_size=10,
         tgt_block_size=20 if multi_query_blocks else 5,
+        num_kv_heads=num_kv_heads,
     )
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf_keras.Input(shape=(40, 80))
@@ -61,17 +85,24 @@ class BlockSparseAttentionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ("with_bias", True),
+      ("with_bias_mqa", True, False, False, 1),
       ("with_bias_multi_query_blocks", True, False, True),
+      ("with_bias_multi_query_blocks_mqa", True, False, True, 1),
       ("no_bias", False),
+      ("no_bias_mqa", False, False, False, 1),
       ("no_bias_multi_query_blocks", False, False, True),
+      ("no_bias_multi_query_blocks_mqa", False, False, True, 1),
       ("with_sigmoid_attn", True, True),
+      ("with_sigmoid_attn_mqa", True, True, False, 1),
       ("with_sigmoid_attn_multi_query_blocks", True, True, True),
+      ("with_sigmoid_attn_multi_query_blocks_mqa", True, True, True, 1),
   )
   def test_masked_attention(
       self,
       use_bias,
       use_sigmoid_attn=False,
       multi_query_blocks=False,
+      num_kv_heads=None,
   ):
     """Test with a mask tensor."""
     if use_sigmoid_attn:
@@ -86,6 +117,7 @@ class BlockSparseAttentionTest(tf.test.TestCase, parameterized.TestCase):
         tgt_block_size=2 if multi_query_blocks else 1,
         use_sigmoid_attn=use_sigmoid_attn,
         sigmoid_attn_bias=sigmoid_attn_bias,
+        num_kv_heads=num_kv_heads,
     )
     # Create a 3-dimensional input (the first dimension is implicit).
     batch_size = 3
