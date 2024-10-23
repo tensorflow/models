@@ -80,11 +80,19 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
           aug_scale_max=2.0,
           output_scales=(20 / 100, 10 / 200),
       ),
+      dict(
+          testcase_name='no_jittering_with_4_channels',
+          input_size=(100, 200),
+          desired_size=(20, 10),
+          aug_scale_max=1.0,
+          output_scales=(20 / 100, 10 / 200),
+          channels=4,
+      ),
   )
   def test_resize_and_crop_image_not_keep_aspect_ratio(
-      self, input_size, desired_size, aug_scale_max, output_scales
+      self, input_size, desired_size, aug_scale_max, output_scales, channels=3
   ):
-    image = tf.convert_to_tensor(np.random.rand(*input_size, 3))
+    image = tf.convert_to_tensor(np.random.rand(*input_size, channels))
 
     resized_image, image_info = preprocess_ops.resize_and_crop_image(
         image,
@@ -95,7 +103,7 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
     )
     resized_image_shape = tf.shape(resized_image)
 
-    self.assertAllEqual([*desired_size, 3], resized_image_shape.numpy())
+    self.assertAllEqual([*desired_size, channels], resized_image_shape.numpy())
     if aug_scale_max == 1:
       self.assertNDArrayNear(
           [input_size, desired_size, output_scales, [0.0, 0.0]],
@@ -108,7 +116,7 @@ class InputUtilsTest(parameterized.TestCase, tf.test.TestCase):
       (100, 256, 128, 256, 32, 1.0, 1.0, 128, 256),
       (200, 512, 200, 128, 32, 0.25, 0.25, 224, 128),
   )
-  def test_resize_and_crop_image_rectangluar_case(
+  def test_resize_and_crop_image_rectangular_case(
       self,
       input_height,
       input_width,

@@ -182,7 +182,7 @@ def resize_and_crop_image(
   2. Pad the rescaled image to the padded_size.
 
   Args:
-    image: a `Tensor` of shape [height, width, 3] representing an image.
+    image: a `Tensor` of shape [height, width, c] representing an image.
     desired_size: a `Tensor` or `int` list/tuple of two elements representing
       [height, width] of the desired actual output image size.
     padded_size: a `Tensor` or `int` list/tuple of two elements representing
@@ -201,7 +201,7 @@ def resize_and_crop_image(
       behaviour is to place it at left top corner.
 
   Returns:
-    output_image: `Tensor` of shape [height, width, 3] where [height, width]
+    output_image: `Tensor` of shape [height, width, c] where [height, width]
       equals to `output_size`.
     image_info: a 2D `Tensor` that encodes the information of the image and the
       applied preprocessing. It is in the format of
@@ -786,7 +786,7 @@ def random_horizontal_flip(
   """Randomly flips input image and bounding boxes and/or masks horizontally.
 
   Expects input tensors without the batch dimension; i.e. for RGB image assume
-  rank-3 input like [h, w, 3], for masks assume either [h, w, 1] or [1, h, w].
+  rank-3 input like [h, w, c], for masks assume either [h, w, 1] or [1, h, w].
 
   Args:
     image: `tf.Tensor`, the image to apply the random flip, [h, w, channels].
