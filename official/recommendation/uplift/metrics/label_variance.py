@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Keras metric for computing the label variance sliced by treatment group."""
+from typing import Union
 
 import tensorflow as tf, tf_keras
 
@@ -72,7 +73,7 @@ class LabelVariance(tf_keras.metrics.Metric):
       self,
       y_true: tf.Tensor,
       y_pred: types.TwoTowerTrainingOutputs,
-      sample_weight: tf.Tensor | None = None,
+      sample_weight: Union[tf.Tensor, None] = None,
   ):
     """Updates the overall, control and treatment label variances.
 
