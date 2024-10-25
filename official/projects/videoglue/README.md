@@ -5,36 +5,39 @@ This repository provides the official TensorFlow 2 implementation of
 [VideoGLUE: Video General Understanding Evaluation of Foundation Models](https://arxiv.org/abs/2307.03166)
 
 <p align="center">
-  <img src="https://storage.googleapis.com/tf_model_garden/vision/videoglue/artifacts/VideoGLUE-fig2.jpg" height=350>
+<img src = "./docs/VideoGLUE-fig2-v2.png" width="80%">
 </p>
 <p align="center">
-  <em>Figure 1: We study four adaptation methods to apply a foundation model to
+  <em>
+  Figure 1: We study four adaptation methods to apply a foundation model (FM) to
   video understanding downstream tasks: (a) end-to-end finetuning, (b) frozen
-  backbone evaluation, (c) frozen features with multi-layer attention pooler,
-  and (d) a low-rank adapter.</em>
+  backbone, (c) frozen backbone with multi-layer attention pooler (MLAP), and
+  (d) a low-rank adapter.
+  </em>
 </p>
 
 
 ## Description
 
-We evaluate existing foundation models video understanding capabilities using a
-carefully designed experiment protocol consisting of three hallmark tasks
-(action recognition, temporal localization, and spatiotemporal localization),
-eight datasets well received by the community, and four adaptation methods
-tailoring a foundation model (FM) for a downstream task. Moreover, we propose a
-scalar VideoGLUE score (VGS) to measure an FMs efficacy and efficiency when
-adapting to general video understanding tasks. Our main findings are as follows.
-First, task-specialized models significantly outperform the six FMs studied in
-this work, in sharp contrast to what FMs have achieved in natural language and
-image understanding. Second,video-native FMs, whose pretraining data contains
-the video modality, are generally better than image-native FMs in classifying
-motion-rich videos, localizing actions in time, and understanding a video of
-more than one action. Third, the video-native FMs can perform well on video
-tasks under light adaptations to downstream tasks(e.g., freezing the FM
-backbones), while image-native FMs win in full end-to-end finetuning. The first
-two observations reveal the need and tremendous opportunities to conduct
-research on video-focused FMs, and the last confirms that both tasks and
-adaptation methods matter when it comes to the evaluation of FMs.
+We evaluate the video understanding capabilities of existing foundation models
+(FMs) using a carefully designed experiment protocol consisting of three
+hallmark tasks (action recognition, temporal localization, and spatiotemporal
+localization), eight datasets well received by the community, and four
+adaptation methods tailoring an FM for downstream tasks. Furthermore, we
+jointly profile FMs' efficacy and efficiency when adapting to general video
+understanding tasks using cost measurements during both training and inference.
+Our main findings are as follows. First, task-specialized models significantly
+outperform the seven FMs studied in this work, in sharp contrast to what FMs
+have achieved in natural language and image understanding. Second, video-native
+FMs, whose pretraining data mainly contains the video modality, are generally
+better than image-native FMs in classifying motion-rich videos, localizing
+actions in time, and understanding a video of more than one action. Third, the
+video-native FMs can perform well on video tasks under light adaptations to
+downstream tasks (e.g., freezing the FM backbones), while image-native FMs win
+in full end-to-end finetuning. The first two observations reveal the need and
+tremendous opportunities to conduct research on video-focused FMs, and the last
+confirms that both tasks and adaptation methods matter when it comes to the
+evaluation of FMs.
 
 ## Requirements
 * [DMVR: DeepMind Video Readers](https://github.com/deepmind/dmvr)
@@ -122,14 +125,14 @@ This project is licensed under the terms of the **Apache License 2.0**.
 
 ## Citation
 ```
-@inproceedings{yuan2023videoglue,
+@inproceedings{yuan2024videoglue,
   title={VideoGLUE: Video General Understanding Evaluation of Foundation Models}
   author={Yuan, Liangzhe and Gundavarapu, Nitesh Bharadwaj and Zhao, Long and
   Zhou, Hao and Cui, Yin and Jiang, Lu and Yang, Xuan and Jia, Menglin and
   Weyand, Tobias and Friedman, Luke and Sirotenko, Mikhail and Wang, Huisheng
   and Schroff, Florian and Adam, Hartwig and Yang, Ming-Hsuan and Liu, Ting and
   Gong, Boqing}
-  booktitle={arXiv},
-  year={2023}
+  booktitle={Transactions on Machine Learning Research},
+  year={2024}
 }
 ```
