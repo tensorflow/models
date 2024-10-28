@@ -2735,7 +2735,7 @@ class MixupAndCutmix:
     cut_height = tf.cast(
         ratio * tf.cast(image_height, dtype=tf.float32), dtype=tf.int32)
     cut_width = tf.cast(
-        ratio * tf.cast(image_height, dtype=tf.float32), dtype=tf.int32)
+        ratio * tf.cast(image_width, dtype=tf.float32), dtype=tf.int32)
 
     random_center_height = tf.random.uniform(
         shape=[batch_size], minval=0, maxval=image_height, dtype=tf.int32)
