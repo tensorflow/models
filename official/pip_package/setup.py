@@ -20,10 +20,10 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.17.0'
-tf_version = '2.17.0'  # Major version.
+version = '2.18.0'
+tf_version = '2.18.0'  # Major version.
 
-project_name = 'tf-models-official'
+project_name = 'tf-models-no-deps'
 
 long_description = """The TensorFlow official models are a collection of
 models that use TensorFlow's high-level APIs.
@@ -67,10 +67,13 @@ if project_name == 'tf-models-nightly':
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
   install_requires.append('tf-nightly')
   install_requires.append('tensorflow-text-nightly')
-else:
+elif project_name == 'tf-models-official':
   install_requires, dependency_links = _get_requirements()
   install_requires.append(f'tensorflow~={tf_version}')
   install_requires.append(f'tensorflow-text~={tf_version}')
+else:
+  install_requires, dependency_links = _get_requirements()
+  install_requires.append(f'tensorflow~={tf_version}')
 
 print('install_requires: ', install_requires)
 print('dependency_links: ', dependency_links)
