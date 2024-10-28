@@ -44,7 +44,7 @@ class RMSNorm(tf_keras.layers.Layer):
     self.epsilon = epsilon
 
   def build(self, 
-            input_shape: Union[tf.TensorShape, Sequence[Union[int, None]]]):
+            input_shape: Union[tf.TensorShape, Sequence[Optional[int]]]):
     input_shape = tf.TensorShape(input_shape)
     scale_shape = [1] * input_shape.rank
     for dim in self.axis:

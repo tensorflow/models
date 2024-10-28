@@ -15,7 +15,7 @@
 """Defines base abstract uplift network layers."""
 
 import abc
-from typing import Union
+from typing import Union, Optional
 
 import tensorflow as tf, tf_keras
 
@@ -34,7 +34,7 @@ class BaseTwoTowerUpliftNetwork(tf_keras.layers.Layer, metaclass=abc.ABCMeta):
   def call(
       self,
       inputs: types.DictOfTensors,
-      training: Union[bool, None] = None,
-      mask: Union[tf.Tensor, None] = None,
+      training: Optional[bool] = None,
+      mask: Optional[tf.Tensor] = None,
   ) -> types.TwoTowerTrainingOutputs:
     raise NotImplementedError()

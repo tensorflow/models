@@ -264,7 +264,7 @@ def build_retinanet(
     backbone: Optional[tf_keras.Model] = None,
     decoder: Optional[tf_keras.Model] = None,
     num_anchors_per_location: Union[int, Dict[str, int], None] = None,
-    anchor_boxes: Union[Mapping[str, tf.Tensor], None] = None,
+    anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
 ) -> tf_keras.Model:
   """Builds a RetinaNet model.
 

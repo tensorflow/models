@@ -14,7 +14,7 @@
 
 """Keras metric for computing the label mean sliced by treatment group."""
 
-from typing import Union
+from typing import Union, Optional
 
 import tensorflow as tf, tf_keras
 
@@ -73,7 +73,7 @@ class LabelMean(tf_keras.metrics.Metric):
       self,
       y_true: tf.Tensor,
       y_pred: types.TwoTowerTrainingOutputs,
-      sample_weight: Union[tf.Tensor, None] = None,
+      sample_weight: Optional[tf.Tensor] = None,
   ):
     """Updates the overall, control and treatment label means.
 

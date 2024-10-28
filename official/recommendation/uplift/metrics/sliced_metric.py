@@ -15,7 +15,7 @@
 """Keras metric for reporting metrics sliced by a feature."""
 
 import copy
-from typing import Union
+from typing import Union, Optional
 
 import tensorflow as tf, tf_keras
 
@@ -68,8 +68,8 @@ class SlicedMetric(tf_keras.metrics.Metric):
       self,
       metric: tf_keras.metrics.Metric,
       slicing_spec: Union[dict[str, str], dict[str, int]],
-      slicing_feature_dtype: Union[tf.DType, None] = None,
-      name: Union[str, None] = None,
+      slicing_feature_dtype: Optional[tf.DType] = None,
+      name: Optional[str] = None,
   ):
     """Initializes the instance.
 
@@ -124,7 +124,7 @@ class SlicedMetric(tf_keras.metrics.Metric):
   def update_state(
       self,
       *args: tf.Tensor,
-      sample_weight: Union[tf.Tensor, None] = None,
+      sample_weight: Optional[tf.Tensor] = None,
       slicing_feature: tf.Tensor,
       **kwargs,
   ):

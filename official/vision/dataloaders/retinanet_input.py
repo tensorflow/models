@@ -18,7 +18,7 @@ Parse image and ground-truths in a dataset to training targets and package them
 into (image, labels) tuple for RetinaNet.
 """
 
-from typing import Optional, Union, List
+from typing import Optional, List
 
 # Import libraries
 
@@ -40,16 +40,16 @@ class Parser(parser.Parser):
   def __init__(self,
                output_size,
                max_level,
-               min_level: Union[int, None] = None,
-               num_scales: Union[int, None] = None,
-               aspect_ratios: Union[List[float], None] = None,
-               anchor_size: Union[float, None] = None,
+               min_level: Optional[int] = None,
+               num_scales: Optional[int] = None,
+               aspect_ratios: Optional[List[float]] = None,
+               anchor_size: Optional[float] = None,
                match_threshold=0.5,
                unmatched_threshold=0.5,
                box_coder_weights=None,
                aug_type=None,
                aug_rand_hflip=False,
-               aug_rand_jpeg: Union[cfg.RandJpegQuality, None] = None,
+               aug_rand_jpeg: Optional[cfg.RandJpegQuality] = None,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
                use_autoaugment=False,
