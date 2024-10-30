@@ -61,6 +61,12 @@ class DumpConfig6(base_config.Config):
   test_config1: Optional[DumpConfig1] = None
 
 
+@dataclasses.dataclass
+class ModernOptionalConfig(base_config.Config):
+  leaf: DumpConfig1 | None = None
+  leaves: tuple[DumpConfig1 | None, ...] = tuple()
+
+
 class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
 
   def assertHasSameTypes(self, c, d, msg=''):
@@ -421,6 +427,20 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(f'{c}',
                      "DumpConfig6(test_config1=DumpConfig1(a=1, b='abc'))")
     self.assertIsInstance(c.test_config1, DumpConfig1)
+
+  def test_modern_optional_syntax(self):
+    config = ModernOptionalConfig()
+    self.assertIsNone(config.leaf)
+    self.assertEqual(config.leaves, tuple())
+
+    replaced = config.replace(leaf={'a': 2}, leaves=({'a': 3}, {'b': 'foo'}))
+    self.assertEqual(replaced.leaf.a, 2)
+    self.assertEqual(replaced.leaf.b, 'text')
+    self.assertLen(replaced.leaves, 2)
+    self.assertEqual(replaced.leaves[0].a, 3)
+    self.assertEqual(replaced.leaves[0].b, 'text')
+    self.assertEqual(replaced.leaves[1].a, 1)
+    self.assertEqual(replaced.leaves[1].b, 'foo')
 
 
 if __name__ == '__main__':
