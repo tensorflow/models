@@ -82,6 +82,10 @@ class ReZeroTransformer(tf_keras.layers.Layer):
                num_kv_heads=None,
                src_block_size=None,
                tgt_block_size=None,
+               linformer_dim=None,
+               linformer_shared_kv_projection=True,
+               use_sigmoid_attn=False,
+               sigmoid_attn_bias=None,
                **kwargs):
     # attention_dropout will override attention_dropout_rate.
     # This is to unify the input params with TransformerEncoderBlock.
@@ -115,6 +119,15 @@ class ReZeroTransformer(tf_keras.layers.Layer):
     self._num_kv_heads = num_kv_heads
     self._src_block_size = src_block_size
     self._tgt_block_size = tgt_block_size
+    self._linformer_dim = linformer_dim
+    self._linformer_shared_kv_projection = linformer_shared_kv_projection
+    self._use_sigmoid_attn = use_sigmoid_attn
+    self._sigmoid_attn_bias = sigmoid_attn_bias
+    if self._linformer_dim is not None or self._use_sigmoid_attn:
+      raise ValueError(
+          "Linformer and Sigmoid attention are not supported in ReZero"
+          " Transformer."
+      )
     if self._num_kv_heads is not None and self._src_block_size is not None:
       raise ValueError(
           "Block sparse attention does not support Multi-query attention."
@@ -284,6 +297,12 @@ class ReZeroTransformer(tf_keras.layers.Layer):
             tf_keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
             tf_keras.constraints.serialize(self._bias_constraint),
+        "linformer_dim": self._linformer_dim,
+        "linformer_shared_kv_projection": (
+            self._linformer_shared_kv_projection
+        ),
+        "use_sigmoid_attn": self._use_sigmoid_attn,
+        "sigmoid_attn_bias": self._sigmoid_attn_bias,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
