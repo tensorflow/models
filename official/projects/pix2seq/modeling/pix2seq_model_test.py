@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for Pix2Seq model."""
+
 import numpy as np
 import tensorflow as tf, tf_keras
 from official.projects.pix2seq.modeling import pix2seq_model
@@ -97,7 +98,7 @@ class Pix2SeqTest(tf.test.TestCase):
 
     self.assertLen(tokens, 2)  # intermediate decoded outputs.
 
-  def test_forward_infer_with_eos(self):
+  def test_forward_infer_with_early_stopping(self):
     hidden_size = 256
     num_heads = 8
     max_seq_len = 50
@@ -113,7 +114,7 @@ class Pix2SeqTest(tf.test.TestCase):
         vocab_size,
         hidden_size,
         num_heads=num_heads,
-        eos_token=0,
+        early_stopping_token=0,
     )
     tokens, _ = model(
         tf.ones((batch_size, image_size, image_size, 3)),
@@ -166,7 +167,7 @@ class Pix2SeqTest(tf.test.TestCase):
     )
     cond = pix2seq_model._create_cond_fn(
         seq_len=tokens.shape[0],
-        eos_token=None,
+        early_stopping_token=None,
         prompt_len=1,
     )
     expected_results = [True, True, True, True, True, True, False]
@@ -196,7 +197,7 @@ class Pix2SeqTest(tf.test.TestCase):
     )
     cond = pix2seq_model._create_cond_fn(
         seq_len=tokens.shape[0],
-        eos_token=1,
+        early_stopping_token=1,
         prompt_len=1,
     )
     expected_results = [True, True, True, True, True, False, False]
@@ -213,7 +214,7 @@ class Pix2SeqTest(tf.test.TestCase):
     tokens = tf.constant(
         # pyformat: disable
         [
-            [1, 1, 1],  # EOS within prompt should be ignored.
+            [1, 1, 1],  # Early stopping token within prompt should be ignored.
             [0, 0, 0],
             [0, 1, 0],
             [1, 0, 0],  # Should keep inferencing until the end.
@@ -223,7 +224,7 @@ class Pix2SeqTest(tf.test.TestCase):
     )
     cond = pix2seq_model._create_cond_fn(
         seq_len=tokens.shape[0],
-        eos_token=1,
+        early_stopping_token=1,
         prompt_len=1,
     )
     expected_results = [True, True, True, False]
