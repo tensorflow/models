@@ -241,7 +241,7 @@ class Pix2Seq(tf_keras.Model):
       temperature=1.0,
       top_k=0,
       top_p=0.4,
-      eos_token: int | None = None,
+      early_stopping_token: int | None = None,
       **kwargs
   ):
     super().__init__(**kwargs)
@@ -282,7 +282,7 @@ class Pix2Seq(tf_keras.Model):
     self._temperature = temperature
     self._top_k = top_k
     self._top_p = top_p
-    self._eos_token = eos_token
+    self._early_stopping_token = early_stopping_token
 
   @property
   def backbone(self) -> tf_keras.Model:
@@ -307,7 +307,7 @@ class Pix2Seq(tf_keras.Model):
         "temperature": self._temperature,
         "top_k": self._top_k,
         "top_p": self._top_p,
-        "eos_token": self._eos_token,
+        "early_stopping_token": self._early_stopping_token,
         "num_heads": self._num_heads,
     }
 
@@ -379,18 +379,20 @@ class Pix2Seq(tf_keras.Model):
           temperature=self._temperature,
           top_k=self._top_k,
           top_p=self._top_p,
-          eos_token=self._eos_token,
+          early_stopping_token=self._early_stopping_token,
       )
 
     return [tokens, logits]
 
 
-def _create_cond_fn(seq_len: int, eos_token: int | None, prompt_len: int):
+def _create_cond_fn(
+    seq_len: int, early_stopping_token: int | None, prompt_len: int
+):
   """Returns a loop condition for decoder.
 
   Args:
     seq_len: the maximum sequence length.
-    eos_token: if not None, enable early termination based on end-of-sequence
+    early_stopping_token: if not None, enable early termination based on this
       token.
     prompt_len: the length of prompt sequence.
   """
@@ -399,12 +401,14 @@ def _create_cond_fn(seq_len: int, eos_token: int | None, prompt_len: int):
     del caches
     del logits
     within_seq_len = (seq_len > prompt_len) & (step < seq_len - 1)
-    if eos_token is None:
+    if early_stopping_token is None:
       return within_seq_len
     else:
       tokens = tokens[prompt_len:step]
-      reached_eos = tf.reduce_all(tf.reduce_any(tokens == eos_token, axis=0))
-      return within_seq_len & tf.logical_not(reached_eos)
+      reached_early_stopping = tf.reduce_all(
+          tf.reduce_any(tokens == early_stopping_token, axis=0)
+      )
+      return within_seq_len & tf.logical_not(reached_early_stopping)
 
   return cond
 
@@ -557,7 +561,7 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       top_k=0,
       top_p=0.4,
       sampling_callback=None,
-      eos_token: int | None = None,
+      early_stopping_token: int | None = None,
   ):
     """Autoregressive (without teacher-forcing) prediction.
 
@@ -579,11 +583,11 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       sampling_callback: a callbak `function` that take `next_logits`, and
         return `next_token`. This is used when users need a specific logic for
         sampling. Default to `None` with standard free-form sampling.
-      eos_token: if not None, stop inference early based on this end-of-sequence
-        (EOS) token. This won't change sequence length. However, for each
-        sequence, the tokens after the EOS token will be set to the EOS token
-        and logit values will have undefined behavior based on implementation
-        detail.
+      early_stopping_token: if not None, stop inference early based on this
+        token. This won't change sequence length, however. For each sequence,
+        the tokens after the early stopping token will be filled with the early
+        stopping token and logit values will have undefined behavior based on
+        implementation detail.
 
     Returns:
       sampled tokens with shape of (bsz, max_seq_len-prompt_len).
@@ -692,18 +696,20 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     )
     step, _, tokens_var, logits_var = tf.while_loop(
         cond=_create_cond_fn(
-            seq_len=seq_len, eos_token=eos_token, prompt_len=prompt_len
+            seq_len=seq_len,
+            early_stopping_token=early_stopping_token,
+            prompt_len=prompt_len,
         ),
         body=loop_body,
         loop_vars=[step, caches_var, tokens_var, logits_var],
     )
 
-    # If stopping early based on eos_token, assign eos_token to all tokens after
-    # stopping occurs.
-    if eos_token is not None:
+    # If stopping early based on early_stopping_token, assign
+    # early_stopping_token to all tokens after stopping occurs.
+    if early_stopping_token is not None:
       tokens_var = tf.where(
           tf.range(seq_len)[:, tf.newaxis] >= step,
-          tf.cast(eos_token, tokens_var.dtype),
+          tf.cast(early_stopping_token, tokens_var.dtype),
           tokens_var,
       )
 

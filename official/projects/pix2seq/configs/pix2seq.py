@@ -132,7 +132,7 @@ class Pix2Seq(hyperparams.Config):
   temperature: float = 1.0
   top_k: int = 0
   top_p: float = 0.4
-  eos_token: int | None = None
+  early_stopping_token: int | None = None
 
 
 @dataclasses.dataclass
