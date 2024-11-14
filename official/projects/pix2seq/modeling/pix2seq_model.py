@@ -65,7 +65,6 @@ def add_vocab_token_emb(
     self,
     vocab_size,
     dim,
-    shared_embedding,
     output_bias,
     name_prefix=None,
     initializer=None,
@@ -75,23 +74,11 @@ def add_vocab_token_emb(
     name_prefix = self.name
   if initializer is None:
     initializer = get_variable_initializer()
-  if shared_embedding:
-    self.token_embedding = self.add_weight(
-        shape=[vocab_size, dim],
-        initializer=initializer,
-        name="%s/token_embedding" % name_prefix,
-    )
-  else:
-    self.inp_token_embedding = self.add_weight(
-        shape=[vocab_size, dim],
-        initializer=initializer,
-        name="%s/inp_token_embedding" % name_prefix,
-    )
-    self.outp_token_embedding = self.add_weight(
-        shape=[vocab_size, dim],
-        initializer=initializer,
-        name="%s/outp_token_embedding" % name_prefix,
-    )
+  self.token_embedding = self.add_weight(
+      shape=[vocab_size, dim],
+      initializer=initializer,
+      name="%s/token_embedding" % name_prefix,
+  )
   if output_bias:
     self.outp_bias = self.add_weight(
         shape=[vocab_size],
@@ -427,7 +414,6 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
       drop_path=0.1,
       drop_units=0.1,
       drop_att=0.0,
-      shared_embedding=True,
       output_bias=True,
       num_heads=8,
       **kwargs
@@ -442,7 +428,6 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     self._drop_path = drop_path
     self._drop_units = drop_units
     self._drop_att = drop_att
-    self._shared_embedding = shared_embedding
     self._output_bias = output_bias
     self._num_heads = num_heads
 
@@ -453,7 +438,6 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
         self,
         self._vocab_size,
         self._hidden_size,
-        self._shared_embedding,
         self._output_bias,
     )
 
@@ -511,7 +495,6 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
         "drop_path": self._drop_path,
         "drop_units": self._drop_units,
         "drop_att": self._drop_att,
-        "shared_embedding": self._shared_embedding,
         "output_bias": self._output_bias,
         "num_heads": self._num_heads,
     }
