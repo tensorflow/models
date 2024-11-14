@@ -41,8 +41,6 @@ in place that uses it.
 """
 from typing import Union, Mapping, Optional
 
-# Import libraries
-
 import tensorflow as tf, tf_keras
 
 from official.core import registry

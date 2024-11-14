@@ -15,7 +15,6 @@
 """Contains definitions for MobilenetEdgeTPU image classification models."""
 from typing import Any, Dict, Optional, Text
 
-# Import libraries
 from absl import logging
 import tensorflow as tf, tf_keras
 
