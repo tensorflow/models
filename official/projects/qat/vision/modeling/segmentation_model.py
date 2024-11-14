@@ -15,7 +15,6 @@
 """Build segmentation models."""
 from typing import Any, Mapping, Union
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 layers = tf_keras.layers

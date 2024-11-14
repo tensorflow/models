@@ -14,7 +14,6 @@
 
 """A script to export the image classification as a TF-Hub SavedModel."""
 
-# Import libraries
 from absl import app
 from absl import flags
 
