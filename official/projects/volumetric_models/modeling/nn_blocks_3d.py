@@ -16,7 +16,6 @@
 
 from typing import Sequence, Union
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
