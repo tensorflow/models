@@ -17,7 +17,6 @@
 import json
 
 # pylint: disable=g-bad-import-order
-# Import libraries
 from absl import app
 from absl import flags
 import tensorflow as tf, tf_keras
