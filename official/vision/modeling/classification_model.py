@@ -15,7 +15,6 @@
 """Build classification models."""
 
 from typing import Any, Mapping, Optional
-# Import libraries
 import tensorflow as tf, tf_keras
 
 layers = tf_keras.layers

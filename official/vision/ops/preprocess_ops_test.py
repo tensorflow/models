@@ -16,8 +16,6 @@
 
 import io
 
-# Import libraries
-
 from absl.testing import parameterized
 import numpy as np
 from PIL import Image

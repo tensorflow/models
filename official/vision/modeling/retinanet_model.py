@@ -16,7 +16,6 @@
 import collections
 from typing import Any, Mapping, List, Optional, Union, Sequence
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.ops import anchor
