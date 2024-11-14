@@ -14,7 +14,6 @@
 
 """Box related ops."""
 
-# Import libraries
 import numpy as np
 import tensorflow as tf, tf_keras
 

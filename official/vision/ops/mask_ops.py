@@ -17,8 +17,6 @@
 import math
 from typing import List, Tuple
 
-# Import libraries
-
 import cv2
 import numpy as np
 import tensorflow as tf, tf_keras

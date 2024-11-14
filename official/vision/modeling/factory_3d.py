@@ -14,7 +14,6 @@
 
 """Factory methods to build models."""
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.core import registry
