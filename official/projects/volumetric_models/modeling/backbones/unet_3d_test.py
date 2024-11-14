@@ -14,7 +14,6 @@
 
 """Tests for 3D UNet backbone."""
 
-# Import libraries
 from absl.testing import parameterized
 import tensorflow as tf, tf_keras
 

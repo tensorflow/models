@@ -15,7 +15,6 @@
 """Tests for nn_blocks."""
 
 from typing import Any, Iterable, Tuple
-# Import libraries
 from absl.testing import parameterized
 import tensorflow as tf, tf_keras
 

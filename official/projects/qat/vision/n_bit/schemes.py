@@ -15,8 +15,6 @@
 """Quantization schemes."""
 from typing import Type
 
-# Import libraries
-
 import tensorflow as tf, tf_keras
 
 import tensorflow_model_optimization as tfmot

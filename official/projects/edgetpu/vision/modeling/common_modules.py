@@ -14,7 +14,6 @@
 
 """Common modeling utilities."""
 from typing import Optional, Tuple
-# Import libraries
 import numpy as np
 import tensorflow as tf, tf_keras
 import tensorflow.compat.v1 as tf1

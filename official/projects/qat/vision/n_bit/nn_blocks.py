@@ -15,8 +15,6 @@
 """Contains quantized neural blocks for the QAT."""
 from typing import Any, Dict, Optional, Sequence, Union
 
-# Import libraries
-
 from absl import logging
 import tensorflow as tf, tf_keras
 
