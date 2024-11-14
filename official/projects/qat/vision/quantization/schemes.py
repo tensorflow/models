@@ -13,8 +13,6 @@
 # limitations under the License.
 
 """Quantization schemes."""
-# Import libraries
-
 import tensorflow_model_optimization as tfmot
 from official.projects.qat.vision.quantization import layer_transforms
 

@@ -14,7 +14,6 @@
 
 """Tests for configs.py."""
 
-# Import libraries
 from absl.testing import parameterized
 
 import numpy as np

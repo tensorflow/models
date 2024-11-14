@@ -14,7 +14,6 @@
 
 """Losses used for detection models."""
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 

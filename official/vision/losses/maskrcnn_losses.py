@@ -14,7 +14,6 @@
 
 """Losses for maskrcnn model."""
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 
