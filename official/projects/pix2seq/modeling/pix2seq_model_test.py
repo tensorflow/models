@@ -14,25 +14,32 @@
 
 """Tests for Pix2Seq model."""
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras
 from official.projects.pix2seq.modeling import pix2seq_model
 from official.vision.modeling.backbones import resnet
 
 
-class Pix2SeqTest(tf.test.TestCase):
+class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_forward(self):
+  @parameterized.named_parameters(
+      ('One backbone', 1),
+      ('Two backbones', 2),
+  )
+  def test_forward(self, num_backbones: int):
     hidden_size = 256
     num_heads = 8
     max_seq_len = 50
     vocab_size = 164
     image_size = 224
     batch_size = 2
-    backbone = resnet.ResNet(50, bn_trainable=False)
+    backbones = [
+        resnet.ResNet(50, bn_trainable=False) for _ in range(num_backbones)
+    ]
     backbone_endpoint_name = '5'
     model = pix2seq_model.Pix2Seq(
-        backbone,
+        backbones,
         backbone_endpoint_name,
         max_seq_len,
         vocab_size,
@@ -40,24 +47,30 @@ class Pix2SeqTest(tf.test.TestCase):
         num_heads=num_heads,
     )
     _, outs = model(
-        tf.ones((batch_size, image_size, image_size, 3)),
+        tf.ones((batch_size, num_backbones, image_size, image_size, 3)),
         tf.ones((batch_size, max_seq_len), tf.int64),
         True,
     )
 
     self.assertLen(outs, 2)  # intermediate decoded outputs.
 
-  def test_forward_infer_teacher_forcing(self):
+  @parameterized.named_parameters(
+      ('One backbone', 1),
+      ('Two backbones', 2),
+  )
+  def test_forward_infer_teacher_forcing(self, num_backbones: int):
     hidden_size = 256
     num_heads = 8
     max_seq_len = 50
     vocab_size = 164
     image_size = 224
     batch_size = 2
-    backbone = resnet.ResNet(50, bn_trainable=False)
+    backbones = [
+        resnet.ResNet(50, bn_trainable=False) for _ in range(num_backbones)
+    ]
     backbone_endpoint_name = '5'
     model = pix2seq_model.Pix2Seq(
-        backbone,
+        backbones,
         backbone_endpoint_name,
         max_seq_len,
         vocab_size,
@@ -65,7 +78,7 @@ class Pix2SeqTest(tf.test.TestCase):
         num_heads=num_heads,
     )
     _, outs = model(
-        tf.ones((batch_size, image_size, image_size, 3)),
+        tf.ones((batch_size, num_backbones, image_size, image_size, 3)),
         tf.ones((batch_size, max_seq_len), tf.int64),
         training=False,
         use_teacher_forcing_for_eval=True,
@@ -73,17 +86,23 @@ class Pix2SeqTest(tf.test.TestCase):
 
     self.assertLen(outs, 2)  # intermediate decoded outputs.
 
-  def test_forward_infer(self):
+  @parameterized.named_parameters(
+      ('One backbone', 1),
+      ('Two backbones', 2),
+  )
+  def test_forward_infer(self, num_backbones: int):
     hidden_size = 256
     num_heads = 8
     max_seq_len = 50
     vocab_size = 600
     image_size = 640
     batch_size = 2
-    backbone = resnet.ResNet(50, bn_trainable=False)
+    backbones = [
+        resnet.ResNet(50, bn_trainable=False) for _ in range(num_backbones)
+    ]
     backbone_endpoint_name = '5'
     model = pix2seq_model.Pix2Seq(
-        backbone,
+        backbones,
         backbone_endpoint_name,
         max_seq_len,
         vocab_size,
@@ -91,7 +110,7 @@ class Pix2SeqTest(tf.test.TestCase):
         num_heads=num_heads,
     )
     tokens, _ = model(
-        tf.ones((batch_size, image_size, image_size, 3)),
+        tf.ones((batch_size, num_backbones, image_size, image_size, 3)),
         tf.ones((batch_size, 1), tf.int64) * 10,
         False,
     )
@@ -108,7 +127,7 @@ class Pix2SeqTest(tf.test.TestCase):
     backbone = resnet.ResNet(50, bn_trainable=False)
     backbone_endpoint_name = '5'
     model = pix2seq_model.Pix2Seq(
-        backbone,
+        [backbone],
         backbone_endpoint_name,
         max_seq_len,
         vocab_size,
@@ -117,7 +136,7 @@ class Pix2SeqTest(tf.test.TestCase):
         early_stopping_token=0,
     )
     tokens, _ = model(
-        tf.ones((batch_size, image_size, image_size, 3)),
+        tf.ones((batch_size, 1, image_size, image_size, 3)),
         tf.ones((batch_size, 1), tf.int64) * 10,
         False,
     )
@@ -134,7 +153,7 @@ class Pix2SeqTest(tf.test.TestCase):
     backbone = resnet.ResNet(50, bn_trainable=False)
     backbone_endpoint_name = '5'
     model = pix2seq_model.Pix2Seq(
-        backbone,
+        [backbone],
         backbone_endpoint_name,
         max_seq_len,
         vocab_size,
@@ -142,7 +161,7 @@ class Pix2SeqTest(tf.test.TestCase):
         num_heads=num_heads,
     )
     tokens, _ = model(
-        tf.ones((batch_size, image_size, image_size, 3)),
+        tf.ones((batch_size, 1, image_size, image_size, 3)),
         tf.ones((batch_size, 2), tf.int64) * 10,
         False,
     )
