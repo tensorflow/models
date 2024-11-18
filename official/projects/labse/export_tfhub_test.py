@@ -16,7 +16,6 @@
 
 import os
 
-# Import libraries
 import numpy as np
 import tensorflow as tf, tf_keras
 import tensorflow_hub as hub
