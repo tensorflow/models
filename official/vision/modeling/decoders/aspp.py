@@ -15,8 +15,6 @@
 """Contains definitions of Atrous Spatial Pyramid Pooling (ASPP) decoder."""
 from typing import Any, List, Mapping, Optional, Union
 
-# Import libraries
-
 import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
