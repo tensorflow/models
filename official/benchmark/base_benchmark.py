@@ -17,8 +17,6 @@
 import os
 import pprint
 from typing import Optional
-# Import libraries
-
 from absl import logging
 import gin
 import tensorflow as tf, tf_keras
