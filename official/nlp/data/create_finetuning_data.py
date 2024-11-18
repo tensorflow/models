@@ -18,7 +18,6 @@ import functools
 import json
 import os
 
-# Import libraries
 from absl import app
 from absl import flags
 import tensorflow as tf, tf_keras

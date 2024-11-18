@@ -17,8 +17,6 @@
 import dataclasses
 from typing import List, Optional, Sequence
 
-# Import libraries
-
 from official.core import config_definitions as cfg
 from official.modeling import hyperparams
 
