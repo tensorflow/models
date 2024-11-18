@@ -15,7 +15,6 @@
 """3D Backbones configurations."""
 from typing import Optional, Tuple
 
-# Import libraries
 import dataclasses
 
 from official.modeling import hyperparams

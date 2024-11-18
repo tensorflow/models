@@ -17,8 +17,6 @@
 import copy
 import json
 
-# Import libraries
-
 from absl import logging
 import numpy as np
 from PIL import Image

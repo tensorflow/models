@@ -28,7 +28,6 @@ See also: https://github.com/cocodataset/cocoapi/
 
 import atexit
 import tempfile
-# Import libraries
 from absl import logging
 import numpy as np
 from pycocotools import cocoeval

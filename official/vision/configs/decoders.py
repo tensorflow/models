@@ -16,8 +16,6 @@
 import dataclasses
 from typing import List, Optional
 
-# Import libraries
-
 from official.modeling import hyperparams
 
 

@@ -14,7 +14,6 @@
 
 """Run masked LM/next sentence pre-training for BERT in TF 2.x."""
 
-# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
