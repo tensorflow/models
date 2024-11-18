@@ -16,7 +16,6 @@
 
 from typing import Callable, Optional
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams

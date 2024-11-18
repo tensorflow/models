@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Tests for SpineNet."""
-# Import libraries
 from absl.testing import parameterized
 import tensorflow as tf, tf_keras
 

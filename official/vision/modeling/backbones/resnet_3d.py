@@ -15,7 +15,6 @@
 """Contains definitions of 3D Residual Networks."""
 from typing import Callable, List, Tuple, Optional
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams
