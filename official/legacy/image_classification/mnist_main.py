@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import os
 
-# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
