@@ -59,7 +59,8 @@ class Pix2SeqTask(base_task.Task):
     )
 
     model = pix2seq_model.Pix2Seq(
-        backbone=backbone,
+        # TODO: b/378885339 - Support multiple backbones from the config.
+        backbones=[backbone],
         backbone_endpoint_name=config.backbone_endpoint_name,
         max_seq_len=config.max_num_instances * 5,
         vocab_size=config.vocab_size,
@@ -89,7 +90,7 @@ class Pix2SeqTask(base_task.Task):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
 
     if self._task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(model=model)
+      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
       logging.info(
@@ -99,7 +100,8 @@ class Pix2SeqTask(base_task.Task):
       if self.task_config.model.backbone.type == 'uvit':
         model.backbone.load_checkpoint(ckpt_filepath=ckpt_dir_or_file)
       else:
-        ckpt = tf.train.Checkpoint(backbone=model.backbone)
+        # TODO: b/378885339 - Support multiple backbones from the config.
+        ckpt = tf.train.Checkpoint(backbone=model.backbones[0])
         status = ckpt.restore(ckpt_dir_or_file)
         status.expect_partial().assert_existing_objects_matched()
       logging.info(
