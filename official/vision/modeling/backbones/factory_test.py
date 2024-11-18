@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Tests for factory functions."""
-# Import libraries
 from absl.testing import parameterized
 import tensorflow as tf, tf_keras
 

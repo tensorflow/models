@@ -17,8 +17,6 @@
 import math
 from typing import Any, List, Tuple
 
-# Import libraries
-
 import tensorflow as tf, tf_keras
 
 from official.modeling import hyperparams

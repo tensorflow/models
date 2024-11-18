@@ -15,7 +15,6 @@
 """Contains definitions of RevNet."""
 
 from typing import Any, Callable, Dict, Optional
-# Import libraries
 import tensorflow as tf, tf_keras
 from official.modeling import hyperparams
 from official.modeling import tf_utils
