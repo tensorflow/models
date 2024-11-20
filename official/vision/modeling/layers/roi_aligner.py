@@ -38,10 +38,12 @@ class MultilevelROIAligner(tf_keras.layers.Layer):
     }
     super(MultilevelROIAligner, self).__init__(**kwargs)
 
-  def call(self,
-           features: Mapping[str, tf.Tensor],
-           boxes: tf.Tensor,
-           training: bool = None):
+  def call(
+      self,  # pytype: disable=annotation-type-mismatch
+      features: Mapping[str, tf.Tensor],
+      boxes: tf.Tensor,
+      training: bool = None,
+  ):
     """Generates ROIs.
 
     Args:
