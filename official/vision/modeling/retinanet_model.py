@@ -81,12 +81,14 @@ class RetinaNetModel(tf_keras.Model):
     self._detection_generator = detection_generator
     self._anchor_boxes = anchor_boxes
 
-  def call(self,
-           images: Union[tf.Tensor, Sequence[tf.Tensor]],
-           image_shape: Optional[tf.Tensor] = None,
-           anchor_boxes: Mapping[str, tf.Tensor] | None = None,
-           output_intermediate_features: bool = False,
-           training: bool = None) -> Mapping[str, tf.Tensor]:
+  def call(
+      self,  # pytype: disable=annotation-type-mismatch
+      images: Union[tf.Tensor, Sequence[tf.Tensor]],
+      image_shape: Optional[tf.Tensor] = None,
+      anchor_boxes: Mapping[str, tf.Tensor] | None = None,
+      output_intermediate_features: bool = False,
+      training: bool = None,
+  ) -> Mapping[str, tf.Tensor]:
     """Forward pass of the RetinaNet model.
 
     Args:
