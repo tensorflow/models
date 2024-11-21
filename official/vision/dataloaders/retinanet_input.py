@@ -39,8 +39,8 @@ class Parser(parser.Parser):
 
   def __init__(self,
                output_size,
-               max_level,
                min_level: Optional[int] = None,
+               max_level,
                num_scales: Optional[int] = None,
                aspect_ratios: Optional[List[float]] = None,
                anchor_size: Optional[float] = None,
