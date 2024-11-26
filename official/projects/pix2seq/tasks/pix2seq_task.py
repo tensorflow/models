@@ -32,7 +32,7 @@ from official.vision.dataloaders import tf_example_decoder
 from official.vision.dataloaders import tfds_factory
 from official.vision.dataloaders import tf_example_label_map_decoder
 from official.vision.evaluation import coco_evaluator
-from official.vision.modeling import backbones
+from official.vision.modeling import backbones as backbones_lib
 
 
 @task_factory.register_task_cls(pix2seq_cfg.Pix2SeqTask)
@@ -44,24 +44,34 @@ class Pix2SeqTask(base_task.Task):
   post-processing, and customized metrics with reduction.
   """
 
-  def build_model(self):
-    """Build Pix2Seq model."""
+  def _build_backbones_and_endpoint_names(
+      self,
+  ) -> tuple[list[tf_keras.Model], list[str]]:
+    """Build backbones and returns their corresponding endpoint names."""
     config: pix2seq_cfg.Pix2Seq = self._task_config.model
-
     input_specs = tf_keras.layers.InputSpec(
         shape=[None] + config.input_size
     )
+    backbones = []
+    endpoint_names = []
+    for backbone_config in config.backbones:
+      backbone = backbones_lib.factory.build_backbone(
+          input_specs=input_specs,
+          backbone_config=backbone_config,
+          norm_activation_config=backbone_config.norm_activation,
+      )
+      backbone.trainable = not backbone_config.freeze
+      backbones.append(backbone)
+      endpoint_names.append(backbone_config.endpoint_name)
+    return backbones, endpoint_names
 
-    backbone = backbones.factory.build_backbone(
-        input_specs=input_specs,
-        backbone_config=config.backbone,
-        norm_activation_config=config.norm_activation,
-    )
-
+  def build_model(self):
+    """Build Pix2Seq model."""
+    config: pix2seq_cfg.Pix2Seq = self._task_config.model
+    backbones, endpoint_names = self._build_backbones_and_endpoint_names()
     model = pix2seq_model.Pix2Seq(
-        # TODO: b/378885339 - Support multiple backbones from the config.
-        backbones=[backbone],
-        backbone_endpoint_name=config.backbone_endpoint_name,
+        backbones=backbones,
+        backbone_endpoint_name=endpoint_names,
         max_seq_len=config.max_num_instances * 5,
         vocab_size=config.vocab_size,
         hidden_size=config.hidden_size,
@@ -78,41 +88,64 @@ class Pix2SeqTask(base_task.Task):
     )
     return model
 
+  def _get_ckpt(self, ckpt_dir_or_file: str) -> str:
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      return tf.train.latest_checkpoint(ckpt_dir_or_file)
+    return ckpt_dir_or_file
+
   def initialize(self, model: tf_keras.Model):
     """Loading pretrained checkpoint."""
-    if not self._task_config.init_checkpoint:
-      return
-
-    ckpt_dir_or_file = self._task_config.init_checkpoint
-
-    # Restoring checkpoint.
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
-      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
-
-    if self._task_config.init_checkpoint_modules == 'all':
-      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.expect_partial().assert_existing_objects_matched()
-      logging.info(
-          'Finished loading pretrained checkpoint from %s', ckpt_dir_or_file
-      )
-    elif self._task_config.init_checkpoint_modules == 'backbone':
-      if self.task_config.model.backbone.type == 'uvit':
-        model.backbone.load_checkpoint(ckpt_filepath=ckpt_dir_or_file)
-      else:
-        # TODO: b/378885339 - Support multiple backbones from the config.
-        ckpt = tf.train.Checkpoint(backbone=model.backbones[0])
-        status = ckpt.restore(ckpt_dir_or_file)
-        status.expect_partial().assert_existing_objects_matched()
-      logging.info(
-          'Finished loading pretrained backbone from %s', ckpt_dir_or_file
-      )
-    else:
+    if self._task_config.init_checkpoint_modules == 'backbone':
       raise ValueError(
-          f'Failed to load {ckpt_dir_or_file}. Unsupported '
-          'init_checkpoint_modules: '
+          'init_checkpoint_modules=backbone is deprecated. Specify backbone '
+          'checkpoints in each backbone config.'
+      )
+
+    if self._task_config.init_checkpoint_modules not in ['all', 'partial', '']:
+      raise ValueError(
+          'Unsupported init_checkpoint_modules: '
           f'{self._task_config.init_checkpoint_modules}'
       )
+
+    if self._task_config.init_checkpoint and any(
+        [b.init_checkpoint for b in self._task_config.model.backbones]
+    ):
+      raise ValueError(
+          'A global init_checkpoint and a backbone init_checkpoint cannot be'
+          ' specified at the same time.'
+      )
+
+    if self._task_config.init_checkpoint:
+      global_ckpt_file = self._get_ckpt(self._task_config.init_checkpoint)
+      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      status = ckpt.restore(global_ckpt_file).expect_partial()
+      if self._task_config.init_checkpoint_modules != 'partial':
+        status.assert_existing_objects_matched()
+      logging.info(
+          'Finished loading pretrained checkpoint from %s', global_ckpt_file
+      )
+    else:
+      # This case means that no global checkpoint was provided. Possibly,
+      # backbone-specific checkpoints were.
+      for backbone_config, backbone in zip(
+          self._task_config.model.backbones, model.backbones
+      ):
+        if not backbone_config.init_checkpoint:
+          continue
+
+        backbone_init_ckpt = self._get_ckpt(backbone_config.init_checkpoint)
+        if backbone_config.type == 'uvit':
+          # The UVit object has a special function called load_checkpoint.
+          # The other backbones do not.
+          backbone.load_checkpoint(ckpt_filepath=backbone_init_ckpt)
+        else:
+          ckpt = tf.train.Checkpoint(backbone=backbone)
+          status = ckpt.restore(backbone_init_ckpt)
+          status.expect_partial().assert_existing_objects_matched()
+
+        logging.info(
+            'Finished loading pretrained backbone from %s', backbone_init_ckpt
+        )
 
   def build_inputs(
       self, params, input_context: Optional[tf.distribute.InputContext] = None

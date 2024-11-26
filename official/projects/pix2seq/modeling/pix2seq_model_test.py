@@ -37,10 +37,10 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
     backbones = [
         resnet.ResNet(50, bn_trainable=False) for _ in range(num_backbones)
     ]
-    backbone_endpoint_name = '5'
+    backbone_endpoint_names = ['5' for _ in range(num_backbones)]
     model = pix2seq_model.Pix2Seq(
         backbones,
-        backbone_endpoint_name,
+        backbone_endpoint_names,
         max_seq_len,
         vocab_size,
         hidden_size,
@@ -68,10 +68,10 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
     backbones = [
         resnet.ResNet(50, bn_trainable=False) for _ in range(num_backbones)
     ]
-    backbone_endpoint_name = '5'
+    backbone_endpoint_names = ['5' for _ in range(num_backbones)]
     model = pix2seq_model.Pix2Seq(
         backbones,
-        backbone_endpoint_name,
+        backbone_endpoint_names,
         max_seq_len,
         vocab_size,
         hidden_size,
@@ -100,10 +100,10 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
     backbones = [
         resnet.ResNet(50, bn_trainable=False) for _ in range(num_backbones)
     ]
-    backbone_endpoint_name = '5'
+    backbone_endpoint_names = ['5' for _ in range(num_backbones)]
     model = pix2seq_model.Pix2Seq(
         backbones,
-        backbone_endpoint_name,
+        backbone_endpoint_names,
         max_seq_len,
         vocab_size,
         hidden_size,
@@ -125,10 +125,10 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
     image_size = 640
     batch_size = 2
     backbone = resnet.ResNet(50, bn_trainable=False)
-    backbone_endpoint_name = '5'
+    backbone_endpoint_names = ['5']
     model = pix2seq_model.Pix2Seq(
         [backbone],
-        backbone_endpoint_name,
+        backbone_endpoint_names,
         max_seq_len,
         vocab_size,
         hidden_size,
@@ -151,10 +151,10 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
     image_size = 640
     batch_size = 2
     backbone = resnet.ResNet(50, bn_trainable=False)
-    backbone_endpoint_name = '5'
+    backbone_endpoint_names = ['5']
     model = pix2seq_model.Pix2Seq(
         [backbone],
-        backbone_endpoint_name,
+        backbone_endpoint_names,
         max_seq_len,
         vocab_size,
         hidden_size,
