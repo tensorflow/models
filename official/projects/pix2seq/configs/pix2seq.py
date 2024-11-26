@@ -99,11 +99,20 @@ class Backbone(backbones.Backbone):
   resnet: backbones.ResNet = dataclasses.field(default_factory=backbones.ResNet)
   uvit: uvit_backbones.VisionTransformer = dataclasses.field(
       default_factory=uvit_backbones.VisionTransformer)
+  # Whether to freeze this backbone during training.
+  freeze: bool = False
+  # The endpoint name of the features to extract from the backbone.
+  endpoint_name: str = '5'
+  norm_activation: common.NormActivation = dataclasses.field(
+      default_factory=common.NormActivation
+  )
+  # Optional checkpoint to load for this backbone.
+  init_checkpoint: Optional[str] = None
 
 
 @dataclasses.dataclass
 class Pix2Seq(hyperparams.Config):
-  """Pix2Seq model definations."""
+  """Pix2Seq model definitions."""
 
   max_num_instances: int = 100
   hidden_size: int = 256
@@ -115,16 +124,16 @@ class Pix2Seq(hyperparams.Config):
   shared_decoder_embedding: bool = True
   decoder_output_bias: bool = True
   input_size: List[int] = dataclasses.field(default_factory=list)
-  backbone: Backbone = dataclasses.field(
-      default_factory=lambda: Backbone(  # pylint: disable=g-long-lambda
-          type='resnet',
-          resnet=backbones.ResNet(model_id=50, bn_trainable=False),
-      )
+  # Backbones for each image modality. If just using RGB, you should only set
+  # one backbone.
+  backbones: List[Backbone] = dataclasses.field(
+      default_factory=lambda: [
+          Backbone(  # pylint: disable=g-long-lambda
+              type='resnet',
+              resnet=backbones.ResNet(model_id=50, bn_trainable=False),
+          )
+      ]
   )
-  norm_activation: common.NormActivation = dataclasses.field(
-      default_factory=common.NormActivation
-  )
-  backbone_endpoint_name: str = '5'
   drop_path: float = 0.1
   drop_units: float = 0.1
   drop_att: float = 0.0
@@ -172,13 +181,16 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
           ),
           model=Pix2Seq(
               input_size=[640, 640, 3],
-              norm_activation=common.NormActivation(
-                  norm_momentum=0.9,
-                  norm_epsilon=1e-5,
-                  use_sync_bn=True),
-              backbone=Backbone(
-                  type='resnet', resnet=backbones.ResNet(model_id=50)
-              ),
+              backbones=[
+                  Backbone(
+                      type='resnet',
+                      resnet=backbones.ResNet(model_id=50),
+                      norm_activation=common.NormActivation(
+                          norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=True
+                      ),
+                      init_checkpoint='',
+                  )
+              ],
           ),
           losses=Losses(l2_weight_decay=0.0),
           train_data=DataConfig(
@@ -188,7 +200,7 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
               shuffle_buffer_size=train_batch_size * 10,
               aug_scale_min=0.3,
               aug_scale_max=2.0,
-              aug_color_jitter_strength=0.0
+              aug_color_jitter_strength=0.0,
           ),
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),

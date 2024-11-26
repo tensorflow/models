@@ -215,7 +215,7 @@ class Pix2Seq(tf_keras.Model):
   def __init__(
       self,
       backbones: Sequence[tf_keras.Model],
-      backbone_endpoint_name,
+      backbone_endpoint_names: Sequence[str],
       max_seq_len,
       vocab_size,
       hidden_size,
@@ -233,7 +233,7 @@ class Pix2Seq(tf_keras.Model):
   ):
     super().__init__(**kwargs)
     self._backbones = backbones
-    self._backbone_endpoint_name = backbone_endpoint_name
+    self._backbone_endpoint_names = backbone_endpoint_names
     self._max_seq_len = max_seq_len
     self._vocab_size = vocab_size
     self._hidden_size = hidden_size
@@ -285,9 +285,7 @@ class Pix2Seq(tf_keras.Model):
     return self._transformer
 
   def get_config(self):
-    return {
-        "backbone": self._backbone,
-        "backbone_endpoint_name": self._backbone_endpoint_name,
+    config = {
         "max_seq_len": self._max_seq_len,
         "vocab_size": self._vocab_size,
         "hidden_size": self._hidden_size,
@@ -302,6 +300,12 @@ class Pix2Seq(tf_keras.Model):
         "early_stopping_token": self._early_stopping_token,
         "num_heads": self._num_heads,
     }
+    config["backbone"] = self._backbones[0]
+    config["backbone_endpoint_name"] = self._backbone_endpoint_names[0]
+    for i in range(1, len(self._backbones)):
+      config[f"backbone_{i+1}"] = self._backbones[i]
+      config[f"backbone_endpoint_name_{i+1}"] = self._backbone_endpoint_names[i]
+    return config
 
   @classmethod
   def from_config(cls, config):
@@ -354,7 +358,9 @@ class Pix2Seq(tf_keras.Model):
       if use_input_as_backbone_features:
         features = inputs_i
       else:
-        features = self._backbones[i](inputs_i)[self._backbone_endpoint_name]
+        features = self._backbones[i](inputs_i)[
+            self._backbone_endpoint_names[i]
+        ]
       mask = tf.ones_like(features)
       batch_size, h, w, num_channels = get_shape(features)
       features = tf.reshape(features, [batch_size, h * w, num_channels])
