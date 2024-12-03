@@ -763,7 +763,7 @@ class MaxViT(tf_keras.Model):
       output = ops.maybe_reshape_to_1d(output)
     return output
 
-  def call(
+  def call(  # pytype: disable=annotation-type-mismatch
       self, inputs: tf.Tensor, mask: Optional[Any] = None, training: bool = None
   ) -> Mapping[str, tf.Tensor]:
     logging.info(

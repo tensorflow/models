@@ -50,7 +50,7 @@ class YoloV7(tf_keras.Model):
     self._fused = False
     return
 
-  def call(self,
+  def call(self,  # pytype: disable=annotation-type-mismatch
            inputs: tf.Tensor,
            training: bool = None,
            mask: Any = None) -> Dict[str, tf.Tensor]:

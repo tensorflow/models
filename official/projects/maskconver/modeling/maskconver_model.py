@@ -95,7 +95,7 @@ class MaskConverModel(tf_keras.Model):
         self.embedding_size,
         embeddings_regularizer=l2_regularizer)
 
-  def call(self, inputs: tf.Tensor,
+  def call(self, inputs: tf.Tensor,  # pytype: disable=annotation-type-mismatch
            image_info: Optional[tf.Tensor] = None,
            box_indices: Optional[tf.Tensor] = None,
            classes: Optional[tf.Tensor] = None,
