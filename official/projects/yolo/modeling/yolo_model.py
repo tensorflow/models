@@ -53,7 +53,7 @@ class Yolo(tf_keras.Model):
     self._detection_generator = detection_generator
     self._fused = False
 
-  def call(self,
+  def call(self,  # pytype: disable=annotation-type-mismatch
            inputs: tf.Tensor,
            training: bool = None,
            mask: Any = None) -> Dict[str, tf.Tensor]:

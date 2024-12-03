@@ -87,7 +87,7 @@ class MultiScaleMaskConverModel(tf_keras.Model):
     valid_mask = tf.abs(scoremap - scoremap_max_pool) < 1e-6
     return scoremap * tf.cast(valid_mask, scoremap.dtype)
 
-  def call(self, inputs: tf.Tensor,
+  def call(self, inputs: tf.Tensor,  # pytype: disable=annotation-type-mismatch
            image_info: Optional[tf.Tensor] = None,
            box_indices: Optional[tf.Tensor] = None,
            classes: Optional[tf.Tensor] = None,
