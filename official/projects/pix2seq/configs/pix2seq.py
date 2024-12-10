@@ -99,6 +99,13 @@ class Backbone(backbones.Backbone):
   resnet: backbones.ResNet = dataclasses.field(default_factory=backbones.ResNet)
   uvit: uvit_backbones.VisionTransformer = dataclasses.field(
       default_factory=uvit_backbones.VisionTransformer)
+
+
+@dataclasses.dataclass
+class BackboneConfig(hyperparams.Config):
+  """Configuration for backbones."""
+
+  backbone: Backbone = dataclasses.field(default_factory=Backbone)
   # Whether to freeze this backbone during training.
   freeze: bool = False
   # The endpoint name of the features to extract from the backbone.
@@ -126,11 +133,13 @@ class Pix2Seq(hyperparams.Config):
   input_size: List[int] = dataclasses.field(default_factory=list)
   # Backbones for each image modality. If just using RGB, you should only set
   # one backbone.
-  backbones: List[Backbone] = dataclasses.field(
-      default_factory=lambda: [
-          Backbone(  # pylint: disable=g-long-lambda
-              type='resnet',
-              resnet=backbones.ResNet(model_id=50, bn_trainable=False),
+  backbones: List[BackboneConfig] = dataclasses.field(
+      default_factory=lambda: [  # pylint: disable=g-long-lambda
+          BackboneConfig(
+              backbone=Backbone(
+                  type='resnet',
+                  resnet=backbones.ResNet(model_id=50, bn_trainable=False),
+              )
           )
       ]
   )
@@ -182,9 +191,11 @@ def pix2seq_r50_coco() -> cfg.ExperimentConfig:
           model=Pix2Seq(
               input_size=[640, 640, 3],
               backbones=[
-                  Backbone(
-                      type='resnet',
-                      resnet=backbones.ResNet(model_id=50),
+                  BackboneConfig(
+                      backbone=Backbone(
+                          type='resnet',
+                          resnet=backbones.ResNet(model_id=50),
+                      ),
                       norm_activation=common.NormActivation(
                           norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=True
                       ),
