@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Contains common building blocks for 3D networks."""
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
