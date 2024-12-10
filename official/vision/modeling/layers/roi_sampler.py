@@ -14,7 +14,6 @@
 
 """Contains definitions of ROI sampler."""
 from typing import Optional, Tuple, Union
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.modeling.layers import box_sampler

@@ -14,7 +14,6 @@
 
 """Contains definitions of box sampler."""
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.ops import sampling_ops

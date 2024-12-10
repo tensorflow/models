@@ -14,7 +14,6 @@
 
 """Contains definitions of ROI generator."""
 from typing import Optional, Mapping
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.ops import box_ops

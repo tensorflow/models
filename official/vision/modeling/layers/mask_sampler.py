@@ -14,7 +14,6 @@
 
 """Contains definitions of mask sampler."""
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.ops import spatial_transform_ops

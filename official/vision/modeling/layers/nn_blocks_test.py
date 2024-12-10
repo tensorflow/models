@@ -16,8 +16,6 @@
 
 from typing import Any, Iterable, Tuple
 
-# Import libraries
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras
