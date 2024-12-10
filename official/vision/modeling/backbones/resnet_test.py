@@ -67,6 +67,38 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         [1, input_size / 2**5, input_size / 2**5, 512 * endpoint_filter_scale],
         endpoints['5'].shape.as_list())
 
+  @parameterized.parameters(
+      (128, 18, 1),
+      (128, 34, 1),
+  )
+  def test_network_creation_no_first_shortcut(self, input_size, model_id,
+                                              endpoint_filter_scale):
+    """Test creation of ResNet family models."""
+    resnet_params = {
+        18: 11186112,
+        34: 21301696,
+    }
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    network = resnet.ResNet(model_id=model_id, use_first_projection=False)
+    self.assertEqual(network.count_params(), resnet_params[model_id])
+
+    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    endpoints = network(inputs)
+
+    self.assertAllEqual(
+        [1, input_size / 2**2, input_size / 2**2, 64 * endpoint_filter_scale],
+        endpoints['2'].shape.as_list())
+    self.assertAllEqual(
+        [1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale],
+        endpoints['3'].shape.as_list())
+    self.assertAllEqual(
+        [1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale],
+        endpoints['4'].shape.as_list())
+    self.assertAllEqual(
+        [1, input_size / 2**5, input_size / 2**5, 512 * endpoint_filter_scale],
+        endpoints['5'].shape.as_list())
+
   @combinations.generate(
       combinations.combine(
           strategy=[
@@ -136,7 +168,8 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
         bias_regularizer=None,
-        bn_trainable=True)
+        bn_trainable=True,
+        use_first_projection=True)
     network = resnet.ResNet(**kwargs)
 
     expected_config = dict(kwargs)
