@@ -15,7 +15,6 @@
 """XLNet classification finetuning runner in tf2.0."""
 
 import functools
-# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
