@@ -19,7 +19,6 @@ import json
 import os
 import random
 
-# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
