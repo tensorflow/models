@@ -57,7 +57,7 @@ class Pix2SeqTask(base_task.Task):
     for backbone_config in config.backbones:
       backbone = backbones_lib.factory.build_backbone(
           input_specs=input_specs,
-          backbone_config=backbone_config,
+          backbone_config=backbone_config.backbone,
           norm_activation_config=backbone_config.norm_activation,
       )
       backbone.trainable = not backbone_config.freeze
@@ -134,7 +134,7 @@ class Pix2SeqTask(base_task.Task):
           continue
 
         backbone_init_ckpt = self._get_ckpt(backbone_config.init_checkpoint)
-        if backbone_config.type == 'uvit':
+        if backbone_config.backbone.type == 'uvit':
           # The UVit object has a special function called load_checkpoint.
           # The other backbones do not.
           backbone.load_checkpoint(ckpt_filepath=backbone_init_ckpt)
