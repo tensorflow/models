@@ -14,7 +14,6 @@
 
 """Classification decoder and parser."""
 from typing import Any, Dict, List, Optional, Tuple
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.configs import common
