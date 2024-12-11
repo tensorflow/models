@@ -20,8 +20,6 @@ into (image, labels) tuple for RetinaNet.
 
 from typing import Optional
 
-# Import libraries
-
 from absl import logging
 import tensorflow as tf, tf_keras
 

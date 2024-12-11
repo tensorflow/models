@@ -15,7 +15,6 @@
 """Data loader utils."""
 from typing import Dict
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.ops import preprocess_ops

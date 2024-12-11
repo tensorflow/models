@@ -18,7 +18,6 @@ A decoder to decode string tensors containing serialized tensorflow.Example
 protos for object detection.
 """
 import csv
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.dataloaders import tf_example_decoder
