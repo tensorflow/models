@@ -14,7 +14,6 @@
 
 """Tests for transformer-based bert encoder network."""
 
-# Import libraries
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras

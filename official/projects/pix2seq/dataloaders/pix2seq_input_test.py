@@ -15,7 +15,6 @@
 """Tests for Pix2Seq input."""
 import io
 
-# Import libraries
 import numpy as np
 from PIL import Image
 import tensorflow as tf, tf_keras
