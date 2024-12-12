@@ -15,8 +15,6 @@
 """A converter for BERT pretrained checkpoint to QAT BERT checkpoint."""
 import tempfile
 
-# Import libraries
-
 from absl import app
 from absl import flags
 import tensorflow as tf, tf_keras
