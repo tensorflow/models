@@ -338,7 +338,7 @@ class for optimizing HBM usage during serving is sufficient.
 a checkpoint converter and a TF2-variant of instantiating the corresponding
 Transformer?**
 
-[JAX](https://github.com/google/jax) is the way forward at the moment for
+[JAX](https://github.com/jax-ml/jax) is the way forward at the moment for
 Gemini.
 
 --------------------------------------------------------------------------------
