@@ -14,8 +14,6 @@
 
 """Contains definitions of mobilenet_edgetpu_v2 Networks."""
 
-# Import libraries
-
 from absl import logging
 import tensorflow as tf, tf_keras
 

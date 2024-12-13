@@ -14,8 +14,6 @@
 
 """TN-BERT TNTransformerExpandCondense employing Expand-Condense layer instead of Dense."""
 # pylint: disable=g-classes-have-attributes
-# Import libraries
-
 import gin
 import tensorflow as tf, tf_keras
 

@@ -16,8 +16,6 @@
 
 from typing import List, Mapping, Optional, Union
 
-# Import libraries
-
 from absl import logging
 import tensorflow as tf, tf_keras
 
