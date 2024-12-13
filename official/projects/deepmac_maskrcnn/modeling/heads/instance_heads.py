@@ -14,8 +14,6 @@
 
 """Instance prediction heads."""
 
-# Import libraries
-
 from absl import logging
 import tensorflow as tf, tf_keras
 

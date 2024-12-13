@@ -14,8 +14,6 @@
 
 """Tests for maskrcnn_model.py."""
 
-# Import libraries
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras

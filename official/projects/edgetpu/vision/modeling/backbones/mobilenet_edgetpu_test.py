@@ -14,8 +14,6 @@
 
 """Tests for MobileNet."""
 
-# Import libraries
-
 from absl.testing import parameterized
 import tensorflow as tf, tf_keras
 
