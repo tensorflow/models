@@ -210,7 +210,7 @@ def get_eval_step(uvf_agent,
     mode: a string representing the mode=[train, explore, eval].
 
   Returns:
-    A collect_experience_op that excute an action and store into the
+    A collect_experience_op that execute an action and store into the
     replay_buffer
   """
 
