@@ -130,9 +130,13 @@ class Pix2Seq(hyperparams.Config):
   use_cls_token: bool = False
   shared_decoder_embedding: bool = True
   decoder_output_bias: bool = True
+  # The shape of the input image. For example, [640, 640, 3] for RGB.
+  # If using multiple backbones, this input size is understood to be the same
+  # for all backbones. If you need a separate input size for each backbone,
+  # please implement this behavior.
   input_size: List[int] = dataclasses.field(default_factory=list)
-  # Backbones for each image modality. If just using RGB, you should only set
-  # one backbone.
+  # Backbones for each image modality. The RGB backbone is always the first one.
+  # If just using RGB, you should only set one backbone.
   backbones: List[BackboneConfig] = dataclasses.field(
       default_factory=lambda: [  # pylint: disable=g-long-lambda
           BackboneConfig(
