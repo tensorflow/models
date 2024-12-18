@@ -21,7 +21,7 @@ from typing import Any, Optional
 from official.core.config_definitions import base_config
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(kw_only=True)
 class SlicedMetricConfig(base_config.Config):
   """Sliced metric configuration.
 
