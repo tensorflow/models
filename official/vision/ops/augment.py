@@ -1869,7 +1869,7 @@ def _parse_policy_info(name: str,
   func = NAME_TO_FUNC[name]
 
   if level_std > 0:
-    level += tf.random.normal([], dtype=tf.float32)
+    level += level_std*tf.random.normal([], dtype=tf.float32)
     level = tf.clip_by_value(level, 0., _MAX_LEVEL)
 
   args = level_to_arg(cutout_const, translate_const)[name](level)
