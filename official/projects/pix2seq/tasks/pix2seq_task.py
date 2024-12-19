@@ -78,6 +78,7 @@ class Pix2SeqTask(base_task.Task):
         num_encoder_layers=config.num_encoder_layers,
         num_decoder_layers=config.num_decoder_layers,
         drop_path=config.drop_path,
+        encoded_feature_dropout_rates=config.encoded_feature_dropout_rates,
         drop_units=config.drop_units,
         drop_att=config.drop_att,
         num_heads=config.num_heads,

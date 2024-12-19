@@ -223,6 +223,7 @@ class Pix2Seq(tf_keras.Model):
       num_encoder_layers=6,
       num_decoder_layers=6,
       drop_path=0.1,
+      encoded_feature_dropout_rates: Sequence[float] = (0.1,),
       drop_units=0.1,
       drop_att=0.0,
       temperature=1.0,
@@ -245,8 +246,15 @@ class Pix2Seq(tf_keras.Model):
     self._drop_att = drop_att
     if hidden_size % 2 != 0:
       raise ValueError("hidden_size must be a multiple of 2.")
+    if len(encoded_feature_dropout_rates) != len(self._backbones):
+      raise ValueError(
+          "The length of encoded_feature_dropout_rates must be equal to the "
+          "number of backbones."
+      )
 
-    self._dropout = tf_keras.layers.Dropout(self._drop_units)
+    self._encoder_dropouts = [
+        tf_keras.layers.Dropout(r) for r in encoded_feature_dropout_rates
+    ]
     # Separate projections and learned layer normalization for each image.
     num_backbones = len(self._backbones)
     self._stem_projections = [
@@ -365,7 +373,9 @@ class Pix2Seq(tf_keras.Model):
       batch_size, h, w, num_channels = get_shape(features)
       features = tf.reshape(features, [batch_size, h * w, num_channels])
       features = self._stem_lns[i](
-          self._stem_projections[i](self._dropout(features, training))
+          self._stem_projections[i](
+              self._encoder_dropouts[i](features, training)
+          )
       )
 
       pos_emb = position_embedding_sine(

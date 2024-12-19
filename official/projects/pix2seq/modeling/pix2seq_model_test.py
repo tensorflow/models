@@ -45,6 +45,7 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
         vocab_size,
         hidden_size,
         num_heads=num_heads,
+        encoded_feature_dropout_rates=[0.1] * num_backbones,
     )
     _, outs = model(
         tf.ones((batch_size, num_backbones, image_size, image_size, 3)),
@@ -76,6 +77,7 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
         vocab_size,
         hidden_size,
         num_heads=num_heads,
+        encoded_feature_dropout_rates=[0.1] * num_backbones,
     )
     _, outs = model(
         tf.ones((batch_size, num_backbones, image_size, image_size, 3)),
@@ -108,6 +110,7 @@ class Pix2SeqTest(tf.test.TestCase, parameterized.TestCase):
         vocab_size,
         hidden_size,
         num_heads=num_heads,
+        encoded_feature_dropout_rates=[0.1] * num_backbones,
     )
     tokens, _ = model(
         tf.ones((batch_size, num_backbones, image_size, image_size, 3)),

@@ -148,6 +148,11 @@ class Pix2Seq(hyperparams.Config):
       ]
   )
   drop_path: float = 0.1
+  # The dropout rates applied to the features extracted from each backbone.
+  encoded_feature_dropout_rates: List[float] = dataclasses.field(
+      default_factory=lambda: [0.1]
+  )
+  # The dropout rate for the transformer.
   drop_units: float = 0.1
   drop_att: float = 0.0
   norm_first: bool = True
