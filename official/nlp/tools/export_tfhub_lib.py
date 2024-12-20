@@ -21,7 +21,6 @@ import tempfile
 
 from typing import Optional, Text, Tuple
 
-# Import libraries
 from absl import logging
 import tensorflow as tf, tf_keras
 # pylint: disable=g-direct-tensorflow-import  TODO(b/175369555): Remove these.

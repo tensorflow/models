@@ -16,7 +16,6 @@
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Text
 
-# Import libraries
 from absl import logging
 import tensorflow as tf, tf_keras
 

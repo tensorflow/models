@@ -921,7 +921,7 @@ class MaskScoringQuantized(heads.MaskScoring):
 
     super().build(input_shape)
 
-  def call(self, inputs: tf.Tensor, training: bool = None):
+  def call(self, inputs: tf.Tensor, training: bool = None):  # pytype: disable=annotation-type-mismatch
     """Forward pass mask scoring head.
 
     Args:

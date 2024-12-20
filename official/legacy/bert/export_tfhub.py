@@ -20,7 +20,6 @@ see the error message in by main() for details.
 
 from typing import Text
 
-# Import libraries
 from absl import app
 from absl import flags
 from absl import logging

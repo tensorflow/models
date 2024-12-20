@@ -14,6 +14,8 @@
 
 """Tests for Keras-based transformer block layer."""
 
+import math
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras
@@ -751,7 +753,13 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         output_tensor[1].shape.as_list(), expected_attention_scores_shape
     )
 
-  def test_block_sparse_attention(self):
+  @parameterized.named_parameters(
+      ('use_softmax_attn', False),
+      ('use_softmax_attn_mqa', False, 1),
+      ('use_sigmoid_attn', True),
+      ('use_sigmoid_attn_mqa', True, 1),
+  )
+  def test_block_sparse_attention(self, use_sigmoid_attn, num_kv_heads=None):
     num_attention_heads = 8
     sequence_length = 21
     width = 80
@@ -765,6 +773,11 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         return_attention_scores=True,
         src_block_size=src_block_size,
         tgt_block_size=tgt_block_size,
+        num_kv_heads=num_kv_heads,
+        use_sigmoid_attn=use_sigmoid_attn,
+        sigmoid_attn_bias=-math.log(sequence_length)
+        if use_sigmoid_attn
+        else None,
     )
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf_keras.Input(shape=(sequence_length, width))
@@ -777,6 +790,47 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         sequence_length//src_block_size,
         src_block_size,
         tgt_block_size,
+    ]
+
+    self.assertIsInstance(output_tensor, tuple)
+    self.assertLen(output_tensor, 2)
+    # First is the standard output.
+    self.assertEqual(
+        output_tensor[0].shape.as_list(), expected_layer_output_shape
+    )
+    # Second is the attention scores.
+    self.assertEqual(
+        output_tensor[1].shape.as_list(), expected_attention_scores_shape
+    )
+
+  @parameterized.named_parameters(
+      ('unshared_kv_projection', False),
+      ('shared_kv_projection', True),
+  )
+  def test_low_rank_attention(self, shared_kv_projection):
+    num_attention_heads = 8
+    sequence_length = 21
+    linformer_dim = 7
+    width = 80
+
+    test_layer = TransformerEncoderBlock(
+        num_attention_heads=num_attention_heads,
+        inner_dim=2048,
+        inner_activation='relu',
+        return_attention_scores=True,
+        linformer_dim=linformer_dim,
+        linformer_shared_kv_projection=shared_kv_projection,
+    )
+    # Create a 3-dimensional input (the first dimension is implicit).
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    output_tensor = test_layer(data_tensor)
+
+    expected_layer_output_shape = [None, sequence_length, width]
+    expected_attention_scores_shape = [
+        None,
+        num_attention_heads,
+        sequence_length,
+        linformer_dim,
     ]
 
     self.assertIsInstance(output_tensor, tuple)

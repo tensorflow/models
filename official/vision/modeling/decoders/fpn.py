@@ -15,7 +15,6 @@
 """Contains the definitions of Feature Pyramid Networks (FPN)."""
 from typing import Any, Mapping, Optional
 
-# Import libraries
 from absl import logging
 import tensorflow as tf, tf_keras
 

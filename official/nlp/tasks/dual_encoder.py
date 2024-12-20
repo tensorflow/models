@@ -14,7 +14,6 @@
 
 """Dual encoder (retrieval) task."""
 from typing import Mapping, Tuple
-# Import libraries
 from absl import logging
 import dataclasses
 import tensorflow as tf, tf_keras

@@ -14,14 +14,43 @@
 
 """Block sparse attention converts query/key/value into blocks and performs diagonal block sparse attention."""
 import collections
+import logging
 
 import tensorflow as tf, tf_keras
+
+
+def _large_compatible_negative(tensor_type):
+  """Large negative number as Tensor.
+
+  This function is necessary because the standard value for epsilon
+  in this module (-1e9) cannot be represented using tf.float16
+
+  Args:
+      tensor_type: a dtype to determine the type.
+
+  Returns:
+      a large negative number.
+  """
+  # In case of dtype=float16 (e.g., for mixed-precision), the largest
+  # negative number (dtypes.float16.min) is divided by 2, in order to
+  # avoid overflows when summing negative inputs.
+  if tensor_type == tf.float16:
+    return tf.float16.min / 2.0
+  return -1e9
 
 
 class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
   """Multi-head block sparse attention layer."""
 
-  def __init__(self, src_block_size=None, tgt_block_size=None, **kwargs):
+  def __init__(
+      self,
+      src_block_size=None,
+      tgt_block_size=None,
+      use_sigmoid_attn=False,
+      sigmoid_attn_bias=None,
+      num_kv_heads=None,
+      **kwargs
+  ):
     """Initializes the block sparse attention layer.
 
     Args:
@@ -30,6 +59,11 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
       tgt_block_size: The block size of the key/value. An integer that divides
         the sequence length into blocks. The number of blocks in the source and
         target must be the same.
+      use_sigmoid_attn: If enabled, uses sigmoid instead of softmax to compute
+        attn probs. https://arxiv.org/pdf/2409.04431
+      sigmoid_attn_bias: Bias for sigmoid attn. Suggested value -ln(seq_len).
+      num_kv_heads: Number of key/value heads in the multi-head self attention.
+        Refer to multi_query_attention.py for more details.
       **kwargs: Args passed to the base class.
     """
     super().__init__(**kwargs)
@@ -37,11 +71,29 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
       raise ValueError("src_block_size must be specified.")
     self._src_block_size = src_block_size
     self._tgt_block_size = tgt_block_size or self._src_block_size
+    self._num_kv_heads = num_kv_heads
+    if num_kv_heads is not None and num_kv_heads != 1:
+      raise ValueError(
+          "num_kv_heads must be 1. Grouped-query attention is not supported."
+      )
+    self._use_sigmoid_attn = use_sigmoid_attn
+    self._sigmoid_attn_bias = sigmoid_attn_bias
+    if self._use_sigmoid_attn:
+      if self._sigmoid_attn_bias is None:
+        raise ValueError(
+            "sigmoid_attn_bias must be specified for sigmoid attn."
+        )
 
   def _build_from_signature(self, query, value, key=None):
     # pytype: disable=attribute-error
     super()._build_from_signature(query, value, key)
     # pytype: enable=attribute-error
+    # If block sizes are same as sequence lengths, we defer to default attn.
+    if (
+        self._query_shape[-2] == self._src_block_size
+        and self._key_shape[-2] == self._tgt_block_size
+    ):
+      return
     # The following capital letters are used to denote the tensor dimension
     # parameters:
     # B = batch size
@@ -73,22 +125,50 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
           name="query",
           **self._get_common_kwargs_for_sublayer(),
       )
-      self._key_dense = tf_keras.layers.EinsumDense(
-          proj_einsum_eqn,
-          output_shape=qk_output_shape,
-          bias_axes=bias_axes if self._use_bias else None,
-          name="key",
-          **self._get_common_kwargs_for_sublayer(),
-      )
-      self._value_dense = tf_keras.layers.EinsumDense(
-          proj_einsum_eqn,
-          output_shape=v_output_shape,
-          bias_axes=bias_axes if self._use_bias else None,
-          name="value",
-          **self._get_common_kwargs_for_sublayer(),
-      )
-      self._dot_product_equation = "BNLsH,BNLtH->BNLts"
-      self._combine_equation = "BNLts,BNLsH->BNLtH"
+      if self._num_kv_heads == 1:
+        self._key_dense = tf_keras.layers.EinsumDense(
+            "BTD,DH->BTH",
+            output_shape=[None, self._key_dim],
+            bias_axes="H" if self._use_bias else None,
+            name="key",
+            **self._get_common_kwargs_for_sublayer(),
+        )
+        self._value_dense = tf_keras.layers.EinsumDense(
+            "BTD,DH->BTH",
+            output_shape=[None, self._value_dim],
+            bias_axes="H" if self._use_bias else None,
+            name="value",
+            **self._get_common_kwargs_for_sublayer(),
+        )
+      else:
+        self._key_dense = tf_keras.layers.EinsumDense(
+            proj_einsum_eqn,
+            output_shape=qk_output_shape,
+            bias_axes=bias_axes if self._use_bias else None,
+            name="key",
+            **self._get_common_kwargs_for_sublayer(),
+        )
+        self._value_dense = tf_keras.layers.EinsumDense(
+            proj_einsum_eqn,
+            output_shape=v_output_shape,
+            bias_axes=bias_axes if self._use_bias else None,
+            name="value",
+            **self._get_common_kwargs_for_sublayer(),
+        )
+      if self._key_shape[-2] == self._tgt_block_size:
+        if self._num_kv_heads == 1:
+          self._dot_product_equation = "BsH,BNLtH->BNLts"
+          self._combine_equation = "BNLts,BsH->BNLtH"
+        else:
+          self._dot_product_equation = "BNsH,BNLtH->BNLts"
+          self._combine_equation = "BNLts,BNsH->BNLtH"
+      else:
+        if self._num_kv_heads == 1:
+          self._dot_product_equation = "BLsH,BNLtH->BNLts"
+          self._combine_equation = "BNLts,BLsH->BNLtH"
+        else:
+          self._dot_product_equation = "BNLsH,BNLtH->BNLts"
+          self._combine_equation = "BNLts,BNLsH->BNLtH"
       if self._output_shape:
         if not isinstance(self._output_shape, collections.abc.Sized):
           output_shape = [self._output_shape]
@@ -109,17 +189,25 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
     """Converts the attention mask to block diagonal."""
     # Uses the same key mask for the entire query sequence since softmax
     # is applied only on the key axis.
-    attention_mask = tf.cast(attention_mask[:, 0, :], dtype=dtype)
     tgt_num_blocks = self._key_shape[-2] // self._tgt_block_size
-    attention_mask = tf.reshape(
-        attention_mask,
-        [
-            -1,
-            tgt_num_blocks,
-            self._tgt_block_size,
-        ],
-    )
-    return tf.einsum("BLQ,BLK->BLQK", attention_mask, attention_mask)
+    if tgt_num_blocks == 1:
+      src_num_blocks = self._query_shape[-2] // self._src_block_size
+      result = tf.reshape(
+          attention_mask,
+          [-1, src_num_blocks, self._src_block_size, self._tgt_block_size],
+      )
+    else:
+      attention_mask = tf.cast(attention_mask[:, 0, :], dtype=dtype)
+      attention_mask = tf.reshape(
+          attention_mask,
+          [
+              -1,
+              tgt_num_blocks,
+              self._tgt_block_size,
+          ],
+      )
+      result = tf.einsum("BLQ,BLK->BLQK", attention_mask, attention_mask)
+    return result
 
   def _masked_softmax(self, attention_scores, attention_mask=None):
     # Normalize the attention scores to probabilities.
@@ -127,11 +215,38 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
     if attention_mask is not None:
       # `attention_mask` = [B, 1, L, T, S]
       attention_mask = tf.expand_dims(attention_mask, axis=1)
-    return self._softmax(attention_scores, attention_mask)
+    if self._use_sigmoid_attn:
+      if attention_mask is not None:
+        adder = (1.0 - tf.cast(attention_mask, attention_scores.dtype)) * (
+            _large_compatible_negative(attention_scores.dtype)
+        )
+        attention_scores += adder
+      attention_scores += self._sigmoid_attn_bias
+      return tf_keras.activations.sigmoid(attention_scores)
+    else:
+      return self._softmax(attention_scores, attention_mask)
 
   def _compute_attention(
       self, query, key, value, attention_mask=None, training=None
   ):
+    # If block sizes are same as sequence lengths, we defer to default attn.
+    if (
+        self._query_shape[-2] == self._src_block_size
+        and self._key_shape[-2] == self._tgt_block_size
+    ):
+      logging.info(
+          "Computing default attention as block sizes are equal to sequence"
+          " lengths."
+      )
+      # pytype: disable=attribute-error
+      return super()._compute_attention(
+          query,
+          key,
+          value,
+          attention_mask=attention_mask,
+          training=training,
+      )
+      # pytype: enable=attribute-error
     # src_num_blocks and tgt_num_blocks are the number of blocks in the source
     # and target. Care should be taken to ensure that the number of blocks in
     # the source and target are the same.
@@ -146,7 +261,7 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
     src_num_blocks = self._query_shape[-2] // self._src_block_size
     tgt_num_blocks = self._key_shape[-2] // self._tgt_block_size
 
-    if src_num_blocks != tgt_num_blocks:
+    if src_num_blocks != tgt_num_blocks and tgt_num_blocks != 1:
       raise ValueError(
           "src_num_blocks must be equal to tgt_num_blocks."
       )
@@ -159,20 +274,37 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
         self._src_block_size,
         self._key_dim,
     ])
-    key_blocks = tf.reshape(key, [
-        -1,
-        self._num_heads,
-        tgt_num_blocks,
-        self._tgt_block_size,
-        self._key_dim,
-    ])
-    value_blocks = tf.reshape(value, [
-        -1,
-        self._num_heads,
-        tgt_num_blocks,
-        self._tgt_block_size,
-        self._value_dim,
-    ])
+    if tgt_num_blocks != 1 and self._num_kv_heads != 1:
+      key_blocks = tf.reshape(key, [
+          -1,
+          self._num_heads,
+          tgt_num_blocks,
+          self._tgt_block_size,
+          self._key_dim,
+      ])
+      value_blocks = tf.reshape(value, [
+          -1,
+          self._num_heads,
+          tgt_num_blocks,
+          self._tgt_block_size,
+          self._value_dim,
+      ])
+    elif tgt_num_blocks != 1 and self._num_kv_heads == 1:
+      key_blocks = tf.reshape(key, [
+          -1,
+          tgt_num_blocks,
+          self._tgt_block_size,
+          self._key_dim,
+      ])
+      value_blocks = tf.reshape(value, [
+          -1,
+          tgt_num_blocks,
+          self._tgt_block_size,
+          self._value_dim,
+      ])
+    else:
+      key_blocks = key
+      value_blocks = value
     if attention_mask is not None:
       attention_mask = self._block_diagonal_mask(attention_mask, key.dtype)
     # pytype: disable=attribute-error

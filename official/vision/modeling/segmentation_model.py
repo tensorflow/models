@@ -15,7 +15,6 @@
 """Build segmentation models."""
 from typing import Any, Mapping, Union, Optional, Dict
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 layers = tf_keras.layers
@@ -59,8 +58,9 @@ class SegmentationModel(tf_keras.Model):
     self.head = head
     self.mask_scoring_head = mask_scoring_head
 
-  def call(self, inputs: tf.Tensor, training: bool = None  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
-           ) -> Dict[str, tf.Tensor]:
+  def call(
+      self, inputs: tf.Tensor, training: bool = None  # pytype: disable=annotation-type-mismatch,signature-mismatch
+  ) -> Dict[str, tf.Tensor]:
     backbone_features = self.backbone(inputs)
 
     if self.decoder:

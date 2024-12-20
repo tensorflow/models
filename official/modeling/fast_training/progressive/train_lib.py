@@ -22,7 +22,6 @@ prog_trainer_lib.ProgressiveTrainer instead of the base trainer.
 import os
 from typing import Any, Mapping, Tuple
 
-# Import libraries
 from absl import logging
 import orbit
 import tensorflow as tf, tf_keras

@@ -14,7 +14,6 @@
 
 """Translate text or files using trained transformer model."""
 
-# Import libraries
 from absl import logging
 import numpy as np
 import tensorflow as tf, tf_keras

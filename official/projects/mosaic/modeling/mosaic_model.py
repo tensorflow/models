@@ -66,7 +66,7 @@ class MosaicSegmentationModel(tf_keras.Model):
     self.head = head
     self.mask_scoring_head = mask_scoring_head
 
-  def call(self,  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self,  # pytype: disable=annotation-type-mismatch,signature-mismatch
            inputs: tf.Tensor,
            training: bool = None) -> Dict[str, tf.Tensor]:
     backbone_features = self.backbone(inputs)

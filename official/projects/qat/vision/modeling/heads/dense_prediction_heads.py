@@ -15,8 +15,6 @@
 """Contains definitions of dense prediction heads."""
 from typing import List, Mapping, Union, Optional, Any, Dict
 
-# Import libraries
-
 import numpy as np
 import tensorflow as tf, tf_keras
 

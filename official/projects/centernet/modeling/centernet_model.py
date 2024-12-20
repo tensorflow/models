@@ -41,7 +41,7 @@ class CenterNetModel(tf_keras.Model):
     self._detection_generator = detection_generator
     self._head = head
 
-  def call(self,  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self,  # pytype: disable=annotation-type-mismatch,signature-mismatch
            inputs: tf.Tensor,
            training: bool = None,
            **kwargs) -> Mapping[str, tf.Tensor]:

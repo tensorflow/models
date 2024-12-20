@@ -21,8 +21,6 @@ BLEU score.
 import os
 import tempfile
 
-# Import libraries
-
 from absl import app
 from absl import flags
 from absl import logging

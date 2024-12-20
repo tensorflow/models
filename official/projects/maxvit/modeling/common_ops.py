@@ -250,3 +250,16 @@ def get_shape_from_length(length: int, height: int = 1, width: int = 1):
         f'Invalid sequence length: {length} or shape: ({height, width}).'
     )
   return (input_height, input_width)
+
+
+def absolute_position_encoding(
+    position: tf.Tensor, hidden_size: int, dtype=tf.float32) -> tf.Tensor:
+  """Create absoulte position encoding."""
+  position = tf.cast(position, dtype)
+  half_hid = hidden_size // 2
+  freq_seq = tf.cast(tf.range(half_hid), dtype=dtype)
+  inv_freq = 1 / (10000 ** (freq_seq / half_hid))
+  sinusoid = tf.einsum('S,D->SD', position, inv_freq)
+  sin = tf.sin(sinusoid)
+  cos = tf.cos(sinusoid)
+  return tf.concat([sin, cos], axis=-1)

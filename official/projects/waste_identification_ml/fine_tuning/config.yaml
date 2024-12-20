@@ -1,0 +1,300 @@
+runtime:
+  all_reduce_alg: null
+  batchnorm_spatial_persistent: false
+  dataset_num_private_threads: null
+  default_shard_dim: -1
+  distribution_strategy: mirrored
+  enable_xla: true
+  gpu_thread_mode: null
+  loss_scale: null
+  mixed_precision_dtype: float16
+  num_cores_per_replica: 1
+  num_gpus: 4
+  run_eagerly: false
+  task_index: -1
+  tpu: null
+  tpu_enable_xla_dynamic_padder: null
+  use_tpu_mp_strategy: false
+  worker_hosts: null
+task:
+  allow_image_summary: false
+  allowed_mask_class_ids: null
+  annotation_file: /home/umairsabir/data/benjamin_val.json
+  differential_privacy_config: null
+  freeze_backbone: false
+  init_checkpoint: /home/umairsabir/data/pre_trained_coco_weights/resnet/ckpt-22500
+  init_checkpoint_modules: [backbone, decoder]
+  losses:
+    class_weights: null
+    frcnn_box_weight: 1.0
+    frcnn_class_loss_top_k_percent: 1.0
+    frcnn_class_use_binary_cross_entropy: false
+    frcnn_class_weight: 1.0
+    frcnn_huber_loss_delta: 1.0
+    l2_weight_decay: 4.0e-05
+    loss_weight: 1.0
+    mask_weight: 1.0
+    rpn_box_weight: 1.0
+    rpn_huber_loss_delta: 0.1111111111111111
+    rpn_score_weight: 1.0
+  model:
+    anchor:
+      anchor_size: 8.0
+      aspect_ratios: [0.5, 1.0, 2.0]
+      num_scales: 1
+    backbone:
+      resnet:
+        bn_trainable: true
+        depth_multiplier: 1.0
+        model_id: 50
+        replace_stem_max_pool: false
+        resnetd_shortcut: false
+        scale_stem: true
+        se_ratio: 0.0
+        stem_type: v0
+        stochastic_depth_drop_rate: 0.0
+      type: resnet
+    decoder:
+      fpn:
+        fusion_type: sum
+        num_filters: 256
+        use_keras_layer: false
+        use_separable_conv: false
+      type: fpn
+    detection_generator:
+      apply_nms: true
+      max_num_detections: 100
+      nms_iou_threshold: 0.5
+      nms_version: v2
+      pre_nms_score_threshold: 0.05
+      pre_nms_top_k: 5000
+      soft_nms_sigma: null
+      use_cpu_nms: false
+      use_sigmoid_probability: false
+    detection_head:
+      cascade_class_ensemble: false
+      class_agnostic_bbox_pred: false
+      fc_dims: 1024
+      num_convs: 4
+      num_fcs: 1
+      num_filters: 256
+      use_separable_conv: false
+    include_mask: true
+    input_size: [640, 1152, 3]
+    mask_head:
+      class_agnostic: false
+      num_convs: 4
+      num_filters: 256
+      upsample_factor: 2
+      use_separable_conv: false
+    mask_roi_aligner:
+      crop_size: 14
+      sample_offset: 0.5
+    mask_sampler:
+      num_sampled_masks: 128
+    max_level: 6
+    min_level: 2
+    norm_activation:
+      activation: relu
+      norm_epsilon: 0.0001
+      norm_momentum: 0.997
+      use_sync_bn: true
+    num_classes: 9
+    outer_boxes_scale: 1.0
+    roi_aligner:
+      crop_size: 7
+      sample_offset: 0.5
+    roi_generator:
+      nms_iou_threshold: 0.7
+      num_proposals: 1000
+      pre_nms_min_size_threshold: 0.0
+      pre_nms_score_threshold: 0.0
+      pre_nms_top_k: 2000
+      test_nms_iou_threshold: 0.7
+      test_num_proposals: 1000
+      test_pre_nms_min_size_threshold: 0.0
+      test_pre_nms_score_threshold: 0.0
+      test_pre_nms_top_k: 1000
+      use_batched_nms: false
+    roi_sampler:
+      background_iou_high_threshold: 0.5
+      background_iou_low_threshold: 0.0
+      cascade_iou_thresholds: null
+      foreground_fraction: 0.25
+      foreground_iou_threshold: 0.5
+      mix_gt_boxes: true
+      num_sampled_rois: 512
+    rpn_head:
+      num_convs: 1
+      num_filters: 256
+      use_separable_conv: false
+  name: null
+  per_category_metrics: true
+  train_data:
+    apply_tf_data_service_before_batching: false
+    autotune_algorithm: null
+    block_length: 1
+    cache: false
+    cycle_length: null
+    decoder:
+      simple_decoder:
+        attribute_names: []
+        mask_binarize_threshold: null
+        regenerate_source_id: false
+      type: simple_decoder
+    deterministic: null
+    drop_remainder: true
+    dtype: bfloat16
+    enable_shared_tf_data_service_between_parallel_trainers: false
+    enable_tf_data_service: false
+    file_type: tfrecord
+    global_batch_size: 64
+    input_path: /home/umairsabir/data/tfrecords_train/*
+    is_training: true
+    num_examples: -1
+    parser:
+      aug_rand_hflip: true
+      aug_rand_vflip: true
+      aug_scale_max: 1.25
+      aug_scale_min: 0.8
+      aug_type:
+        randaug:
+          cutout_const: 40
+          exclude_ops: [Rotate, ShearX, ShearY, TranslateX, TranslateY, Cutout]
+          magnitude: 10
+          magnitude_std: 0.0
+          num_layers: 2
+          prob_to_apply: null
+          translate_const: 10
+        type: randaug
+      keep_aspect_ratio: true
+      mask_crop_size: 112
+      match_threshold: 0.5
+      max_num_instances: 100
+      num_channels: 3
+      pad: true
+      rpn_batch_size_per_im: 256
+      rpn_fg_fraction: 0.5
+      rpn_match_threshold: 0.7
+      rpn_unmatched_threshold: 0.3
+      skip_crowd_during_training: true
+      unmatched_threshold: 0.5
+    prefetch_buffer_size: null
+    ram_budget: null
+    seed: null
+    sharding: true
+    shuffle_buffer_size: 10000
+    tf_data_service_address: null
+    tf_data_service_job_name: null
+    tfds_as_supervised: false
+    tfds_data_dir: ''
+    tfds_name: ''
+    tfds_skip_decoding_feature: ''
+    tfds_split: ''
+    trainer_id: null
+    weights: null
+  use_approx_instance_metrics: false
+  use_coco_metrics: true
+  use_wod_metrics: false
+  validation_data:
+    apply_tf_data_service_before_batching: false
+    autotune_algorithm: null
+    block_length: 1
+    cache: false
+    cycle_length: null
+    decoder:
+      simple_decoder:
+        attribute_names: []
+        mask_binarize_threshold: null
+        regenerate_source_id: false
+      type: simple_decoder
+    deterministic: null
+    drop_remainder: true
+    dtype: bfloat16
+    enable_shared_tf_data_service_between_parallel_trainers: false
+    enable_tf_data_service: false
+    file_type: tfrecord
+    global_batch_size: 32
+    input_path: /home/umairsabir/data/tfrecords_val/*
+    is_training: false
+    num_examples: -1
+    parser:
+      aug_rand_hflip: false
+      aug_rand_vflip: false
+      aug_scale_max: 1.0
+      aug_scale_min: 1.0
+      aug_type: null
+      keep_aspect_ratio: true
+      mask_crop_size: 112
+      match_threshold: 0.5
+      max_num_instances: 100
+      num_channels: 3
+      pad: true
+      rpn_batch_size_per_im: 256
+      rpn_fg_fraction: 0.5
+      rpn_match_threshold: 0.7
+      rpn_unmatched_threshold: 0.3
+      skip_crowd_during_training: true
+      unmatched_threshold: 0.5
+    prefetch_buffer_size: null
+    ram_budget: null
+    seed: null
+    sharding: true
+    shuffle_buffer_size: 10000
+    tf_data_service_address: null
+    tf_data_service_job_name: null
+    tfds_as_supervised: false
+    tfds_data_dir: ''
+    tfds_name: ''
+    tfds_skip_decoding_feature: ''
+    tfds_split: ''
+    trainer_id: null
+    weights: null
+trainer:
+  allow_tpu_summary: false
+  best_checkpoint_eval_metric: ''
+  best_checkpoint_export_subdir: ''
+  best_checkpoint_metric_comp: higher
+  checkpoint_interval: 340
+  continuous_eval_timeout: 3600
+  eval_tf_function: true
+  eval_tf_while_loop: false
+  loss_upper_bound: 1000000.0
+  max_to_keep: 2
+  optimizer_config:
+    ema: null
+    learning_rate:
+      cosine:
+        alpha: 0.0
+        decay_steps: 47600
+        initial_learning_rate: 0.003
+        name: CosineDecay
+        offset: 0
+      type: cosine
+    optimizer:
+      sgd:
+        clipnorm: null
+        clipvalue: null
+        decay: 0.0
+        global_clipnorm: null
+        momentum: 0.9
+        name: SGD
+        nesterov: false
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0.00067
+        warmup_steps: 680
+      type: linear
+  preemption_on_demand_checkpoint: true
+  recovery_begin_steps: 0
+  recovery_max_trials: 0
+  steps_per_loop: 68
+  summary_interval: 68
+  train_steps: 47600
+  train_tf_function: true
+  train_tf_while_loop: true
+  validation_interval: 15
+  validation_steps: 15
+  validation_summary_subdir: validation

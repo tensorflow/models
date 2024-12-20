@@ -114,7 +114,7 @@ class PointPillarsModel(tf_keras.Model):
     })
     return outputs
 
-  def call(self,  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self,  # pytype: disable=annotation-type-mismatch,signature-mismatch
            pillars: tf.Tensor,
            indices: tf.Tensor,
            image_shape: Optional[tf.Tensor] = None,

@@ -16,7 +16,6 @@
 import collections
 from typing import Any, Mapping, List, Optional, Union, Sequence
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 from official.vision.ops import anchor
@@ -81,6 +80,7 @@ class RetinaNetModel(tf_keras.Model):
     self._head = head
     self._detection_generator = detection_generator
     self._anchor_boxes = anchor_boxes
+
 
   def call(self,
            images: Union[tf.Tensor, Sequence[tf.Tensor]],

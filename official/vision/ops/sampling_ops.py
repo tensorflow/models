@@ -31,7 +31,6 @@ when number of examples set to True in indicator is less than batch_size.
 This is originally implemented in TensorFlow Object Detection API.
 """
 
-# Import libraries
 import tensorflow as tf, tf_keras
 
 

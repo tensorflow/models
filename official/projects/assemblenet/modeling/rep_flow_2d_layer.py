@@ -269,7 +269,7 @@ class RepresentationFlow(layers.Layer):
           name='rf/bottleneck2')
       self._batch_norm = build_batch_norm(init_zero=True)
 
-  def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:
+  def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:  # pytype: disable=annotation-type-mismatch
     """Perform representation flows.
 
     Args:

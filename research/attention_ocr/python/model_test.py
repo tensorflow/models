@@ -180,7 +180,7 @@ class ModelTest(tf.test.TestCase):
     self.assertEqual(loss_np.shape, tuple())
 
   def encode_coordinates_alt(self, net):
-    """An alternative implemenation for the encoding coordinates.
+    """An alternative implementation for the encoding coordinates.
 
     Args:
       net: a tensor of shape=[batch_size, height, width, num_features]

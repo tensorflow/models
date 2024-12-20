@@ -45,7 +45,7 @@ flags.DEFINE_string('vocab_freq_path', None,
 flags.DEFINE_integer('batch_size', 64, 'Size of the batch.')
 flags.DEFINE_integer('num_timesteps', 100, 'Number of timesteps for BPTT')
 
-# Model architechture
+# Model architecture
 flags.DEFINE_bool('bidir_lstm', False, 'Whether to build a bidirectional LSTM.')
 flags.DEFINE_bool('single_label', True, 'Whether the sequence has a single '
                   'label, for optimization.')

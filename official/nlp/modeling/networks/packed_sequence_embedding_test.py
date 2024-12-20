@@ -14,8 +14,6 @@
 
 """Tests for official.nlp.modeling.networks.packed_sequence_embedding."""
 
-# Import libraries
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras

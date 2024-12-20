@@ -15,8 +15,6 @@
 """A script to export a TF-Hub SavedModel."""
 from typing import List, Optional
 
-# Import libraries
-
 import tensorflow as tf, tf_keras
 
 from official.core import config_definitions as cfg
