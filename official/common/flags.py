@@ -115,9 +115,27 @@ def define_flags():
 
   flags.DEFINE_string(
       'tfhub_handle',
-      None,
-      'TFHub handle for publishing the model to TFHub. The model '
-      'is published to TFHub if this flag is set. Please use a '
-      'TFHubPusher (go/tflex/standard_components/pusher) component if '
-      'running in TFleX.',
+      default=None,
+      help=(
+          'TFHub handle for publishing the model to TFHub. When this flag '
+          'is set your train.py should use xm_tfhub to publish to TFHub. '
+          'If using TFleX, prefer tflex_output_uri + TfHubPusher component.'
+      ),
+  )
+
+  # To use TFleX components that consume a model, set this flag by configuring
+  # a TFleX tfx.borg.types.standard_artifacts.Model output artifact.
+  # (go/tflex-xm#connect-your-component-to-other-components)
+  # Meanwhile have your train.py save a serializable model to this destination:
+  #   model.save(os.path.join(FLAGS.tflex_output_uri, 'Format-Servo'),
+  #              save_format='tf')
+  # (https://www.tensorflow.org/guide/keras/serialization_and_saving)
+  flags.DEFINE_string(
+      'tflex_output_uri',
+      default=None,
+      help=(
+          'When running in TFleX, you can configure an XManagerLauncher output'
+          ' to set this flag'
+          ' (go/tflex-xm#connect-your-component-to-other-components)'
+      ),
   )
