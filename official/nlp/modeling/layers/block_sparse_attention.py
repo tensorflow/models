@@ -84,6 +84,17 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
             "sigmoid_attn_bias must be specified for sigmoid attn."
         )
 
+  def get_config(self):
+    config = super().get_config()
+    config.update({
+        "src_block_size": self._src_block_size,
+        "tgt_block_size": self._tgt_block_size,
+        "use_sigmoid_attn": self._use_sigmoid_attn,
+        "sigmoid_attn_bias": self._sigmoid_attn_bias,
+        "num_kv_heads": self._num_kv_heads,
+    })
+    return config
+
   def _build_from_signature(self, query, value, key=None):
     # pytype: disable=attribute-error
     super()._build_from_signature(query, value, key)

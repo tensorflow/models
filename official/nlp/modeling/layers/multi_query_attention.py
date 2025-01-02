@@ -93,6 +93,11 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
         self._num_heads % self._num_kv_heads == 0
     ), "num_kv_heads needs to divide num_heads exactly."
 
+  def get_config(self):
+    config = super().get_config()
+    config.update({"num_kv_heads": self._num_kv_heads})
+    return config
+
   def _build_from_signature(
       self,
       query: Union[tf.Tensor, tf.TensorShape],
