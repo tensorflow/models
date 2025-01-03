@@ -448,6 +448,16 @@ class KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
         dtype='float16',
         per_replica_batch_size=256)
 
+  def benchmark_1_gpu_fp16_128_batch(self):
+    """Tests Keras model with 1 GPU and fp16."""
+    self._setup()
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_1_gpu_fp16_128_batch',
+        num_gpus=1,
+        distribution_strategy='one_device',
+        dtype='float16',
+        per_replica_batch_size=128)
+
   def benchmark_1_gpu_fp16_dynamic(self):
     """Tests Keras model with 1 GPU, fp16, and dynamic loss scaling."""
     self._setup()
