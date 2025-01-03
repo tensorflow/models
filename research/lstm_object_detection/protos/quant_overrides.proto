@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+package lstm_object_detection.protos;
+
+// Message to override default quantization behavior.
+message QuantOverrides {
+  repeated QuantConfig quant_configs = 1;
+}
+
+// Parameters to manually create fake quant ops outside of the generic
+// tensorflow/contrib/quantize/python/quantize.py script. This may be
+// used to override default behaviour or quantize ops not already supported.
+message QuantConfig {
+  // The name of the op to add a fake quant op to.
+  required string op_name = 1;
+
+  // The name of the fake quant op.
+  required string quant_op_name = 2;
+
+  // Whether the fake quant op uses fixed ranges. Otherwise, learned moving
+  // average ranges are used.
+  required bool fixed_range = 3 [default = false];
+
+  // The intitial minimum value of the range.
+  optional float min = 4 [default = -6];
+
+  // The initial maximum value of the range.
+  optional float max = 5 [default = 6];
+
+  // Number of steps to delay before quantization takes effect during training.
+  optional int32 delay = 6 [default = 500000];
+
+  // Number of bits to use for quantizing weights.
+  // Only 8 bit is supported for now.
+  optional int32 weight_bits = 7 [default = 8];
+
+  // Number of bits to use for quantizing activations.
+  // Only 8 bit is supported for now.
+  optional int32 activation_bits = 8 [default = 8];
+}

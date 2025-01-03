@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+package lstm_object_detection.protos;
+
+import "object_detection/protos/input_reader.proto";
+
+message GoogleInputReader {
+  extend object_detection.protos.ExternalInputReader {
+    optional GoogleInputReader google_input_reader = 444;
+  }
+
+  oneof input_reader {
+    TFRecordVideoInputReader tf_record_video_input_reader = 1;
+  }
+}
+
+message TFRecordVideoInputReader {
+  // Path(s) to tfrecords of input data.
+  repeated string input_path = 1;
+
+  enum DataType {
+    UNSPECIFIED = 0;
+    TF_EXAMPLE = 1;
+    TF_SEQUENCE_EXAMPLE = 2;
+  }
+  optional DataType data_type = 2 [default=TF_SEQUENCE_EXAMPLE];
+
+  // Length of the video sequence. All the input video sequence should have the
+  // same length in frames, e.g. 5 frames.
+  optional int32 video_length = 3;
+}
+

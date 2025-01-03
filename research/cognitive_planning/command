@@ -1,0 +1,14 @@
+python train_supervised_active_vision \
+  --mode='train' \
+  --logdir=/usr/local/google/home/kosecka/checkin_log_det/ \
+  --modality_types='det' \
+  --batch_size=8 \
+  --train_iters=200000 \
+  --lstm_cell_size=2048 \
+  --policy_fc_size=2048 \
+  --sequence_length=20 \
+  --max_eval_episode_length=100 \
+  --test_iters=194 \
+  --gin_config=robotics/cognitive_planning/envs/configs/active_vision_config.gin \
+  --gin_params='ActiveVisionDatasetEnv.dataset_root="/usr/local/google/home/kosecka/AVD_minimal/"' \
+  --logtostderr

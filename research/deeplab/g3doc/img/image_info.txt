@@ -1,0 +1,13 @@
+Image provenance:
+
+image1.jpg: Philippe Put,
+  https://www.flickr.com/photos/34547181@N00/14499172124
+
+image2.jpg: Peretz Partensky
+  https://www.flickr.com/photos/ifl/3926001309
+
+image3.jpg: Peter Harrison
+  https://www.flickr.com/photos/devcentre/392585679
+
+
+vis[1-3].png: Showing original image together with DeepLab segmentation map.

@@ -1,0 +1,12 @@
+#-*-Python-*-
+ENV_CONTEXT = None
+EVAL_MODES = ["eval"]
+TARGET_Q_CLIPPING = None
+RESET_EPISODE_PERIOD = None
+ZERO_OBS = False
+CONTEXT_RANGE_MIN = -10
+CONTEXT_RANGE_MAX = 10
+SUBGOAL_DIM = 2
+
+uvf/negative_distance.summarize = False
+uvf/negative_distance.relative_context = True

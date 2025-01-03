@@ -1,0 +1,10 @@
+use_local_features: false
+use_global_features: true
+model_path: "parameters/rn101_af_gldv2clean_20200814"
+image_scales: 0.70710677
+image_scales: 1.0
+image_scales: 1.4142135
+delf_global_config {
+  use_pca: false
+}
+max_image_size: 1024
