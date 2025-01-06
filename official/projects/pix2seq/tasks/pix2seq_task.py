@@ -98,8 +98,8 @@ class Pix2SeqTask(base_task.Task):
     """Loading pretrained checkpoint."""
     if self._task_config.init_checkpoint_modules == 'backbone':
       raise ValueError(
-          'init_checkpoint_modules=backbone is deprecated. Specify backbone '
-          'checkpoints in each backbone config.'
+          'init_checkpoint_modules=backbone is no longer supported. Specify'
+          ' backbone checkpoints in each backbone config.'
       )
 
     if self._task_config.init_checkpoint_modules not in ['all', 'partial', '']:
