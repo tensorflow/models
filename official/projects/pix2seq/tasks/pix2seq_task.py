@@ -141,8 +141,13 @@ class Pix2SeqTask(base_task.Task):
           backbone.load_checkpoint(ckpt_filepath=backbone_init_ckpt)
         else:
           ckpt = tf.train.Checkpoint(backbone=backbone)
-          status = ckpt.restore(backbone_init_ckpt)
-          status.expect_partial().assert_existing_objects_matched()
+          status = (
+              ckpt.restore(backbone_init_ckpt)
+              .expect_partial()
+              .assert_nontrivial_match()
+          )
+          if backbone_config.assert_existing_objects_matched:
+            status.assert_existing_objects_matched()
 
         logging.info(
             'Finished loading pretrained backbone from %s', backbone_init_ckpt

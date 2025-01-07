@@ -115,6 +115,11 @@ class BackboneConfig(hyperparams.Config):
   )
   # Optional checkpoint to load for this backbone.
   init_checkpoint: Optional[str] = None
+  # If loading an init_checkpoint, whether to assert that all objects in the
+  # Python program are matched by the checkpoint.
+  # If False, understand that only the weak assertion of a non-trivial match
+  # will be made.
+  assert_existing_objects_matched: bool = True
 
 
 @dataclasses.dataclass
