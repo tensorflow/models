@@ -327,9 +327,17 @@ class Pix2Seq(tf_keras.Model):
     # For backward-compatibility with prior checkpoints, the first backbone
     # should be named "backbone" and the second one should be named
     # "backbone_2", etc.
-    items = dict(backbone=self.backbones[0], transformer=self.transformer)
+    items = dict(
+        backbone=self.backbones[0],
+        transformer=self.transformer,
+        stem_projection=self._stem_projections[0],
+        stem_ln=self._stem_lns[0],
+    )
     for i in range(1, len(self.backbones)):
       items[f"backbone_{i+1}"] = self.backbones[i]
+      items[f"stem_projection_{i+1}"] = self._stem_projections[i]
+      items[f"stem_ln_{i+1}"] = self._stem_lns[i]
+
     return items
 
   def _generate_image_mask(
