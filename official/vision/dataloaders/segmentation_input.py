@@ -157,9 +157,14 @@ class Parser(parser.Parser):
         dtype=tf.uint8,
     )
     image = tf.reshape(image, (height, width, self._image_feature.num_channels))
-    # Normalizes the image feature with mean and std values, which are divided
-    # by 255 because an uint8 image are re-scaled automatically. Images other
-    # than uint8 type will be wrongly normalized.
+    # Normalizes the image feature.
+    # The mean and stddev values are divided by 255 to ensure correct
+    # normalization, as the input `uint8` image is automatically converted to
+    # `float32` and rescaled to values in the range [0, 1] before the
+    # normalization happens (as a pre-processing step). So, we re-scale the
+    # mean and stddev values to the range [0, 1] beforehand.
+    # See `preprocess_ops.normalize_image` for details on the expected ranges
+    # for the image mean (`offset`) and stddev (`scale`).
     image = preprocess_ops.normalize_image(
         image,
         [mean / 255.0 for mean in self._image_feature.mean],
