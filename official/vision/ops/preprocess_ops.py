@@ -82,13 +82,28 @@ def normalize_image(
 ) -> tf.Tensor:
   """Normalizes the image to zero mean and unit variance.
 
-  If the input image dtype is float, it is expected to either have values in
-  [0, 1) and offset is MEAN_NORM, or have values in [0, 255] and offset is
-  MEAN_RGB.
+  This function normalizes the input image by subtracting the `offset`
+  and dividing by the `scale`.
+
+  **Important Note about Input Types and Normalization:**
+
+  * **Integer Images:** If the input `image` is an integer type (e.g., `uint8`),
+    the provided `offset` and `scale` values should be already **normalized**
+    to the range [0, 1]. This is because the function converts integer images to
+    float32 with values in the range [0, 1] before the normalization happens.
+
+  * **Float Images:** If the input `image` is a float type (e.g., `float32`),
+    the `offset` and `scale` values should be in the **same range** as the
+    image data.
+      - If the image has values in [0, 1], the `offset` and `scale` should
+        also be in [0, 1].
+      - If the image has values in [0, 255], the `offset` and `scale` should
+        also be in [0, 255].
 
   Args:
-    image: A tf.Tensor in either (1) float dtype with values in range [0, 1) or
-      [0, 255], or (2) int type with values in range [0, 255].
+    image: A `tf.Tensor` in either:
+           (1) float dtype with values in range [0, 1) or [0, 255], or
+           (2) int type with values in range [0, 255].
     offset: A tuple of mean values to be subtracted from the image.
     scale: A tuple of normalization factors.
 
