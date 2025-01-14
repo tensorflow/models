@@ -136,6 +136,14 @@ class DetectionModule(export_base.ExportModule):
 
     return detections_dict
 
+  def _flatten_output(self, feature_map, feature_size=4):
+    flatten_outputs = []
+    for level_output in feature_map.values():
+      flatten_outputs.append(
+          tf.reshape(level_output, (self._batch_size, -1, feature_size))
+      )
+    return tf.concat(flatten_outputs, axis=1)
+
   def preprocess(
       self, images: tf.Tensor
   ) -> Tuple[tf.Tensor, Mapping[str, tf.Tensor], tf.Tensor]:
@@ -271,6 +279,18 @@ class DetectionModule(export_base.ExportModule):
         final_outputs['detection_outer_boxes'] = detections[
             'detection_outer_boxes'
         ]
+    elif (
+        isinstance(self.params.task.model, configs.retinanet.RetinaNet)
+        and not self.params.task.model.detection_generator.decode_boxes
+    ):
+      final_outputs = {
+          'raw_boxes': self._flatten_output(detections['box_outputs'], 4),
+          'raw_scores': tf.sigmoid(
+              self._flatten_output(
+                  detections['cls_outputs'], self.params.task.model.num_classes
+              )
+          ),
+      }
     else:
       # For RetinaNet model, apply export_config.
       if isinstance(self.params.task.model, configs.retinanet.RetinaNet):

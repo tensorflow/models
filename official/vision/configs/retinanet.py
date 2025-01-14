@@ -137,6 +137,7 @@ class RetinaNetHead(hyperparams.Config):
 @dataclasses.dataclass
 class DetectionGenerator(hyperparams.Config):
   apply_nms: bool = True
+  decode_boxes: bool = True
   pre_nms_top_k: int = 5000
   pre_nms_score_threshold: float = 0.05
   nms_iou_threshold: float = 0.5
