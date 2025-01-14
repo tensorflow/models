@@ -38,6 +38,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
       normalized_coordinates=False,
       nms_version='batched',
       output_intermediate_features=False,
+      decode_boxes=True,
   ):
     params = exp_factory.get_exp_config(experiment_name)
     params.task.model.outer_boxes_scale = outer_boxes_scale
@@ -48,6 +49,8 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     params.task.model.detection_generator.nms_version = nms_version
     if output_intermediate_features:
       params.task.export_config.output_intermediate_features = True
+    if not decode_boxes:
+      params.task.model.detection_generator.decode_boxes = False
     detection_module = detection.DetectionModule(
         params,
         batch_size=1,
@@ -230,6 +233,41 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     )
     self.assertAllLessEqual(
         max_values.numpy(), tf.ones_like(max_values).numpy()
+    )
+
+  @parameterized.parameters(
+      'retinanet_mobile_coco',
+      'retinanet_spinenet_coco',
+  )
+  def test_export_without_decoding_boxes(
+      self,
+      experiment_name,
+  ):
+    input_type = 'tflite'
+    tmp_dir = self.get_temp_dir()
+    module = self._get_detection_module(
+        experiment_name,
+        input_type=input_type,
+        apply_nms=False,
+        decode_boxes=False,
+    )
+
+    self._export_from_module(module, input_type, tmp_dir)
+
+    imported = tf.saved_model.load(tmp_dir)
+    detection_fn = imported.signatures['serving_default']
+
+    images = self._get_dummy_input(
+        input_type, batch_size=1, image_size=(640, 640)
+    )
+    outputs = detection_fn(tf.constant(images))
+
+    self.assertContainsSubset(
+        {
+            'raw_boxes',
+            'raw_scores',
+        },
+        outputs.keys(),
     )
 
 
