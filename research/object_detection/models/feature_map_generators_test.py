@@ -513,7 +513,7 @@ class FPNFeatureMapGeneratorTest(test_case.TestCase, parameterized.TestCase):
         'top_down/clip_by_value_6'
     ])
     op_names = {op.name: None for op in g.get_operations()}
-    self.assertDictContainsSubset(expected_added_operations, op_names)
+    self.assertEqual(op_names, {**op_names, **expected_added_operations})
 
   @unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
   def test_use_bounded_activations_clip_value(
