@@ -22,14 +22,14 @@ visit the [AudioSet website](http://g.co/audioset) and read our papers:
   ICASSP 2017
 
 * Hershey, S. et. al.,
-  [CNN Architectures for Large-Scale Audio Classification](https://research.google.com/pubs/pub45611.html),
+  [CNN Architectures for Large-Scale Audio Classification](https://research.google/pubs/cnn-architectures-for-large-scale-audio-classification/),
   ICASSP 2017
 
 If you use any of our pre-trained models in your published research, we ask that
-you cite [CNN Architectures for Large-Scale Audio Classification](https://research.google.com/pubs/pub45611.html).
+you cite [CNN Architectures for Large-Scale Audio Classification](https://research.google/pubs/cnn-architectures-for-large-scale-audio-classification/).
 If you use the AudioSet dataset or the released embeddings of AudioSet segments,
 please cite
-[AudioSet: An ontology and human-labelled dataset for audio events](https://research.google.com/pubs/pub45857.html).
+[AudioSet: An ontology and human-labelled dataset for audio events]([https://research.google.com/pubs/pub45857.html](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45857.pdf)).
 
 ## Contact
 
