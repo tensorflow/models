@@ -45,7 +45,7 @@ def zero_pad_and_crop(img, amount=4):
 
   Args:
     img: numpy image that will be zero padded and cropped.
-    amount: amount of zeros to pad `img` with horizontally and verically.
+    amount: amount of zeros to pad `img` with horizontally and vertically.
 
   Returns:
     The cropped zero padded img. The returned numpy array will be of the same
