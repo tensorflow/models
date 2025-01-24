@@ -20,8 +20,8 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib import slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 import model
 import sequence_layers
@@ -109,4 +109,5 @@ class SequenceLayersTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
+  tf.disable_eager_execution()
   tf.test.main()
