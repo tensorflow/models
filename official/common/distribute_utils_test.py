@@ -43,14 +43,14 @@ class DistributeUtilsTest(tf.test.TestCase):
 
   def test_one_device_strategy_cpu(self):
     ds = distribute_utils.get_distribution_strategy('one_device', num_gpus=0)
-    self.assertEquals(ds.num_replicas_in_sync, 1)
-    self.assertEquals(len(ds.extended.worker_devices), 1)
+    self.assertEqual(ds.num_replicas_in_sync, 1)
+    self.assertEqual(len(ds.extended.worker_devices), 1)
     self.assertIn('CPU', ds.extended.worker_devices[0])
 
   def test_one_device_strategy_gpu(self):
     ds = distribute_utils.get_distribution_strategy('one_device', num_gpus=1)
-    self.assertEquals(ds.num_replicas_in_sync, 1)
-    self.assertEquals(len(ds.extended.worker_devices), 1)
+    self.assertEqual(ds.num_replicas_in_sync, 1)
+    self.assertEqual(len(ds.extended.worker_devices), 1)
     self.assertIn('GPU', ds.extended.worker_devices[0])
 
   def test_mirrored_strategy(self):
@@ -58,8 +58,8 @@ class DistributeUtilsTest(tf.test.TestCase):
     _ = distribute_utils.get_distribution_strategy(num_gpus=0)
     # 5 GPUs.
     ds = distribute_utils.get_distribution_strategy(num_gpus=5)
-    self.assertEquals(ds.num_replicas_in_sync, 5)
-    self.assertEquals(len(ds.extended.worker_devices), 5)
+    self.assertEqual(ds.num_replicas_in_sync, 5)
+    self.assertEqual(len(ds.extended.worker_devices), 5)
     for device in ds.extended.worker_devices:
       self.assertIn('GPU', device)
 
@@ -105,12 +105,13 @@ class DistributeUtilsTest(tf.test.TestCase):
         ds, tf.distribute.TPUStrategy)
 
   def test_invalid_strategy(self):
-    with self.assertRaisesRegexp(
-        ValueError,
-        'distribution_strategy must be a string but got: False. If'):
+    with self.assertRaisesRegex(
+        ValueError, 'distribution_strategy must be a string but got: False. If'
+    ):
       distribute_utils.get_distribution_strategy(False)
-    with self.assertRaisesRegexp(
-        ValueError, 'distribution_strategy must be a string but got: 1'):
+    with self.assertRaisesRegex(
+        ValueError, 'distribution_strategy must be a string but got: 1'
+    ):
       distribute_utils.get_distribution_strategy(1)
 
   def test_get_strategy_scope(self):

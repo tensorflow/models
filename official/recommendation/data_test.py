@@ -190,7 +190,7 @@ class BaseTest(tf.test.TestCase):
         train_examples[l].add((u_raw, i_raw))
         counts[(u_raw, i_raw)] += 1
 
-    self.assertRegexpMatches(md5.hexdigest(), END_TO_END_TRAIN_MD5)
+    self.assertRegex(md5.hexdigest(), END_TO_END_TRAIN_MD5)
 
     num_positives_seen = len(train_examples[True])
     self.assertEqual(producer._train_pos_users.shape[0], num_positives_seen)
@@ -254,7 +254,7 @@ class BaseTest(tf.test.TestCase):
           # from the negatives.
           assert (u_raw, i_raw) not in self.seen_pairs
 
-    self.assertRegexpMatches(md5.hexdigest(), END_TO_END_EVAL_MD5)
+    self.assertRegex(md5.hexdigest(), END_TO_END_EVAL_MD5)
 
   def _test_fresh_randomness(self, constructor_type):
     train_epochs = 5
@@ -300,7 +300,7 @@ class BaseTest(tf.test.TestCase):
         else:
           negative_counts[(u, i)] += 1
 
-    self.assertRegexpMatches(md5.hexdigest(), FRESH_RANDOMNESS_MD5)
+    self.assertRegex(md5.hexdigest(), FRESH_RANDOMNESS_MD5)
 
     # The positive examples should appear exactly once each epoch
     self.assertAllEqual(

@@ -82,7 +82,7 @@ class SyntheticDataTest(tf.test.TestCase):
       for n in range(5):
         inp, lab = sess.run((input_element, label_element))
         self.assertAllClose(inp, [123., 123., 123., 123., 123.])
-        self.assertEquals(lab, 456)
+        self.assertEqual(lab, 456)
 
   def test_generate_only_input_data(self):
     d = model_helpers.generate_synthetic_data(
@@ -111,7 +111,7 @@ class SyntheticDataTest(tf.test.TestCase):
     element = tf.compat.v1.data.make_one_shot_iterator(d).get_next()
     self.assertIn('a', element)
     self.assertIn('b', element)
-    self.assertEquals(len(element['b']), 2)
+    self.assertEqual(len(element['b']), 2)
     self.assertIn('c', element['b'])
     self.assertIn('d', element['b'])
     self.assertNotIn('c', element)
