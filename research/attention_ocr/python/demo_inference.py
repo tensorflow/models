@@ -18,7 +18,7 @@ python demo_inference.py --batch_size=32 \
 import numpy as np
 import PIL.Image
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import flags
 from tensorflow.python.training import monitored_session
 
