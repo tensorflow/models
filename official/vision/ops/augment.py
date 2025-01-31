@@ -2698,7 +2698,7 @@ class MixupAndCutmix:
   @staticmethod
   def _sample_from_beta(alpha, beta, shape):
     sample_alpha = tf.random.gamma(shape, alpha, beta=1.0)
-    sample_beta = tf.random.gamma(shape, alpha, beta=1.0)
+    sample_beta = tf.random.gamma(shape, beta, beta=1.0)
     return sample_alpha / (sample_alpha + sample_beta)
 
   def _cutmix(self, images: tf.Tensor,
