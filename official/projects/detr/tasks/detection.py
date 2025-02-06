@@ -149,9 +149,9 @@ class DetectionTask(base_task.Task):
     total_cost = cls_cost + box_cost + giou_cost
 
     max_cost = (
-        self._task_config.losses.lambda_cls * 0.0
+        self._task_config.losses.lambda_cls * 1.0
         + self._task_config.losses.lambda_box * 4.0
-        + self._task_config.losses.lambda_giou * 0.0
+        + self._task_config.losses.lambda_giou * 1.0
     )
 
     # Set pads to large constant
