@@ -18,7 +18,7 @@ tool open. For more information, see [Connect to VMs](https://cloud.google.com/c
     bash triton_server.sh
     ```
 
-    This script loads as many models as you want at the same time. Later, you can choose which model you want to send your request to from the client side. For more information, see [Prepare and analyze images](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/).
+    This script loads as many models as you want at the same time. Later, you can choose which model you want to send your request to from the client side. For more information, see [Prepare and analyze images](/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/).
 
     For example, when you start analyzing images, you can send them from the
     client to the following models in the Triton server you created:
@@ -64,4 +64,4 @@ You can confirm the server is running by opening a screen session:
 
 ## What's next
 
--  [Prepare and analyze images](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/)
+-  [Prepare and analyze images](/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/)

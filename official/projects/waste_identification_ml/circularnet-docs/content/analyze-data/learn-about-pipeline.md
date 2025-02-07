@@ -26,4 +26,4 @@ object-tracking algorithm to identify and eliminate duplicate occurrences of
 objects across sequential frames, enhancing the accuracy of object detection and
 analysis.
 
-Moreover, [applying a prediction pipeline in Google Cloud](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/prediction-pipeline-in-cloud) automatically uploads raw images and prediction results into [BigQuery](https://cloud.google.com/bigquery) tables. This seamless integration allows you to combine [visualization dashboards with analytical reports](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/) effortlessly.
+Moreover, [applying a prediction pipeline in Google Cloud](/official/projects/waste_identification_ml/circularnet-docs/content/prediction-pipeline-in-cloud) automatically uploads raw images and prediction results into [BigQuery](https://cloud.google.com/bigquery) tables. This seamless integration allows you to combine [visualization dashboards with analytical reports](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/) effortlessly.

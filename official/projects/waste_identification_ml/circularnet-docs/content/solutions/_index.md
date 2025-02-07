@@ -59,7 +59,7 @@ If you prefer a fully managed solution and value flexibility, deploying Circular
 
 This approach is well-suited for those who want the following functionalities:
 
--  **A hosted solution:** The entire system, including the [dashboard for reporting and visualization](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/), resides in the cloud, eliminating the need for on-site hardware management.
+-  **A hosted solution:** The entire system, including the [dashboard for reporting and visualization](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/), resides in the cloud, eliminating the need for on-site hardware management.
 -  **Flexibility and customization:** You can modify models, install additional software or libraries, and experiment with different frameworks as your needs evolve.
 
 Using a cloud account requires technical expertise to manage infrastructure,
@@ -88,7 +88,7 @@ Overall, Google Cloud offers a scalable, flexible, and cost-effective solution
 for running the ML model with offline data. It balances processing power,
 manageability, and cost efficiency.
 
-To learn how to install CircularNet on Google Cloud, see [Deploy CircularNet](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
+To learn how to install CircularNet on Google Cloud, see [Deploy CircularNet](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
 
 ### Edge device deployment
 
@@ -97,7 +97,7 @@ processing. It requires local installation and setup, providing a comprehensive
 solution for hosting and running CircularNet's ML models with a self-managed
 experience.
 
-**In most cases, we recommend running the ML model on an [NVIDIA](https://www.nvidia.com/en-us/edge-computing/) edge device.** For information about the minimum hardware requirements for the device to run CircularNet, [choose edge device hardware](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-edge-device/).
+**In most cases, we recommend running the ML model on an [NVIDIA](https://www.nvidia.com/en-us/edge-computing/) edge device.** For information about the minimum hardware requirements for the device to run CircularNet, [choose edge device hardware](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-edge-device/).
 
 The configuration of an edge device has benefits such as the following:
 
@@ -112,7 +112,7 @@ The configuration of an edge device has benefits such as the following:
 -  **Energy efficiency**: Edge devices are designed to be power-efficient,
    allowing them to perform complex computations while consuming minimal power.
    This fact makes them ideal for use in battery-powered or energy-constrained
-   devices, such as some [machine vision cameras](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/)
+   devices, such as some [machine vision cameras](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/)
    that you can use to capture images.
 -  **Compact form**: Edge devices are small and easily integrated into various
    setups, eliminating the need for bulky external hardware.
@@ -131,7 +131,7 @@ complex tasks. Additionally, a device failure could temporarily disrupt
 operations. Choosing and setting up an edge device requires technical expertise
 to manage the hardware and software.
 
-To learn how to install CircularNet on an edge device, see [Deploy CircularNet](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
+To learn how to install CircularNet on an edge device, see [Deploy CircularNet](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
 
 ### In-house server deployment
 
@@ -169,4 +169,4 @@ server. The deployment process is highly dependent on your specific on-premise
 infrastructure, data center setup, customized settings, available resources, and
 the unique requirements of your use case.
 
-You must consult resources and documentation tailored to your specific server environment and adapt [the CircularNet models](https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml) to deploy and integrate them successfully into your existing systems. However, if you choose this alternative, we recommend providing a computational unit to run AI models, perform inference, and connect to a [dashboard for data analysis and reporting](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).
+You must consult resources and documentation tailored to your specific server environment and adapt [the CircularNet models](https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml) to deploy and integrate them successfully into your existing systems. However, if you choose this alternative, we recommend providing a computational unit to run AI models, perform inference, and connect to a [dashboard for data analysis and reporting](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).

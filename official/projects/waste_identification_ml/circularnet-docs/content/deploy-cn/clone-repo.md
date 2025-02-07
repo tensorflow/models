@@ -1,4 +1,4 @@
-After meeting the [prerequisites](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/before-you-begin), follow these steps to clone the project from the [GitHub repository](https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml) and install all the required packages.
+After meeting the [prerequisites](/official/projects/waste_identification_ml/circularnet-docs/content/before-you-begin), follow these steps to clone the project from the [GitHub repository](https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml) and install all the required packages.
 
 Run the following commands on the **SSH-in-browser** window of your VM instance
 in Google Cloud or the terminal of your edge device:

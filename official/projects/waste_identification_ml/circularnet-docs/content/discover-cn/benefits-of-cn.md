@@ -1,11 +1,6 @@
 The following table describes some of the benefits of using CircularNet as your
 automated tool for waste identification:
 
-<style>
-  .color {
-    background-color: #DDD
-  }
-</style>
 <table>
   <thead>
     <tr>

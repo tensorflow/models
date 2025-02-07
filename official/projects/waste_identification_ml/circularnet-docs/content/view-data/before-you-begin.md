@@ -4,7 +4,7 @@ steps:
 1. [Create a Google Cloud account](https://console.cloud.google.com/).
 1. [Open the Google Cloud console](https://cloud.google.com/cloud-console).
 1. Store your model results in BigQuery.
-    -  If you [run the prediction pipeline for object tracking in Google Cloud](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/prediction-pipeline-in-cloud),
+    -  If you [run the prediction pipeline for object tracking in Google Cloud](/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/prediction-pipeline-in-cloud),
        you automatically load the data to BigQuery, so no action is required.
     -  If you use an edge device or any other solution for object tracking
        outside of Google Cloud, you must [manually load the data from your
