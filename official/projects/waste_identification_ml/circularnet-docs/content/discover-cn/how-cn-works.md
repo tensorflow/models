@@ -83,8 +83,8 @@ effectiveness of your sorting and recycling operations.
 
 ## What's next
 
--  [Learn more about the deployment solutions that CircularNet offers](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/solutions/).
--  [Set up a hardware solution for your needs](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/system-req/).
--  [Learn how to deploy CircularNet on Google Cloud or an edge device](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
--  [Learn how to prepare your data and use the models to analyze images](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/).
--  [Learn more about the visual dashboard to get analytics and reports](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).
+-  [Learn more about the deployment solutions that CircularNet offers](/official/projects/waste_identification_ml/circularnet-docs/content/solutions/).
+-  [Set up a hardware solution for your needs](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/).
+-  [Learn how to deploy CircularNet on Google Cloud or an edge device](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
+-  [Learn how to prepare your data and use the models to analyze images](/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/).
+-  [Learn more about the visual dashboard to get analytics and reports](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).

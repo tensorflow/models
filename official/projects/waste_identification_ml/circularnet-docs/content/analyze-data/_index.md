@@ -17,14 +17,14 @@ computer vision techniques extract multiple properties of each object, including
 color detection. These properties facilitate object tracking and help eliminate
 duplicate object counts.
 
-If you [deploy the server](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server) on Google Cloud, you can
+If you [deploy the server](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server) on Google Cloud, you can
 automate the entire image analysis workflow within your VM instance. Integration
 with BigQuery tables, storage buckets, and dashboards allows for seamless data
 flow and real-time updates. A [prediction pipeline](./learn-about-pipeline) for
 Google Cloud pushes the data directly to storage buckets and BigQuery tables,
-which you can connect to the dashboard for [visualization and analysis](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).
+which you can connect to the dashboard for [visualization and analysis](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).
 
-On the other hand, direct data transfer to the cloud for edge device implementations needs a client-side configuration. A [prediction pipeline](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/learn-about-pipeline) for devices lets you load models sequentially and store image analysis results locally.
+On the other hand, direct data transfer to the cloud for edge device implementations needs a client-side configuration. A [prediction pipeline](/official/projects/waste_identification_ml/circularnet-docs/content/learn-about-pipeline) for devices lets you load models sequentially and store image analysis results locally.
 
 This section describes how to apply the two specialized CircularNet models using
 a prediction pipeline on the client side to prepare and analyze the images you

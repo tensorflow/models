@@ -1,4 +1,4 @@
-This section assumes [you chose an edge device](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/solutions/#edge-device-deployment)
+This section assumes [you chose an edge device](/official/projects/waste_identification_ml/circularnet-docs/content/solutions/#edge-device-deployment)
 as the computing unit to run CircularNet models. Selecting an edge device
 requires technical expertise to manage hardware and software configurations.
 
@@ -45,9 +45,9 @@ JetPack 6.0. When using JetPack 6.0, the container image needed is
 
 For information about installing the latest version of JetPack on the device, see [JetPack SDK](https://developer.nvidia.com/embedded/jetpack). For other JetPack versions, refer to the [JetPack archive](https://developer.nvidia.com/embedded/jetpack-archive).
 
-Connect [the machine vision camera](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/choose-camera/) to the edge device, which leverages the graphics processing unit (GPU) to run model inference. The captured images or videos and the inference results can be streamed back to Google Cloud.
+Connect [the machine vision camera](/official/projects/waste_identification_ml/circularnet-docs/content/choose-camera/) to the edge device, which leverages the graphics processing unit (GPU) to run model inference. The captured images or videos and the inference results can be streamed back to Google Cloud.
 
 By configuring your device and completing the installation, you can ensure that
 your edge device is properly configured, a crucial step in running CircularNet
 models efficiently and effectively. To learn how to install CircularNet on an
-edge device, see [Deploy CircularNet](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
+edge device, see [Deploy CircularNet](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).

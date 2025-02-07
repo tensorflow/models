@@ -1,6 +1,6 @@
 Apart from applying the prediction models to analyze images, the script that runs [the prediction pipeline](./learn-about-pipeline) on Google Cloud ingests data into [BigQuery](https://cloud.google.com/bigquery) to store all the image analysis details.
 
-After [setting up a server](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server) in a Google Cloud account, you can start recording videos of objects passing on your conveyor belt to gather data for analysis. The next step is transferring those video or image files to a [Cloud Storage](https://cloud.google.com/storage) bucket, where the prediction pipeline processes the images.
+After [setting up a server](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server) in a Google Cloud account, you can start recording videos of objects passing on your conveyor belt to gather data for analysis. The next step is transferring those video or image files to a [Cloud Storage](https://cloud.google.com/storage) bucket, where the prediction pipeline processes the images.
 
 The results of each video or image prediction are stored and appended to two
 BigQuery tables, ensuring efficient data management. After systematically
@@ -10,7 +10,7 @@ stores the results in another bucket for further use and analysis.
 This page explains how to create and manage Cloud Storage buckets on Google
 Cloud for the videos you record, run the prediction pipeline to apply the
 models, and process images for further analysis. You can then connect a
-visualization dashboard to the BigQuery tables to [display results as charts and reports](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).<br/><br/>
+visualization dashboard to the BigQuery tables to [display results as charts and reports](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).<br/><br/>
 
 {{< table_of_contents >}}
 
@@ -18,7 +18,7 @@ visualization dashboard to the BigQuery tables to [display results as charts and
 
 ## Store videos in Cloud Storage buckets
 
-To effectively manage and process the videos or images recorded by the [machine vision camera](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/) capturing objects on the conveyor belt, you need the following storage devices:
+To effectively manage and process the videos or images recorded by the [machine vision camera](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/) capturing objects on the conveyor belt, you need the following storage devices:
 
 -  **Local disk storage**: Temporarily cache or store files locally from the camera.
 -  **Cloud Storage input bucket**: Store your recorded videos or images. You can automate uploads using a storage transfer agent.
@@ -55,7 +55,7 @@ from your NVIDIA T4 GPU virtual machine (VM) instance must have access to Cloud
 Storage buckets and BigQuery tables to let the VM instance run the prediction
 pipeline and upload the results to BigQuery.
 
-The VM you created when [deploying CircularNet](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/) has a service
+The VM you created when [deploying CircularNet](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/) has a service
 account that must act as a _principal_ with the following two roles:
 
 -  Grant the Storage Admin role to access your Cloud Storage input and output buckets. [Add the VM service account as a principal to a bucket-level policy](https://cloud.google.com/storage/docs/access-control/using-iam-permissions#bucket-add) for both buckets.
@@ -73,7 +73,7 @@ on Google Cloud:
 1. [Grant the required permissions to the VM service account](#grant-required-permissions).
 1. From the **Navigation menu** on the Google Cloud console, select **Compute Engine** > **VM instances**.
 1. On the **VM instances** page, find the VM instance you created with the
-   NVIDIA T4 GPU when [deploying CircularNet](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
+   NVIDIA T4 GPU when [deploying CircularNet](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
 1. If you stopped your VM instance, restart it by clicking **More actions** >
    **Start / Resume** in the row of the instance that you want to restart.
 
@@ -82,7 +82,7 @@ on Google Cloud:
 
 1. Click **SSH** in the row of the instance that you want to connect to. The
    **SSH-in-Browser** tool opens. For more information, see [Connect to VMs](https://cloud.google.com/compute/docs/connect/standard-ssh#connect_to_vms).
-1. On the **SSH-in-browser** window, [start the server](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server).
+1. On the **SSH-in-browser** window, [start the server](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server).
 1. Display the names of the models you loaded to the Triton inference server:
 
     ```

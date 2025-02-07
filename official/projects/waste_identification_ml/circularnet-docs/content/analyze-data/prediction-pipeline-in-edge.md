@@ -1,9 +1,9 @@
-The script that runs [the prediction pipeline](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/learn-about-pipeline) on an
+The script that runs [the prediction pipeline](/official/projects/waste_identification_ml/circularnet-docs/content/learn-about-pipeline) on an
 edge device applies the prediction models to analyze images.
 
-After [setting up a server](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server) in your edge device, you
+After [setting up a server](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server) in your edge device, you
 can start recording videos of objects passing on your conveyor belt to gather
-data for analysis and storing files locally from [the camera](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/). The next step is transferring those
+data for analysis and storing files locally from [the camera](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/). The next step is transferring those
 videos or image files to a folder in the edge device, where the prediction
 pipeline processes the images.
 
@@ -15,7 +15,7 @@ creates an output directory with results for further use and analysis.
 This page explains how to run the prediction pipeline to apply the models to
 images stored locally in the edge device. You can then manage data according to
 your needs, such as exporting the results to BigQuery tables and connecting a
-visualization dashboard to [display results as charts and reports](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).<br/><br/>
+visualization dashboard to [display results as charts and reports](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).<br/><br/>
 
 {{< table_of_contents >}}
 
@@ -28,7 +28,7 @@ in an edge device:
 
 1. Open the terminal of your edge device to interact with the operating system
    through the command line.
-1. [Start the server](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server).
+1. [Start the server](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server).
 1. Display the names of the models you loaded to the Triton inference server:
 
     ```
@@ -109,7 +109,7 @@ You have finished running the prediction pipeline and applying the prediction
 models to your files for further analysis. You can find the image results with
 the applied masks in your output folder in the edge device. You can also export
 your results manually to a [BigQuery](https://cloud.google.com/bigquery) table
-to connect it with a visualization dashboard for [data analysis and reporting](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).
+to connect it with a visualization dashboard for [data analysis and reporting](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/).
 
 **Important:** If you rerun the prediction pipeline on the same file, you must
 delete the results created the first time you ran the script from the output
@@ -117,4 +117,4 @@ folder to avoid conflicting issues.
 
 ## What's next
 
--  [View data analysis and reporting](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/view-data/)
+-  [View data analysis and reporting](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/)
