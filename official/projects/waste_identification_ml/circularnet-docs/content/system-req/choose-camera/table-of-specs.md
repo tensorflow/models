@@ -1,12 +1,11 @@
-+++
-title = 'Table of specifications'
-date = 2024-07-30T20:37:11Z
-draft = true
-weight = 10
-+++
-The adequate specifications, such as sensor size, lens, height, or shutter speed, depend entirely on your facility's requirements.
+The adequate specifications, such as sensor size, lens, height, or shutter
+speed, depend entirely on your facility's requirements.
 
-Conducting a complete engineering analysis is necessary for a thorough understanding of your facility's conditions. This includes factors like the size of objects on the conveyor belt, the speed of the belt, the positioning of the camera, and lighting conditions. However, the following table provides a summarized overview that can aid in the initial camera selection process.
+Conducting a complete engineering analysis is necessary for a thorough
+understanding of your facility's conditions. This includes factors like the size
+of objects on the conveyor belt, the speed of the belt, the positioning of the
+camera, and lighting conditions. However, the following table provides a
+summarized overview that can aid in the initial camera selection process.
 
 | **Specification**     | **Recommendation**                                    |
 | --------------------- | ----------------------------------------------------- |

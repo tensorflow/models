@@ -1,12 +1,14 @@
-+++
-title = 'Choose edge device hardware'
-date = 2024-07-30T20:45:05Z
-draft = true
-weight = 11
-+++
-This section assumes [you chose an edge device](../../solutions/#edge-device-deployment) as the computing unit to run CircularNet models. Selecting an edge device requires technical expertise to manage hardware and software configurations.
+This section assumes [you chose an edge device](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/solutions/#edge-device-deployment)
+as the computing unit to run CircularNet models. Selecting an edge device
+requires technical expertise to manage hardware and software configurations.
 
-Selecting and configuring the right edge device significantly impacts the performance of CircularNet ML models. To ensure optimal performance, we recommend using NVIDIA Jetson Xavier or Jetson Orin devices, configured with a minimum of 30 GB of RAM and between 100 GB and 200 GB of storage. This configuration is necessary to effectively run a Triton inference server, with which CircularNet operates because it is scalable and works with every kind of machine learning framework.
+Selecting and configuring the right edge device significantly impacts the
+performance of CircularNet ML models. To ensure optimal performance, we
+recommend using NVIDIA Jetson Xavier or Jetson Orin devices, configured with a
+minimum of 30 GB of RAM and between 100 GB and 200 GB of storage. This
+configuration is necessary to effectively run a Triton inference server, with
+which CircularNet operates because it is scalable and works with every kind of
+machine learning framework.
 
 The following are the recommended device specifications for an edge device:
 
@@ -34,10 +36,18 @@ The following are the recommended device specifications for an edge device:
   </tbody>
 </table>
 
-To run the Triton inference server in one of the recommended Jetson devices, use the Triton container available in the [NVIDIA DeepStream NGC catalog](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/deepstream-l4t). Each device has a different JetPack version, a library that depends on the hardware and model. The required JetPack version for this Triton container is JetPack 6.0. When using JetPack 6.0, the container image needed is `nvcr.io/nvidia/deepstream-l4t:7.0-triton-multiarch`.
+To run the Triton inference server in one of the recommended Jetson devices, use
+the Triton container available in the [NVIDIA DeepStream NGC catalog](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/deepstream-l4t).
+Each device has a different JetPack version, a library that depends on the
+hardware and model. The required JetPack version for this Triton container is
+JetPack 6.0. When using JetPack 6.0, the container image needed is
+`nvcr.io/nvidia/deepstream-l4t:7.0-triton-multiarch`.
 
 For information about installing the latest version of JetPack on the device, see [JetPack SDK](https://developer.nvidia.com/embedded/jetpack). For other JetPack versions, refer to the [JetPack archive](https://developer.nvidia.com/embedded/jetpack-archive).
 
-Connect [the machine vision camera](../choose-camera/) to the edge device, which leverages the graphics processing unit (GPU) to run model inference. The captured images or videos and the inference results can be streamed back to Google Cloud.
+Connect [the machine vision camera](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/choose-camera/) to the edge device, which leverages the graphics processing unit (GPU) to run model inference. The captured images or videos and the inference results can be streamed back to Google Cloud.
 
-By configuring your device and completing the installation, you can ensure that your edge device is properly configured, a crucial step in running CircularNet models efficiently and effectively. To learn how to install CircularNet on an edge device, see [Deploy CircularNet](../../deploy-cn/).
+By configuring your device and completing the installation, you can ensure that
+your edge device is properly configured, a crucial step in running CircularNet
+models efficiently and effectively. To learn how to install CircularNet on an
+edge device, see [Deploy CircularNet](/third_party/tensorflow_models/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).

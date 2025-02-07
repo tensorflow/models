@@ -1,10 +1,5 @@
-+++
-title = 'Benefits of CircularNet'
-date = 2024-07-30T17:02:23Z
-draft = true
-weight = 2
-+++
-The following table describes some of the benefits of using CircularNet as your automated tool for waste identification:
+The following table describes some of the benefits of using CircularNet as your
+automated tool for waste identification:
 
 <style>
   .color {
@@ -74,14 +69,22 @@ The following table describes some of the benefits of using CircularNet as your 
 
 ## Use cases for CircularNet
 
-While you can deploy the fundamental technology underpinning CircularNet in various areas across the waste management ecosystem, CircularNet has been trained on and designed for deployment in material recovery facilities (MRFs) and recycling facilities. Typical users include MRF and recycling operators, technology integrators, system and machine learning engineers, and academic researchers. Examples of solutions you can implement through CircularNet include:
+While you can deploy the fundamental technology underpinning CircularNet in
+various areas across the waste management ecosystem, CircularNet has been
+trained on and designed for deployment in material recovery facilities (MRFs)
+and recycling facilities. Typical users include MRF and recycling operators,
+technology integrators, system and machine learning engineers, and academic
+researchers. Examples of solutions you can implement through CircularNet
+include:
 
 -  Bale quality analysis
 -  Residual line analytics
--  Identification of recyclable materials and contaminants in mixed waste streams
+-  Identification of recyclable materials and contaminants in mixed waste
+   streams
 -  Recycling and contamination reporting in MRF facilities
 
-For case studies by industry and application, refer to the following external articles:
+For case studies by industry and application, refer to the following external
+articles:
 
 -  [CircularNet: How Recykal built Asia's largest circular economy marketplace using Google AI](https://sustainability.google/operating-sustainably/stories/circular-economy-marketplace/)
 -  [CircularNet: Reducing waste with Machine Learning](https://blog.tensorflow.org/2022/10/circularnet-reducing-waste-with-machine.html)
