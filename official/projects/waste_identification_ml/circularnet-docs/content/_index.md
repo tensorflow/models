@@ -27,7 +27,7 @@
         * [Aperture size (f-number)](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/factors.md#aperture-size-f-number)
         * [Shutter speed](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/factors.md#shutter-speed)
     * [Table of specifications](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-camera/table-of-specs.md)
-* [Choose edge device hardware](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-edge-device.md)
+* [Choose edge device hardware](/official/projects/waste_identification_ml/circularnet-docs/content/system-req/choose-edge-device/_index.md)
 
 **[Deploy CircularNet](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/_index.md)**
 
