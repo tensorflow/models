@@ -60,9 +60,9 @@ class PrefetcherTest(tf.test.TestCase):
       with slim.queues.QueueRunners(sess):
         for _ in range(num_batches):
           results = sess.run(tensor_dict)
-          self.assertEquals(results['image'].shape,
+          self.assertEqual(results['image'].shape,
                             (batch_size, image_size, image_size, 3))
-          self.assertEquals(results['label'].shape, (batch_size, 1))
+          self.assertEqual(results['label'].shape, (batch_size, 1))
         with self.assertRaises(tf.errors.OutOfRangeError):
           sess.run(tensor_dict)
 
@@ -98,9 +98,9 @@ class PrefetcherTest(tf.test.TestCase):
       with slim.queues.QueueRunners(sess):
         for _ in range(num_batches):
           results = sess.run(tensor_dict)
-          self.assertEquals(results['image'].shape,
+          self.assertEqual(results['image'].shape,
                             (batch_size, image_size, image_size, 3))
-          self.assertEquals(results['label'].shape, (batch_size, 1))
+          self.assertEqual(results['label'].shape, (batch_size, 1))
         with self.assertRaises(tf.errors.OutOfRangeError):
           sess.run(tensor_dict)
 

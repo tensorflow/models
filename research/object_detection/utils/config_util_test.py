@@ -866,22 +866,22 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertEqual(input_name, None)
     self.assertEqual(field_name, "label_map_path")
 
-    with self.assertRaisesRegexp(ValueError,
+    with self.assertRaisesRegex(ValueError,
                                  "Invalid key format when overriding configs."):
       config_util.check_and_parse_input_config_key(
           configs, "train_input_config:shuffle")
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, "Invalid key_name when overriding input config."):
       config_util.check_and_parse_input_config_key(
           configs, "invalid_key_name:train_name:shuffle")
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, "Invalid input_name when overriding input config."):
       config_util.check_and_parse_input_config_key(
           configs, "eval_input_configs:unknown_eval_name:shuffle")
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, "Invalid field_name when overriding input config."):
       config_util.check_and_parse_input_config_key(
           configs, "eval_input_configs:eval_2:unknown_field_name")
@@ -919,7 +919,7 @@ class ConfigUtilTest(tf.test.TestCase):
     _write_config(pipeline_config, pipeline_config_path)
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
 
-    with self.assertRaisesRegexp(ValueError,
+    with self.assertRaisesRegex(ValueError,
                                  "Duplicate input name found when overriding."):
       config_util.update_input_reader_config(
           configs,
@@ -928,7 +928,7 @@ class ConfigUtilTest(tf.test.TestCase):
           field_name="shuffle",
           value=False)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, "Input name name_not_exist not found when overriding."):
       config_util.update_input_reader_config(
           configs,
@@ -937,7 +937,7 @@ class ConfigUtilTest(tf.test.TestCase):
           field_name="shuffle",
           value=False)
 
-    with self.assertRaisesRegexp(ValueError,
+    with self.assertRaisesRegex(ValueError,
                                  "Unknown input config overriding."):
       config_util.update_input_reader_config(
           configs,

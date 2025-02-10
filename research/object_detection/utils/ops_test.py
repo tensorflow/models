@@ -821,7 +821,7 @@ class OpsTestNormalizeToTarget(test_case.TestCase):
     inputs = tf.random_uniform([5, 10, 12, 3])
     target_norm_value = 4.0
     dim = 10
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'dim must be non-negative but smaller than the input rank.'):
       ops.normalize_to_target(inputs, target_norm_value, dim)
@@ -830,7 +830,7 @@ class OpsTestNormalizeToTarget(test_case.TestCase):
     inputs = tf.random_uniform([5, 10, 12, 3])
     target_norm_value = [4.0, 4.0]
     dim = 3
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'target_norm_value must be a float or a list of floats'):
       ops.normalize_to_target(inputs, target_norm_value, dim)
 
@@ -963,7 +963,7 @@ class OpsTestPositionSensitiveCropRegions(test_case.TestCase):
     image = tf.constant(1, dtype=tf.float32, shape=image_shape)
     boxes = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
 
-    with self.assertRaisesRegexp(ValueError, 'num_spatial_bins should be >= 1'):
+    with self.assertRaisesRegex(ValueError, 'num_spatial_bins should be >= 1'):
       ops.position_sensitive_crop_regions(
           image, boxes, crop_size, num_spatial_bins, global_pool=True)
 
@@ -975,7 +975,7 @@ class OpsTestPositionSensitiveCropRegions(test_case.TestCase):
     image = tf.constant(1, dtype=tf.float32, shape=image_shape)
     boxes = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'crop_size should be divisible by num_spatial_bins'):
       ops.position_sensitive_crop_regions(
           image, boxes, crop_size, num_spatial_bins, global_pool=True)
@@ -992,7 +992,7 @@ class OpsTestPositionSensitiveCropRegions(test_case.TestCase):
       return ops.position_sensitive_crop_regions(
           image, boxes, crop_size, num_spatial_bins, global_pool=True)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Dimension size must be evenly divisible by 4 but is 5'):
       self.execute(graph_fn, [])
 
@@ -1094,7 +1094,7 @@ class OpsTestPositionSensitiveCropRegions(test_case.TestCase):
     image = tf.constant(1, dtype=tf.float32, shape=image_shape)
     boxes = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Only support square bin crop size for now.'):
       ops.position_sensitive_crop_regions(
           image, boxes, crop_size, num_spatial_bins, global_pool=False)

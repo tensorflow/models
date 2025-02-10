@@ -74,7 +74,7 @@ class FlexibleGridAnchorGeneratorTest(test_case.TestCase):
     anchor_generator = fg.FlexibleGridAnchorGenerator(
         [(32.0,)], [(1.0,)], [(32, 32),], [(16, 16),],
         normalize_coordinates=True)
-    with self.assertRaisesRegexp(ValueError, 'Normalized coordinates'):
+    with self.assertRaisesRegex(ValueError, 'Normalized coordinates'):
       anchor_generator.generate(
           feature_map_shape_list=[(2, 2)], im_height=1, im_width=1)
 

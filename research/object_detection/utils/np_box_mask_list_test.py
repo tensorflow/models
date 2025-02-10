@@ -179,7 +179,7 @@ class AddExtraFieldTest(tf.test.TestCase):
     box_mask_list = np_box_mask_list.BoxMaskList(
         box_data=boxes, mask_data=masks)
     expected_num_boxes = 2
-    self.assertEquals(box_mask_list.num_boxes(), expected_num_boxes)
+    self.assertEqual(box_mask_list.num_boxes(), expected_num_boxes)
 
 
 if __name__ == '__main__':

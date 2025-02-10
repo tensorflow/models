@@ -462,7 +462,7 @@ class TargetAssignerTest(test_case.TestCase):
     groundtruth_labels = tf.constant([[0, 1, 0, 0, 0, 0, 0],
                                       [0, 0, 0, 0, 0, 1, 0],
                                       [0, 0, 0, 1, 0, 0, 0]], tf.float32)
-    with self.assertRaisesRegexp(ValueError, 'Unequal shapes'):
+    with self.assertRaisesRegex(ValueError, 'Unequal shapes'):
       target_assigner.assign(
           priors,
           boxes,

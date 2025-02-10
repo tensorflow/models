@@ -665,7 +665,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
-      with self.assertRaisesRegexp(tf.errors.InvalidArgumentError,
+      with self.assertRaisesRegex(tf.errors.InvalidArgumentError,
                                    'TensorArray.*shape'):
         sess.run(
             [boxes, scores, classes, keypoints, masks, num_detections],

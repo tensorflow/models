@@ -91,8 +91,8 @@ class MetricsTest(tf.test.TestCase):
     expected_precision = None
     expected_recall = None
     precision, recall = metrics.compute_precision_recall(scores, labels, num_gt)
-    self.assertEquals(precision, expected_precision)
-    self.assertEquals(recall, expected_recall)
+    self.assertEqual(precision, expected_precision)
+    self.assertEqual(recall, expected_recall)
     ap = metrics.compute_average_precision(precision, recall)
     self.assertTrue(np.isnan(ap))
 
@@ -137,10 +137,10 @@ class MetricsTest(tf.test.TestCase):
     median_ranks_5 = metrics.compute_median_rank_at_k(tp_fp, 5)
     median_ranks_3_bool = metrics.compute_median_rank_at_k(tp_fp_bool, 3)
 
-    self.assertEquals(median_ranks_1, 0)
-    self.assertEquals(median_ranks_3, 0.5)
-    self.assertEquals(median_ranks_3_bool, 0.5)
-    self.assertEquals(median_ranks_5, 0.5)
+    self.assertEqual(median_ranks_1, 0)
+    self.assertEqual(median_ranks_3, 0.5)
+    self.assertEqual(median_ranks_3_bool, 0.5)
+    self.assertEqual(median_ranks_5, 0.5)
 
 
 if __name__ == '__main__':

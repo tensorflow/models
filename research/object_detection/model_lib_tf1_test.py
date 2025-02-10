@@ -226,7 +226,7 @@ class ModelLibTest(tf.test.TestCase):
     """Tests model_fn TRAIN mode with all variables frozen."""
     configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
     configs['train_config'].freeze_variables.append('.*')
-    with self.assertRaisesRegexp(ValueError, 'No variables to optimize'):
+    with self.assertRaisesRegex(ValueError, 'No variables to optimize'):
       self._assert_model_fn_for_train_eval(configs, 'train')
 
   def test_model_fn_in_train_mode_freeze_all_included_variables(self):
@@ -235,7 +235,7 @@ class ModelLibTest(tf.test.TestCase):
     train_config = configs['train_config']
     train_config.update_trainable_variables.append('FeatureExtractor')
     train_config.freeze_variables.append('.*')
-    with self.assertRaisesRegexp(ValueError, 'No variables to optimize'):
+    with self.assertRaisesRegex(ValueError, 'No variables to optimize'):
       self._assert_model_fn_for_train_eval(configs, 'train')
 
   def test_model_fn_in_train_mode_freeze_box_predictor(self):

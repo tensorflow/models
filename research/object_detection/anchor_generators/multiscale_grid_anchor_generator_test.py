@@ -78,7 +78,7 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
     anchor_generator = mg.MultiscaleGridAnchorGenerator(
         min_level=5, max_level=5, anchor_scale=1.0, aspect_ratios=[1.0],
         scales_per_octave=1, normalize_coordinates=True)
-    with self.assertRaisesRegexp(ValueError, 'Normalized coordinates'):
+    with self.assertRaisesRegex(ValueError, 'Normalized coordinates'):
       anchor_generator.generate(
           feature_map_shape_list=[(2, 2)], im_height=1, im_width=1)
 

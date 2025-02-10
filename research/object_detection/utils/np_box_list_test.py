@@ -132,7 +132,7 @@ class AddExtraFieldTest(tf.test.TestCase):
     boxes = np.array([[0., 0., 100., 100.], [10., 30., 50., 70.]], dtype=float)
     boxlist = np_box_list.BoxList(boxes)
     expected_num_boxes = 2
-    self.assertEquals(boxlist.num_boxes(), expected_num_boxes)
+    self.assertEqual(boxlist.num_boxes(), expected_num_boxes)
 
 
 if __name__ == '__main__':
