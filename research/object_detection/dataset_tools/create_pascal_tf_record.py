@@ -183,3 +183,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.app.run()
+
+# Automated edit: Add docstrings to clarify usage in tensorflow_models.
