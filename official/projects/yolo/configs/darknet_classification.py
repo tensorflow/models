@@ -68,3 +68,5 @@ def darknet_classification() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
+
+# Automated edit: [Edited] Add docstring to improve documentation
