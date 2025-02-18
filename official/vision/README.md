@@ -2,8 +2,8 @@
 
 ⚠️ Disclaimer: Checkpoints are based on training with publicly available
 datasets. Some datasets contain limitations, including non-commercial use
-limitations. Please review the terms and conditions made available by third parties
-before using the datasets provided. Checkpoints are licensed under
+limitations. Please review the terms and conditions made available by third
+parties before using the datasets provided. Checkpoints are licensed under
 [Apache 2.0](https://github.com/tensorflow/models/blob/master/LICENSE).
 
 ⚠️ Disclaimer: Datasets hyperlinked from this page are not owned or distributed
@@ -208,9 +208,9 @@ training features including:
 
 | Backbone     | Resolution    | Epochs  | FLOPs (B)     | Params (M) |  Box AP | Download |
 | ------------ |:-------------:| -------:|--------------:|-----------:|--------:|---------:|
-| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet49_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/spinenet/spinenet-49-i640.tar.gz) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
-| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/spinenet/spinenet-96-i1024.tar.gz) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
-| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet143_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/spinenet/spinenet-143-i1280.tar.gz) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet49_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/spinenet/spinenet-49-i640.tar.gz) |
+| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/spinenet/spinenet-96-i1024.tar.gz) |
+| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/configs/experiments/retinanet/coco_spinenet143_tpu.yaml) \| [ckpt](https://storage.googleapis.com/tf_model_garden/vision/spinenet/spinenet-143-i1280.tar.gz) |
 
 </details>
 
