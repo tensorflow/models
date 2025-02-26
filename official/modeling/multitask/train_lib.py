@@ -78,15 +78,8 @@ def run_experiment(
   is_training = 'train' in mode
   is_eval = 'eval' in mode
   with distribution_strategy.scope():
-    optimizer = train_utils.create_optimizer(task, params)
-    kwargs = dict(multi_task=task, multi_task_model=model, optimizer=optimizer)
-    if params.trainer.trainer_type == 'interleaving':
-      sampler = task_sampler.get_task_sampler(params.trainer.task_sampler,
-                                              task.task_weights)
-      kwargs.update(dict(task_sampler=sampler))
-    if trainer is None:
-      trainer = TRAINERS[params.trainer.trainer_type](
-          **kwargs) if is_training else None
+    if is_training and trainer is None:
+      trainer = get_trainer(distribution_strategy, params, task, model)
     if is_eval:
       eval_steps = task.task_eval_steps
       evaluator = evaluator_lib.MultiTaskEvaluator(
@@ -155,6 +148,38 @@ def run_experiment(
           tf.convert_to_tensor(params.trainer.validation_steps))  # pytype: disable=bad-return-type  # typed-keras
     else:
       return model
+
+
+def get_trainer(
+    distribution_strategy: tf.distribute.Strategy,
+    params: configs.MultiEvalExperimentConfig,
+    task: multitask.MultiTask,
+    model: base_model.MultiTaskBaseModel | tf_keras.Model,
+) -> orbit.StandardTrainer:
+  """Creates a multi-task trainer for the given task.
+
+  Args:
+    distribution_strategy: A distribution strategy.
+    params: ExperimentConfig instance.
+    task: A MultiTaskTask instance.
+    model: A MultiTaskBaseModel instance.
+
+  Returns:
+      An Orbit trainer instance.
+  """
+  with distribution_strategy.scope():
+    kwargs = dict(
+        multi_task=task,
+        multi_task_model=model,
+        optimizer=train_utils.create_optimizer(task, params),
+    )
+    if params.trainer.trainer_type == 'interleaving':
+      kwargs.update(
+          task_sampler=task_sampler.get_task_sampler(
+              params.trainer.task_sampler, task.task_weights
+          )
+      )
+    return TRAINERS[params.trainer.trainer_type](**kwargs)
 
 
 TrainActionsFactoryType = Callable[
