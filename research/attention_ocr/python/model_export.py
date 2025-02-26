@@ -22,9 +22,8 @@ python model_export.py \
 """
 import os
 
-import tensorflow as tf
-from tensorflow import app
-from tensorflow.contrib import slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from tensorflow.compat.v1 import flags
 
 import common_flags
@@ -195,4 +194,5 @@ def main(unused_argv):
 if __name__ == '__main__':
   flags.mark_flag_as_required('dataset_name')
   flags.mark_flag_as_required('export_dir')
-  app.run(main)
+  tf.disable_eager_execution()
+  tf.app.run(main)
