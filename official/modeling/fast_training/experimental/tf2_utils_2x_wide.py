@@ -17,6 +17,8 @@
 from absl import logging
 import numpy as np
 import tensorflow as tf, tf_keras
+tf.config.optimizer.set_jit(True)  # Enable XLA for computation graph optimization
+
 
 
 def expand_vector(v: np.ndarray) -> np.ndarray:
