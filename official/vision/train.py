@@ -28,6 +28,14 @@ from official.core import train_utils
 from official.modeling import performance
 from official.vision import registry_imports  # pylint: disable=unused-import
 from official.vision.utils import summary_manager
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
+
+# Enable mixed precision
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_policy(policy)
+
+# Proceed with model training...
+
 
 
 FLAGS = flags.FLAGS
