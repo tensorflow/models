@@ -94,7 +94,7 @@ anchor box concepts:
   value, while `max_scale` and `max_level` specify the largest objects to
   detect.
 
-  +  **Aspect ratio**: This is the height/width ratio for the anchor boxes.  For
+  +  **Aspect ratio**: This is the width/height ratio for the anchor boxes.  For
   example, the `aspect_ratio` value of `1.0` creates a square, and `2.0` creates
   a 1:2 rectangle (landscape orientation). You can define as many aspects as you
   want and each one is repeated at all anchor box scales.
