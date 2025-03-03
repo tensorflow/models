@@ -13,7 +13,8 @@
 5. Install the following libraries
     `pip install tensorflow[and-cuda] tf-models-official`
 6. Move training data in TFRecord format to a GCP bucket, or into the VM
-     instance.
+     instance. Refer to scripts in the pre_processing directory for creating
+     training data in TFRecord format.
 7. Move the configuration file for model training into the VM. The configuration
      file contains all the parameters and path to datasets. A sample
      configuration file `config.yaml` has been provided for GPU training, and

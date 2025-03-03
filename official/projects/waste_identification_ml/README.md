@@ -28,13 +28,12 @@ and modeling solutions for TensorFlow users.
 
 ## Model paths in GCP buckets
 
-### 3 Model Strategy
+### 1 Model Strategy (latest model)
+### Single unified model that performs material type and material form detections
 
-| Model categories | Model backbone | Model type | GCP bucket path |
+Model categories | Model backbone | Model type  | GCP bucket path |
 | ------ | ------ | ----- | ------ |
-| Material Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_model.zip) |
-| Material Form Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_form_model.zip) |
-|Plastic Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/plastic_types_model.zip) |
+Material Type & Form | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/Jan2025_ver2_merged_1024_1024.zip)
 
 ### 2 Model Strategy
 ### Combines plastic type and material type identifications into a unified model
@@ -49,6 +48,14 @@ Material Form Model V2 | Resnet | saved model | [click here](https://storage.goo
 Material Type Model V2| MobileNet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/mobilenet_material.zip)
 Material Form Model V2| MobileNet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/mobilenet_material_form.zip)
 
+### 3 Model Strategy
+
+| Model categories | Model backbone | Model type | GCP bucket path |
+| ------ | ------ | ----- | ------ |
+| Material Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_model.zip) |
+| Material Form Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_form_model.zip) |
+|Plastic Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/plastic_types_model.zip) |
+
 ## Authors and Maintainers
-- Umair Sabir
-- Sujit Sanjeev
+Umair Sabir
+Sujit Sanjeev
