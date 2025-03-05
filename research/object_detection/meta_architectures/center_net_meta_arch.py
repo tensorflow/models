@@ -2384,7 +2384,7 @@ class KeypointEstimationParams(
         offset_head_num_filters, offset_head_kernel_sizes,
         regress_head_num_filters, regress_head_kernel_sizes,
         score_distance_multiplier, std_dev_multiplier, rescoring_threshold,
-        argmax_postprocessing, gaussian_denom_ratio)
+        gaussian_denom_ratio, argmax_postprocessing)
 
 
 class ObjectCenterParams(
