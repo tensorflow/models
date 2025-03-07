@@ -46,7 +46,7 @@ trains a BERT-base model on GLUE/MNLI-matched which is a sentence prediction
 task.
 
 ```shell
-PARAMS=runtime.distribution_strategy=mirrored  # Train no GPU
+PARAMS=runtime.distribution_strategy=mirrored  # Train on GPU
 PARAMS=${PARAMS},task.train_data.input_path=/path-to-your-training-data/
 
 python3 train.py \
