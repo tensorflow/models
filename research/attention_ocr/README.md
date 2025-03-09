@@ -49,14 +49,14 @@ Maintainer
 python3 -m venv ~/.tensorflow
 source ~/.tensorflow/bin/activate
 pip install --upgrade pip
-pip install --upgrade tensorflow-gpu=1.15
+pip install tensorflow tf-slim Pillow
 ```
 
 2. At least 158GB of free disk space to download the FSNS dataset:
 
 ```
 cd research/attention_ocr/python/datasets
-aria2c -c -j 20 -i ../../../street/python/fsns_urls.txt
+aria2c -c -j 20 -i fsns_urls.txt
 cd ..
 ```
 
@@ -64,7 +64,7 @@ cd ..
 4. `train.py` works with both CPU and GPU, though using GPU is preferable. It has been tested with a Titan X and with a GTX980.
 
 [TF]: https://www.tensorflow.org/install/
-[FSNS]: https://github.com/tensorflow/models/tree/master/research/street
+[FSNS]: https://github.com/tensorflow/models/tree/ec4fe464954792f04be16b170c07e3d5985958c7/research/street
 
 ## Dataset
 
@@ -99,8 +99,7 @@ https://download.tensorflow.org/data/fsns-20160927/validation/validation-00000-o
 https://download.tensorflow.org/data/fsns-20160927/validation/validation-00063-of-00064
 ```
 
-All URLs are stored in the [research/street](https://github.com/tensorflow/models/tree/master/research/street) 
-repository in the text file `python/fsns_urls.txt`.
+All URLs are stored in the text file `python/datasets/fsns_urls.txt`.
 
 ## How to use this code
 
