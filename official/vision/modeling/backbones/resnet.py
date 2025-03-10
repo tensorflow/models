@@ -23,6 +23,7 @@ from official.modeling import tf_utils
 from official.vision.modeling.backbones import factory
 from official.vision.modeling.layers import nn_blocks
 from official.vision.modeling.layers import nn_layers
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 layers = tf_keras.layers
 
@@ -130,6 +131,7 @@ class ResNet(tf_keras.Model):
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
+      num_classes=1000,
       kernel_initializer: str = 'VarianceScaling',
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
@@ -183,6 +185,22 @@ class ResNet(tf_keras.Model):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._bn_trainable = bn_trainable
+    # Enable mixed precision inside the model
+    policy = mixed_precision.Policy('mixed_float16')
+    mixed_precision.set_policy(policy)
+
+    self.conv1 = tf.keras.layers.Conv2D(64, 7, activation='relu')
+    self.pool = tf.keras.layers.MaxPooling2D()
+    self.flatten = tf.keras.layers.Flatten()
+    self.fc = tf.keras.layers.Dense(num_classes, activation='softmax', dtype='float32')  # Keep output in float32
+        
+    def call(self, inputs):
+        x = self.conv1(inputs)
+        x = self.pool(x)
+        x = self.flatten(x)
+        return self.fc(x)
+
+    
 
     if tf_keras.backend.image_data_format() == 'channels_last':
       self._bn_axis = -1
