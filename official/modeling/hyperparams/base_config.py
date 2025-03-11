@@ -246,8 +246,11 @@ class Config(params_dict.ParamsDict):
         # If the key not exist or the value is None, a new Config-family object
         # sould be created for the key.
         self.__dict__[k] = subconfig_type(v)
-      else:
+      elif hasattr(self.__dict__[k], 'override'):
         self.__dict__[k].override(v)
+      else:
+        # The key exists but it cannot be overridden. For example, it's a str.
+        self.__dict__[k] = subconfig_type(v)
     elif not is_null(k) and isinstance(v, self.SEQUENCE_TYPES) and all(
         [not isinstance(e, self.IMMUTABLE_TYPES) for e in v]):
       if len(self.__dict__[k]) == len(v):
@@ -300,9 +303,11 @@ class Config(params_dict.ParamsDict):
         else:
           self._set(k, v)
       else:
-        if isinstance(v, dict) and self.__dict__[k]:
+        if isinstance(v, dict) and hasattr(self.__dict__[k], '_override'):
           self.__dict__[k]._override(v, is_strict)  # pylint: disable=protected-access
-        elif isinstance(v, params_dict.ParamsDict) and self.__dict__[k]:
+        elif isinstance(v, params_dict.ParamsDict) and hasattr(
+            self.__dict__[k], '_override'
+        ):
           self.__dict__[k]._override(v.as_dict(), is_strict)  # pylint: disable=protected-access
         else:
           self._set(k, v)
