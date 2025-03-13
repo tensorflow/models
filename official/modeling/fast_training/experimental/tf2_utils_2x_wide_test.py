@@ -16,6 +16,7 @@
 
 import numpy as np
 import tensorflow as tf, tf_keras
+tf.config.optimizer.set_jit(True)  # Enable XLA for computation graph optimization
 
 from official.modeling.fast_training.experimental import tf2_utils_2x_wide
 
