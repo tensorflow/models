@@ -35,7 +35,7 @@ def export_inference_graph(
     batch_size: Optional[int],
     input_image_size: List[int],
     params: cfg.ExperimentConfig,
-    checkpoint_path: str | None,
+    checkpoint_path: Optional[str] = None,
     export_dir: str,
     num_channels: Optional[int] = 3,
     export_module: Optional[export_base.ExportModule] = None,
