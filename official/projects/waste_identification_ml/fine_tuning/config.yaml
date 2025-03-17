@@ -19,10 +19,10 @@ runtime:
 task:
   allow_image_summary: false
   allowed_mask_class_ids: null
-  annotation_file: /home/umairsabir/data/benjamin_val.json
+  annotation_file: <path to the annotation file in COCO JSON format>
   differential_privacy_config: null
   freeze_backbone: false
-  init_checkpoint: /home/umairsabir/data/pre_trained_coco_weights/resnet/ckpt-22500
+  init_checkpoint: <path to the CircularNet checkpoints>
   init_checkpoint_modules: [backbone, decoder]
   losses:
     class_weights: null
