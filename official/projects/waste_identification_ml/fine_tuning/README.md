@@ -21,7 +21,7 @@
      description of few entries is provided below.
 8. Create a directory to save the output checkpoints.
 9. Run the following command to initiate the training -
-    `python -m official.vision.train --experiment="circularnet_finetuning"
+    `python -m official.vision.train --experiment="maskrcnn_resnetfpn_coco"
     --mode="train_and_eval" --model_dir="output_directory"
     --config_file="config.yaml"`
 10. Training can also be run in the background by starting a screen session.
