@@ -149,7 +149,7 @@ class DetectionFromImageModule(DetectionInferenceModule):
     """
     if zipped_side_inputs is None:
       zipped_side_inputs = []
-    sig = [tf.TensorSpec(shape=[1, None, None, 3],
+    sig = [tf.TensorSpec(shape=[None, None, None, 3],
                          dtype=tf.uint8,
                          name='input_tensor')]
     if use_side_inputs:
