@@ -105,7 +105,7 @@ class ColorAndPropertyExtractor(unittest.TestCase):
         original_image, black_threshold=50
     )
 
-    self.assertEqual(result, ('Na', 'Na', 'Na'))
+    self.assertEqual(result, (0, 0, 0))
 
   def test_est_color(self):
     result = color_and_property_extractor.est_color((255, 0, 0))
@@ -114,9 +114,9 @@ class ColorAndPropertyExtractor(unittest.TestCase):
 
   def test_generic_color(self):
     test_colors = np.array(
-        [(255, 0, 0), (55, 118, 171), (73, 128, 41), (231, 112, 13)]
+        [(255, 0, 0), (55, 118, 171), (73, 128, 41), (231, 112, 13), (0, 0, 0)]
     )
-    expected_colors = ['red', 'blue', 'green', 'orange']
+    expected_colors = ['red', 'blue', 'green', 'orange', 'black']
 
     result = color_and_property_extractor.get_generic_color_name(test_colors)
 

@@ -167,39 +167,29 @@ def extract_properties_and_object_masks(
 
 def find_dominant_color(
     image: np.ndarray, black_threshold: int = 50
-) -> Tuple[Union[int, str], Union[int, str], Union[int, str]]:
+) -> Tuple[int, int, int]:
   """Determines the dominant color in a given image.
-
-  The function performs the following steps:
-    Filters out black or near-black pixels based on a threshold.
-    Uses k-means clustering to identify the dominant color among the remaining
-  pixels.
 
   Args:
     image: An array representation of the image.
-    black_threshold: pixel value of black color
-
-  shape is (height, width, 3) for RGB channels.
     black_threshold: The intensity threshold below which pixels
-  are considered 'black' or near-black. Default is 50.
+      are considered 'black' or near-black.
 
   Returns:
-    The dominant RGB color in the format (R, G, B). If no non-black
-  pixels are found, returns ('Na', 'Na', 'Na').
+    The dominant RGB color in the format (R, G, B).
   """
   pixels = image.reshape(-1, 3)
 
   # Filter out black pixels based on the threshold
   non_black_pixels = pixels[(pixels > black_threshold).any(axis=1)]
 
-  if non_black_pixels.size != 0:
+  if non_black_pixels.size:
     kmeans = sklearn_cluster.KMeans(
         n_clusters=1, n_init=10, random_state=0
     ).fit(non_black_pixels)
     dominant_color = kmeans.cluster_centers_[0].astype(int)
-
   else:
-    dominant_color = ['Na', 'Na', 'Na']
+    dominant_color = np.array([0, 0, 0], dtype=int)
   return tuple(dominant_color)
 
 
