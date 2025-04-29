@@ -1,8 +1,9 @@
 # Pre-trained Models
 
 ⚠️ Disclaimer: Checkpoints are based on training with publicly available datasets.
-Some datasets contain limitations, including non-commercial use limitations. Please review the terms and conditions made available by third parties before using
-the datasets provided. Checkpoints are licensed under
+Some datasets contain limitations, including non-commercial use limitations.
+Please review the terms and conditions made available by third parties before
+using the datasets provided. Checkpoints are licensed under
 [Apache 2.0](https://github.com/tensorflow/models/blob/master/LICENSE).
 
 ⚠️ Disclaimer: Datasets hyperlinked from this page are not owned or distributed
@@ -16,8 +17,9 @@ models.
 
 ### How to Initialize from Checkpoint
 
-**Note:** TF-HUB/Savedmodel is the preferred way to distribute models as it is
-self-contained. Please consider using TF-HUB for finetuning tasks first.
+**Note:** TF-HUB/Kaggle-Savedmodel is the preferred way to distribute models as
+it is self-contained. Please consider using TF-HUB/Kaggle for finetuning tasks
+first.
 
 If you use the [NLP training library](train.md),
 you can specify the checkpoint path link directly when launching your job. For
@@ -29,11 +31,11 @@ python3 train.py \
  --params_override=task.init_checkpoint=PATH_TO_INIT_CKPT
 ```
 
-### How to load TF-HUB SavedModel
+### How to load TF-HUB/Kaggle SavedModel
 
 Finetuning tasks such as question answering (SQuAD) and sentence
-prediction (GLUE) support loading a model from TF-HUB. These built-in tasks
-support a specific `task.hub_module_url` parameter. To set this parameter,
+prediction (GLUE) support loading a model from TF-HUB/Kaggle. These built-in
+tasks support a specific `task.hub_module_url` parameter. To set this parameter,
 replace `--params_override=task.init_checkpoint=...` with
 `--params_override=task.hub_module_url=TF_HUB_URL`, like below:
 
@@ -54,7 +56,7 @@ in order to keep consistent with BERT paper.
 
 ### Checkpoints
 
-Model                                    | Configuration                | Training Data | Checkpoint & Vocabulary | TF-HUB SavedModels
+Model                                    | Configuration                | Training Data | Checkpoint & Vocabulary | Kaggle SavedModels
 ---------------------------------------- | :--------------------------: | ------------: | ----------------------: | ------:
 BERT-base uncased English                | uncased_L-12_H-768_A-12      | Wiki + Books  | [uncased_L-12_H-768_A-12](https://storage.googleapis.com/tf_model_garden/nlp/bert/v3/uncased_L-12_H-768_A-12.tar.gz) | [`BERT-Base, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/)
 BERT-base cased English                  | cased_L-12_H-768_A-12        | Wiki + Books  | [cased_L-12_H-768_A-12](https://storage.googleapis.com/tf_model_garden/nlp/bert/v3/cased_L-12_H-768_A-12.tar.gz) | [`BERT-Base, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/)
@@ -74,7 +76,7 @@ We also have pretrained BERT models with variants in both network architecture
 and training methodologies. These models achieve higher downstream accuracy
 scores.
 
-Model                            | Configuration            | Training Data            | TF-HUB SavedModels                                                                    | Comment
+Model                            | Configuration            | Training Data            | Kaggle SavedModels                                                                    | Comment
 -------------------------------- | :----------------------: | -----------------------: | ------------------------------------------------------------------------------------: | ------:
 BERT-base talking heads + ggelu  | uncased_L-12_H-768_A-12  | Wiki + Books   | [talkheads_ggelu_base](https://tfhub.dev/tensorflow/talkheads_ggelu_bert_en_base/1)   | BERT-base trained with [talking heads attention](https://arxiv.org/abs/2003.02436) and [gated GeLU](https://arxiv.org/abs/2002.05202).
 BERT-large talking heads + ggelu | uncased_L-24_H-1024_A-16 | Wiki + Books  | [talkheads_ggelu_large](https://tfhub.dev/tensorflow/talkheads_ggelu_bert_en_large/1) | BERT-large trained with [talking heads attention](https://arxiv.org/abs/2003.02436) and [gated GeLU](https://arxiv.org/abs/2002.05202).
@@ -96,13 +98,12 @@ ALBERT repository.
 
 ### Checkpoints
 
-Model                                    | Training Data | Checkpoint & Vocabulary | TF-HUB SavedModels
+Model                                    | Training Data | Checkpoint & Vocabulary | Kaggle SavedModels
 ---------------------------------------- | ------------: | ----------------------: | ------:
-ALBERT-base English               |  Wiki + Books  | [`ALBERT Base`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_base.tar.gz) | https://tfhub.dev/tensorflow/albert_en_base/3
-ALBERT-large English               |  Wiki + Books  | [`ALBERT Large`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_large.tar.gz) | https://tfhub.dev/tensorflow/albert_en_large/3
-ALBERT-xlarge English               |  Wiki + Books  | [`ALBERT XLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xlarge.tar.gz) | https://tfhub.dev/tensorflow/albert_en_xlarge/3
-ALBERT-xxlarge English               |  Wiki + Books  | [`ALBERT XXLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xxlarge.tar.gz) | https://tfhub.dev/tensorflow/albert_en_xxlarge/3
-
+ALBERT-base English               |  Wiki + Books  | [`ALBERT Base`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_base.tar.gz) | [albert_en_base](https://tfhub.dev/tensorflow/albert_en_base/3)
+ALBERT-large English               |  Wiki + Books  | [`ALBERT Large`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_large.tar.gz) | [albert_en_large](https://tfhub.dev/tensorflow/albert_en_large/3)
+ALBERT-xlarge English               |  Wiki + Books  | [`ALBERT XLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xlarge.tar.gz) | [albert_en_xlarge](https://tfhub.dev/tensorflow/albert_en_xlarge/3)
+ALBERT-xxlarge English               |  Wiki + Books  | [`ALBERT XXLarge`](https://storage.googleapis.com/tf_model_garden/nlp/albert/albert_xxlarge.tar.gz) | [albert_en_xxlarge](https://tfhub.dev/tensorflow/albert_en_xxlarge/3)
 
 ## ELECTRA
 
