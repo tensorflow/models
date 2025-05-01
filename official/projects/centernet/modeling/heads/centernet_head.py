@@ -102,4 +102,4 @@ class CenterNetHead(tf_keras.Model):
   @property
   def output_specs(self) -> Mapping[str, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
-    return self._output_specs
+    return self._output_specs  # pytype: disable=bad-return-type
