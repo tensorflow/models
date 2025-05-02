@@ -30,8 +30,8 @@ def expand_to_match_rank(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
     than a, otherwise a `tf.Tensor` of shape (D0, D1, ..., Dn)
   """
   rank_deficit = b.shape.rank - a.shape.rank
-  if rank_deficit > 0:
-    return tf.reshape(a, a.shape + [1] * rank_deficit)
+  for _ in range(rank_deficit):
+    a = tf.expand_dims(a, axis=-1)
   return a
 
 
