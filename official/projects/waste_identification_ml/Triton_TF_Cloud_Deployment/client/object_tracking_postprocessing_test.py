@@ -14,7 +14,7 @@
 
 import unittest
 import pandas as pd
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import object_tracking
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import object_tracking_postprocessing
 
 TEST_DATA = pd.DataFrame({
     "particle": [1, 1, 2, 2, 3, 3, 3, 4],
@@ -81,13 +81,17 @@ class TestProcessTrackingResult(unittest.TestCase):
 
   def test_particle_grouping(self):
     """Test if the function correctly aggregates the tracking data."""
-    result = object_tracking.process_tracking_result(TEST_DATA.copy())
+    result = object_tracking_postprocessing.process_tracking_result(
+        TEST_DATA.copy()
+    )
 
     self.assertEqual(len(result), 4)
 
   def test_single_class_selection(self):
     """Test if the function correctly selects a class when there's only one."""
-    result = object_tracking.process_tracking_result(TEST_DATA.copy())
+    result = object_tracking_postprocessing.process_tracking_result(
+        TEST_DATA.copy()
+    )
 
     self.assertEqual(
         result[result["particle"] == 4]["detection_classes"].values, "A"
@@ -95,7 +99,9 @@ class TestProcessTrackingResult(unittest.TestCase):
 
   def test_modal_class_selection(self):
     """Test if the function correctly selects the most common class."""
-    result = object_tracking.process_tracking_result(TEST_DATA.copy())
+    result = object_tracking_postprocessing.process_tracking_result(
+        TEST_DATA.copy()
+    )
 
     self.assertEqual(
         result[result["particle"] == 3]["detection_classes"].values, "D"
@@ -103,7 +109,9 @@ class TestProcessTrackingResult(unittest.TestCase):
 
   def test_single_class_selection_with_tie(self):
     """Test if the function correctly selects a class when there's a modal tie."""
-    result = object_tracking.process_tracking_result(TEST_DATA.copy())
+    result = object_tracking_postprocessing.process_tracking_result(
+        TEST_DATA.copy()
+    )
 
     self.assertEqual(
         result[result["particle"] == 1]["detection_classes"].values, "A"
@@ -111,7 +119,9 @@ class TestProcessTrackingResult(unittest.TestCase):
 
   def test_tie_multiple_class_selection(self):
     """Test class selection using scores for modal tie with multiple classes."""
-    result = object_tracking.process_tracking_result(TEST_DATA.copy())
+    result = object_tracking_postprocessing.process_tracking_result(
+        TEST_DATA.copy()
+    )
 
     self.assertEqual(
         result[result["particle"] == 2]["detection_classes"].values, "C"
