@@ -15,9 +15,9 @@ fi
 
 # Define an associative array with model names and their URLs
 declare -A models=(
-  ["Jan2025_ver2_merged_1024_1024"]="
-  https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/
-  Jan2025_ver2_merged_1024_1024.zip"
+  ["Jan2025_ver2_merged_1024_1024"]="https://storage.googleapis.com/"\
+"tf_model_garden/vision/waste_identification_ml/"\
+"Jan2025_ver2_merged_1024_1024.zip"
 )
 
 # Download, unzip, and organize models
