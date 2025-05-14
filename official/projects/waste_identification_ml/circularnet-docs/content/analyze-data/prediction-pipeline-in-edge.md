@@ -65,10 +65,14 @@ in an edge device:
     The Vim editor displays the following parameters:
 
     ```
-    --input_directoy=<path-to-input-folder>
-    --output_directory=<path-to-output-folder> height=<height> width=<width>
-    --material_model=<material-model> material_form_model=<material-form-model>
-    --score=<score> search_range=<search-range> memory=<memory>
+    --input_directory=<path-to-input-folder>
+    --output_directory=<path-to-output-folder>
+    --height=<height>
+    --width=<width>
+    --model=<circularnet-model>
+    --score=<score>
+    --search_range=<search-range>
+    --memory=<memory>
     ```
 
     Replace the following:
@@ -78,20 +82,17 @@ in an edge device:
     -  `<path-to-output-folder>`: The path to the local folder for output image
        results in the edge device, for example `/home/images/output_files/`.
     -  `<height>`: The height in pixels of the image or video frames that the
-       model expects for prediction, for example, 512.
+       model expects for prediction, for example, `512`.
     -  `<width>`: The width in pixels of the image or video frames that the
-       model expects for prediction, for example, 1024.
-    -  `<material-model>`: The name of the material model in the Triton
+       model expects for prediction, for example, `1024`.
+    -  `<circularnet-model>`: The name of the CircularNet model in the Triton
        inference server that you want to call, for example,
-       `material_resnet_v2_512_1024`.
-    -  `<material-form-model>`: The name of the material form model in the
-       Triton inference server that you want to call, for example,
-       `material_form_resnet_v2_512_1024`.
-    -  `<score>`: The threshold for model prediction, for example, 0.40.
+       `Jan2025_ver2_merged_1024_1024`.
+    -  `<score>`: The threshold for model prediction, for example, `0.70`.
     -  `<search-range>`: The pixels up to which you want to track an object for
-       object tracking in consecutive frames, for example, 100.
+       object tracking in consecutive frames, for example, `100`.
     -  `<memory>`: The frames up to which you want to track an object, for
-       example, 20.
+       example, `20`.
 
     Save changes and exit the Vim editor. To do this, press the **Esc** key,
     type `:wq`, and then press **Enter**.
