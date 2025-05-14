@@ -46,6 +46,12 @@
 * [Before you begin](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/before-you-begin.md)
 * [Configure the dashboard](/official/projects/waste_identification_ml/circularnet-docs/content/view-data/configure-dashboard.md)
 
+**[Retrain CircularNet models](/official/projects/waste_identification_ml/circularnet-docs/content/retrain-models/_index.md)**
+
+* [Before you begin](/official/projects/waste_identification_ml/circularnet-docs/content/retrain-models/before-you-begin.md)
+* [Prepare the training data](/official/projects/waste_identification_ml/circularnet-docs/content/retrain-models/prepare-data.md)
+* [Launch the training job](/official/projects/waste_identification_ml/circularnet-docs/content/retrain-models/launch-job.md)
+
 ## CircularNet overview
 
 CircularNet is a free computer vision model developed by Google that utilizes

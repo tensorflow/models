@@ -96,11 +96,12 @@ on Google Cloud:
     **Important:** Run the previous command in the `server` folder, which
     contains the `triton_server.sh` script.
 
-1. Exit the `server` folder and open the client folder in the
+1. Exit the `server` folder and open the `client` folder in the
    `prediction_pipeline` directory:
 
     ```
-    cd .. cd client/
+    cd ..
+    cd client/
     ```
 
     This folder contains the `pipeline_images.py` and `pipeline_videos.py`
@@ -110,22 +111,21 @@ on Google Cloud:
 
 1. If you have to modify the scripts to provide your specific paths and values
    for the prediction pipeline, edit the corresponding parameter values on the
-   script. The following example modifies the video pipeline script:
+   script. The following example modifies the image pipeline script:
 
     ```
-    vim run_gcp_videos.sh
+    vim run_images.sh
     ```
 
 	The Vim editor displays the following parameters:
 
     ```
-    --input_directoy=<path-to-input-bucket>
+    --input_directory=<path-to-input-bucket>
     --output_directory=<path-to-output-bucket>
     --fps=<frames-per-second>
     --height=<height>
     --width=<width>
-    --material_model=<material-model>
-    --material_form_model=<material-form-model>
+    --model=<circularnet-model>
     --score=<score>
     --search_range=<search-range>
     --memory=<memory>
@@ -136,19 +136,34 @@ on Google Cloud:
 
     Replace the following:
 
-    -  `<path-to-input-bucket>`: The path to [the Cloud Storage input bucket you created](#create-the-cloud-storage-input-and-output-buckets), for example `gs://my-input-bucket/`.
-    -  `<path-to-output-bucket>`: The path to [the Cloud Storage output bucket you created](#create-the-cloud-storage-input-and-output-buckets), for example `gs://my-output-bucket/`.
-    -  `<frames-per-second>`: The rate at which you want to capture images from videos to split videos into frames, for example, 15.
-    -  `<height>`: The height in pixels of the image or video frames that the model expects for prediction, for example, 512.
-    -  `<width>`: The width in pixels of the image or video frames that the model expects for prediction, for example, 1024.
-    -  `<material-model>`: The name of the material model in the Triton inference server that you want to call, for example, `material_resnet_v2_512_1024`.
-    -  `<material-form-model>`: The name of the material form model in the Triton inference server that you want to call, for example, `material_form_resnet_v2_512_1024`.
-    -  `<score>`: The threshold for model prediction, for example, 0.40.
-    -  `<search-range>`: The pixels up to which you want to track an object for object tracking in consecutive frames, for example, 100.
-    -  `<memory>`: The frames up to which you want to track an object, for example, 20.
-    -  `<project-id>`: The ID of your Google Cloud project, for example, `my-project`.
-    -  `<dataset-id>`: The ID that you want to assign to a BigQuery dataset to store prediction results, for example, `circularnet_dataset`.
-    -  `<table-id>`: The ID that you want to assign to a BigQuery table to store prediction results, for example, `circularnet_table`. If the table already exists in your Google Cloud project, the pipeline appends results to that table.
+    -  `<path-to-input-bucket>`: The path to [the Cloud Storage input bucket you
+       created](#create-the-cloud-storage-input-and-output-buckets), for example
+       `gs://my-input-bucket/`.
+    -  `<path-to-output-bucket>`: The path to [the Cloud Storage output bucket
+       you created](#create-the-cloud-storage-input-and-output-buckets), for
+       example `gs://my-output-bucket/`.
+    -  `<frames-per-second>`: The rate at which you want to capture images from
+       videos to split videos into frames, for example, `15`.
+    -  `<height>`: The height in pixels of the image or video frames that the
+       model expects for prediction, for example, `512`.
+    -  `<width>`: The width in pixels of the image or video frames that the
+       model expects for prediction, for example, `1024`.
+    -  `<circularnet-model>`: The name of the CircularNet model in the Triton
+       inference server that you want to call, for example,
+       `Jan2025_ver2_merged_1024_1024`.
+    -  `<score>`: The threshold for model prediction, for example, `0.70`.
+    -  `<search-range>`: The pixels up to which you want to track an object for
+       object tracking in consecutive frames, for example, `100`.
+    -  `<memory>`: The frames up to which you want to track an object, for
+       example, `20`.
+    -  `<project-id>`: The ID of your Google Cloud project, for example,
+       `my-project`.
+    -  `<dataset-id>`: The ID that you want to assign to a BigQuery dataset to
+       store prediction results, for example, `circularnet_dataset`.
+    -  `<table-id>`: The ID that you want to assign to a BigQuery table to store
+       prediction results, for example, `circularnet_table`. If the table
+       already exists in your Google Cloud project, the pipeline appends results
+       to that table.
 
     **Note:** If your input files are not videos but images, replace
     `run_gcp_videos.sh` on the command with `run_gcp_images.sh` and remove the
@@ -160,11 +175,14 @@ on Google Cloud:
 1. Run the prediction pipeline:
 
     ```
-    bash run_gcp_videos.sh
+    bash run_images.sh
     ```
 
-    **Note:** If your input files are not videos but images, replace
-    `run_gcp_videos.sh` on the command with `run_gcp_images.sh`.
+    **Note:** If you have a large amount of input files, you can run the
+    pipeline in a `screen` session in the background without worrying about the
+    terminal closing down. First, you launch the `screen` session with the
+    `screen -R client` command. A new session shell launches. Then, run the
+    `bash run_images.sh` script in the new shell.
 
 The script also creates a `logs` folder inside the `client` folder that saves
 the logs with the troubleshooting results and records from the models.

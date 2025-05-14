@@ -21,13 +21,40 @@ one of the following options: <br><br>
     </li>
     <li><p><a href="https://cloud.google.com/compute/docs/gpus/create-gpu-vm-general-purpose">Create a Compute Engine virtual machine (VM) that has attached an NVIDIA T4 GPU</a>. Use the following settings on your VM:</p><br>
         <ul>
-            <li><strong>Machine configuration</strong>: GPUs</li>
-            <li><strong>GPU type</strong>: NVIDIA T4</li>
-            <li><strong>Number of GPUs</strong>: 1</li>
-            <li><strong>Machine type</strong>: n1-standard-8 (8 vCPU, 4 core, 30 GB memory)</li>
-            <li><strong>Boot disk</strong>: A size of 300 GB</li>
-            <li><strong>Identity and API access</strong>: Allow full access to all Cloud APIs</li>
-            <li><strong>Firewall</strong>: Allow HTTP and HTTPS traffic</li>
+            <li><strong>Machine configuration</strong>:
+              <ul>
+                <li><strong>Type</strong>: GPUs</li>
+                <li><strong>GPU type</strong>: NVIDIA T4</li>
+                <li><strong>Number of GPUs</strong>: 1</li>
+                <li><strong>Machine type</strong>: n1-standard-8 (8 vCPU, 4 core, 30 GB memory)</li>
+              </ul>
+            </li>
+            <li><strong>OS and storage</strong>: Click
+            <b>Change</b> and select the following:
+              <ul>
+                <li><strong>Operating system</strong>: Deep Learning on Linux</li>
+                <li><strong>Version</strong>: Deep Learning VM with
+                CUDA 11.3 preinstalled. Debian 11, Python 3.10. You can choose
+                any <i>M</i> number with this configuration, for example, M126.</li>
+                <li><strong>Boot disk type</strong>: Balanced persistent disk</li>
+                <li><strong>Size (GB)</strong>: 300 GB</li>
+              </ul>
+            </li>
+            <li><strong>Security</strong>: Navigate to the <b>Identity and API access</b>
+              section and select the following:
+              <ul>
+                <li><strong>Service accounts</strong>:Compute Engine default service account</li>
+                <li><strong>Access scopes</strong>: Allow full access
+                to all Cloud APIs</li>
+              </ul>
+            </li>
+            <li><strong>Networking</strong>: Navigate to the <b>Firewall</b>
+              section and select the following:
+              <ul>
+                <li>Allow HTTP traffic</li>
+                <li>Allow HTTPS traffic</li>
+              </ul>
+            </li>
         </ul>
         <p><strong>Note</strong>: Give your VM a name that is easy to remember and deploy in a region and a zone close to your physical location that allows GPUs.</p><br>
     </li>
