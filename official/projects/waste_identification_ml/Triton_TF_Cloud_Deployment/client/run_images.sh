@@ -27,8 +27,8 @@ Steps Performed:
   --memory            : Number of frames an object can be missed and still be
                         tracked.
   --project_id        : Google Cloud Project ID for BigQuery operations.
-  --dataset_id        : BigQuery Dataset ID where results will be stored.
-  --table_id          : BigQuery Table ID where results will be stored.
+  --bq_dataset_id        : BigQuery Dataset ID where results will be stored.
+  --bq_table_id          : BigQuery Table ID where results will be stored.
   --overwrite         : If set to True, overwrites the pre-existing BigQuery
                         table.
 EOF
@@ -44,7 +44,7 @@ else
     exit 1
 fi
 
-python pipeline_images.py \
+python inference_pipeline.py \
 	--input_directory=gs://recykal/TestData/Delterra \
 	--output_directory=gs://recykal/TestData/output \
 	--height=1024 \
@@ -55,6 +55,6 @@ python pipeline_images.py \
 	--search_range_y=20 \
 	--memory=1  \
 	--project_id=waste-identification-ml-330916 \
-	--dataset_id=circularnet_dataset \
-	--table_id=circularnet_table \
+	--bq_dataset_id=circularnet_dataset \
+	--bq_table_id=circularnet_table \
 	--overwrite=True
