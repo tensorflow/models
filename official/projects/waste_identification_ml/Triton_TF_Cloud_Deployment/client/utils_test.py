@@ -15,6 +15,7 @@
 import os
 import tempfile
 import unittest
+import numpy as np
 from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import utils
 
 
@@ -80,6 +81,37 @@ class TestLoadLabels(unittest.TestCase):
     with tempfile.TemporaryDirectory() as temp_dir:
       result = utils.files_paths(temp_dir)
       self.assertEqual(result, [])
+
+  def test_resize_multiple_masks(self):
+    # Create two 5x5 masks
+    mask1 = np.zeros((5, 5), dtype=np.uint8)
+    mask2 = np.ones((5, 5), dtype=np.uint8)
+    masks = np.array([mask1, mask2])
+
+    resized_masks = utils.resize_each_mask(masks, 3, 3)
+
+    self.assertEqual(resized_masks.shape, (2, 3, 3))
+    self.assertTrue((resized_masks[0] == 0).all())
+    self.assertTrue((resized_masks[1] == 1).all())
+
+  def test_keeps_biggest_mask(self):
+    # Create larger masks to satisfy the area check (area >= 4000)
+    mask_small = np.zeros((100, 100), dtype=int)
+    mask_small[0:40, 0:40] = 1  # Area = 1600 (will be skipped)
+
+    mask_medium = np.zeros((100, 100), dtype=int)
+    mask_medium[0:70, 0:70] = 1  # Area = 4900 (passes area condition)
+
+    mask_large = np.zeros((100, 100), dtype=int)
+    mask_large[:, :] = 1  # Area = 10000 (passes area condition)
+
+    masks = np.array([mask_small, mask_medium, mask_large])
+
+    # Run filter_masks without specifying area_threshold
+    result = utils.filter_masks(masks, iou_threshold=0.5)
+
+    # Expect only the largest mask (index 2) to remain
+    self.assertEqual(result, [2])
 
 
 if __name__ == '__main__':

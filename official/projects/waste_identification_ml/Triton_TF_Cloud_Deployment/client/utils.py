@@ -16,15 +16,94 @@
 
 from collections.abc import Mapping, Sequence
 import csv
+import logging
 import os
-from typing import TypedDict
+from typing import Any, TypedDict
+import cv2
 import natsort
+import numpy as np
+import tensorflow as tf, tf_keras
 
 
 class ItemDict(TypedDict):
   id: int
   name: str
   supercategory: str
+
+
+def _reframe_image_corners_relative_to_boxes(boxes: tf.Tensor) -> tf.Tensor:
+  """Reframe the image corners ([0, 0, 1, 1]) to be relative to boxes.
+
+  The local coordinate frame of each box is assumed to be relative to
+  its own for corners.
+
+  Args:
+    boxes: A float tensor of [num_boxes, 4] of (ymin, xmin, ymax, xmax)
+      coordinates in relative coordinate space of each bounding box.
+
+  Returns:
+    reframed_boxes: Reframes boxes with same shape as input.
+  """
+  ymin, xmin, ymax, xmax = (boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3])
+
+  height = tf.maximum(ymax - ymin, 1e-4)
+  width = tf.maximum(xmax - xmin, 1e-4)
+
+  ymin_out = (0 - ymin) / height
+  xmin_out = (0 - xmin) / width
+  ymax_out = (1 - ymin) / height
+  xmax_out = (1 - xmin) / width
+  return tf.stack([ymin_out, xmin_out, ymax_out, xmax_out], axis=1)
+
+
+def _reframe_box_masks_to_image_masks(
+    box_masks: tf.Tensor,
+    boxes: tf.Tensor,
+    image_height: int,
+    image_width: int,
+    resize_method='bilinear'
+) -> tf.Tensor:
+  """Transforms the box masks back to full image masks.
+
+  Embeds masks in bounding boxes of larger masks whose shapes correspond to
+  image shape.
+  Args:
+    box_masks: A tensor of size [num_masks, mask_height, mask_width].
+    boxes: A tf.float32 tensor of size [num_masks, 4] containing the box
+           corners. Row i contains [ymin, xmin, ymax, xmax] of the box
+           corresponding to mask i. Note that the box corners are in
+           normalized coordinates.
+    image_height: Image height. The output mask will have the same height as
+                  the image height.
+    image_width: Image width. The output mask will have the same width as the
+                 image width.
+    resize_method: The resize method, either 'bilinear' or 'nearest'. Note that
+      'bilinear' is only respected if box_masks is a float.
+  Returns:
+    A tensor of size [num_masks, image_height, image_width] with the same dtype
+    as `box_masks`.
+  """
+  resize_method = 'nearest' if box_masks.dtype == tf.uint8 else resize_method
+  def reframe_box_masks_to_image_masks_default():
+    """The default function when there are more than 0 box masks."""
+
+    num_boxes = tf.shape(box_masks)[0]
+    box_masks_expanded = tf.expand_dims(box_masks, axis=3)
+
+    resized_crops = tf.image.crop_and_resize(
+        image=box_masks_expanded,
+        boxes=_reframe_image_corners_relative_to_boxes(boxes),
+        box_indices=tf.range(num_boxes),
+        crop_size=[image_height, image_width],
+        method=resize_method,
+        extrapolation_value=0)
+    return tf.cast(resized_crops, box_masks.dtype)
+
+  image_masks = tf.cond(
+      tf.shape(box_masks)[0] > 0,
+      reframe_box_masks_to_image_masks_default,
+      lambda: tf.zeros([0, image_height, image_width, 1], box_masks.dtype))
+  return tf.squeeze(image_masks, axis=3)
 
 
 def _read_csv_to_list(file_path: str) -> Sequence[str]:
@@ -109,3 +188,157 @@ def files_paths(folder_path):
   image_files_full_path = natsort.natsorted(image_files_full_path)
 
   return image_files_full_path
+
+
+def create_log_file(name: str, logs_folder_path: str) -> logging.Logger:
+  """Creates a logger and a log file given the name of the video.
+
+  Args:
+    name: The name of the video.
+    logs_folder_path: Path to the directory where logs should be saved.
+
+  Returns:
+    logging.Logger: Logger object configured to write logs to the file.
+  """
+  log_file_path = os.path.join(logs_folder_path, f'{name}.log')
+  logger = logging.getLogger(name)
+  logger.setLevel(logging.INFO)
+  file_handler = logging.FileHandler(log_file_path)
+  formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+  file_handler.setFormatter(formatter)
+  logger.addHandler(file_handler)
+  return logger
+
+
+def reframe_masks(
+    results: Mapping[str, Any], boxes: str, height: int, width: int
+) -> np.ndarray:
+  """Reframe the masks to an image size.
+
+  Args:
+    results: The detection results from the model.
+    boxes: The detection boxes.
+    height: The height of the original image.
+    width: The width of the original image.
+
+  Returns:
+    The reframed masks.
+  """
+  detection_masks = results['detection_masks'][0]
+  detection_boxes = results[boxes][0]
+  detection_masks_reframed = _reframe_box_masks_to_image_masks(
+      detection_masks, detection_boxes, height, width
+  )
+  detection_masks_reframed = tf.cast(detection_masks_reframed > 0.5, np.uint8)
+  detection_masks_reframed = detection_masks_reframed.numpy()
+  return detection_masks_reframed
+
+
+def _calculate_area(mask: np.ndarray) -> int:
+  """Calculate the area of the mask.
+
+  Args:
+    mask: The mask to calculate the area of.
+
+  Returns:
+    The area of the mask.
+  """
+  return np.sum(mask)
+
+
+def _calculate_iou(mask1: np.ndarray, mask2: np.ndarray) -> float:
+  """Calculate the intersection over union (IoU) between two masks.
+
+  Args:
+    mask1: The first mask.
+    mask2: The second mask.
+
+  Returns:
+    The intersection over union (IoU) between the two masks.
+  """
+  intersection = np.logical_and(mask1, mask2).sum()
+  union = np.logical_or(mask1, mask2).sum()
+  return intersection / union if union != 0 else 0
+
+
+def _is_contained(mask1: np.ndarray, mask2: np.ndarray) -> bool:
+  """Check if mask1 is entirely contained within mask2.
+
+  Args:
+    mask1: The first mask.
+    mask2: The second mask.
+
+  Returns:
+    True if mask1 is entirely contained within mask2, False otherwise.
+  """
+  return np.array_equal(np.logical_and(mask1, mask2), mask1)
+
+
+# TODO: b/416838511 - Reduce the nesting statement in the for loop.
+def filter_masks(
+    masks: np.ndarray,
+    iou_threshold: float = 0.8,
+    area_threshold: int | None = None,
+) -> Sequence[int]:
+  """Filter the overlapping masks.
+
+  Filter the masks based on the area and intersection over union (IoU).
+
+  Args:
+    masks: The masks to filter.
+    iou_threshold: The threshold for the intersection over union (IoU) between
+      two masks.
+    area_threshold: The threshold for the area of the mask.
+
+  Returns:
+    The indices of the unique masks.
+  """
+  # Calculate the area for each mask
+  areas = np.array([_calculate_area(mask) for mask in masks])
+
+  # Sort the masks based on area in descending order
+  sorted_indices = np.argsort(areas)[::-1]
+  sorted_masks = masks[sorted_indices]
+  sorted_areas = areas[sorted_indices]
+
+  unique_indices = []
+
+  for i, mask in enumerate(sorted_masks):
+    if (
+        area_threshold is not None and sorted_areas[i] > area_threshold
+    ) or sorted_areas[i] < 4000:
+      continue
+
+    keep = True
+    for j in range(i):
+      if _calculate_iou(mask, sorted_masks[j]) > iou_threshold or _is_contained(
+          mask, sorted_masks[j]
+      ):
+        keep = False
+        break
+    if keep:
+      unique_indices.append(sorted_indices[i])
+
+  return unique_indices
+
+
+def resize_each_mask(
+    masks: np.ndarray, target_height: int, target_width: int
+) -> np.ndarray:
+  """Resize each mask to the target height and width.
+
+  Args:
+    masks: The masks to resize.
+    target_height: The target height of the resized masks.
+    target_width: The target width of the resized masks.
+
+  Returns:
+    The resized masks.
+  """
+  combined_masks = []
+  for i in masks:
+    mask = cv2.resize(
+        i, (target_width, target_height), interpolation=cv2.INTER_NEAREST
+    )
+    combined_masks.append(mask)
+  return np.array(combined_masks)
