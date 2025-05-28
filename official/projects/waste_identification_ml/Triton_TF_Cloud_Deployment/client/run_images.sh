@@ -10,27 +10,32 @@ Steps Performed:
  3. Executes the 'pipeline_images.py' script with the following parameters:
 
  Parameters:
- --input_directory    : GCS directory where the input images are stored for
-                        inference.
- --output_directory   : GCS directory where the model inference outputs will be
-                        saved.
- --height             : Height to which input images are resized for the Mask
-                        R-CNN model.
- --width              : Width to which input images are resized for the Mask
-                        R-CNN model.
- --model              : Name of the model to download and use for inference.
- --score              : Confidence threshold for detections during inference.
- --search_range_x     : Max pixel movement allowed in the X direction for
-                        object tracking between missed frames.
- --search_range_y     : Max pixel movement allowed in the Y direction for
-                        object tracking between missed frames.
-  --memory            : Number of frames an object can be missed and still be
-                        tracked.
-  --project_id        : Google Cloud Project ID for BigQuery operations.
-  --bq_dataset_id        : BigQuery Dataset ID where results will be stored.
-  --bq_table_id          : BigQuery Table ID where results will be stored.
-  --overwrite         : If set to True, overwrites the pre-existing BigQuery
-                        table.
+ --input_directory         : GCS directory where the input images are stored for
+                             inference.
+ --output_directory        : GCS directory where the model inference outputs will be
+                             saved.
+ --height                  : Height to which input images are resized for the Mask
+                             R-CNN model.
+ --width                   : Width to which input images are resized for the Mask
+                             R-CNN model.
+ --model                   : Name of the model to download and use for inference.
+ --score                   : Confidence threshold for detections during
+                             inference.
+ --search_range_x          : Max pixel movement allowed in the X direction for
+                             object tracking between missed frames.
+ --search_range_y          : Max pixel movement allowed in the Y direction for
+                             object tracking between missed frames.
+  --memory                 : Number of frames an object can be missed and still
+                             be tracked.
+  --project_id             : Google Cloud Project ID for BigQuery operations.
+  --bq_dataset_id          : BigQuery Dataset ID where results will be stored.
+  --bq_table_id            : BigQuery Table ID where results will be stored.
+  --overwrite              : If set to True, overwrites the pre-existing
+                             BigQuery table.
+  --tracking_visualization : If set to True, visualizes the tracking results
+                             from the tracking algorithm.
+  --cropped_objects        : If set to True, crops the objects per category
+                             according to the prediction and tracking results.
 EOF
 
 # Activate the virtual environment
@@ -57,4 +62,6 @@ python inference_pipeline.py \
 	--project_id=waste-identification-ml-330916 \
 	--bq_dataset_id=circularnet_dataset \
 	--bq_table_id=circularnet_table \
-	--overwrite=True
+	--overwrite=True \
+    --tracking_visualization=False \
+	--cropped_objects=False
