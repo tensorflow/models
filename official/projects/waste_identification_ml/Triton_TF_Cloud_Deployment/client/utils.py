@@ -342,3 +342,116 @@ def resize_each_mask(
     )
     combined_masks.append(mask)
   return np.array(combined_masks)
+
+
+def extract_and_resize_objects(
+    results: Mapping[str, Any],
+    masks: str,
+    boxes: str,
+    image: np.ndarray,
+    resize_factor: float = 0.5,
+) -> Sequence[np.ndarray]:
+  """Extract and resize objects from the detection results.
+
+  Args:
+    results: The detection results from the model.
+    masks: The masks to extract objects from.
+    boxes: The bounding boxes of the objects.
+    image: The image to extract objects from.
+    resize_factor: The factor by which to resize the objects.
+
+  Returns:
+    A list of cropped objects.
+  """
+  cropped_objects = []
+
+  for i, mask in enumerate(results[masks]):
+    ymin, xmin, ymax, xmax = results[boxes][0][i]
+    mask = np.expand_dims(mask, axis=-1)
+
+    # Crop the object using the mask and bounding box
+    cropped_object = np.where(
+        mask[ymin:ymax, xmin:xmax], image[ymin:ymax, xmin:xmax], 0
+    )
+
+    # Calculate new dimensions
+    new_width = int(cropped_object.shape[1] * resize_factor)
+    new_height = int(cropped_object.shape[0] * resize_factor)
+    cropped_object = cv2.resize(
+        cropped_object, (new_width, new_height), interpolation=cv2.INTER_AREA
+    )
+    cropped_objects.append(cropped_object)
+
+  return cropped_objects
+
+
+def adjust_image_size(
+    height: int, width: int, min_size: int
+) -> tuple[int, int]:
+  """Adjust the image size to ensure both dimensions are at least of min_size.
+
+  Args:
+    height: The height of the image.
+    width: The width of the image.
+    min_size: Minimum size of the image dimension needed.
+
+  Returns:
+    The adjusted height and width of the image.
+  """
+  if height < min_size or width < min_size:
+    return height, width
+
+  # Calculate the scale factor to ensure both dimensions remain at least 1024
+  scale_factor = min(height / min_size, width / min_size)
+  return int(height / scale_factor), int(width / scale_factor)
+
+
+def filter_detections(
+    results: Mapping[str, np.ndarray],
+    valid_indices: Sequence[int] | Sequence[bool],
+) -> Mapping[str, np.ndarray]:
+  """Filter the detection results based on the valid indices.
+
+  Args:
+    results: The detection results from the model.
+    valid_indices: The indices of the valid detections.
+
+  Returns:
+    The filtered detection results.
+  """
+  if np.array(valid_indices).dtype == bool:
+    new_num_detections = int(np.sum(valid_indices))
+  else:
+    new_num_detections = len(valid_indices)
+
+  # Define the keys to filter
+  keys_to_filter = [
+      'detection_masks',
+      'detection_masks_resized',
+      'detection_masks_reframed',
+      'detection_classes',
+      'detection_boxes',
+      'normalized_boxes',
+      'detection_scores',
+  ]
+
+  filtered_output = {}
+
+  for key in keys_to_filter:
+    if key in results:
+      if key == 'detection_masks':
+        filtered_output[key] = results[key][:, valid_indices, :, :]
+      elif key in ['detection_masks_resized', 'detection_masks_reframed']:
+        filtered_output[key] = results[key][valid_indices, :, :]
+      elif key in ['detection_boxes', 'normalized_boxes']:
+        filtered_output[key] = results[key][:, valid_indices, :]
+      elif key in [
+          'detection_classes',
+          'detection_scores',
+          'detection_classes_names',
+      ]:
+        filtered_output[key] = results[key][:, valid_indices]
+  filtered_output['image_info'] = results['image_info']
+  filtered_output['num_detections'] = np.array([new_num_detections])
+
+  return filtered_output

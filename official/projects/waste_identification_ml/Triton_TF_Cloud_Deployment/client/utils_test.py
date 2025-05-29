@@ -113,6 +113,115 @@ class TestLoadLabels(unittest.TestCase):
     # Expect only the largest mask (index 2) to remain
     self.assertEqual(result, [2])
 
+  def test_filter_with_boolean_indices(self):
+    results = {
+        'detection_masks': np.random.rand(1, 3, 5, 5),
+        'detection_masks_resized': np.random.rand(3, 5, 5),
+        'detection_boxes': np.random.rand(1, 3, 4),
+        'detection_classes': np.array([[1, 2, 3]]),
+        'detection_scores': np.array([[0.9, 0.8, 0.3]]),
+        'image_info': np.array([[640, 480]]),
+    }
+
+    valid_indices = [True, False, True]
+
+    output = utils.filter_detections(results, valid_indices)
+
+    self.assertEqual(output['detection_masks'].shape[1], 2)
+    self.assertEqual(output['detection_masks_resized'].shape[0], 2)
+    self.assertEqual(output['detection_boxes'].shape[1], 2)
+    self.assertEqual(output['detection_classes'].shape[1], 2)
+    self.assertEqual(output['detection_scores'].shape[1], 2)
+    self.assertTrue(np.array_equal(output['image_info'], results['image_info']))
+    self.assertEqual(output['num_detections'][0], 2)
+
+  def test_filter_with_integer_indices(self):
+    results = {
+        'detection_masks': np.random.rand(1, 4, 5, 5),
+        'detection_masks_resized': np.random.rand(4, 5, 5),
+        'detection_boxes': np.random.rand(1, 4, 4),
+        'detection_classes': np.array([[1, 2, 3, 4]]),
+        'detection_scores': np.array([[0.9, 0.8, 0.3, 0.6]]),
+        'image_info': np.array([[640, 480]]),
+    }
+
+    valid_indices = [0, 2]  # Keep detections at index 0 and 2
+
+    output = utils.filter_detections(results, valid_indices)
+
+    self.assertEqual(output['detection_masks'].shape[1], 2)
+    self.assertEqual(output['detection_masks_resized'].shape[0], 2)
+    self.assertEqual(output['detection_boxes'].shape[1], 2)
+    self.assertEqual(output['detection_classes'].shape[1], 2)
+    self.assertEqual(output['detection_scores'].shape[1], 2)
+    self.assertEqual(output['num_detections'][0], 2)
+
+  def test_both_dimensions_below_min_size(self):
+    height, width, min_size = 800, 900, 1024
+
+    result = utils.adjust_image_size(height, width, min_size)
+
+    self.assertEqual(result, (800, 900))  # No scaling should happen
+
+  def test_height_below_min_size(self):
+    height, width, min_size = 900, 1200, 1024
+
+    result = utils.adjust_image_size(height, width, min_size)
+
+    self.assertEqual(result, (900, 1200))  # No scaling
+
+  def test_width_below_min_size(self):
+    height, width, min_size = 1300, 800, 1024
+
+    result = utils.adjust_image_size(height, width, min_size)
+
+    self.assertEqual(result, (1300, 800))  # No scaling
+
+  def test_both_dimensions_above_min_size(self):
+    height, width, min_size = 2048, 1536, 1024
+    expected_scale = min(height / min_size, width / min_size)
+    expected_height = int(height / expected_scale)
+    expected_width = int(width / expected_scale)
+
+    result = utils.adjust_image_size(height, width, min_size)
+
+    self.assertEqual(result, (expected_height, expected_width))
+
+  def test_exact_min_size(self):
+    height, width, min_size = 1024, 1024, 1024
+
+    result = utils.adjust_image_size(height, width, min_size)
+
+    self.assertEqual(result, (1024, 1024))  # Already meets the requirement
+
+  def test_extract_and_resize_single_object(self):
+    image = np.ones((10, 10, 3), dtype=np.uint8) * 255  # white image
+
+    # Define a simple binary mask (1 in a 4x4 box)
+    mask = np.zeros((10, 10), dtype=np.uint8)
+    mask[2:6, 3:7] = 1
+
+    # Box coordinates match the mask
+    boxes = np.array([[[2, 3, 6, 7]]], dtype=np.int32)  # shape (1, 1, 4)
+
+    results = {'masks': [mask], 'boxes': boxes}
+
+    cropped_objects = utils.extract_and_resize_objects(
+        results, 'masks', 'boxes', image, resize_factor=0.5
+    )
+
+    self.assertEqual(len(cropped_objects), 1)
+    obj = cropped_objects[0]
+
+    # Original crop size is (4, 4), so resized should be (2, 2)
+    self.assertEqual(obj.shape[:2], (2, 2))
+
+    # Should still be 3 channels
+    self.assertEqual(obj.shape[2], 3)
+
+    # The output pixels in mask area should be non-zero
+    self.assertTrue(np.any(obj > 0))
+
 
 if __name__ == '__main__':
   unittest.main()
