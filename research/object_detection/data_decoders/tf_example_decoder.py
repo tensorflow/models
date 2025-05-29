@@ -262,8 +262,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       additional_channel_image = slim_example_decoder.Image(
           image_key='image/additional_channels/encoded',
           format_key='image/format',
-          channels=1,
-          repeated=True,
+          channels=num_additional_channels,
           dct_method=dct_method)
     else:
       image = slim_example_decoder.Image(
@@ -271,8 +270,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       additional_channel_image = slim_example_decoder.Image(
           image_key='image/additional_channels/encoded',
           format_key='image/format',
-          channels=1,
-          repeated=True)
+          channels=num_additional_channels)
     self.items_to_handlers = {
         fields.InputDataFields.image:
             image,
@@ -355,7 +353,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     if num_additional_channels > 0:
       self.keys_to_features[
           'image/additional_channels/encoded'] = tf.FixedLenFeature(
-              (num_additional_channels,), tf.string)
+              (), tf.string)
       self.items_to_handlers[
           fields.InputDataFields.
           image_additional_channels] = additional_channel_image
@@ -563,8 +561,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
 
     if fields.InputDataFields.image_additional_channels in tensor_dict:
       channels = tensor_dict[fields.InputDataFields.image_additional_channels]
-      channels = tf.squeeze(channels, axis=3)
-      channels = tf.transpose(channels, perm=[1, 2, 0])
       tensor_dict[fields.InputDataFields.image_additional_channels] = channels
 
     def default_groundtruth_weights():
