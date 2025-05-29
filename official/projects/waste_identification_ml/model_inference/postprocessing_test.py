@@ -19,6 +19,7 @@ from official.projects.waste_identification_ml.model_inference import postproces
 class PostprocessingTest(tf.test.TestCase):
 
   def test_reframe_image_corners_relative_to_boxes(self):
+    """Test if the function correctly reframes the image corners relative to the boxes."""
     box1 = tf.constant([100.0, 200.0, 300.0, 400.0])
     boxes = tf.stack([box1])
     expected = tf.stack([tf.constant([-0.5, -1.0, -0.495, -0.995])])
