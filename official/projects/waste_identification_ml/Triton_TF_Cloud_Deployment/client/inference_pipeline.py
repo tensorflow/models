@@ -14,7 +14,18 @@
 
 """Pipeline to run the prediction on the images folder with Triton server."""
 
+import os
+import subprocess
+from absl import app
 from absl import flags
+import cv2
+import numpy as np
+from official.projects.waste_identification_ml.model_inference import color_and_property_extractor
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import feature_extraction
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import ffmpeg_ops
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import mask_bbox_saver
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import triton_server_inference
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import utils
 
 INPUT_DIRECTORY = flags.DEFINE_string(
     "input_directory", None, "The path to the directory containing images."
@@ -71,3 +82,236 @@ BQ_DATASET_ID = flags.DEFINE_string(
 TABLE_ID = flags.DEFINE_string(
     "bq_table_id", "Circularnet_table", "BigQuery Table ID for features data"
 )
+
+TRACKING_VISUALIZATION = flags.DEFINE_boolean(
+    "tracking_visualization",
+    False,
+    "If True, visualize the tracking results.",
+)
+
+CROPPED_OBJECTS = flags.DEFINE_boolean(
+    "cropped_objects",
+    False,
+    "If True, save cropped objects per category from the output.",
+)
+
+AREA_THRESHOLD = None
+HEIGHT_TRACKING = 300
+WIDTH_TRACKING = 300
+
+
+def main(_) -> None:
+  # Check if the input and output directories are valid.
+  if (
+      not INPUT_DIRECTORY.value
+      or not OUTPUT_DIRECTORY.value
+      or not INPUT_DIRECTORY.value.startswith("gs://")
+      or not OUTPUT_DIRECTORY.value.startswith("gs://")
+  ):
+    raise ValueError("Bucket path must be non-empty starting with 'gs://'")
+
+  # Copy the images folder from GCP to the present directory.
+  input_directory = (INPUT_DIRECTORY.value).rstrip("/\\")
+  command = f"gsutil -m cp -r {input_directory} ."
+  subprocess.run(command, shell=True, check=True)
+
+  # Create a folder to store the predictions.
+  prediction_folder = os.path.basename(input_directory) + "_prediction"
+  os.makedirs(prediction_folder, exist_ok=True)
+
+  if TRACKING_VISUALIZATION.value:
+    # Create a folder to troubleshoot tracking results.
+    tracking_folder = os.path.basename(input_directory) + "_tracking"
+    os.makedirs(tracking_folder, exist_ok=True)
+
+  if CROPPED_OBJECTS.value:
+    # Create a folder to save cropped objects per category from the output.
+    cropped_obj_folder = os.path.basename(input_directory) + "_cropped_objects"
+    os.makedirs(cropped_obj_folder, exist_ok=True)
+
+  # Create a log directory and a logger for logging.
+  log_name = os.path.basename(INPUT_DIRECTORY.value)
+  log_folder = os.path.join(os.getcwd(), "logs")
+  os.makedirs(log_folder, exist_ok=True)
+  logger = utils.create_log_file(log_name, log_folder)
+
+  # Read the labels which the model is trained on.
+  labels_path = os.path.join(os.getcwd(), "labels.csv")
+  labels, category_index = utils.load_labels(labels_path)
+
+  # Read files from a folder.
+  files = utils.files_paths(os.path.basename(input_directory))
+
+  tracking_images = {}
+  features_set = []
+  image_plot = None
+
+  for frame, image_path in enumerate(files, start=1):
+    # Prepare an input for a Triton model server from an image.
+    logger.info(f"\nProcessing {os.path.basename(image_path)}")
+    try:
+      inputs, original_image, _ = (
+          triton_server_inference.prepare_image(
+              image_path, HEIGHT.value, WIDTH.value
+          )
+      )
+
+      # Extract the creation time of an image.
+      creation_time = ffmpeg_ops.get_image_creation_time(image_path)
+      logger.info(
+          f"Successfully read an image for {os.path.basename(image_path)}"
+      )
+    except (cv2.error, ValueError, TypeError) as e:
+      logger.info("Failed to read an image.")
+      logger.exception("Exception occurred:", e)
+      continue
+
+    try:
+      model_name = MODEL.value
+      result = triton_server_inference.infer(model_name, inputs)
+      logger.info(
+          f"Successfully got prediction for {os.path.basename(image_path)}"
+      )
+      logger.info(f"Total predictions:{result['num_detections'][0]}")
+    except (KeyError, TypeError, RuntimeError, ValueError) as e:
+      logger.info(
+          f"Failed to get prediction for {os.path.basename(image_path)}"
+      )
+      logger.exception("Exception occurred:", e)
+      continue
+
+    try:
+      # Take predictions only above the threshold.
+      if result["num_detections"][0]:
+        scores = result["detection_scores"][0]
+        filtered_indices = scores > PREDICTION_THRESHOLD.value
+
+        if any(filtered_indices):
+          result = utils.filter_detections(result, filtered_indices)
+      else:
+        logger.info("Zero predictions after threshold.")
+        continue
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+      logger.info("Failed to filter out predictions.")
+      logger.exception("Exception occured:", e)
+
+    try:
+      # Convert bbox coordinates into normalized coordinates.
+      if result["num_detections"][0]:
+        result["normalized_boxes"] = result["detection_boxes"].copy()
+        result["normalized_boxes"][:, :, [0, 2]] /= HEIGHT
+        result["normalized_boxes"][:, :, [1, 3]] /= WIDTH
+        result["detection_boxes"] = (
+            result["detection_boxes"].round().astype(int)
+        )
+
+        # Adjust the image size to ensure both dimensions are at least 1024
+        # for saving images with bbox and masks.
+        height_plot, width_plot = utils.adjust_image_size(
+            original_image.shape[0], original_image.shape[1], 1024
+        )
+
+        # Resize the original image to overlay bbox and masks on it.
+        image_plot = cv2.resize(
+            original_image,
+            (width_plot, height_plot),
+            interpolation=cv2.INTER_AREA,
+        )
+
+        # Reframe the masks according to the new image size.
+        result["detection_masks_reframed"] = utils.reframe_masks(
+            result, "normalized_boxes", height_plot, width_plot
+        )
+
+        # Filter the prediction results and remove the overlapping masks.
+        unique_indices = utils.filter_masks(
+            result["detection_masks_reframed"],
+            iou_threshold=0.08,
+            area_threshold=AREA_THRESHOLD,
+        )
+        result = utils.filter_detections(result, unique_indices)
+        logger.info(
+            f"Total predictions after processing: {result['num_detections'][0]}"
+        )
+      else:
+        logger.info("Zero predictions after processing.")
+        continue
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+      logger.info("Issue in post processing predictions results.")
+      logger.exception("Exception occured:", e)
+
+    try:
+      if result["num_detections"][0]:
+        result["detection_classes_names"] = np.array(
+            [[str(labels[i - 1]) for i in result["detection_classes"][0]]]
+        )
+
+        # Save the prediction results as an image file with bbx and masks.
+        mask_bbox_saver.save_bbox_masks_labels(
+            result=result,
+            image=image_plot,
+            file_name=os.path.basename(image_path),
+            folder=prediction_folder,
+            category_index=category_index,
+            threshold=PREDICTION_THRESHOLD.value,
+        )
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+      logger.info("Issue in saving visualization of results.")
+      logger.exception("Exception occured:", e)
+
+    try:
+      # Resize an image for object tracking..
+      tracking_image = cv2.resize(
+          original_image,
+          (WIDTH_TRACKING, HEIGHT_TRACKING),
+          interpolation=cv2.INTER_AREA,
+      )
+      tracking_images[os.path.basename(image_path)] = tracking_image
+
+      # Reducing mask sizes in order to keep the memory required for object
+      # tracking under a threshold.
+      result["detection_masks_tracking"] = np.array([
+          cv2.resize(
+              i,
+              (WIDTH_TRACKING, HEIGHT_TRACKING),
+              interpolation=cv2.INTER_NEAREST,
+          )
+          for i in result["detection_masks_reframed"]
+      ])
+
+      # Crop objects from an image using masks for color detection.
+      cropped_objects = [
+          np.where(np.expand_dims(i, -1), image_plot, 0)
+          for i in result["detection_masks_reframed"]
+      ]
+
+      # Perform color detection using clustering approach.
+      dominant_colors = [
+          *map(
+              color_and_property_extractor.find_dominant_color, cropped_objects
+          )
+      ]
+      generic_color_names = color_and_property_extractor.get_generic_color_name(
+          dominant_colors
+      )
+
+      # Extract features.
+      features = feature_extraction.extract_properties(
+          tracking_image, result, "detection_masks_tracking"
+      )
+      features["source_name"] = os.path.basename(os.path.dirname(image_path))
+      features["image_name"] = os.path.basename(image_path)
+      features["creation_time"] = creation_time
+      features["frame"] = frame
+      features["detection_scores"] = result["detection_scores"][0]
+      features["detection_classes"] = result["detection_classes"][0]
+      features["detection_classes_names"] = result["detection_classes_names"][0]
+      features["color"] = generic_color_names
+      features_set.append(features)
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+      logger.info("Failed to extract properties.")
+      logger.exception("Exception occured:", e)
+
+
+if __name__ == "__main__":
+  app.run(main)
