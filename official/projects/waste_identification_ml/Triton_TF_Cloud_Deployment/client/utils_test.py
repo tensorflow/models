@@ -17,6 +17,8 @@ import tempfile
 import unittest
 import numpy as np
 from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import utils
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client.utils import BoundingBox
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client.utils import ImageSize
 
 
 class TestLoadLabels(unittest.TestCase):
@@ -221,6 +223,26 @@ class TestLoadLabels(unittest.TestCase):
 
     # The output pixels in mask area should be non-zero
     self.assertTrue(np.any(obj > 0))
+
+  def test_resize_bbox_scaling(self):
+    bbox = BoundingBox(y1=50, x1=100, y2=150, x2=200)
+    old_size = ImageSize(height=200, width=400)
+    new_size = ImageSize(height=400, width=800)
+
+    expected = (100, 200, 300, 400)
+    result = utils.resize_bbox(bbox, old_size, new_size)
+
+    self.assertEqual(result, expected)
+
+  def test_resize_bbox_no_scaling(self):
+    bbox = BoundingBox(y1=10, x1=20, y2=30, x2=40)
+    old_size = ImageSize(height=100, width=100)
+    new_size = ImageSize(height=100, width=100)
+
+    expected = (10, 20, 30, 40)
+    result = utils.resize_bbox(bbox, old_size, new_size)
+
+    self.assertEqual(result, expected)
 
 
 if __name__ == '__main__':
