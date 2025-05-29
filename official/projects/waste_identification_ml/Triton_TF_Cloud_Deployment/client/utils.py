@@ -16,6 +16,7 @@
 
 from collections.abc import Mapping, Sequence
 import csv
+import dataclasses
 import logging
 import os
 from typing import Any, TypedDict
@@ -29,6 +30,20 @@ class ItemDict(TypedDict):
   id: int
   name: str
   supercategory: str
+
+
+@dataclasses.dataclass
+class BoundingBox:
+  y1: int | float
+  x1: int | float
+  y2: int | float
+  x2: int | float
+
+
+@dataclasses.dataclass
+class ImageSize:
+  height: int
+  width: int
 
 
 def _reframe_image_corners_relative_to_boxes(boxes: tf.Tensor) -> tf.Tensor:
@@ -455,3 +470,27 @@ def filter_detections(
   filtered_output['num_detections'] = np.array([new_num_detections])
 
   return filtered_output
+
+
+def resize_bbox(
+    bbox: BoundingBox, old_size: ImageSize, new_size: ImageSize
+) -> tuple[int, int, int, int]:
+  """Resize bounding box coordinates based on new image size.
+
+  Args:
+      bbox: BoundingBox with original coordinates.
+      old_size: Original image size.
+      new_size: New image size.
+
+  Returns:
+      Rescaled bounding box coordinates.
+  """
+  scale_x = new_size.width / old_size.width
+  scale_y = new_size.height / old_size.height
+
+  new_y1 = int(bbox.y1 * scale_y)
+  new_x1 = int(bbox.x1 * scale_x)
+  new_y2 = int(bbox.y2 * scale_y)
+  new_x2 = int(bbox.x2 * scale_x)
+
+  return new_y1, new_x1, new_y2, new_x2
