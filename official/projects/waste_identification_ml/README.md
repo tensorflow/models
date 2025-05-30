@@ -3,9 +3,9 @@
 Instance segmentation models for identification of recyclables on conveyor
 belts.
 
-Note: These are demo models built on limited datasets. If you’re interested in
-updated versions of the models, or in using models trained on specific
-materials, reach out to waste-innovation-external@google.com
+We provide retraining and fine-tuning utilities, but if you're interested in
+partnering more closely with us reach out to
+waste-innovation-external@google.com
 
 ## Overview
 
@@ -13,49 +13,26 @@ CircularNet is built using Mask RCNN, which is a deep learning model for
 instance image segmentation, where the goal is to assign instance level labels
 (e.g. person1, person2, cat) to every pixel in an input image.
 
-Mask RCNN algorithm is available in the TensorFlow Model Garden which is a
+Mask RCNN algorithm is available in the TensorFlow Model Garden, which is a
 repository with a number of different implementations of state-of-the-art models
 and modeling solutions for TensorFlow users.
 
 ## Model Categories
 
--   Material Type - Identifies the high level material type (e.g. plastic, paper
-    etc) of an object
--   Material Form - Categorizes objects based on the form factor (e.g. cup,
+-   **Material Type:** Identifies the material type (metal, paper etc) of an
+    object. For plastic, resin types are also identified (HDPE, PET, LDPE, etc).
+-   **Material Form:** Categorizes objects based on the form factor (cup,
     bottle, bag etc)
--   Plastic Type - Identifies the plastic resin type of the object (e.g. PET,
-    HDPE, LDPE, etc)
+-   **Example inference label:** Plastics-PET_Bottle
 
-## Model paths in GCP buckets
-
-### 1 Model Strategy (latest model)
-### Single unified model that performs material type and material form detections
+### Latest model
+### Single unified model that performs material type and form detections
 
 Model categories | Model backbone | Model type  | GCP bucket path |
 | ------ | ------ | ----- | ------ |
 Material Type & Form | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/Jan2025_ver2_merged_1024_1024.zip)
 
-### 2 Model Strategy
-### Combines plastic type and material type identifications into a unified model
-### v2 version is trained on larger datasets than v1
-
-Model categories | Model backbone | Model type  | GCP bucket path |
-| ------ | ------ | ----- | ------ |
-Material Type Model | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/two_model_strategy/material/material_version_2.zip)
-Material Form Model | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/two_model_strategy/material_form/material_form_version_2.zip)
-Material Type Model V2 | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/resnet_material_v2.zip)
-Material Form Model V2 | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/resnet_material_form_v2.zip)
-Material Type Model V2| MobileNet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/mobilenet_material.zip)
-Material Form Model V2| MobileNet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/mobilenet_material_form.zip)
-
-### 3 Model Strategy
-
-| Model categories | Model backbone | Model type | GCP bucket path |
-| ------ | ------ | ----- | ------ |
-| Material Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_model.zip) |
-| Material Form Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/material_form_model.zip) |
-|Plastic Model | Resnet | saved model & TFLite | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/plastic_types_model.zip) |
-
 ## Authors and Maintainers
 Umair Sabir
 Sujit Sanjeev
+Ethan Steele
