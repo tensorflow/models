@@ -4433,10 +4433,8 @@ class CenterNetMetaArch(model.DetectionModel):
 
     This is the most general keypoint postprocessing function which supports
     multiple keypoint tasks (e.g. human and dog keypoints) and multiple object
-    detection classes. Note that it is the most expensive postprocessing logics
-    and is currently not tf.lite/tf.js compatible. See
-    _postprocess_keypoints_single_class if you plan to export the model in more
-    portable format.
+    detection classes. Note that it is a more expensive postprocessing logic
+    compared to _postprocess_keypoints_single_class.
 
     Args:
       prediction_dict: a dictionary holding predicted tensors, returned from the
@@ -4460,19 +4458,14 @@ class CenterNetMetaArch(model.DetectionModel):
       keypoint_scores: a [batch_size, max_detections, num_total_keypoints]
         float32 tensor with keypoint scores.
     """
-    total_num_keypoints = sum(len(kp_dict.keypoint_indices) for kp_dict
-                              in self._kp_params_dict.values())
-    batch_size, max_detections = _get_shape(classes, 2)
-    kpt_coords_for_example_list = []
-    kpt_scores_for_example_list = []
+    kpt_coords_combined = []
+    kpt_scores_combined = []
+    batch_size, _ = _get_shape(classes, 2)
+
     for ex_ind in range(batch_size):
-      # The tensors that host the keypoint coordinates and scores for all
-      # instances and all keypoints. They will be updated by scatter_nd_add for
-      # each keypoint tasks.
-      kpt_coords_for_example_all_det = tf.zeros(
-          [max_detections, total_num_keypoints, 2])
-      kpt_scores_for_example_all_det = tf.zeros(
-          [max_detections, total_num_keypoints])
+      kpt_coords_for_example = []
+      kpt_scores_for_example = []
+
       for task_name, kp_params in self._kp_params_dict.items():
         keypoint_heatmap = prediction_dict[
             get_keypoint_name(task_name, KEYPOINT_HEATMAP)][-1]
@@ -4480,70 +4473,54 @@ class CenterNetMetaArch(model.DetectionModel):
             get_keypoint_name(task_name, KEYPOINT_OFFSET)][-1]
         keypoint_regression = prediction_dict[
             get_keypoint_name(task_name, KEYPOINT_REGRESSION)][-1]
-        instance_inds = self._get_instance_indices(
-            classes, num_detections, ex_ind, kp_params.class_id)
 
-        # Gather the feature map locations corresponding to the object class.
-        y_indices_for_kpt_class = tf.gather(y_indices, instance_inds, axis=1)
-        x_indices_for_kpt_class = tf.gather(x_indices, instance_inds, axis=1)
-        if boxes is None:
-          boxes_for_kpt_class = None
-        else:
-          boxes_for_kpt_class = tf.gather(boxes, instance_inds, axis=1)
-
-        # Postprocess keypoints and scores for class and single image. Shapes
-        # are [1, num_instances_i, num_keypoints_i, 2] and
-        # [1, num_instances_i, num_keypoints_i], respectively. Note that
-        # num_instances_i and num_keypoints_i refers to the number of
-        # instances and keypoints for class i, respectively.
+        # Postprocess keypoints and scores for class and single image.
+        # Shapes are [1, max_detections, num_keypoints, 2] and
+        # [1, max_detections, num_keypoints], respectively.
         (kpt_coords_for_class, kpt_scores_for_class, _) = (
             self._postprocess_keypoints_for_class_and_image(
                 keypoint_heatmap,
                 keypoint_offsets,
                 keypoint_regression,
                 classes,
-                y_indices_for_kpt_class,
-                x_indices_for_kpt_class,
-                boxes_for_kpt_class,
+                y_indices,
+                x_indices,
+                boxes,
                 ex_ind,
                 kp_params,
             ))
 
-        # Prepare the indices for scatter_nd. The resulting combined_inds has
-        # the shape of [num_instances_i * num_keypoints_i, 2], where the first
-        # column corresponds to the instance IDs and the second column
-        # corresponds to the keypoint IDs.
-        kpt_inds = tf.constant(kp_params.keypoint_indices, dtype=tf.int32)
-        kpt_inds = tf.expand_dims(kpt_inds, axis=0)
-        instance_inds_expand = tf.expand_dims(instance_inds, axis=-1)
-        kpt_inds_expand = kpt_inds * tf.ones_like(instance_inds_expand)
-        instance_inds_expand = instance_inds_expand * tf.ones_like(kpt_inds)
-        combined_inds = tf.stack(
-            [instance_inds_expand, kpt_inds_expand], axis=2)
-        combined_inds = tf.reshape(combined_inds, [-1, 2])
+        # Set all keypoint coordinates and scores to zeros except for those
+        # whose class corresponds to the task in the current iteration.
+        mask_for_class = classes[ex_ind] == kp_params.class_id
+        mask_scores_for_class = mask_for_class[..., tf.newaxis]
+        mask_coords_for_class = mask_scores_for_class[..., tf.newaxis]
+        kpt_coords_for_class = tf2.where(mask_coords_for_class,
+                                         kpt_coords_for_class,
+                                         tf.zeros_like(
+                                             kpt_coords_for_class))
+        kpt_scores_for_class = tf2.where(mask_scores_for_class,
+                                         kpt_scores_for_class,
+                                         tf.zeros_like(
+                                             kpt_scores_for_class))
 
-        # Reshape the keypoint coordinates/scores to [num_instances_i *
-        # num_keypoints_i, 2]/[num_instances_i * num_keypoints_i] to be used
-        # by scatter_nd_add.
-        kpt_coords_for_class = tf.reshape(kpt_coords_for_class, [-1, 2])
-        kpt_scores_for_class = tf.reshape(kpt_scores_for_class, [-1])
-        kpt_coords_for_example_all_det = tf.tensor_scatter_nd_add(
-            kpt_coords_for_example_all_det,
-            combined_inds, kpt_coords_for_class)
-        kpt_scores_for_example_all_det = tf.tensor_scatter_nd_add(
-            kpt_scores_for_example_all_det,
-            combined_inds, kpt_scores_for_class)
+        kpt_coords_for_example.append(kpt_coords_for_class)
+        kpt_scores_for_example.append(kpt_scores_for_class)
 
-      kpt_coords_for_example_list.append(
-          tf.expand_dims(kpt_coords_for_example_all_det, axis=0))
-      kpt_scores_for_example_list.append(
-          tf.expand_dims(kpt_scores_for_example_all_det, axis=0))
+      # Concatenate keypoints and scores from all classes in the example.
+      # Shapes are [1, max_detections, num_total_keypoints, 2] and
+      # [1, max_detections, num_total_keypoints], respectively.
+      kpt_coords_for_example = tf.concat(kpt_coords_for_example, axis=2)
+      kpt_scores_for_example = tf.concat(kpt_scores_for_example, axis=2)
+
+      kpt_coords_combined.append(kpt_coords_for_example)
+      kpt_scores_combined.append(kpt_scores_for_example)
 
     # Concatenate all keypoints and scores from all examples in the batch.
     # Shapes are [batch_size, max_detections, num_total_keypoints, 2] and
     # [batch_size, max_detections, num_total_keypoints], respectively.
-    keypoints = tf.concat(kpt_coords_for_example_list, axis=0)
-    keypoint_scores = tf.concat(kpt_scores_for_example_list, axis=0)
+    keypoints = tf.concat(kpt_coords_combined, axis=0)
+    keypoint_scores = tf.concat(kpt_scores_combined, axis=0)
 
     return keypoints, keypoint_scores
 
