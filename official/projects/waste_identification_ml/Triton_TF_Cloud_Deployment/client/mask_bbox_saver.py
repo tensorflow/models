@@ -25,13 +25,37 @@ saves this annotated image.
 """
 
 from collections.abc import Mapping
+import dataclasses
 import os
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 import cv2
 import numpy as np
+import pandas as pd
 
 from official.vision.utils.object_detection import visualization_utils as viz_utils
+
+CIRCLE_RADIUS = 7
+CIRCLE_COLOR = (255, 133, 233)
+TEXT_FONT = cv2.FONT_HERSHEY_SIMPLEX
+TEXT_SCALE = 1.0
+TEXT_COLOR = (255, 0, 0)
+TEXT_THICKNESS = 2
+TEXT_LINE_TYPE = cv2.LINE_AA
+
+
+@dataclasses.dataclass
+class BoundingBox:
+  y1: int | float
+  x1: int | float
+  y2: int | float
+  x2: int | float
+
+
+@dataclasses.dataclass
+class ImageSize:
+  height: int
+  width: int
 
 
 def save_bbox_masks_labels(
@@ -104,3 +128,97 @@ def save_binary_masks(
     mask += single_mask.astype(np.uint8) * 255  # Convert to 0-255 range
 
   cv2.imwrite(os.path.join(folder, file_name), mask)
+
+
+# TODO(umairsabir): Add helper function to remove nested loop.
+def visualize_tracking_results(
+    tracking_features: pd.DataFrame,
+    tracking_images: Mapping[str, np.ndarray],
+    tracking_folder: str,
+) -> str:
+  """Draws tracking results on images and saves them to an output folder.
+
+  Args:
+      tracking_features: DataFrame with columns ['image_name', 'x', 'y',
+        'particle'].
+      tracking_images: Mapping from image_name to image (numpy array).
+      tracking_folder: Directory where tracking results are saved.
+
+  Returns:
+      str:Path to the output folder where annotated images are saved.
+  """
+  groups = tracking_features.groupby('image_name')
+  for name, group in groups:
+    img = tracking_images[name].copy()
+    for k in range(len(group)):
+      x, y = int(group.iloc[k]['x']), int(group.iloc[k]['y'])
+      cv2.circle(img, (x, y), CIRCLE_RADIUS, CIRCLE_COLOR, -1)
+      cv2.putText(
+          img,
+          str(int(group.iloc[k]['particle'])),
+          (x, y),
+          TEXT_FONT,
+          TEXT_SCALE,
+          TEXT_COLOR,
+          TEXT_THICKNESS,
+          TEXT_LINE_TYPE,
+      )
+    cv2.imwrite(os.path.join(tracking_folder, str(name)), img)
+  return tracking_folder
+
+
+def save_cropped_objects(
+    agg_features: pd.DataFrame,
+    input_directory: str,
+    height_tracking: int,
+    width_tracking: int,
+    resize_bbox: Callable[
+        [BoundingBox, ImageSize, ImageSize], tuple[int, int, int, int]
+    ],
+    output_suffix: str = '_cropped_objects',
+) -> str:
+  """Saves cropped object images by category from tracking results.
+
+  Args:
+      agg_features: DataFrame containing grouped tracking results.
+      input_directory: The directory with original images.
+      height_tracking: Height used during tracking.
+      width_tracking: Width used during tracking.
+      resize_bbox: Function to resize bounding box.
+      output_suffix: Suffix for cropped objects folder.
+
+  Returns:
+      str: Path to the output folder where cropped images are saved.
+  """
+  cropped_obj_folder = os.path.basename(input_directory) + output_suffix
+  os.makedirs(cropped_obj_folder, exist_ok=True)
+
+  if agg_features.empty:
+    return cropped_obj_folder
+
+  for group_name, df in agg_features.groupby('detection_classes_names'):
+    class_folder = os.path.join(cropped_obj_folder, str(group_name))
+    os.makedirs(class_folder, exist_ok=True)
+
+    for row in df.itertuples(index=False):
+      image = cv2.imread(
+          os.path.join(os.path.basename(input_directory), row.image_name)
+      )
+      image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+      new_h, new_w = image_rgb.shape[0], image_rgb.shape[1]
+
+      y1, x1, y2, x2 = row.bbox_0, row.bbox_1, row.bbox_2, row.bbox_3
+      bbox = BoundingBox(y1, x1, y2, x2)
+      new_bbox = resize_bbox(
+          bbox,
+          ImageSize(height=height_tracking, width=width_tracking),
+          ImageSize(height=new_h, width=new_w),
+      )
+
+      score = getattr(row, 'detection_scores', 0.0)
+      name = f'{os.path.splitext(row.image_name)[0]}_{row.particle}_{score:.2f}.png'
+      crop = image_rgb[new_bbox[0] : new_bbox[2], new_bbox[1] : new_bbox[3]]
+
+      cv2.imwrite(os.path.join(class_folder, name), crop)
+
+  return cropped_obj_folder
