@@ -20,10 +20,14 @@ from absl import app
 from absl import flags
 import cv2
 import numpy as np
+import pandas as pd
 from official.projects.waste_identification_ml.model_inference import color_and_property_extractor
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import big_query_ops
 from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import feature_extraction
 from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import ffmpeg_ops
 from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import mask_bbox_saver
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import object_tracking
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import object_tracking_postprocessing
 from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import triton_server_inference
 from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import utils
 
@@ -79,7 +83,7 @@ BQ_DATASET_ID = flags.DEFINE_string(
     "bq_dataset_id", "Circularnet_dataset", "Big query dataset ID"
 )
 
-TABLE_ID = flags.DEFINE_string(
+BQ_TABLE_ID = flags.DEFINE_string(
     "bq_table_id", "Circularnet_table", "BigQuery Table ID for features data"
 )
 
@@ -98,6 +102,10 @@ CROPPED_OBJECTS = flags.DEFINE_boolean(
 AREA_THRESHOLD = None
 HEIGHT_TRACKING = 300
 WIDTH_TRACKING = 300
+CIRCLE_RADIUS = 7
+FONT = cv2.FONT_HERSHEY_SIMPLEX
+FONTSCALE = 1
+COLOR = (255, 0, 0)
 
 
 def main(_) -> None:
@@ -119,16 +127,6 @@ def main(_) -> None:
   prediction_folder = os.path.basename(input_directory) + "_prediction"
   os.makedirs(prediction_folder, exist_ok=True)
 
-  if TRACKING_VISUALIZATION.value:
-    # Create a folder to troubleshoot tracking results.
-    tracking_folder = os.path.basename(input_directory) + "_tracking"
-    os.makedirs(tracking_folder, exist_ok=True)
-
-  if CROPPED_OBJECTS.value:
-    # Create a folder to save cropped objects per category from the output.
-    cropped_obj_folder = os.path.basename(input_directory) + "_cropped_objects"
-    os.makedirs(cropped_obj_folder, exist_ok=True)
-
   # Create a log directory and a logger for logging.
   log_name = os.path.basename(INPUT_DIRECTORY.value)
   log_folder = os.path.join(os.getcwd(), "logs")
@@ -145,10 +143,12 @@ def main(_) -> None:
   tracking_images = {}
   features_set = []
   image_plot = None
+  agg_features = None
+  tracking_features = None
 
   for frame, image_path in enumerate(files, start=1):
     # Prepare an input for a Triton model server from an image.
-    logger.info(f"\nProcessing {os.path.basename(image_path)}")
+    logger.info(f"Processing {os.path.basename(image_path)}")
     try:
       inputs, original_image, _ = (
           triton_server_inference.prepare_image(
@@ -188,6 +188,10 @@ def main(_) -> None:
 
         if any(filtered_indices):
           result = utils.filter_detections(result, filtered_indices)
+          logger.info(
+              "Total predictions after"
+              f" thresholding:{result['num_detections'][0]}"
+          )
       else:
         logger.info("Zero predictions after threshold.")
         continue
@@ -199,8 +203,8 @@ def main(_) -> None:
       # Convert bbox coordinates into normalized coordinates.
       if result["num_detections"][0]:
         result["normalized_boxes"] = result["detection_boxes"].copy()
-        result["normalized_boxes"][:, :, [0, 2]] /= HEIGHT
-        result["normalized_boxes"][:, :, [1, 3]] /= WIDTH
+        result["normalized_boxes"][:, :, [0, 2]] /= HEIGHT.value
+        result["normalized_boxes"][:, :, [1, 3]] /= WIDTH.value
         result["detection_boxes"] = (
             result["detection_boxes"].round().astype(int)
         )
@@ -255,6 +259,7 @@ def main(_) -> None:
             category_index=category_index,
             threshold=PREDICTION_THRESHOLD.value,
         )
+        logger.info("Visualization saved.")
     except (KeyError, IndexError, TypeError, ValueError) as e:
       logger.info("Issue in saving visualization of results.")
       logger.exception("Exception occured:", e)
@@ -308,9 +313,122 @@ def main(_) -> None:
       features["detection_classes_names"] = result["detection_classes_names"][0]
       features["color"] = generic_color_names
       features_set.append(features)
-    except (KeyError, IndexError, TypeError, ValueError) as e:
+      logger.info("Features extracted.\n")
+    except (KeyError, IndexError, TypeError, ValueError):
       logger.info("Failed to extract properties.")
-      logger.exception("Exception occured:", e)
+
+  try:
+    if features_set:
+      features_df = pd.concat(features_set, ignore_index=True)
+
+      # Apply object tracking to the features.
+      tracking_features = object_tracking.apply_tracking(
+          features_df,
+          search_range_x=SEARCH_RANGE_X.value,
+          search_range_y=SEARCH_RANGE_Y.value,
+          memory=MEMORY.value,
+      )
+
+      # Process the tracking results to remove errors.
+      agg_features = object_tracking_postprocessing.process_tracking_result(
+          tracking_features
+      )
+      counts = agg_features.groupby("detection_classes_names").size()
+      counts.to_frame().to_csv(os.path.join(os.getcwd(), "count.csv"))
+      logger.info("Object tracking applied.")
+  except (KeyError, IndexError, TypeError, ValueError):
+    logger.info("Failed to apply object tracking.")
+
+  try:
+    if TRACKING_VISUALIZATION.value:
+      # Create a folder to save the tracking visualization.
+      tracking_folder = os.path.basename(input_directory) + "_tracking"
+      os.makedirs(tracking_folder, exist_ok=True)
+
+      # Save the tracking results as an image files.
+      output_folder = mask_bbox_saver.visualize_tracking_results(
+          tracking_features=tracking_features,
+          tracking_images=tracking_images,
+          tracking_folder=tracking_folder,
+      )
+      logger.info(f"Tracking visualization saved to {output_folder}.")
+
+      # Move the tracking visualization to the output directory.
+      commands = [
+          f"gsutil -m cp -r {output_folder} {OUTPUT_DIRECTORY.value}",
+          f"rm -r {output_folder}",
+      ]
+      combined_command_1 = " && ".join(commands)
+      subprocess.run(combined_command_1, shell=True, check=True)
+      logger.info("Tracking visualization saved.")
+  except (KeyError, IndexError, TypeError, ValueError):
+    logger.info("Failed to visualize tracking results.")
+
+  try:
+    if CROPPED_OBJECTS.value:
+      cropped_obj_folder = mask_bbox_saver.save_cropped_objects(
+          agg_features=agg_features,
+          input_directory=input_directory,
+          height_tracking=HEIGHT_TRACKING,
+          width_tracking=WIDTH_TRACKING,
+          resize_bbox=utils.resize_bbox,
+      )
+      logger.info("Cropped objects saved in %s", cropped_obj_folder)
+
+      # Move the cropped objects to the output directory.
+      commands = [
+          f"gsutil -m cp -r {cropped_obj_folder} {OUTPUT_DIRECTORY.value}",
+          f"rm -r {cropped_obj_folder}",
+      ]
+
+      combined_command_2 = " && ".join(commands)
+      subprocess.run(combined_command_2, shell=True, check=True)
+      logger.info("Cropped objects saved.")
+  except (KeyError, IndexError, TypeError, ValueError):
+    logger.info("Issue in cropping objects")
+    logger.info("Failed to crop objects.")
+    logger.exception("Exception occured:", e)
+
+  try:
+    # Create a big query table to store the aggregated features data.
+    big_query_ops.create_table(
+        PROJECT_ID.value,
+        BQ_DATASET_ID.value,
+        BQ_TABLE_ID.value,
+        overwrite=OVERWRITE.value,
+    )
+    logger.info("Successfully created table.")
+  except (KeyError, IndexError, TypeError, ValueError):
+    logger.info("Issue in creation of table")
+    return
+
+  try:
+    # Ingest the aggregated features data into the big query table.
+    big_query_ops.ingest_data(
+        agg_features, PROJECT_ID.value, BQ_DATASET_ID.value, BQ_TABLE_ID.value
+    )
+    logger.info("Data ingested successfully.")
+  except (KeyError, IndexError, TypeError, ValueError):
+    logger.info("Issue in data ingestion.")
+    return
+
+  try:
+    # Move the folders to the destination bucket.
+    commands = [
+        (
+            "gsutil -m cp -r"
+            f" {os.path.basename(input_directory)} {OUTPUT_DIRECTORY.value}"
+        ),
+        f"rm -r {os.path.basename(input_directory)}",
+        f"gsutil -m cp -r {prediction_folder} {OUTPUT_DIRECTORY.value}",
+        f"rm -r {prediction_folder}",
+    ]
+
+    combined_command_3 = " && ".join(commands)
+    subprocess.run(combined_command_3, shell=True, check=True)
+    logger.info("Successfully moved to destination bucket")
+  except (KeyError, IndexError, TypeError, ValueError):
+    logger.info("Issue in moving folders to destination bucket")
 
 
 if __name__ == "__main__":
