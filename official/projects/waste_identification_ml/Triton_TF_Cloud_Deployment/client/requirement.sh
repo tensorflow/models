@@ -46,6 +46,9 @@ pip install --no-cache-dir natsort absl-py opencv-python pandas pandas-gbq \
   scikit-image scikit-learn webcolors==1.13 ffmpeg-python tf_keras \
   tf_slim tritonclient[all]
 
+# Install the python package for the visualization.
+pip install tf-models-official
+
 # Check if the 'models' directory exists before cloning.
 if [ ! -d "models" ]; then
   # Cloning project directory from TF Model Garden for postprocessing
