@@ -24,8 +24,11 @@ class TestSchemaDefinition(unittest.TestCase):
         ("source_name", "STRING", "REQUIRED"),
         ("image_name", "STRING", "REQUIRED"),
         ("detection_scores", "FLOAT", "REQUIRED"),
-        ("color", "STRING", "REQUIRED"),
         ("creation_time", "STRING", "REQUIRED"),
+        ("bbox_0", "INTEGER", "REQUIRED"),
+        ("bbox_1", "INTEGER", "REQUIRED"),
+        ("bbox_2", "INTEGER", "REQUIRED"),
+        ("bbox_3", "INTEGER", "REQUIRED"),
         ("detection_classes", "INTEGER", "REQUIRED"),
         ("detection_classes_names", "STRING", "REQUIRED"),
     ]

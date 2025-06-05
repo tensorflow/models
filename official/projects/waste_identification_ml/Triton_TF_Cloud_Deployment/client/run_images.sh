@@ -58,7 +58,7 @@ python inference_pipeline.py \
 	--score=0.70 \
 	--search_range_x=150 \
 	--search_range_y=20 \
-	--memory=1  \
+	--memory=10  \
 	--project_id=waste-identification-ml-330916 \
 	--bq_dataset_id=circularnet_dataset \
 	--bq_table_id=circularnet_table \

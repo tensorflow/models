@@ -33,8 +33,11 @@ _SCHEMA = [
     bigquery.SchemaField("source_name", "STRING", mode="REQUIRED"),
     bigquery.SchemaField("image_name", "STRING", mode="REQUIRED"),
     bigquery.SchemaField("detection_scores", "FLOAT", mode="REQUIRED"),
-    bigquery.SchemaField("color", "STRING", mode="REQUIRED"),
     bigquery.SchemaField("creation_time", "STRING", mode="REQUIRED"),
+    bigquery.SchemaField("bbox_0", "INTEGER", mode="REQUIRED"),
+    bigquery.SchemaField("bbox_1", "INTEGER", mode="REQUIRED"),
+    bigquery.SchemaField("bbox_2", "INTEGER", mode="REQUIRED"),
+    bigquery.SchemaField("bbox_3", "INTEGER", mode="REQUIRED"),
     bigquery.SchemaField("detection_classes", "INTEGER", mode="REQUIRED"),
     bigquery.SchemaField("detection_classes_names", "STRING", mode="REQUIRED"),
 ]
