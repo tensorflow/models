@@ -16,20 +16,26 @@
 
 import os
 import subprocess
+import sys
+
 from absl import app
 from absl import flags
+import big_query_ops
 import cv2
+import feature_extraction
+import ffmpeg_ops
+import mask_bbox_saver
 import numpy as np
+import object_tracking
+import object_tracking_postprocessing
 import pandas as pd
-from official.projects.waste_identification_ml.model_inference import color_and_property_extractor
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import big_query_ops
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import feature_extraction
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import ffmpeg_ops
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import mask_bbox_saver
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import object_tracking
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import object_tracking_postprocessing
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import triton_server_inference
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import utils
+import triton_server_inference
+import utils
+
+sys.path.append(
+    "models/official/projects/waste_identification_ml/model_inference/"
+)
+import color_and_property_extractor  # pylint: disable=g-bad-import-order, g-import-not-at-top
 
 INPUT_DIRECTORY = flags.DEFINE_string(
     "input_directory", None, "The path to the directory containing images."
