@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client.biq_query_ops import _SCHEMA
+from official.projects.waste_identification_ml.Triton_TF_Cloud_Deployment.client import big_query_ops
 
 
 class TestSchemaDefinition(unittest.TestCase):
@@ -35,11 +35,15 @@ class TestSchemaDefinition(unittest.TestCase):
 
     # Check schema length
     self.assertEqual(
-        len(_SCHEMA), len(expected_schema), "Schema length mismatch."
+        len(big_query_ops._SCHEMA),
+        len(expected_schema),
+        "Schema length mismatch.",
     )
 
     # Validate each field's name, type, and mode in order
-    for idx, (field, expected) in enumerate(zip(_SCHEMA, expected_schema)):
+    for idx, (field, expected) in enumerate(
+        zip(big_query_ops._SCHEMA, expected_schema)
+    ):
       expected_name, expected_type, expected_mode = expected
       self.assertEqual(
           (field.name, field.field_type, field.mode),
