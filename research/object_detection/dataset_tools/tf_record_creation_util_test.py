@@ -18,8 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import os
-import contextlib2
+
 import six
 from six.moves import range
 import tensorflow.compat.v1 as tf
@@ -30,7 +31,7 @@ from object_detection.dataset_tools import tf_record_creation_util
 class OpenOutputTfrecordsTests(tf.test.TestCase):
 
   def test_sharded_tfrecord_writes(self):
-    with contextlib2.ExitStack() as tf_record_close_stack:
+    with contextlib.ExitStack() as tf_record_close_stack:
       output_tfrecords = tf_record_creation_util.open_sharded_output_tfrecords(
           tf_record_close_stack,
           os.path.join(tf.test.get_temp_dir(), 'test.tfrec'), 10)

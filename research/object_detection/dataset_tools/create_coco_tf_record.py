@@ -33,15 +33,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import hashlib
 import io
 import json
 import logging
 import os
-import contextlib2
+
 import numpy as np
 import PIL.Image
-
 from pycocotools import mask
 import tensorflow.compat.v1 as tf
 
@@ -385,8 +385,9 @@ def _create_tf_record_from_coco_annotations(annotations_file, image_dir,
     remove_non_person_images: Whether to remove any images that do not contain
       at least one "person" annotation.
   """
-  with contextlib2.ExitStack() as tf_record_close_stack, \
-      tf.gfile.GFile(annotations_file, 'r') as fid:
+  with contextlib.ExitStack() as tf_record_close_stack, tf.gfile.GFile(
+      annotations_file, 'r'
+  ) as fid:
     output_tfrecords = tf_record_creation_util.open_sharded_output_tfrecords(
         tf_record_close_stack, output_path, num_shards)
     groundtruth_data = json.load(fid)
