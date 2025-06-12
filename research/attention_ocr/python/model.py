@@ -26,10 +26,11 @@ import sys
 import collections
 import logging
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib import slim
-from tensorflow.contrib.slim.nets import inception
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+from tf_slim.nets import inception
 
+import legacy_seq2seq
 import metrics
 import sequence_layers
 import utils
@@ -59,14 +60,6 @@ EncodeCoordinatesParams = collections.namedtuple('EncodeCoordinatesParams',
                                                  ['enabled'])
 
 
-def _dict_to_array(id_to_char, default_character):
-  num_char_classes = max(id_to_char.keys()) + 1
-  array = [default_character] * num_char_classes
-  for k, v in id_to_char.items():
-    array[k] = v
-  return array
-
-
 class CharsetMapper(object):
   """A simple class to map tensor ids into strings.
 
@@ -82,9 +75,11 @@ class CharsetMapper(object):
     Args:
       charset: a dictionary with id-to-character mapping.
     """
-    mapping_strings = tf.constant(_dict_to_array(charset, default_character))
-    self.table = tf.contrib.lookup.index_to_string_table_from_tensor(
-        mapping=mapping_strings, default_value=default_character)
+    self.table = tf.lookup.StaticHashTable(
+        tf.lookup.KeyValueTensorInitializer(
+            keys=tf.constant([k for k in charset.keys()], dtype=tf.int32),
+            values=tf.constant([v for v in charset.values()])
+        ), default_value=default_character)
 
   def get_text(self, ids):
     """Returns a string corresponding to a sequence of character ids.
@@ -93,7 +88,7 @@ class CharsetMapper(object):
           ids: a tensor with shape [batch_size, max_sequence_length]
     """
     return tf.strings.reduce_join(
-        inputs=self.table.lookup(tf.cast(ids, dtype=tf.int64)), axis=1)
+        inputs=self.table.lookup(tf.cast(ids, dtype=tf.int32)), axis=1)
 
 
 def get_softmax_loss_fn(label_smoothing):
@@ -162,7 +157,7 @@ def lookup_indexed_value(indices, row_vecs):
   """
   gather_indices = tf.stack((tf.range(
       tf.shape(input=row_vecs)[0], dtype=tf.int32), tf.cast(indices, tf.int32)),
-      axis=1)
+                            axis=1)
   return tf.gather_nd(row_vecs, gather_indices)
 
 
@@ -203,7 +198,8 @@ def find_length_by_null(predicted_chars, null_code):
     A [batch, ] tensor which stores the sequence length for each sample.
   """
   return tf.reduce_sum(
-      input_tensor=tf.cast(tf.not_equal(null_code, predicted_chars), tf.int32), axis=1)
+      input_tensor=tf.cast(tf.not_equal(null_code, predicted_chars), tf.int32),
+      axis=1)
 
 
 def axis_pad(tensor, axis, before=0, after=0, constant_values=0.0):
@@ -633,7 +629,7 @@ class Model(object):
 
       logits_list = tf.unstack(chars_logits, axis=1)
       weights_list = tf.unstack(weights, axis=1)
-      loss = tf.contrib.legacy_seq2seq.sequence_loss(
+      loss = legacy_seq2seq.sequence_loss(
           logits_list,
           labels_list,
           weights_list,
