@@ -1,92 +1,89 @@
-# Run the prediction pipeline
+# Run the inference pipeline
 
-Follow these steps to run the prediction pipeline and process your input files
-on Google Cloud:
+Follow these steps to leverage the triton inference server you
+[started earlier](start-server.md) to run the inference pipeline on your images.
 
-1. Open the `Client` directory in the `Triton_TF_Cloud_Deployment` directory:
+Go to the `client` folder within the the `waste_identification_ml` project:
 
-    ```
-    cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/client/
-    ```
+```bash
+cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/client/
+```
 
-3. If you have to modify the scripts to provide your specific paths and values
-   for the prediction pipeline, edit the corresponding parameter values on the
-   script. The following example modifies the image pipeline script:
+The inference pipeline uses a script to set various parameters for inference,
+post-processing, and subsequent data analytics. We'll need to adjust some of
+these:
 
-    ```
-    vim run_images.sh
-    ```
+```bash
+vim run_images.sh
+```
 
-	The Vim editor displays the following parameters:
+The Vim editor displays all pipeline parameters. The script contains
+documentation for each parameter, but at minimum you will need to change:
 
-    ```
-    --input_directory=<path-to-input-bucket>
-    --output_directory=<path-to-output-bucket>
-    --height=<height>
-    --width=<width>
-    --model=<circularnet-model>
-    --score=<score>
-    --search_range_x=<search-range>
-    --search_range_y=<search-range>
-    --memory=<memory>
-    --project_id=<project-id>
-    --bq_dataset_id=<bigquery-dataset-id>
-    --bq_table_id=<bigquery-table-id>
-    --overwrite=<overwrtie_table>
-    --tracking_visualization=<visualize-tracking-results>
-    --cropped_objects=<crop-objects-per-category>
-    ```
+```python
+--input_directory=<path-to-input-bucket>
 
-    Replace the following:
+# This should be the path to the input bucket you created containing your
+# images, e.g. gs://bucket/input-images
+```
 
-    -  `<path-to-input-bucket>`: The path to [the Cloud Storage input bucket you
-       created], for example `gs://my-input-bucket/`.
-    -  `<path-to-output-bucket>`: The path to [the Cloud Storage output bucket
-       you created], for example `gs://my-output-bucket/`.
-    -  `<project-id>`: The ID of your Google Cloud project, for example,
-       `my-project`.
-    -  `<bigquery-dataset-id>`: The ID that you want to assign to a BigQuery \
-        dataset to
-       store prediction results, for example, `circularnet_dataset`.
-    -  `<bigquery-table-id>`: The ID that you want to assign to a BigQuery \
-        table to store
-       prediction results, for example, `circularnet_table`. If the table
-       already exists in your Google Cloud project, the pipeline appends results
-       to that table.
+```python
+--output_directory=<path-to-output-bucket>
 
-    Save changes and exit the Vim editor. To do this, press the **Esc** key,
-    type `:wq`, and then press **Enter**.
+# Like input, this should be the gcs bucket path to where you want the images
+# with predictions to write to.
+```
 
-    Note : for creating cloud storage bucket follow [this guide](official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/prediction-pipeline-in-cloud.md#Create-the-Cloud-Storage-input-and-output-buckets)
+```python
+--project_id=<project-id>
 
-4. Enter the `screen` session for the client:
+# The ID of your Google Cloud project housing your gcs bucket, for example,
+# `my-gcp-project`.
+```
 
-    ```
-    screen -R inference
-    ```
+```python
+--bq_table_id=<bigquery-table-id>
 
-    The `screen` session opens and displays the ongoing operations on the
-    server. The models must show a `READY` status on the `screen` session when
-    they are successfully deployed.
+'''
+The ID that you want to use for your BigQuery table storing inference
+results, e.g `circularnet_table`. If the table already exists BigQuery
+within your project, the pipeline will either overwrite or append results,
+depending on how you set the `overwrite` parameter
+'''
+```
 
-5. Run the prediction pipeline:
+Save changes and exit the Vim editor. To do this, press the **Esc** key, then
+type `:wq`, and press **Enter**.
 
-    ```
-    bash run_images.sh
-    ```
+**Note:** For creating cloud storage bucket and adding images, follow
+[this guide](https://github.com/tensorflow/models/blob/master/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/prediction-pipeline-in-cloud.md#Create-the-Cloud-Storage-input-and-output-buckets)
 
-    **Note:** If you have a large amount of input files, you can run the
-    pipeline in a `screen` session in the background without worrying about the
-    terminal closing down. First, you launch the `screen` session with the
-    `screen -R client` command. A new session shell launches. Then, run the
-    `bash run_images.sh` script in the new shell.
+Next, enter a `screen` session for the inference client:
 
-6. If you want to exit the `screen` session without stopping the inference, press
-   **Ctrl + A + D** keys.
+```bash
+screen -R inference
+```
+
+Now run the inference pipeline:
+
+```bash
+bash run_images.sh
+```
+
+If you want to exit the screen session without stopping inference, press
+**Ctrl + a** then **d** to detach from the screen session.
 
 The script also creates a `logs` folder inside the `client` folder that saves
 the logs with the troubleshooting results and records from the models.
 
-You have finished running the prediction pipeline and applying the prediction models to your files for further analysis. You can find the image results with the applied masks in your output bucket. You can also open the generated [BigQuery](https://cloud.google.com/bigquery) table to see the model analytics results and [preview table data](https://cloud.google.com/bigquery/docs/quickstarts/load-data-console#preview_table_data). To create new results, repeat the steps in this section every time you modify the files in your input bucket.
+Congratulations, you have finished running the inference pipeline!. You can find
+individual inference results as images with overlaid object predictions in your
+output bucket. You can also open the generated BigQuery table to see overall
+analytics across all your images. You'll want to navigate to BigQuery within
+your cloud project, find the appropriate table, and
+[preview table data](https://cloud.google.com/bigquery/docs/quickstarts/load-data-console#preview_table_data).
 
-**Important:** If you rerun the prediction pipeline on the same video or image file, you must delete the results created the first time you ran the script from the output bucket to avoid conflicting issues. [Manage the lifecycle of objects in your Cloud Storage buckets](https://cloud.google.com/storage/docs/lifecycle) to help manage costs.
+**Important:** If you rerun the prediction pipeline on the same images, you
+should delete any existing image results (output-bucket) created previously.
+Also, see
+[Manage the lifecycle of objects in your Cloud Storage buckets](https://cloud.google.com/storage/docs/lifecycle) to help manage image storage costs.
