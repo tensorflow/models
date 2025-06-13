@@ -25,7 +25,7 @@ in Google Cloud or the terminal of your edge device:
 1. Open the `client` folder in the `prediction_pipeline` directory:
 
     ```
-    cd models/official/projects/waste_identification_ml/docker_solution/prediction_pipeline/client/
+    cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/client/
     ```
 
 1. Run the `requirements.sh` script to install all the required packages and libraries:

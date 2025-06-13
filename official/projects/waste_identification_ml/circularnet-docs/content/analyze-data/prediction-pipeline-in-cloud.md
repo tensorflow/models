@@ -67,26 +67,26 @@ Follow these steps to run the prediction pipeline and process your input files
 on Google Cloud:
 
 1. [Open the Google Cloud console](https://cloud.google.com/cloud-console).
-1. [Create the Cloud Storage input and output buckets](#create-the-cloud-storage-input-and-output-buckets).
-1. Upload the images or videos your machine vision camera captured to the Cloud
+2. [Create the Cloud Storage input and output buckets](#create-the-cloud-storage-input-and-output-buckets).
+3. Upload the images or videos your machine vision camera captured to the Cloud
    Storage input bucket.
-1. [Grant the required permissions to the VM service account](#grant-required-permissions).
-1. From the **Navigation menu** on the Google Cloud console, select **Compute Engine** > **VM instances**.
-1. On the **VM instances** page, find the VM instance you created with the
+4. [Grant the required permissions to the VM service account](#grant-required-permissions).
+5. From the **Navigation menu** on the Google Cloud console, select **Compute Engine** > **VM instances**.
+6. On the **VM instances** page, find the VM instance you created with the
    NVIDIA T4 GPU when [deploying CircularNet](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/).
-1. If you stopped your VM instance, restart it by clicking **More actions** >
+7. If you stopped your VM instance, restart it by clicking **More actions** >
    **Start / Resume** in the row of the instance that you want to restart.
 
     **Note:** Stop the instance after you finish using it to avoid unnecessary
     expenses.
 
-1. Click **SSH** in the row of the instance that you want to connect to. The
+8. Click **SSH** in the row of the instance that you want to connect to. The
    **SSH-in-Browser** tool opens. For more information, see [Connect to VMs](https://cloud.google.com/compute/docs/connect/standard-ssh#connect_to_vms).
-1. On the **SSH-in-browser** window, [start the server](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server).
-1. Display the names of the models you loaded to the Triton inference server:
+9. On the **SSH-in-browser** window, [start the server](/official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server).
+10. Display the names of the models you loaded to the Triton inference server:
 
     ```
-    cat triton_server.sh
+    cat triton_inference_server.sh
     ```
 
     The first lines of the output show the names of the loaded models in square
@@ -94,9 +94,9 @@ on Google Cloud:
     pipeline.
 
     **Important:** Run the previous command in the `server` folder, which
-    contains the `triton_server.sh` script.
+    contains the `triton_inference_server.sh` script.
 
-1. Exit the `server` folder and open the `client` folder in the
+11. Exit the `server` folder and open the `client` folder in the
    `prediction_pipeline` directory:
 
     ```
@@ -109,7 +109,7 @@ on Google Cloud:
     or videos, respectively. The `run_gcp_images.sh` and `run_gcp_videos.sh`
     scripts run these Python files automatically.
 
-1. If you have to modify the scripts to provide your specific paths and values
+12. If you have to modify the scripts to provide your specific paths and values
    for the prediction pipeline, edit the corresponding parameter values on the
    script. The following example modifies the image pipeline script:
 
@@ -122,16 +122,19 @@ on Google Cloud:
     ```
     --input_directory=<path-to-input-bucket>
     --output_directory=<path-to-output-bucket>
-    --fps=<frames-per-second>
     --height=<height>
     --width=<width>
     --model=<circularnet-model>
     --score=<score>
-    --search_range=<search-range>
+    --search_range_x=<search-range>
+    --search_range_y=<search-range>
     --memory=<memory>
     --project_id=<project-id>
-    --dataset_id=<dataset-id>
-    --table_id=<table-id>
+    --bq_dataset_id=<bigquery-dataset-id>
+    --bq_table_id=<bigquery-table-id>
+    --overwrite=<overwrtie_table>
+    --tracking_visualization=<visualize-tracking-results>
+    --cropped_objects=<crop-objects-per-category>
     ```
 
     Replace the following:
@@ -158,12 +161,18 @@ on Google Cloud:
        example, `20`.
     -  `<project-id>`: The ID of your Google Cloud project, for example,
        `my-project`.
-    -  `<dataset-id>`: The ID that you want to assign to a BigQuery dataset to
-       store prediction results, for example, `circularnet_dataset`.
-    -  `<table-id>`: The ID that you want to assign to a BigQuery table to store
-       prediction results, for example, `circularnet_table`. If the table
-       already exists in your Google Cloud project, the pipeline appends results
-       to that table.
+    -  `<bigquery-dataset-id>`: The ID that you want to assign to a BigQuery \
+        dataset to store prediction results, for example, `circularnet_dataset`.
+    -  `<bigquery-table-id>`: The ID that you want to assign to a BigQuery \
+        table to store prediction results, for example, `circularnet_table`. \
+        If the table already exists in your Google Cloud project, the pipeline \
+        appends results to that table.
+    -   `<overwrtie_table>` : If set to True, overwrites the pre-existing \
+        BigQuery table.
+    -   `<visualize-tracking-results>`: If set to True, visualizes the \
+        tracking results from the tracking algorithm.
+    -   `<crop-objects-per-category>`: If set to True, crops the objects per \
+        category according to the prediction and tracking results.
 
     **Note:** If your input files are not videos but images, replace
     `run_gcp_videos.sh` on the command with `run_gcp_images.sh` and remove the
@@ -172,7 +181,12 @@ on Google Cloud:
     Save changes and exit the Vim editor. To do this, press the **Esc** key,
     type `:wq`, and then press **Enter**.
 
-1. Run the prediction pipeline:
+13. Enter the `screen` session for the client:
+
+    ```
+    screen -R inference
+    ```
+14. Run the prediction pipeline:
 
     ```
     bash run_images.sh
