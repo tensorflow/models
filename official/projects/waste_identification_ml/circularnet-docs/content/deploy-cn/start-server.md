@@ -9,13 +9,13 @@ tool open. For more information, see [Connect to VMs](https://cloud.google.com/c
 1. On the **SSH-in-browser** window of your VM instance in Google Cloud or the terminal of your edge device, open the `server` folder in the `prediction_pipeline` directory:
 
     ```
-    cd models/official/projects/waste_identification_ml/docker_solution/prediction_pipeline/server/
+    cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/server/
     ```
 
 1. Run the `triton_server.sh` script to create the Triton inference server and load the models to the server:
 
     ```
-    bash triton_server.sh
+    bash triton_inference_server.sh
     ```
 
     This script loads as many models as you want at the same time. Later, you can choose which model you want to send your request to from the client side. For more information, see [Prepare and analyze images](/official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/).
