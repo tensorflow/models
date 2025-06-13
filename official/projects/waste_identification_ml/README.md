@@ -32,9 +32,12 @@ Model categories | Model backbone | Model type  | GCP bucket path |
 | ------ | ------ | ----- | ------ |
 Material Type & Form | Resnet | saved model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/Jan2025_ver2_merged_1024_1024.zip)
 
-## Documentation
+## Full Documentation
 
-**[Documentation](/official/projects/waste_identification_ml/circularnet-docs/content/_index.md)**
+The full documentation, covering everything from how to choose and install
+a camera to how to prepare and make use of the model is **[here](circularnet-docs/content/_index.md).**
+Below, we also provide a quicker guide for running inference using a GCP VM,
+assuming you already have a working camera taking pictures.
 
 ## End to End Cloud Deployment Guide
 
@@ -49,37 +52,35 @@ End to end deployment involves three key steps:
 We will go through each one of them in details below
 
 #### [A] Prerequisite - Create VM instance:
-Create a Google cloud account and a T4 GPU enabled VM, follow below guide for \
- stepwise details:
+Create a Google cloud account and a T4 GPU enabled VM:
 
-- [Create VM in GCP Cloud](official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/before-you-begin.md)
+- [Create VM in GCP Cloud](circularnet-docs/content/deploy-cn/before-you-begin.md)
 
 #### [B] Code Setup - Clone and start the pipeline
 
-Run the following commandsmentioned in each steps on the **SSH-in-browser** \
+Run the following commands mentioned in each step on the **SSH-in-browser**
 window of your VM instance in Google Cloud
 
 Step 1:
 
-- [Clone the repository](official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/clone-repo.md)
+- [Clone the repository](circularnet-docs/content/deploy-cn/clone-repo.md)
 
 Step 2:
 
-- [Start the server](official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-server.md)
+- [Start the server](circularnet-docs/content/deploy-cn/start-server.md)
 
 Step 3:
 
-- [Run the prediction Pipeline](official/projects/waste_identification_ml/circularnet-docs/content/deploy-cn/start-client.md)
+- [Run the prediction Pipeline](circularnet-docs/content/deploy-cn/start-client.md)
 
-For more details : [Click Here](official/projects/waste_identification_ml/circularnet-docs/content/analyze-data/prediction-pipeline-in-cloud.md)
+For more details: [Click Here](circularnet-docs/content/analyze-data/prediction-pipeline-in-cloud.md)
 
 #### [C] Setup Dashboard - Visualize results
 
-For reporting purposes and to analyze image categories, we need to set up \
-and connect looker dashboard with BigQuery table, follow below guide for \
-stepwise details:
+For reporting purposes and to analyze image categories, we need to set up and
+connect looker dashboard with BigQuery table:
 
--  [Prepare and analyze images](official/projects/waste_identification_ml/circularnet-docs/content/view-data/configure-dashboard.md)
+-  [Prepare and analyze images](circularnet-docs/content/view-data/configure-dashboard.md)
 
 ## Authors and Maintainers
 Umair Sabir \
