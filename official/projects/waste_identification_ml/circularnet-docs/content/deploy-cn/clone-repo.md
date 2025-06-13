@@ -1,4 +1,5 @@
-After meeting the [prerequisites](/official/projects/waste_identification_ml/circularnet-docs/content/before-you-begin), follow these steps to clone the project from the [GitHub repository](https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml) and install all the required packages.
+After meeting the [prerequisites](before-you-begin.md),
+follow these steps to clone the project from the [GitHub repository](https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml) and install all the required packages.
 
 Run the following commands on the **SSH-in-browser** window of your VM instance
 in Google Cloud or the terminal of your edge device:
@@ -9,32 +10,25 @@ in Google Cloud or the terminal of your edge device:
     sudo apt-get install git
     ```
 
-    **Note:** If the `Do you want to continue?` message is displayed, enter `Y` and press **Enter** to continue.<br><br>
-
-1. Clone the [GitHub repository](https://github.com/tensorflow/models/tree/master/official/projects/waste_identification_ml):
+1. Clone the tensorflow models, which contains Circularnet
+(waste_identification_ml) [Repo link](https://github.com/tensorflow/models)
 
     ```
     git clone --depth 1 https://github.com/tensorflow/models.git
     ```
 
-    **Note:** If the scripts from this guide are unavailable on GitHub, the
-    CircularNet team provides zip files for you to download locally. In that
-    case, cloning from GitHub is unnecessary; you only have to unzip the
-    files.<br><br>
-
-1. Open the `client` folder in the `prediction_pipeline` directory:
+1. Open the `client` folder within the `waste_identification_ml` project
+directory:
 
     ```
     cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/client/
     ```
 
-1. Run the `requirements.sh` script to install all the required packages and libraries:
+1. Run `requirements.sh` to install all the required packages and libraries:
 
     ```
     sh requirements.sh
     ```
-
-    **Note:** If the `Do you want to continue?` message is displayed, enter `Y` and press **Enter** to continue.<br><br>
 
 1. Return to the root directory:
 
@@ -42,4 +36,4 @@ in Google Cloud or the terminal of your edge device:
     cd\
     ```
 
-    Then, press **Enter**.
+Next, start the triton inference server that will serve inference requests. [Start server](start-server.md)
