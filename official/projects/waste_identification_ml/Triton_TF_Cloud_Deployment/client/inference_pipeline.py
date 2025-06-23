@@ -395,46 +395,49 @@ def main(_) -> None:
     logger.info("Failed to crop objects.")
     logger.exception("Exception occured:", e)
 
-  try:
-    # Create a big query table to store the aggregated features data.
-    big_query_ops.create_table(
-        PROJECT_ID.value,
-        BQ_DATASET_ID.value,
-        BQ_TABLE_ID.value,
-        overwrite=OVERWRITE.value,
-    )
-    logger.info("Successfully created table.")
-  except (KeyError, IndexError, TypeError, ValueError):
-    logger.info("Issue in creation of table")
-    return
+  if isinstance(agg_features, pd.DataFrame) and not agg_features.empty:
+    try:
+      # Create a big query table to store the aggregated features data.
+      big_query_ops.create_table(
+          PROJECT_ID.value,
+          BQ_DATASET_ID.value,
+          BQ_TABLE_ID.value,
+          overwrite=OVERWRITE.value,
+      )
+      logger.info("Successfully created table.")
+    except (KeyError, IndexError, TypeError, ValueError):
+      logger.info("Issue in creation of table")
+      return
 
-  try:
-    # Ingest the aggregated features data into the big query table.
-    big_query_ops.ingest_data(
-        agg_features, PROJECT_ID.value, BQ_DATASET_ID.value, BQ_TABLE_ID.value
-    )
-    logger.info("Data ingested successfully.")
-  except (KeyError, IndexError, TypeError, ValueError):
-    logger.info("Issue in data ingestion.")
-    return
+    try:
+      # Ingest the aggregated features data into the big query table.
+      big_query_ops.ingest_data(
+          agg_features, PROJECT_ID.value, BQ_DATASET_ID.value, BQ_TABLE_ID.value
+      )
+      logger.info("Data ingested successfully.")
+    except (KeyError, IndexError, TypeError, ValueError):
+      logger.info("Issue in data ingestion.")
+      return
 
-  try:
-    # Move the folders to the destination bucket.
-    commands = [
-        (
-            "gsutil -m cp -r"
-            f" {os.path.basename(input_directory)} {OUTPUT_DIRECTORY.value}"
-        ),
-        f"rm -r {os.path.basename(input_directory)}",
-        f"gsutil -m cp -r {prediction_folder} {OUTPUT_DIRECTORY.value}",
-        f"rm -r {prediction_folder}",
-    ]
+    try:
+      # Move the folders to the destination bucket.
+      commands = [
+          (
+              "gsutil -m cp -r"
+              f" {os.path.basename(input_directory)} {OUTPUT_DIRECTORY.value}"
+          ),
+          f"rm -r {os.path.basename(input_directory)}",
+          f"gsutil -m cp -r {prediction_folder} {OUTPUT_DIRECTORY.value}",
+          f"rm -r {prediction_folder}",
+      ]
 
-    combined_command_3 = " && ".join(commands)
-    subprocess.run(combined_command_3, shell=True, check=True)
-    logger.info("Successfully moved to destination bucket")
-  except (KeyError, IndexError, TypeError, ValueError):
-    logger.info("Issue in moving folders to destination bucket")
+      combined_command_3 = " && ".join(commands)
+      subprocess.run(combined_command_3, shell=True, check=True)
+      logger.info("Successfully moved to destination bucket")
+    except (KeyError, IndexError, TypeError, ValueError):
+      logger.info("Issue in moving folders to destination bucket")
+  else:
+    logger.info("No features to ingest.")
 
 
 if __name__ == "__main__":
