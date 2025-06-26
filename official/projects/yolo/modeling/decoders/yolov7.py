@@ -91,6 +91,93 @@ _BLOCK_SPEC_SCHEMAS = {
     ],
 }
 
+# Define specs for YOLOv7-pico variant. It is recommended to use together with
+# YOLOv7-pico backbone.
+_YoloV7Pico = [
+    ['convbn', '4', 1, 1, 16, False],
+    ['convbn', -1, 1, 1, 16, False],
+
+    ['convbn', -1, 1, 1, 8, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '3', 1, 1, 8, False],
+    ['concat', [-1, -2], -1, False],
+    ['convbn', -1, 1, 1, 8, False],
+    ['convbn', -1, 1, 1, 8, False],
+
+    ['convbn', -1, 3, 2, 16, False],
+    ['concat', [-1, 1], -1, False],
+    ['convbn', -1, 1, 1, 16, False],
+
+    ['convbn', -1, 3, 2, 32, False],
+    ['convbn', -1, 1, 1, 32, False],
+
+    ['convbn', 7, 1, 1, 8, True],
+    ['convbn', 10, 1, 1, 16, True],
+    ['convbn', 12, 1, 1, 32, True],
+]
+
+# Define specs for YOLOv7-nano variant. It is recommended to use together with
+# YOLOv7-nano backbone.
+_YoloV7Nano = [
+    ['convbn', -1, 1, 1, 64, False],
+    ['convbn', -2, 1, 1, 64, False],
+    ['maxpool2d', -1, 5, 1, 'same', False],
+    ['maxpool2d', -2, 9, 1, 'same', False],
+    ['maxpool2d', -3, 13, 1, 'same', False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 64, False],
+    ['concat', [-1, -7], -1, False],
+    ['convbn', -1, 1, 1, 64, False],  # 8
+
+    ['convbn', -1, 1, 1, 32, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '4', 1, 1, 32, False],  # route from backbone P4
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 16, False],
+    ['convbn', -2, 1, 1, 16, False],
+    ['convbn', -1, 3, 1, 16, False],
+    ['convbn', -1, 3, 1, 16, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 32, False],  # 18
+
+    ['convbn', -1, 1, 1, 16, False],
+    ['upsample2d', -1, 2, 'nearest', False],
+    ['convbn', '3', 1, 1, 16, False],  # route from backbone P3
+    ['concat', [-1, -2], -1, False],
+
+    ['convbn', -1, 1, 1, 8, False],
+    ['convbn', -2, 1, 1, 8, False],
+    ['convbn', -1, 3, 1, 8, False],
+    ['convbn', -1, 3, 1, 8, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 16, False],  # 28
+
+    ['convbn', -1, 3, 2, 32, False],
+    ['concat', [-1, 18], -1, False],
+
+    ['convbn', -1, 1, 1, 16, False],
+    ['convbn', -2, 1, 1, 16, False],
+    ['convbn', -1, 3, 1, 16, False],
+    ['convbn', -1, 3, 1, 16, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 32, False],  # 36
+
+    ['convbn', -1, 3, 2, 64, False],
+    ['concat', [-1, 8], -1, False],
+
+    ['convbn', -1, 1, 1, 32, False],
+    ['convbn', -2, 1, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['convbn', -1, 3, 1, 32, False],
+    ['concat', [-1, -2, -3, -4], -1, False],
+    ['convbn', -1, 1, 1, 64, False],  # 44
+
+    ['convbn', 28, 1, 1, 32, True],
+    ['convbn', 36, 1, 1, 64, True],
+    ['convbn', 44, 1, 1, 128, True],
+]
+
 # Define specs for YOLOv7-tiny variant. It is recommended to use together with
 # YOLOv7-tiny backbone.
 _YoloV7Tiny = [
@@ -298,6 +385,8 @@ _YoloV7X = [
 
 # Aggregates all variants for YOLOv7 decoders.
 DECODERS = {
+    'yolov7-nano': _YoloV7Nano,
+    'yolov7-pico': _YoloV7Pico,
     'yolov7-tiny': _YoloV7Tiny,
     'yolov7': _YoloV7,
     'yolov7x': _YoloV7X,
