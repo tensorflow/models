@@ -40,9 +40,10 @@ import abc
 import logging
 import numpy as np
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from tensorflow.contrib import slim
+import tf_slim as slim
+import legacy_seq2seq
 
 
 def orthogonal_initializer(shape, dtype=tf.float32, *args, **kwargs):
@@ -203,7 +204,8 @@ class SequenceLayerBase(object):
       A tensor with shape [batch_size, num_char_classes]
     """
     if char_index not in self._char_logits:
-      self._char_logits[char_index] = tf.compat.v1.nn.xw_plus_b(inputs, self._softmax_w,
+      self._char_logits[char_index] = tf.compat.v1.nn.xw_plus_b(inputs,
+                                                                self._softmax_w,
                                                                 self._softmax_b)
     return self._char_logits[char_index]
 
@@ -287,7 +289,7 @@ class NetSlice(SequenceLayerBase):
       A tensor with shape [batch_size, ?]. The output depth depends on the
       depth of input net.
     """
-    batch_size, features_num, _ = [d.value for d in self._net.get_shape()]
+    batch_size, features_num, _ = [d for d in self._net.get_shape()]
     slice_len = int(features_num / self._params.seq_length)
     # In case when features_num != seq_length, we just pick a subset of image
     # features, this choice is arbitrary and there is no intuitive geometrical
@@ -309,7 +311,7 @@ class NetSlice(SequenceLayerBase):
 
   def unroll_cell(self, decoder_inputs, initial_state, loop_function, cell):
     """See SequenceLayerBase.unroll_cell for details."""
-    return tf.contrib.legacy_seq2seq.rnn_decoder(
+    return legacy_seq2seq.rnn_decoder(
         decoder_inputs=decoder_inputs,
         initial_state=initial_state,
         cell=cell,
@@ -366,7 +368,7 @@ class Attention(SequenceLayerBase):
     return self.get_eval_input(prev, i)
 
   def unroll_cell(self, decoder_inputs, initial_state, loop_function, cell):
-    return tf.contrib.legacy_seq2seq.attention_decoder(
+    return legacy_seq2seq.attention_decoder(
         decoder_inputs=decoder_inputs,
         initial_state=initial_state,
         attention_states=self._net,
