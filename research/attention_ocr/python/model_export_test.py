@@ -18,7 +18,7 @@ import os
 
 import numpy as np
 from absl.testing import flagsaver
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import flags
 
 import common_flags
@@ -45,6 +45,7 @@ class AttentionOcrExportTest(tf.test.TestCase):
   """Tests for model_export.export_model."""
 
   def setUp(self):
+    tf.disable_eager_execution()
     for suffix in ['.meta', '.index', '.data-00000-of-00001']:
       filename = _CHECKPOINT + suffix
       self.assertTrue(

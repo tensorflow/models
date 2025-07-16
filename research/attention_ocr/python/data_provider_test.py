@@ -17,7 +17,7 @@
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.slim import queues
+from tf_slim import queues
 
 import datasets
 import data_provider
@@ -25,6 +25,7 @@ import data_provider
 
 class DataProviderTest(tf.test.TestCase):
   def setUp(self):
+    tf.compat.v1.disable_eager_execution()
     tf.test.TestCase.setUp(self)
 
   def test_preprocessed_image_values_are_in_range(self):
