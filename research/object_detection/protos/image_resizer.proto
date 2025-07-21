@@ -22,6 +22,14 @@ enum ResizeType {
   AREA = 3; // Corresponds to tf.image.ResizeMethod.AREA
 }
 
+// IdentityResizer performs no resizing on the input image.
+// It passes the image through unchanged, preserving its original height and width.
+// This option is useful when images are already preprocessed to the desired size,
+// or when using models that support dynamic input dimensions.
+//
+// Note: Ensure that the downstream model and preprocessing pipeline can handle
+// varying input sizes if using this option.
+
 message IdentityResizer {
 }
 
