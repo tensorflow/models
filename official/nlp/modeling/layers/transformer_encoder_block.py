@@ -82,41 +82,44 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
      Understanding](https://arxiv.org/abs/1810.04805)
   """
 
-  def __init__(self,
-               num_attention_heads,
-               inner_dim,
-               inner_activation,
-               output_range=None,
-               kernel_initializer="glorot_uniform",
-               bias_initializer="zeros",
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               activity_regularizer=None,
-               kernel_constraint=None,
-               bias_constraint=None,
-               use_bias=True,
-               norm_first=False,
-               norm_epsilon=1e-12,
-               use_rms_norm=False,
-               output_dropout=0.0,
-               attention_dropout=0.0,
-               inner_dropout=0.0,
-               attention_initializer=None,
-               attention_axes=None,
-               use_query_residual=True,
-               key_dim=None,
-               value_dim=None,
-               output_last_dim=None,
-               diff_q_kv_att_layer_norm=False,
-               return_attention_scores=False,
-               num_kv_heads=None,
-               src_block_size=None,
-               tgt_block_size=None,
-               use_sigmoid_attn=False,
-               sigmoid_attn_bias=None,
-               linformer_dim=None,
-               linformer_shared_kv_projection=True,
-               **kwargs):
+  def __init__(
+      self,
+      num_attention_heads,
+      inner_dim,
+      inner_activation,
+      output_range=None,
+      kernel_initializer="glorot_uniform",
+      bias_initializer="zeros",
+      kernel_regularizer=None,
+      bias_regularizer=None,
+      activity_regularizer=None,
+      kernel_constraint=None,
+      bias_constraint=None,
+      use_bias=True,
+      norm_first=False,
+      norm_epsilon=1e-12,
+      use_rms_norm=False,
+      output_dropout=0.0,
+      attention_dropout=0.0,
+      inner_dropout=0.0,
+      attention_initializer=None,
+      attention_axes=None,
+      use_query_residual=True,
+      key_dim=None,
+      value_dim=None,
+      output_last_dim=None,
+      diff_q_kv_att_layer_norm=False,
+      return_attention_scores=False,
+      num_kv_heads=None,
+      src_block_size=None,
+      tgt_block_size=None,
+      use_sigmoid_attn=False,
+      sigmoid_attn_bias=None,
+      linformer_dim=None,
+      linformer_shared_kv_projection=True,
+      lowrank_query_seq_proj_dim=None,
+      **kwargs,
+  ):
     """Initializes `TransformerEncoderBlock`.
 
     Note: If `output_last_dim` is used and `use_query_residual` is `True`, the
@@ -197,6 +200,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         https://arxiv.org/pdf/2006.04768.
       linformer_shared_kv_projection: If set, projection layer is shared for
         keys and values.
+      lowrank_query_seq_proj_dim: If set, applies a projection layer on query
+        sequence to the given dimension. go/constformer-doc
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -238,6 +243,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._sigmoid_attn_bias = sigmoid_attn_bias
     self._linformer_dim = linformer_dim
     self._linformer_shared_kv_projection = linformer_shared_kv_projection
+    self._lowrank_query_seq_proj_dim = lowrank_query_seq_proj_dim
     if (
         self._src_block_size is not None
         and self._num_kv_heads is not None
@@ -410,6 +416,21 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
           name="lowrank_kv_projection",
           **common_kwargs,
       )
+    if self._lowrank_query_seq_proj_dim is not None:
+      self._lowrank_query_seq_projection = tf_keras.layers.EinsumDense(
+          # Squash the sequence-length dimension; keep embedding as is.
+          "...ij,ik->...kj",
+          output_shape=(
+              self._lowrank_query_seq_proj_dim,
+              hidden_size,
+          ),
+          kernel_initializer=tf_utils.clone_initializer(
+              self._kernel_initializer
+          ),
+          bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
+          name="constformer_projection",
+          **common_kwargs,
+      )
     super().build(input_shape)
 
   def get_config(self):
@@ -461,9 +482,65 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         "sigmoid_attn_bias": self._sigmoid_attn_bias,
         "linformer_dim": self._linformer_dim,
         "linformer_shared_kv_projection": self._linformer_shared_kv_projection,
+        "lowrank_query_seq_proj_dim": self._lowrank_query_seq_proj_dim,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
+
+  def _apply_lowrank_query_projection(
+      self,
+      query: tf.Tensor,
+      attention_mask: tf.Tensor | None,
+  ):
+    """Applies constformer projection to the source tensor."""
+
+    # Don't project the source tensor if the `lowrank_query_seq_projection`
+    # (constformer) dimension is the same as the input
+    # sequence dimension.
+    if (
+        self._lowrank_query_seq_proj_dim is None
+        or query.shape[1] == self._lowrank_query_seq_proj_dim
+    ):
+      return query
+    # Don't overwrite the attention mask.
+    query = self._apply_query_mask(attention_mask, query)
+    dtype = query.dtype
+    query = self._lowrank_query_seq_projection(query)
+    query = tf.cast(query, dtype)
+    return query
+
+  def _apply_query_mask(
+      self,
+      attention_mask: tf.Tensor | None,
+      query: tf.Tensor,
+  ):
+    """Applying mask before the low rank factorization so that padding is accounted for.
+
+    Applies mask to query only if the dimension of query matches the mask. This
+    is to avoid the projection from happening multiple times while stacking
+    the transformer layers.
+
+    Args:
+      attention_mask: The attention_mask tensor.
+      query: The query tensor.
+
+    Returns:
+      query: The query tensor after applying the mask.
+    """
+    if attention_mask is None:
+      return query
+    if attention_mask.shape[1] != query.shape[1]:
+      # Skip the mask application for query.
+      logging.info(
+          "Skipping mask application on query. Shape mismatch: %s vs %s",
+          attention_mask.shape,
+          query.shape,
+      )
+      return query
+
+    query_mask = tf.cast(attention_mask[:, :, 0], dtype=query.dtype)
+    query = query * tf.expand_dims(query_mask, axis=-1)
+    return query
 
   def call(self, inputs: Any, output_range: Optional[tf.Tensor] = None) -> Any:
     """Transformer self-attention encoder block call.
@@ -499,6 +576,12 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     if output_range:
       if self._norm_first:
         source_tensor = input_tensor[:, 0:output_range, :]
+        if self._use_query_residual:
+          # `source_tensor` is only used for the residual connection.
+          source_tensor = self._apply_lowrank_query_projection(
+              source_tensor, attention_mask
+          )
+
         input_tensor = self._attention_layer_norm(input_tensor)
         if key_value is not None:
           key_value = self._attention_layer_norm_kv(key_value)
@@ -508,10 +591,20 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     else:
       if self._norm_first:
         source_tensor = input_tensor
+        if self._use_query_residual:
+          # `source_tensor` is only used for the residual connection.
+          source_tensor = self._apply_lowrank_query_projection(
+              source_tensor, attention_mask
+          )
         input_tensor = self._attention_layer_norm(input_tensor)
         if key_value is not None:
           key_value = self._attention_layer_norm_kv(key_value)
       target_tensor = input_tensor
+
+    # Project the query to the constformer dimension.
+    target_tensor = self._apply_lowrank_query_projection(
+        target_tensor, attention_mask
+    )
 
     if key_value is None:
       key_value = input_tensor
@@ -523,7 +616,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         # Applying mask before the low rank factorization so that padding is
         # accounted for.
         query_mask = tf.cast(attention_mask[:, :, 0], dtype=target_tensor.dtype)
-        target_tensor = target_tensor * tf.expand_dims(query_mask, axis=-1)
+        if self._lowrank_query_seq_proj_dim is None:
+          target_tensor = target_tensor * tf.expand_dims(query_mask, axis=-1)
         key_mask = tf.cast(attention_mask[:, 0, :], dtype=target_tensor.dtype)
         key_value = key_value * tf.expand_dims(key_mask, axis=-1)
         attention_mask = None
@@ -534,8 +628,9 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         key = key_value
         value = key_value
       else:
-        key = tf.transpose(key_value[:, :, :self._linformer_dim], [0, 2, 1])
-        value = tf.transpose(key_value[:, :, self._linformer_dim:], [0, 2, 1])
+        key = tf.transpose(key_value[:, :, : self._linformer_dim], [0, 2, 1])
+        value = tf.transpose(key_value[:, :, self._linformer_dim :], [0, 2, 1])
+
     if self._return_attention_scores:
       attention_output, attention_scores = self._attention_layer(
           query=target_tensor,
