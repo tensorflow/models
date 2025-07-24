@@ -195,7 +195,7 @@ Importantly, these contextual images need not be labeled.
     based baseline) by 11.2% mAP.
 *   Context R-CNN leverages temporal context from the unlabeled frames of a
     novel camera deployment to improve performance at that camera, boosting
-    model generalizeability.
+    model generalizability.
 
 Read about Context R-CNN on the Google AI blog
 [here](https://ai.googleblog.com/2020/06/leveraging-temporal-context-for-object.html).
