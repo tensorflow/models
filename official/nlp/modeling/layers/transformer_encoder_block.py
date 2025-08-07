@@ -274,6 +274,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       input_tensor_shape = input_shape
     elif isinstance(input_shape, (list, tuple)):
       input_tensor_shape = tf.TensorShape(input_shape[0])
+    elif isinstance(input_shape, dict):
+      input_tensor_shape = tf.TensorShape(input_shape["input_tensor"])
     else:
       raise ValueError(
           "The type of input shape argument is not supported, got: %s" %
@@ -546,11 +548,13 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     """Transformer self-attention encoder block call.
 
     Args:
-      inputs: a single tensor or a list of tensors. `input tensor` as the single
-        sequence of embeddings. [`input tensor`, `attention mask`] to have the
-        additional attention mask. [`query tensor`, `key value tensor`,
-        `attention mask`] to have separate input streams for the query, and
-        key/value to the multi-head attention.
+      inputs: a single tensor or a list of tensors, or a dictionary. `input
+        tensor` as the single sequence of embeddings. [`input tensor`,
+        `attention mask`] to have the additional attention mask. [`query
+        tensor`, `key value tensor`, `attention mask`] to have separate input
+        streams for the query, and key/value to the multi-head attention. If
+        dictionary is provided, it must contain the following keys:
+        `input_tensor`, `attention_mask`, `key_value_tensor`.
       output_range: the sequence output range, [0, output_range) for slicing the
         target sequence. `None` means the target sequence is not sliced. If you
         would like to have no change to the model training, it is better to only
@@ -568,6 +572,21 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       else:
         raise ValueError("Unexpected inputs to %s with length at %d" %
                          (self.__class__, len(inputs)))
+    elif isinstance(inputs, dict):
+      if not set(inputs.keys()).issubset(
+          set(["input_tensor", "key_value_tensor", "attention_mask"])
+      ):
+        raise ValueError(
+            f"Unexpected keys in input dictionary to: {inputs.keys()}"
+        )
+      try:
+        input_tensor = inputs["input_tensor"]
+      except KeyError as e:
+        raise ValueError(
+            "Missing required key `input_tensor` in input dictionary."
+        ) from e
+      key_value = inputs.get("key_value_tensor", None)
+      attention_mask = inputs.get("attention_mask", None)
     else:
       input_tensor, key_value, attention_mask = (inputs, None, None)
 
