@@ -55,6 +55,25 @@ class TransformerEncoderBlockLayerTest(
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
 
+  def test_layer_creation_with_dict_inputs(self, transformer_cls):
+    test_layer = transformer_cls(
+        num_attention_heads=10, inner_dim=2048, inner_activation='relu'
+    )
+    sequence_length = 21
+    width = 80
+    # Create a 3-dimensional input (the first dimension is implicit).
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    # Create a 2-dimensional input (the first dimension is implicit).
+    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    inputs = {
+        'input_tensor': data_tensor,
+        'key_value_tensor': data_tensor,
+        'attention_mask': mask_tensor,
+    }
+    output_tensor = test_layer(inputs)
+    # The default output of a transformer layer should be the same as the input.
+    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+
   def test_layer_invocation(self, transformer_cls):
     test_layer = transformer_cls(
         num_attention_heads=10, inner_dim=2048, inner_activation='relu')
@@ -84,6 +103,40 @@ class TransformerEncoderBlockLayerTest(
     # Create a 2-dimensional input (the first dimension is implicit).
     mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
+
+    # Create a model from the test layer.
+    model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
+
+    # Invoke the model on test data. We can't validate the output data itself
+    # (the NN is too complex) but this will rule out structural runtime errors.
+    batch_size = 6
+    input_data = 10 * np.random.random_sample(
+        (batch_size, sequence_length, width)
+    )
+    # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
+    # which here is (batch, sequence_length, sequence_length)
+    mask_data = np.random.randint(
+        2, size=(batch_size, sequence_length, sequence_length)
+    )
+    _ = model.predict([input_data, mask_data])
+
+  def test_layer_invocation_with_dict_inputs(self, transformer_cls):
+    test_layer = transformer_cls(
+        num_attention_heads=10, inner_dim=2048, inner_activation='relu'
+    )
+    sequence_length = 21
+    width = 80
+    # Create a 3-dimensional input (the first dimension is implicit).
+    data_tensor = tf_keras.Input(shape=(sequence_length, width))
+    # Create a 2-dimensional input (the first dimension is implicit).
+    mask_tensor = tf_keras.Input(shape=(sequence_length, sequence_length))
+    inputs = {
+        'input_tensor': data_tensor,
+        'key_value_tensor': data_tensor,
+        'attention_mask': mask_tensor,
+    }
+
+    output_tensor = test_layer(inputs)
 
     # Create a model from the test layer.
     model = tf_keras.Model([data_tensor, mask_tensor], output_tensor)
