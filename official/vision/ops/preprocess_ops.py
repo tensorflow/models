@@ -795,6 +795,20 @@ def horizontal_flip_masks(masks):
     return masks[:, :, ::-1]
 
 
+def vertical_flip_image(image):
+  """Flips image vertically."""
+  return tf.image.flip_up_down(image)
+
+
+def vertical_flip_masks(masks):
+  """Flips masks vertically. Expects rank-3 input dimensions."""
+  # For masks shape of [h, w, 1].
+  if masks.shape[-1] == 1:
+    return masks[::-1, :, :]
+  else:
+    return masks[:, ::-1, :]
+
+
 def random_horizontal_flip(
     image, normalized_boxes=None, masks=None, seed=1, prob=0.5
 ):
@@ -900,7 +914,7 @@ def random_vertical_flip(
     do_flip = tf.less(tf.random.uniform([], seed=seed), prob)
 
     image = tf.cond(
-        do_flip, lambda: tf.image.flip_up_down(image), lambda: image
+        do_flip, lambda: vertical_flip_image(image), lambda: image
     )
 
     if normalized_boxes is not None:
@@ -913,7 +927,7 @@ def random_vertical_flip(
     if masks is not None:
       masks = tf.cond(
           do_flip,
-          lambda: tf.image.flip_up_down(masks[..., None])[..., 0],
+          lambda: vertical_flip_masks(masks),
           lambda: masks,
       )
 
