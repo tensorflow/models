@@ -6,7 +6,11 @@ package object_detection.protos;
 // Next id - 37
 message EvalConfig {
   optional uint32 batch_size = 25 [default = 1];
-  // Number of visualization images to generate.
+  
+  // Number of visualization images to generate for TensorBoard. Note that
+  // TensorBoard visualizations are currently accumulated in memory until the
+  // end of the evaluation phase when they are saved, which can require a lot of
+  // memory for high settings of `num_visualizations`.
   optional uint32 num_visualizations = 1 [default = 10];
 
   // Number of examples to process of evaluation.
@@ -21,8 +25,14 @@ message EvalConfig {
   // Whether the TensorFlow graph used for evaluation should be saved to disk.
   optional bool save_graph = 5 [default = false];
 
-  // Path to directory to store visualizations in. If empty, visualization
-  // images are not exported (only shown on Tensorboard).
+  // Path to directory in which to save visualization images. If the directory
+  // does not exist it will be created. This setting is not limited by
+  // `num_visualizations`, so setting `visualization_export_dir` will cause
+  // *all* eval images to be written to disk. Note that because in
+  // train_and_eval, evaluation is performed more than once, using this setting
+  // may potentially write/overwrite images to this directory multiple times.
+  // Because of this and the performance hit of writing images to disk on every
+  // eval phase, it may be more practical to use this setting in eval-only mode.
   optional string visualization_export_dir = 6 [default = ""];
 
   // BNS name of the TensorFlow master.
@@ -71,8 +81,9 @@ message EvalConfig {
   // Box color for visualizing groundtruth boxes.
   optional string groundtruth_box_visualization_color = 18 [default = "black"];
 
-  // Whether to keep image identifier in filename when exported to
-  // visualization_export_dir.
+  // Whether to use source_id field in filename when exporting to
+  // `visualization_export_dir`. `include_source_id` must 
+  // also be set in the eval input config for this to work.
   optional bool keep_image_id_for_visualization_export = 19 [default = false];
 
   // Whether to retain original images (i.e. not pre-processed) in the tensor
