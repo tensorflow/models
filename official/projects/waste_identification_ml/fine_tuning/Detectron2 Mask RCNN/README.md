@@ -100,7 +100,7 @@ model zoo, ResNet-50 pretrained on ImageNet).
 - `ROI_HEADS.NUM_CLASSES`: Number of classes in your custom dataset (excluding background).
 - `BACKBONE.FREEZE_AT`: Freezes the initial layers up to this stage in the backbone. 0 means no layers are frozen (i.e., all layers are trainable).
 - `MAX_ITER`: Total number of training iterations.
-- `BASE_LR`: Base learning rate for training.
+- `BASE_LR`: Base learning rate for training. Try, base_lr = 0.001 × (batch_size / 16).
 - `IMS_PER_BATCH`: Number of images per training batch (i.e., batch size).
 - `CHECKPOINT_PERIOD`: Save model checkpoints after this many iterations.
 - `WARMUP_ITERS`: Number of warmup iterations for learning rate scheduling.
@@ -171,4 +171,14 @@ folder.
 
 ```bash
 ./train_net.py --num-gpus 8 --config-file ../configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml
+```
+
+## Evaluation
+
+Just for evaluating the model on a validation dataset.
+Use the model checkpoint directly with the help of command below.
+Please change the absolute path to your checkpoint accordingly.
+
+```bash
+./train_net.py --num-gpus 8 --config-file ../configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml --eval-only MODEL.WEIGHTS /home/umairsabir/model_output/model_final.pth
 ```
