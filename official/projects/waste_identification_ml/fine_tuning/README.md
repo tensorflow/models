@@ -1,32 +1,53 @@
-# CircularNet Fune-tuning Guide
+# CircularNet Fine-tuning Guide
 
-## Below are the steps to fune-tune CircularNet on a custom training dataset
+## Tensorflow Model garden Mask RCNN
+
+### Below are the steps to fine-tune CircularNet on a custom training dataset
 
 1.  Create a VM instance in Compute Engine of Google Cloud Platform with desired
     number of GPUs.
+
 2.  Install compatible Cuda version, and validate GPU devices using
     `nvidia-smi` command.
-3.  SSH to the VM instance in Compute Engine and create a conda environment
-    `conda create -n circularnet-train python=3.11`
-4. Activate the conda environment
-    `conda activate circularnet-train`
-5. Install the following libraries
-    `pip install tensorflow[and-cuda] tf-models-official`
+
+3.  SSH to the VM instance in Compute Engine and create a conda environment.
+
+    ```bash
+    conda create -n circularnet-train python=3.11
+    ```
+
+4. Activate the conda environment.
+
+   ```bash
+   conda activate circularnet-train
+   ```
+
+5. Install the following libraries.
+
+   ```bash
+   pip install tensorflow[and-cuda] tf-models-official
+   ```
+
 6. Move training data in TFRecord format to a GCP bucket, or into the VM
      instance. Refer to scripts in the pre_processing directory for creating
      training data in TFRecord format.
+
 7. Move the configuration file for model training into the VM. The configuration
      file contains all the parameters and path to datasets. A sample
      configuration file `config.yaml` has been provided for GPU training, and
      description of few entries is provided below.
+
 8. Create a directory to save the output checkpoints.
+
 9. Run the following command to initiate the training -
-    `python -m official.vision.train --experiment="maskrcnn_resnetfpn_coco"
-    --mode="train_and_eval" --model_dir="output_directory"
-    --config_file="config.yaml"`
+
+   ```bash
+   python -m official.vision.train --experiment="maskrcnn_resnetfpn_coco" --mode="train_and_eval" --model_dir="output_directory" --config_file="config.yaml"
+   ```
+
 10. Training can also be run in the background by starting a screen session.
 
-## Config file parameters
+### Config file parameters
 
 -   `annotation_file` - path to the validation file in COCO JSON format.
 -   `init_checkpoint` - path to the checkpoints for transfer learning, these
@@ -57,7 +78,7 @@
      learning rate at the very start of the training process.
 -   `checkpoint_interval` - number of steps to export the model.
 
-## A common practice to calculate the parameters are below:
+### A common practice to calculate the parameters are below:
 
 ```python
 total_training_samples = 4389
