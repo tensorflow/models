@@ -438,7 +438,7 @@ def main(_) -> None:
       logger.info("Issue in moving folders to destination bucket")
   else:
     logger.info("No features to ingest.")
-
+  utils.shutdown_system()
 
 if __name__ == "__main__":
   app.run(main)

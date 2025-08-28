@@ -19,7 +19,10 @@ import csv
 import dataclasses
 import logging
 import os
+import subprocess
+import time
 from typing import Any, TypedDict
+
 import cv2
 import natsort
 import numpy as np
@@ -494,3 +497,14 @@ def resize_bbox(
   new_x2 = int(bbox.x2 * scale_x)
 
   return new_y1, new_x1, new_y2, new_x2
+
+
+def shutdown_system():
+  """Shuts down the system."""
+  time.sleep(60)
+  print('Attempting to shut down the VM instance...')
+  try:
+    command = ['sudo', 'poweroff']
+    subprocess.run(command, check=True)
+  except subprocess.CalledProcessError as e:
+    print(f'Failed to shut down: {e}')
