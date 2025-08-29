@@ -82,7 +82,7 @@ masks as output.
 
 ## See also
 
-*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
+*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/projects/deepmac_maskrcnn)
     in TF Model garden code base.
 *   Project website - [git.io/deepmac](https://git.io/deepmac)
 
