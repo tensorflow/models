@@ -100,7 +100,7 @@ model zoo, ResNet-50 pretrained on ImageNet).
 - `ROI_HEADS.NUM_CLASSES`: Number of classes in your custom dataset (excluding background).
 - `BACKBONE.FREEZE_AT`: Freezes the initial layers up to this stage in the backbone. 0 means no layers are frozen (i.e., all layers are trainable).
 - `MAX_ITER`: Total number of training iterations.
-- `BASE_LR`: Base learning rate for training. Try, base_lr = 0.001 × (batch_size / 16).
+- `BASE_LR`: Base learning rate for training. Try, base_lr = (0.02 or 0.001) × (batch_size / 16).
 - `IMS_PER_BATCH`: Number of images per training batch (i.e., batch size).
 - `CHECKPOINT_PERIOD`: Save model checkpoints after this many iterations.
 - `WARMUP_ITERS`: Number of warmup iterations for learning rate scheduling.
@@ -117,6 +117,36 @@ Images larger than this will be resized down.
 - `MAX_SIZE_TEST`: Maximum resolution during validation/testing.
 - `OUTPUT_DIR`: Directory path where all model outputs
 (checkpoints, logs, predictions) will be saved.
+
+Calculated the parameters using the formula below, but its subjective -
+
+```python
+dataset_size = 347  # replace with your actual number
+IMS_PER_BATCH = 32    # total across all GPUs
+epochs = 300
+checkpoint_every_n_epochs = 50
+
+
+# Derived values
+iters_per_epoch = dataset_size / IMS_PER_BATCH
+MAX_ITER = int(iters_per_epoch * epochs)
+
+STEP1 = int(MAX_ITER * 0.6)
+STEP2 = int(MAX_ITER * 0.8)
+STEP3 = int(MAX_ITER * 0.9)
+
+WARMUP_ITERS = int(MAX_ITER * 0.05)
+BASE_LR = 0.001 * (IMS_PER_BATCH / 16)
+CHECKPOINT_PERIOD = int(checkpoint_every_n_epochs * iters_per_epoch)
+
+print(f"MAX_ITER: {MAX_ITER}")
+print(f"WARMUP_ITERS: {WARMUP_ITERS}")
+print(f"BASE_LR: {BASE_LR}")
+print(f"CHECKPOINT_PERIOD: {CHECKPOINT_PERIOD}")
+print(f"STEP1: {STEP1}")
+print(f"STEP2: {STEP2}")
+print(f"STEP3: {STEP3}")
+```
 
 ```yaml
 _BASE_: "../Base-RCNN-FPN.yaml"
