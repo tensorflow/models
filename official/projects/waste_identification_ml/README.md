@@ -83,7 +83,7 @@ connect looker dashboard with BigQuery table:
 -  [Prepare and analyze images](circularnet-docs/content/view-data/configure-dashboard.md)
 
 ## Authors and Maintainers
-Umair Sabir \
-Sujit Sanjeev \
-Ethan Steele \
-Vinit Ganorkar
+Umair Sabir - Primary developer
+Sujit Sanjeev - Product Manager
+Ethan Steele - Collaborator
+Vinit Ganorkar - Collaborator
