@@ -178,7 +178,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
       crop1 = cropped.eval(feed_dict={image_placeholder: image})
       self.assertFalse(np.isclose(crop0, crop1).all())
 
-  def testReturnConsistenCropsOfImagesInTheList(self):
+  def testReturnConsistentCropsOfImagesInTheList(self):
     tf.compat.v1.set_random_seed(0)
 
     height, width = 10, 20
