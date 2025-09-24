@@ -155,3 +155,58 @@ def train(
         break
 
   return results
+
+
+class EarlyStopping:
+  """EarlyStopping class to stop training when a metric has stopped improving.
+
+  Saves the best model checkpoint based on the monitored validation loss.
+  """
+
+  def __init__(
+      self, patience=5, delta=0.0, verbose=False, base_path="best_model"
+  ):
+    """Initializes the EarlyStopping callback.
+
+    Args:
+      patience (int): How many number of epochs to waitafter no improvement
+      in val loss.
+      delta (float): Minimum loss difference to qualify as an improvement.
+      verbose (bool): Print updates.
+      base_path (str): Base filename or path prefix for saving best
+        checkpoints.
+    """
+    self.patience = patience
+    self.delta = delta
+    self.verbose = verbose
+    self.base_path = base_path  # e.g., "checkpoints/vit"
+
+    self.best_loss = float("inf")
+    self.no_improvement_count = 0
+    self.stop_training = False
+    self.best_epoch = -1
+
+  def check(self, val_loss: float, model: torch.nn.Module, epoch: int):
+    if val_loss < self.best_loss - self.delta:
+      self.best_loss = val_loss
+      self.no_improvement_count = 0
+      self.best_epoch = epoch
+      self.save_checkpoint(model, epoch)
+    else:
+      self.no_improvement_count += 1
+      if self.no_improvement_count >= self.patience:
+        self.stop_training = True
+        if self.verbose:
+          print(
+              f"EarlyStopping No improvement for {self.patience} epochs."
+              " Stopping early."
+          )
+
+  def save_checkpoint(self, model: torch.nn.Module, epoch: int):
+    checkpoint_path = f"{self.base_path}_epoch_{epoch+1}.pt"
+    torch.save(model.state_dict(), checkpoint_path)
+    if self.verbose:
+      print(
+          "EarlyStopping Validation loss improved. Saving model at:"
+          f" {checkpoint_path}"
+      )
