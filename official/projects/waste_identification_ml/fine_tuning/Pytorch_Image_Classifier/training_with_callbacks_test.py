@@ -16,7 +16,7 @@ import unittest
 from unittest import mock
 import torch
 from torch.utils import data
-from official.projects.waste_identification_ml.fine_tuning import training_with_callbacks
+from official.projects.waste_identification_ml.fine_tuning.Pytorch_Image_Classifier import training_with_callbacks
 
 Mock = mock.Mock
 MagicMock = mock.MagicMock
