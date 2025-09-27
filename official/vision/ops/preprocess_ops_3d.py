@@ -339,7 +339,8 @@ def resize_smallest(frames: tf.Tensor, min_resize: int) -> tf.Tensor:
 def random_crop_resize(frames: tf.Tensor, output_h: int, output_w: int,
                        num_frames: int, num_channels: int,
                        aspect_ratio: Tuple[float, float],
-                       area_range: Tuple[float, float]) -> tf.Tensor:
+                       area_range: Tuple[float, float],
+                       seed: int = 0) -> tf.Tensor:
   """First crops clip with jittering and then resizes to (output_h, output_w).
 
   Args:
@@ -350,6 +351,7 @@ def random_crop_resize(frames: tf.Tensor, output_h: int, output_w: int,
     num_channels: Number of channels of the clip.
     aspect_ratio: Float tuple with the aspect range for cropping.
     area_range: Float tuple with the area range for cropping.
+    seed: A seed to use for the random sampling.
 
   Returns:
     A Tensor of shape [timesteps, output_h, output_w, channels] of type
@@ -367,7 +369,8 @@ def random_crop_resize(frames: tf.Tensor, output_h: int, output_w: int,
       aspect_ratio_range=aspect_ratio,
       area_range=area_range,
       max_attempts=100,
-      use_image_if_no_bounding_boxes=True)
+      use_image_if_no_bounding_boxes=True,
+      seed=seed)
   bbox_begin, bbox_size, _ = sample_distorted_bbox
   offset_y, offset_x, _ = tf.unstack(bbox_begin)
   target_height, target_width, _ = tf.unstack(bbox_size)
