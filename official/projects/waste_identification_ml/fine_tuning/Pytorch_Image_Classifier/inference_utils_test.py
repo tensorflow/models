@@ -16,6 +16,7 @@ import os
 import tempfile
 import unittest
 import numpy as np
+import pandas as pd
 from PIL import Image
 import torch
 import torchvision
@@ -184,6 +185,19 @@ class InferenceUtilsTest(unittest.TestCase):
         model.training,
         "Model was not in evaluation mode (model.training is True)",
     )
+
+  @unittest.mock.patch("seaborn.heatmap")
+  def test_confusion_matrix_dataframe(self, mock_heatmap):
+    cm = np.array([[5, 2], [1, 7]])
+    class_names = ["ClassA", "ClassB"]
+
+    expected = pd.DataFrame(
+        [[5 / 7, 2 / 7], [1 / 8, 7 / 8]], index=class_names, columns=class_names
+    )
+
+    inference_utils.show_confusion_matrix(cm, class_names)
+    called_df = mock_heatmap.call_args[0][0]
+    pd.testing.assert_frame_equal(called_df, expected, rtol=1e-6, atol=1e-6)
 
 
 if __name__ == "__main__":
