@@ -122,6 +122,7 @@ def train(
     epochs: int,
     device: torch.device,
     early_stopping=None,
+    scheduler=None,
 ) -> Mapping[str, list[float]]:
   """Modified train function to include early stopping and checkpoint saving."""
 
@@ -147,6 +148,9 @@ def train(
     results["train_acc"].append(train_acc)
     results["test_loss"].append(test_loss)
     results["test_acc"].append(test_acc)
+
+    if scheduler:
+      scheduler.step()
 
     if early_stopping:
       early_stopping.check(val_loss=test_loss, model=model, epoch=epoch)
