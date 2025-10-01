@@ -17,7 +17,10 @@
 from collections.abc import Sequence
 import pathlib
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from PIL import Image
+import seaborn as sns
 import torch
 import torchvision
 
@@ -163,4 +166,44 @@ def plot_prediction(
   plt.imshow(img)
   plt.title(f"Pred: {pred_class} | Prob: {pred_prob:.3f}%")
   plt.axis(False)
+  plt.show()
+
+
+def show_confusion_matrix(
+    confusion_matrix: np.ndarray, class_names: Sequence[str]
+) -> None:
+  """Displays a confusion matrix heatmap with counts and row-normalized percentages.
+
+  Args:
+    confusion_matrix: A 2D NumPy array representing the confusion matrix.
+    class_names: A list of class names corresponding to matrix indices.
+  """
+  matrix = confusion_matrix.copy()
+  cell_counts = matrix.flatten()
+
+  cm_row_norm = matrix / matrix.sum(axis=1)[:, np.newaxis]
+
+  row_percentages = [f"{value:.2f}" for value in cm_row_norm.flatten()]
+  cell_labels = [
+      f"{count}\n{percentage}"
+      for count, percentage in zip(cell_counts, row_percentages)
+  ]
+  cell_labels = np.asarray(cell_labels).reshape(
+      matrix.shape[0], matrix.shape[1]
+  )
+
+  df_cm = pd.DataFrame(cm_row_norm, index=class_names, columns=class_names)
+
+  # Plot heatmap
+  heatmap = sns.heatmap(df_cm, annot=cell_labels, fmt="", cmap="Blues")
+  heatmap.yaxis.set_ticklabels(
+      heatmap.yaxis.get_ticklabels(), rotation=0, ha="right"
+  )
+  heatmap.xaxis.set_ticklabels(
+      heatmap.xaxis.get_ticklabels(), rotation=30, ha="right"
+  )
+
+  plt.ylabel("True Label")
+  plt.xlabel("Predicted Label")
+  plt.tight_layout()
   plt.show()
