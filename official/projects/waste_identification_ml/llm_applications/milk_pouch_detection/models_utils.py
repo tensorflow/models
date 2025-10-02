@@ -16,9 +16,12 @@
 
 from collections.abc import Mapping
 import dataclasses
+import os
+import pathlib
 from typing import Any
-
+import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 import torch
 import torchvision
 
@@ -182,3 +185,58 @@ def convert_boxes_cxcywh_to_xyxy(
       boxes=scaled_boxes, in_fmt='cxcywh', out_fmt='xyxy'
   )
   return xyxy_boxes.cpu().numpy().astype(int)
+
+
+def initialize_coco_output(category_name: str) -> dict[str, list[Any]]:
+  """Initializes the COCO format output structure.
+
+  Args:
+    category_name: Name of the object category.
+
+  Returns:
+    A dictionary with the COCO format structure.
+  """
+  return {
+      'categories': [{
+          'id': 1,
+          'name': category_name,
+          'supercategory': 'object',
+      }],
+      'images': [],
+      'annotations': [],
+  }
+
+
+def save_masked_object(
+    masked_object: Image.Image, file_path: str, idx: int, output_dir: str
+):
+  """Save a masked object image to a temporary directory.
+
+  Args:
+      masked_object: PIL Image object to save
+      file_path: Original file path (used to extract base name)
+      idx: Index number for the output filename
+      output_dir: Name of temporary directory
+  """
+  base_name = os.path.splitext(os.path.basename(file_path))[0]
+  input_dir = os.path.dirname(file_path)
+  output_path = os.path.join(input_dir, output_dir, f'{base_name}_{idx}.png')
+  masked_object.save(output_path)
+
+
+def plot_prediction(
+    image_path: pathlib.Path, pred_class: str, pred_prob: float
+):
+  """Plots the original image with its prediction and probability.
+
+  Args:
+    image_path: Path to the input image file.
+    pred_class: The predicted class name for the image.
+    pred_prob: The predicted probability for the class.
+  """
+  img = Image.open(image_path)
+  plt.figure()
+  plt.imshow(img)
+  plt.title(f'Pred: {pred_class} | Prob: {pred_prob:.3f}%')
+  plt.axis(False)
+  plt.show()
