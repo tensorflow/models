@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 import numpy as np
+from PIL import Image
 import torch
 from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils
 
@@ -91,6 +94,50 @@ class UtilsTest(unittest.TestCase):
         boxes, image_shape
     )
     np.testing.assert_array_equal(converted_boxes, expected_boxes)
+
+  def test_initialize_coco_output_with_category_name(self):
+    """Tests that COCO output structure is initialized correctly."""
+    category_name = "milk_pouch"
+    result = models_utils.initialize_coco_output(category_name)
+
+    self.assertIn("categories", result)
+    self.assertIn("images", result)
+    self.assertIn("annotations", result)
+
+    self.assertEqual(len(result["categories"]), 1)
+    self.assertEqual(result["categories"][0]["id"], 1)
+    self.assertEqual(result["categories"][0]["name"], category_name)
+    self.assertEqual(result["categories"][0]["supercategory"], "object")
+
+    self.assertEqual(result["images"], [])
+    self.assertEqual(result["annotations"], [])
+
+  def test_save_masked_object_creates_file_correctly(self):
+    """Tests that masked object is saved with correct naming."""
+    # Create a temporary directory structure
+    with tempfile.TemporaryDirectory() as temp_root:
+      input_dir = os.path.join(temp_root, "input")
+      os.makedirs(input_dir)
+
+      test_image = Image.new("RGB", (100, 100), color="red")
+      file_path = os.path.join(input_dir, "test_image.jpg")
+      test_image.save(file_path)
+
+      # Create temp output directory
+      temp_dir = "temp"
+      os.makedirs(os.path.join(input_dir, temp_dir), exist_ok=True)
+
+      # Create a masked object
+      masked_object = Image.new("RGB", (50, 50), color="blue")
+
+      # Save the masked object
+      models_utils.save_masked_object(
+          masked_object, file_path, idx=0, output_dir=temp_dir
+      )
+
+      # Check that file was created
+      expected_path = os.path.join(input_dir, temp_dir, "test_image_0.png")
+      self.assertTrue(os.path.exists(expected_path))
 
 
 if __name__ == "__main__":
