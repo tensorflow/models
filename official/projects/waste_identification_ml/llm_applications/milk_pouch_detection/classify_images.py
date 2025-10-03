@@ -20,6 +20,7 @@ import shutil
 
 from absl import flags
 import torch
+import tqdm
 
 from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models
 
@@ -38,8 +39,10 @@ CLASS_NAMES = ["dairy", "other"]
 
 
 def main(_) -> None:
-  os.makedirs("dairy_packets", exist_ok=True)
-  os.makedirs("others", exist_ok=True)
+  dairy_folder = os.path.join(FLAGS.input_dir, "dairy")
+  other_folder = os.path.join(FLAGS.input_dir, "others")
+  os.makedirs(dairy_folder, exist_ok=True)
+  os.makedirs(other_folder, exist_ok=True)
 
   classifier = models.ImageClassifier(
       model_path=IMAGE_CLASSIFIER_WEIGHTS,
@@ -47,14 +50,14 @@ def main(_) -> None:
       device="cuda" if torch.cuda.is_available() else "cpu",
   )
 
-  files = glob.glob(os.path.join(FLAGS.input_dir, "*"))
+  files = glob.glob(os.path.join(FLAGS.input_dir, "tempdir", "*"))
   print(f"Found {len(files)} images to process...")
 
   total_dairy_packets = 0
-  for path in files:
+  for path in tqdm.tqdm(files):
     pred_class, _ = classifier.classify(path)
     if pred_class == "dairy":
       total_dairy_packets += 1
-      shutil.move(path, os.path.join("dairy_packets", os.path.basename(path)))
+      shutil.move(path, os.path.join(dairy_folder, os.path.basename(path)))
     else:
-      shutil.move(path, os.path.join("others", os.path.basename(path)))
+      shutil.move(path, os.path.join(other_folder, os.path.basename(path)))
