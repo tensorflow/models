@@ -139,6 +139,59 @@ class UtilsTest(unittest.TestCase):
       expected_path = os.path.join(input_dir, temp_dir, "test_image_0.png")
       self.assertTrue(os.path.exists(expected_path))
 
+  def test_simple_rectangle_mask(self):
+    """Test extraction of contour from a simple rectangular mask."""
+    mask = np.zeros((100, 100), dtype=np.uint8)
+    mask[20:80, 20:80] = 1
+
+    result = models_utils.extract_largest_contour_segmentation(mask)
+
+    self.assertIsInstance(result, list)
+    self.assertEqual(len(result), 1)
+    self.assertGreaterEqual(len(result[0]), 6)
+
+  def test_empty_mask(self):
+    """Test that an empty mask returns an empty list."""
+    mask = np.zeros((100, 100), dtype=np.uint8)
+
+    result = models_utils.extract_largest_contour_segmentation(mask)
+
+    self.assertEqual(result, [])
+
+  def test_basic_bbox_calculation(self):
+    """Test basic width, height, and area calculation."""
+    box = [10, 20, 50, 80]
+
+    width, height, area = models_utils.get_bbox_details(box)
+
+    self.assertEqual(width, 40)
+    self.assertEqual(height, 60)
+    self.assertEqual(area, 2400)
+
+  def test_basic_extraction_rgb(self):
+    """Test basic extraction with RGB image."""
+    image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
+    mask = np.zeros((100, 100), dtype=bool)
+    mask[20:80, 20:80] = True
+    box = [20, 20, 80, 80]
+
+    result = models_utils.extract_masked_object(image, mask, box)
+
+    self.assertIsInstance(result, Image.Image)
+    self.assertEqual(result.size, (60, 60))
+
+  def test_cropping_dimensions(self):
+    """Test that cropping produces correct dimensions."""
+    image = np.zeros((200, 200, 3), dtype=np.uint8)
+    mask = np.ones((200, 200), dtype=bool)
+    box = [50, 60, 150, 180]
+
+    result = models_utils.extract_masked_object(image, mask, box)
+
+    expected_width = 150 - 50
+    expected_height = 180 - 60
+    self.assertEqual(result.size, (expected_width, expected_height))
+
 
 if __name__ == "__main__":
   unittest.main()
