@@ -51,6 +51,7 @@ echo "🔹 Starting: Install SAM2 and Required Python Packages"
 pip install --quiet --no-cache-dir \
     opencv-python \
     numpy \
+    ollama \
     Pillow \
     absl-py \
     natsort \
