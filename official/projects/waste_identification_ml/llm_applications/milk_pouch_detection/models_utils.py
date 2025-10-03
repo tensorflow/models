@@ -19,6 +19,7 @@ import dataclasses
 import os
 import pathlib
 from typing import Any
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
@@ -240,3 +241,111 @@ def plot_prediction(
   plt.title(f'Pred: {pred_class} | Prob: {pred_prob:.3f}%')
   plt.axis(False)
   plt.show()
+
+
+def extract_largest_contour_segmentation(mask: np.ndarray) -> list[float]:
+  """Extracts the largest external contour from a binary mask.
+
+  This function finds all external contours in a binary mask and returns
+  the flattened coordinate list of the largest valid contour.
+
+  Args:
+      mask: A binary mask image (2D array) where the object is marked with 1s or
+        255s. Shape should be (height, width).
+
+  Returns:
+      A list containing a single flattened contour with coordinates in the
+      format [x1, y1, x2, y2, ...]. Returns an empty list if no valid
+      contour is found.
+
+  Examples:
+      >>> mask = np.zeros((100, 100), dtype=np.uint8)
+      >>> mask[20:80, 20:80] = 1
+      >>> segmentation = extract_largest_contour_segmentation(mask)
+  """
+  mask_uint8 = mask.astype(np.uint8)
+
+  contours, _ = cv2.findContours(
+      mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+  )
+
+  if not contours:
+    return []
+
+  valid_segmentations = []
+  for contour in contours:
+    flattened = contour.flatten().tolist()
+    # Need at least 3 points (6 coordinates) for a valid polygon
+    if len(flattened) >= 6:
+      valid_segmentations.append(flattened)
+
+  if not valid_segmentations:
+    return []
+
+  return [max(valid_segmentations, key=len)]
+
+
+def get_bbox_details(box: list[int]) -> tuple[int, int, int]:
+  """Calculates width, height, and area from bounding box coordinates.
+
+  Args:
+      box: Bounding box coordinates in the format [x1, y1, x2, y2], where (x1,
+        y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+
+  Returns:
+      A tuple containing (width, height, area) of the bounding box.
+
+  Examples:
+      >>> box = [10, 20, 50, 80]
+      >>> width, height, area = get_bbox_details(box)
+      >>> print(f"Width: {width}, Height: {height}, Area: {area}")
+      Width: 40, Height: 60, Area: 2400
+  """
+  x1, y1, x2, y2 = box
+
+  bbox_width = x2 - x1
+  bbox_height = y2 - y1
+  bbox_area = bbox_width * bbox_height
+
+  return bbox_width, bbox_height, bbox_area
+
+
+def extract_masked_object(
+    image: np.ndarray, mask: np.ndarray, box: list[int]
+) -> Image.Image:
+  """Extracts a masked object from an image using a bounding box.
+
+  This function applies a binary mask to an image, crops the masked region
+  using the provided bounding box, and returns the result as a PIL Image.
+  Pixels outside the mask are set to black (0).
+
+  Args:
+      image: The input image as a NumPy array with shape (height, width, 3) for
+        RGB or (height, width, 4) for RGBA.
+      mask: A binary mask array with shape (height, width), where True or 1
+        indicates pixels to keep.
+      box: Bounding box coordinates in the format [x1, y1, x2, y2].
+
+  Returns:
+      A PIL Image containing the cropped and masked object.
+
+  Raises:
+      ValueError: If the bounding box coordinates are out of image bounds.
+
+  Examples:
+      >>> image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
+      >>> mask = np.zeros((100, 100), dtype=bool)
+      >>> mask[20:80, 20:80] = True
+      >>> box = [20, 20, 80, 80]
+      >>> masked_obj = extract_masked_object(image, mask, box)
+  """
+  x1, y1, x2, y2 = box
+
+  # Apply mask: keep pixels where mask is True, set others to 0
+  mask_expanded = np.expand_dims(mask, axis=-1)
+  masked_image = np.where(mask_expanded, image, 0).astype(np.uint8)
+
+  # Crop to bounding box
+  cropped_image = masked_image[y1:y2, x1:x2]
+
+  return Image.fromarray(cropped_image)
