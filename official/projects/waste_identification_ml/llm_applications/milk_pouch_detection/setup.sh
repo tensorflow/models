@@ -84,6 +84,18 @@ wget -q -P ./milk_pouch_project/image_classifier_model https://storage.googleapi
 echo "✅ Finished: Download Image Classifier Model"
 echo "-----"
 
+echo "Download the required files locally and modify the imports."
+curl -sS -o models.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models.py
+sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils|import models_utils|g' models.py
+
+curl -sS -o classify_images.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/classify_images.py
+sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models|import models|g' classify_images.py
+
+curl -sS -o models_utils.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models_utils.py
+curl -sS -o extract_objects.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/extract_objects.py
+curl -sS -o run_pipeline.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/run_pipeline.sh
+echo "Files downloaded and modified successfully!"
+
 # --- Completion ---
 echo "🎉🎉🎉 Environment setup complete! 🎉🎉🎉"
 echo "-----"

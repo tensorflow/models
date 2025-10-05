@@ -18,6 +18,7 @@ import glob
 import os
 import shutil
 
+from absl import app
 from absl import flags
 import torch
 import tqdm
@@ -61,3 +62,6 @@ def main(_) -> None:
       shutil.move(path, os.path.join(dairy_folder, os.path.basename(path)))
     else:
       shutil.move(path, os.path.join(other_folder, os.path.basename(path)))
+
+if __name__ == "__main__":
+  app.run(main)
