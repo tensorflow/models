@@ -12,9 +12,12 @@ frames.
 
 ### 1. Create a VM Instance
 
+Many VM configurations will work, but the specs [here](/circularnet-docs/content/deploy-cn/before-you-begin.md) are relevant.
+
 ### 2. Download the Setup Script
 
-SSH into your VM instance and run:
+SSH into your VM instance. If this is the first access, you will be prompted
+to install nVidia drivers. After this is complete, run:
 
 ```bash
 curl -o setup.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/setup.sh
