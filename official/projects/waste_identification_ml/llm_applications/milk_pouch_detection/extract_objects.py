@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2025 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Detects, segments, and saves objects from images in a directory.
 
 This script initializes a computer vision pipeline to process images, identify
@@ -37,41 +51,24 @@ import tqdm
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# Path to the pre-trained weights for the Grounding DINO model.
+
 GROUNDING_DINO_WEIGHTS = (
     "milk_pouch_project/grounding_dino_model/groundingdino_swint_ogc.pth"
 )
-
-# Path to the configuration file for the Grounding DINO model.
 GROUNDING_DINO_CONFIG = (
     "milk_pouch_project/grounding_dino_model/GroundingDINO_SwinT_OGC.py"
 )
-
-# Path to the pre-trained weights for the SAM2 model.
 SAM2_WEIGHTS = "milk_pouch_project/sam2_model/sam2.1_hiera_large.pt"
-
-# Path to the configuration file for the SAM2 model.
 SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_l.yaml"
-
-# Text prompt to use for object detection.
 TEXT_PROMPT = "packets"
-
-# Name of the temporary directory to store cropped object images.
-TEMP_DIR = "tempdir"
-
-# Path to save the output COCO dataset file.
+INPUT_DIR = "input_images"
+CLASSIFICATION_DIR = "objects_for_classification"
 COCO_OUTPUT_PATH = "coco_output.json"
 
 # Minimum mask area as percentage of image.
 MIN_MASK_AREA_PERCENT = 1.0
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string(
-    "input_dir",
-    None,
-    "Directory containing image frames to process.",
-    required=True,
-)
 flags.DEFINE_string(
     "category_name",
     None,
@@ -81,13 +78,13 @@ flags.DEFINE_string(
 
 def main(_) -> None:
   """Runs the main object detection and extraction pipeline."""
-  if not os.path.isdir(FLAGS.input_dir):
-    raise ValueError(f"Input directory not found at '{FLAGS.input_dir}'")
+  if not os.path.isdir(INPUT_DIR):
+    raise ValueError(f"Input directory not found at '{INPUT_DIR}'")
 
   # Check if COCO output should be created
   create_coco = FLAGS.category_name is not None
 
-  print("Initializing Vision and Llm Pipeline...")
+  print("Initializing image extraction and classification...")
   try:
     pipeline = models.ObjectDetectionSegmentation(
         dino_config_path=GROUNDING_DINO_CONFIG,
@@ -104,7 +101,7 @@ def main(_) -> None:
   print("✅ Pipeline ready.")
 
   # Create output directory
-  output_dir = os.path.join(FLAGS.input_dir, TEMP_DIR)
+  output_dir = os.path.join(INPUT_DIR, CLASSIFICATION_DIR)
   os.makedirs(output_dir, exist_ok=True)
 
   # Initialize coco json file format only if category_name is provided
@@ -119,7 +116,7 @@ def main(_) -> None:
     print("No category name provided. Skipping COCO JSON creation.")
 
   # Get all image files.
-  all_files = glob.glob(os.path.join(FLAGS.input_dir, "*"))
+  all_files = glob.glob(os.path.join(INPUT_DIR, "*"))
   image_extensions = (".jpg", ".jpeg", ".png", ".bmp")
   files = [f for f in all_files if f.lower().endswith(image_extensions)]
   files = natsort.natsorted(files)
@@ -140,12 +137,6 @@ def main(_) -> None:
           f" {os.path.basename(file_path)}: {e}"
       )
       continue
-
-      # Uncomment to filter bigger overlapping boxes.
-      # filtered_results = pipeline.filter_boxes_keep_smaller(
-      #    results,
-      #    iou_threshold=0.95
-      # )
 
     image = results["image"]
     h, w = image.shape[:2]
@@ -169,7 +160,7 @@ def main(_) -> None:
         try:
           masked_object = models_utils.extract_masked_object(image, mask, box)
           models_utils.save_masked_object(
-              masked_object, file_path, idx, TEMP_DIR
+              masked_object, file_path, idx, CLASSIFICATION_DIR
           )
         except (ValueError, SystemError, AttributeError, OSError) as e:
           print(
@@ -180,10 +171,7 @@ def main(_) -> None:
 
         # Add annotation info to COCO output only if create_coco is True
         if create_coco:
-          # Get the polygon points of masks.
           segmentation = models_utils.extract_largest_contour_segmentation(mask)
-
-          # coco bbox format
           bbox_width, bbox_height, area = models_utils.get_bbox_details(box)
 
           # annotation key format in coco json
@@ -199,20 +187,18 @@ def main(_) -> None:
               ],
               "area": int(area),
               "iscrowd": 0,
-              "segmentation": (
-                  segmentation
-              ),  # Optional: Add segmentation if you have it
+              "segmentation": segmentation,
           }
           coco_output["annotations"].append(annotation_info)
           annotation_id_counter += 1
 
   # Save COCO JSON file only if create_coco is True
   if create_coco:
-    with open(os.path.join(FLAGS.input_dir, COCO_OUTPUT_PATH), "w") as f:
+    with open(os.path.join(INPUT_DIR, COCO_OUTPUT_PATH), "w") as f:
       json.dump(coco_output, f, indent=4)
     print(f"\n✅ Processing complete. COCO JSON saved to '{COCO_OUTPUT_PATH}'.")
 
-  print(f"✅ Cropped images saved to '{TEMP_DIR}'.")
+  print(f"✅ Cropped images saved to '{CLASSIFICATION_DIR}'.")
 
 
 if __name__ == "__main__":
