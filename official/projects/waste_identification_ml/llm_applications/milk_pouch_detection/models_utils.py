@@ -16,7 +16,6 @@
 
 from collections.abc import Mapping
 import dataclasses
-import os
 import pathlib
 from typing import Any
 import cv2
@@ -208,23 +207,6 @@ def initialize_coco_output(category_name: str) -> dict[str, list[Any]]:
   }
 
 
-def save_masked_object(
-    masked_object: Image.Image, file_path: str, idx: int, output_dir: str
-):
-  """Save a masked object image to a temporary directory.
-
-  Args:
-      masked_object: PIL Image object to save
-      file_path: Original file path (used to extract base name)
-      idx: Index number for the output filename
-      output_dir: Name of temporary directory
-  """
-  base_name = os.path.splitext(os.path.basename(file_path))[0]
-  input_dir = os.path.dirname(file_path)
-  output_path = os.path.join(input_dir, output_dir, f'{base_name}_{idx}.png')
-  masked_object.save(output_path)
-
-
 def plot_prediction(
     image_path: pathlib.Path, pred_class: str, pred_prob: float
 ):
@@ -308,44 +290,3 @@ def get_bbox_details(box: list[int]) -> tuple[int, int, int]:
   bbox_area = bbox_width * bbox_height
 
   return bbox_width, bbox_height, bbox_area
-
-
-def extract_masked_object(
-    image: np.ndarray, mask: np.ndarray, box: list[int]
-) -> Image.Image:
-  """Extracts a masked object from an image using a bounding box.
-
-  This function applies a binary mask to an image, crops the masked region
-  using the provided bounding box, and returns the result as a PIL Image.
-  Pixels outside the mask are set to black (0).
-
-  Args:
-      image: The input image as a NumPy array with shape (height, width, 3) for
-        RGB or (height, width, 4) for RGBA.
-      mask: A binary mask array with shape (height, width), where True or 1
-        indicates pixels to keep.
-      box: Bounding box coordinates in the format [x1, y1, x2, y2].
-
-  Returns:
-      A PIL Image containing the cropped and masked object.
-
-  Raises:
-      ValueError: If the bounding box coordinates are out of image bounds.
-
-  Examples:
-      >>> image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-      >>> mask = np.zeros((100, 100), dtype=bool)
-      >>> mask[20:80, 20:80] = True
-      >>> box = [20, 20, 80, 80]
-      >>> masked_obj = extract_masked_object(image, mask, box)
-  """
-  x1, y1, x2, y2 = box
-
-  # Apply mask: keep pixels where mask is True, set others to 0
-  mask_expanded = np.expand_dims(mask, axis=-1)
-  masked_image = np.where(mask_expanded, image, 0).astype(np.uint8)
-
-  # Crop to bounding box
-  cropped_image = masked_image[y1:y2, x1:x2]
-
-  return Image.fromarray(cropped_image)

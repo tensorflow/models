@@ -36,10 +36,12 @@ cropped image to a temporary directory.
 import glob
 import json
 import os
+from typing import List, Tuple
 import warnings
 
 from absl import app
 from absl import flags
+import batched_io
 import models
 import models_utils
 import natsort
@@ -65,8 +67,9 @@ INPUT_DIR = "input_images"
 CLASSIFICATION_DIR = "objects_for_classification"
 COCO_OUTPUT_PATH = "coco_output.json"
 
-# Minimum mask area as percentage of image.
-MIN_MASK_AREA_PERCENT = 1.0
+# Filter generated masks that are less than or equal to this
+# percentage of the overall image area
+MASK_FILTER_THRESHOLD_PERCENT = 1.0
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
@@ -74,6 +77,36 @@ flags.DEFINE_string(
     None,
     "Name of the category. If provided, creates a COCO JSON file.",
 )
+
+
+def filter_masks_by_area(
+    masks: List[np.ndarray],
+    boxes: List[np.ndarray],
+    image_area: int,
+    min_percent: float = 1.0,
+) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+  """Filter masks and boxes by minimum area threshold.
+
+  Args:
+    masks: Binary masks.
+    boxes: Bounding boxes corresponding to masks.
+    image_area: Total area of the source image.
+    min_percent: Minimum mask area as percentage of image area.
+
+  Returns:
+    Filtered masks and boxes.
+  """
+  filtered = [
+      (mask, box)
+      for mask, box in zip(masks, boxes)
+      if (np.sum(mask.astype(np.uint8)) / image_area) * 100 > min_percent
+  ]
+
+  if not filtered:
+    return [], []
+
+  valid_masks, valid_boxes = zip(*filtered)
+  return list(valid_masks), list(valid_boxes)
 
 
 def main(_) -> None:
@@ -99,10 +132,7 @@ def main(_) -> None:
     )
     return
   print("✅ Pipeline ready.")
-
-  # Create output directory
-  output_dir = os.path.join(INPUT_DIR, CLASSIFICATION_DIR)
-  os.makedirs(output_dir, exist_ok=True)
+  os.makedirs(CLASSIFICATION_DIR, exist_ok=True)
 
   # Initialize coco json file format only if category_name is provided
   coco_output = None
@@ -121,76 +151,86 @@ def main(_) -> None:
   files = [f for f in all_files if f.lower().endswith(image_extensions)]
   files = natsort.natsorted(files)
 
-  print(f"Processing {len(files)} images...")
-  for image_id_counter, file_path in tqdm.tqdm(enumerate(files)):
-    try:
-      # Use no_grad context manager for inference to save memory.
-      with torch.no_grad():
-        results = pipeline.detect_and_segment(file_path, TEXT_PROMPT)
+  writer = batched_io.BatchedMaskWriter(
+      CLASSIFICATION_DIR, max_workers=FLAGS.io_workers
+  )
 
-      if not results:
-        print("No objects detected")
-        continue  # No objects found or an issue occurred.
-    except (RuntimeError, ValueError) as e:
-      print(
-          "An unexpected error occurred with"
-          f" {os.path.basename(file_path)}: {e}"
-      )
-      continue
-
-    image = results["image"]
-    h, w = image.shape[:2]
-    image_area = h * w
-
-    # Add image info to COCO output only if create_coco is True
-    if create_coco:
-      image_info = {
-          "id": image_id_counter,
-          "file_name": os.path.basename(file_path),
-          "width": w,
-          "height": h,
-      }
-      coco_output["images"].append(image_info)
-
-    for idx, (box, mask) in enumerate(
-        zip(results["boxes"], results["masks"])
-    ):
-      mask_area = np.sum(mask.astype(np.uint8))
-      if (mask_area / image_area) * 100 > 1:
-        try:
-          masked_object = models_utils.extract_masked_object(image, mask, box)
-          models_utils.save_masked_object(
-              masked_object, file_path, idx, CLASSIFICATION_DIR
-          )
-        except (ValueError, SystemError, AttributeError, OSError) as e:
-          print(
-              f"[ERROR] Skipped saving image for {file_path} at index"
-              f" {idx} due to: {e}"
-          )
+  try:
+    for image_id_counter, file_path in tqdm.tqdm(enumerate(files)):
+      try:
+        with torch.no_grad():
+          results = pipeline.detect_and_segment(file_path, TEXT_PROMPT)
+        if not results:
+          print("No objects detected")
           continue
+      except (RuntimeError, ValueError) as e:
+        print(
+            "An unexpected error occurred with"
+            f" {os.path.basename(file_path)}: {e}"
+        )
+        continue
 
-        # Add annotation info to COCO output only if create_coco is True
-        if create_coco:
-          segmentation = models_utils.extract_largest_contour_segmentation(mask)
-          bbox_width, bbox_height, area = models_utils.get_bbox_details(box)
+      image = results["image"]
+      h, w = image.shape[:2]
+      image_area = h * w
 
-          # annotation key format in coco json
-          annotation_info = {
-              "id": annotation_id_counter,
-              "image_id": image_id_counter,
-              "category_id": 1,
-              "bbox": [
-                  int(box[0]),
-                  int(box[1]),
-                  int(bbox_width),
-                  int(bbox_height),
-              ],
-              "area": int(area),
-              "iscrowd": 0,
-              "segmentation": segmentation,
-          }
-          coco_output["annotations"].append(annotation_info)
-          annotation_id_counter += 1
+      valid_masks, valid_boxes = filter_masks_by_area(
+          results["masks"],
+          results["boxes"],
+          image_area,
+          min_percent=MASK_FILTER_THRESHOLD_PERCENT,
+      )
+
+      # Add image info to COCO output only if create_coco is True
+      if create_coco:
+        image_info = {
+            "id": image_id_counter,
+            "file_name": os.path.basename(file_path),
+            "width": w,
+            "height": h,
+        }
+        coco_output["images"].append(image_info)
+
+      writer.add_batch(
+          image,
+          valid_masks,
+          valid_boxes,
+          file_path,
+      )
+
+      if create_coco:
+        for _, (box, mask) in enumerate(zip(valid_boxes, valid_masks)):
+          try:
+            # Get the polygon points of masks
+            segmentation = models_utils.extract_largest_contour_segmentation(
+                mask
+            )
+            bbox_width, bbox_height, area = models_utils.get_bbox_details(box)
+
+            # Annotation key format in COCO JSON
+            annotation_info = {
+                "id": annotation_id_counter,
+                "image_id": image_id_counter,
+                "category_id": 1,
+                "bbox": [
+                    int(box[0]),
+                    int(box[1]),
+                    int(bbox_width),
+                    int(bbox_height),
+                ],
+                "area": int(area),
+                "iscrowd": 0,
+                "segmentation": segmentation,
+            }
+            coco_output["annotations"].append(annotation_info)
+            annotation_id_counter += 1
+          except (ValueError, SystemError) as e:
+            print(f"[ERROR] Failed to create annotation: {e}")
+            continue
+  finally:
+    # Ensure all I/O operations complete
+    if writer:
+      writer.__exit__(None, None, None)
 
   # Save COCO JSON file only if create_coco is True
   if create_coco:
