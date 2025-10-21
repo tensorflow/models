@@ -31,7 +31,6 @@ import torchvision
 
 from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils
 
-
 # Suppress common warnings for a cleaner console output.
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -101,7 +100,7 @@ class ObjectDetectionSegmentation:
     Returns:
       A tuple containing:
         - image: The original image loaded as a NumPy array.
-        - xyxy_boxes: Detected bounding boxes in [x1, y1, x2, y2] format.
+        - boxes: Detected bounding boxes in CXCYWH format.
         - scores: Confidence scores for each detected box.
         - labels: Text labels corresponding to each box.
     """
@@ -116,69 +115,102 @@ class ObjectDetectionSegmentation:
         text_threshold=text_threshold,
     )
 
-    xyxy_boxes = models_utils.convert_boxes_cxcywh_to_xyxy(boxes, image.shape)
-    return image, xyxy_boxes, scores, labels
+    return image, boxes, scores, labels
 
   def _segment_objects(
-      self, image_source: np.ndarray, xyxy_boxes: np.ndarray
-  ) -> tuple[list[np.ndarray], list[torch.Tensor], list[np.ndarray]]:
-    """Generates segmentation masks for given bounding boxes using SAM2.
+      self,
+      image: np.ndarray,
+      boxes: np.ndarray,
+  ) -> tuple[list[np.ndarray], list[torch.Tensor]]:
+    """Generates segmentation masks for batches of bounding boxes.
 
     Args:
-      image_source: The source image as a NumPy array.
-      xyxy_boxes: A NumPy array of bounding boxes in [x1, y1, x2, y2] format.
+      image: The source image as a NumPy array.
+      boxes: A NumPy array of bounding boxes in [x1, y1, x2, y2] format.
 
     Returns:
       A tuple containing:
-        - all_masks: A list of boolean segmentation masks.
-        - all_scores: A list of confidence scores for each mask.
-        - all_boxes: A list of the original bounding boxes.
+        - A list of boolean segmentation masks.
+        - A list of confidence scores for each mask.
     """
-    self.sam_predictor.set_image(image_source)
+    self.sam_predictor.set_image(image)
 
-    all_masks, all_scores, all_boxes = [], [], []
-    for bbox in xyxy_boxes:
-      box_area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-      if box_area < 0.25 * math.prod(image_source.shape[:2]):
-        masks, scores, _ = self.sam_predictor.predict(
-            point_coords=None,
-            point_labels=None,
-            box=bbox[None, :],  # SAM expects a batch dimension.
-            multimask_output=False,
-        )
-        # Squeeze to remove batch and multi-mask dimensions.
-        all_masks.append(masks.squeeze())
-        all_scores.append(scores)
-        all_boxes.append(bbox)
+    # Stack all boxes for batched prediction
+    # SAM2 expects shape (num_boxes, 4)
+    batched_boxes = np.stack(boxes, axis=0)
+    masks, scores, _ = self.sam_predictor.predict(
+        point_coords=None,
+        point_labels=None,
+        box=batched_boxes,
+        multimask_output=False,
+    )
 
-    return all_masks, all_scores, all_boxes
+    return [mask.squeeze() for mask in masks], list(scores)
+
+  def _filter_boxes_by_area(
+      self, boxes: np.ndarray, max_box_area: float
+  ) -> list[np.ndarray]:
+    """Filter bounding boxes by area to remove overly large detections.
+
+    Args:
+      boxes: Array of bounding boxes in [x1, y1, x2, y2] format.
+      max_box_area: Maximum box area to keep
+
+    Returns:
+      List of valid bounding boxes that passed the area filter.
+    """
+    return [
+        bbox
+        for bbox in boxes
+        if (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) < max_box_area
+    ]
 
   def detect_and_segment(
-      self, image_path: str, text_prompt: str
+      self,
+      image_path: str,
+      text_prompt: str,
+      max_box_to_area_ratio: float = 0.25,
   ) -> Optional[dict[str, Any]]:
-    """Runs the full detection and segmentation pipeline on an image.
+    """Runs detection and batched segmentation pipeline on an image.
+
+    This first uses GroundingDINO to extract bboxes from an image
+    based on a prompt, then passes all those boxes to SAM2 for
+    mask extraction.
 
     Args:
       image_path: The file path to the input image.
-      text_prompt: The text description of objects to detect and segment.
+      text_prompt: The text description of objects to use for box detection
+      max_box_to_area_ratio: Maximum box area as ratio of image area
 
     Returns:
       A dictionary containing the processed data ('image', 'boxes', 'masks')
       or None if no objects were detected.
     """
     print(f"\nProcessing '{image_path}'")
-    image, boxes, _, _ = self._detect_objects(image_path, text_prompt)
+    image, cxchywh_boxes, _, _ = self._detect_objects(image_path, text_prompt)
 
-    if boxes.shape[0] == 0:
+    if cxchywh_boxes.shape[0] == 0:
       print('No objects detected.')
       return None
 
-    masks, _, mask_boxes = self._segment_objects(image, boxes)
-    print('Segmentation complete.')
+    xyxy_boxes = models_utils.convert_boxes_cxcywh_to_xyxy(
+        cxchywh_boxes, image.shape
+    )
+    image_area = math.prod(image.shape[:2])
+    valid_boxes = self._filter_boxes_by_area(
+        xyxy_boxes, image_area * max_box_to_area_ratio
+    )
+
+    if not valid_boxes:
+      print('No objects passed area filter.')
+      return None
+
+    masks, _ = self._segment_objects(image, valid_boxes)
+    print(f'Segmentation complete. Generated {len(masks)} masks.')
 
     return {
         'image': image,
-        'boxes': mask_boxes,
+        'boxes': valid_boxes,
         'masks': masks,
     }
 
