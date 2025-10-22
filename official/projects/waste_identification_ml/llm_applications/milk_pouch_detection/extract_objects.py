@@ -151,9 +151,7 @@ def main(_) -> None:
   files = [f for f in all_files if f.lower().endswith(image_extensions)]
   files = natsort.natsorted(files)
 
-  writer = batched_io.BatchedMaskWriter(
-      CLASSIFICATION_DIR, max_workers=FLAGS.io_workers
-  )
+  writer = batched_io.BatchedMaskWriter(CLASSIFICATION_DIR)
 
   try:
     for image_id_counter, file_path in tqdm.tqdm(enumerate(files)):
