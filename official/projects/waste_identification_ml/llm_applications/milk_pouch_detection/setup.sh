@@ -96,6 +96,7 @@ sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_p
 
 curl -sS -o models_utils.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models_utils.py
 curl -sS -o extract_objects.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/extract_objects.py
+curl -sS -o batched_io.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/batched_io.py
 curl -sS -o run_pipeline.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/run_pipeline.sh
 echo "Files downloaded and modified successfully!"
 

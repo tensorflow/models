@@ -6,7 +6,7 @@ frames.
 ### Prerequisites
 
 - GCP account with Compute Engine access
-- A folder containing image frames to process
+- A GCP bucket folder containing images to process
 
 ### Setup Instructions
 
@@ -36,30 +36,21 @@ detection pipeline.
 
 ### 4. Process Your Images
 
-Given a folder path containing your test images, run:
+Given a gcs bucket path containing your test images, run:
 
 ```bash
-bash run_pipeline.sh --input_dir=/path/to/test_images
+bash run_pipeline.sh --gcs_path=/path/to/test_images
 ```
 
-Replace `/path/to/test_images` with the actual path to your image folder.
-
-### 5. View Results
-
-The pipeline will create two folders inside your input directory:
-
-- **`dairy/`** - Contains all cropped objects identified as dairy products
-- **`others/`** - Contains all cropped objects that are not dairy products
-
-### Example
+Replace `/path/to/test_images` with the actual bucket path to your image
+folder, for example:
 
 ```bash
-# If your images are in /home/user/test_images
-bash run_pipeline.sh --input_dir=/home/user/test_images
+bash run_pipeline.sh --gcs_path=gs://dairy_product_detection/test_images/
 
 # Results will be in:
-# /home/user/test_images/dairy/
-# /home/user/test_images/others/
+# $gcs_path/predictions/dairy/
+# $gcs_path/predictions/others/
 ```
 
 ### Troubleshooting
@@ -84,28 +75,27 @@ a particular category (e.g., dairy products, bottles, cans, etc.).
 Execute the following command to extract objects and generate dataset files:
 
 ```python
-python3 extract_objects.py --input_dir=/test_images --category_name=dairy
+python3 extract_objects.py --gcs_path=/test_path --category_name=${category}
 ```
 
 Replace:
 
-- `/test_images` with the path to your image folder.
-- `dairy` with your category name (e.g., bottles, cans, plastic, etc.)
+- `/test_path` with the path to your image folder.
+- `category` with your category name (e.g., bottles, cans, plastic, etc.)
 
 ### 3. Generated Outputs
 
-The script will generate two types of outputs inside your input directory:
+The script will generate two types of outputs:
 
 #### For Image Classification Models
 
-A folder named **`tempdir/`** will be created containing:
-
-- All cropped objects extracted from the images
-- These cropped images can be directly used to train an image classifier model
+A folder named **objects_for_classification** will be created containing all
+cropped objects extracted from the images. These cropped images can be
+directly used to train an image classifier model
 
 #### For Object Detection/Segmentation Models
 
-A COCO format JSON file will be generated containing:
+A COCO JSON file will be generated containing:
 
 - Annotations for all detected objects
 - Bounding boxes and segmentation masks
@@ -115,13 +105,13 @@ A COCO format JSON file will be generated containing:
 
 ```python
 # Extract dairy products from images
-python3 extract_objects.py --input_dir=/home/user/dairy_images --category_name=dairy
+python3 extract_objects.py --gcs_path=/home/user/dairy_images --category_name=dairy
 
 # Extract plastic bottles
-python3 extract_objects.py --input_dir=/home/user/bottle_images --category_name=bottles
+python3 extract_objects.py --gcs_path=/home/user/bottle_images --category_name=bottles
 
 # Extract metal cans
-python3 extract_objects.py --input_dir=/home/user/can_images --category_name=cans
+python3 extract_objects.py --gcs_path=/home/user/can_images --category_name=cans
 ```
 
 ### Output Structure
@@ -132,18 +122,21 @@ After running the script, your directory will look like:
 /test_images/
 ├── image1.jpg
 ├── image2.jpg
-├── tempdir/                    # Cropped objects for classification
+├── objects_for_classification
 │   ├── crop_001.jpg
 │   ├── crop_002.jpg
 │   └── ...
-└── annotations.json            # COCO format file for detection/segmentation
+└── annotations.json  # COCO format file for detection/segmentation
 ```
 
 ### Use Cases
 
-- **Image Classification**: Use images from `tempdir/` folder
-- **Object Detection**: Use the COCO JSON file with original images
-- **Instance Segmentation**: Use the COCO JSON file with segmentation masks
+- **Image Classification Training/Finetuning**: Use images from
+`objects_for_classification/` folder
+- **Object Detection Training/Finetuning**: Use the COCO JSON file with
+original images
+- **Instance Segmentation Training/Finetuning**: Use the COCO JSON file with
+segmentation masks
 
 ### Tips
 
