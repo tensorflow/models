@@ -66,9 +66,7 @@ def main(_) -> None:
       device="cuda" if torch.cuda.is_available() else "cpu",
   )
 
-  files = glob.glob(
-      os.path.join(INPUT_DIR, CLASSIFICATION_DIR, "*")
-  )
+  files = glob.glob(os.path.join(parent_dir, CLASSIFICATION_DIR, "*"))
   print(f"Found {len(files)} images to process...")
 
   total_dairy_packets = 0
