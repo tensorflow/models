@@ -81,9 +81,7 @@ for (( i=0; i<num_files; i+=batch_size )); do
   # Move predictions back to GCS
   if [ -d "predictions" ] && [ "$(ls -A predictions)" ]; then
     echo "🖨️ Moving predictions for this batch back to GCS bucket: $gcs_path"
-    # Using -r to copy directory contents, assuming predictions are unique per
-    # image.
-    gsutil -m cp -r predictions/* "$gcs_path"
+    gsutil -m cp -r predictions/ "$gcs_path"
   else
     echo "⚠️ No predictions generated for this batch."
   fi
