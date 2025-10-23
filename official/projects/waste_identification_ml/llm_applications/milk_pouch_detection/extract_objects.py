@@ -26,6 +26,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2025 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Detects, segments, and saves objects from images in a directory.
 
 This script initializes a computer vision pipeline to process images, identify
@@ -34,7 +48,6 @@ cropped image to a temporary directory.
 """
 
 import glob
-import json
 import os
 from typing import List, Tuple
 import warnings
@@ -42,8 +55,8 @@ import warnings
 from absl import app
 from absl import flags
 import batched_io
+import coco_annotation_writer
 import models
-import models_utils
 import natsort
 import numpy as np
 import torch
@@ -134,11 +147,12 @@ def main(_) -> None:
   print("✅ Pipeline ready.")
   os.makedirs(CLASSIFICATION_DIR, exist_ok=True)
 
-  # Initialize coco json file format only if category_name is provided
-  coco_output = None
-  annotation_id_counter = 0
+  # Initialize COCO annotation writer only if category_name is provided
+  coco_writer = None
   if create_coco:
-    coco_output = models_utils.initialize_coco_output(FLAGS.category_name)
+    coco_writer = coco_annotation_writer.CocoAnnotationWriter(
+        FLAGS.category_name
+    )
     print(
         f"COCO JSON output will be created for category: {FLAGS.category_name}"
     )
@@ -154,7 +168,7 @@ def main(_) -> None:
   writer = batched_io.BatchedMaskWriter(CLASSIFICATION_DIR)
 
   try:
-    for image_id_counter, file_path in tqdm.tqdm(enumerate(files)):
+    for file_path in tqdm.tqdm(files):
       try:
         with torch.no_grad():
           results = pipeline.detect_and_segment(file_path, TEXT_PROMPT)
@@ -179,16 +193,6 @@ def main(_) -> None:
           min_percent=MASK_FILTER_THRESHOLD_PERCENT,
       )
 
-      # Add image info to COCO output only if create_coco is True
-      if create_coco:
-        image_info = {
-            "id": image_id_counter,
-            "file_name": os.path.basename(file_path),
-            "width": w,
-            "height": h,
-        }
-        coco_output["images"].append(image_info)
-
       writer.add_batch(
           image,
           valid_masks,
@@ -196,35 +200,11 @@ def main(_) -> None:
           file_path,
       )
 
+      # Add image info to COCO output only if create_coco is True
       if create_coco:
-        for _, (box, mask) in enumerate(zip(valid_boxes, valid_masks)):
-          try:
-            # Get the polygon points of masks
-            segmentation = models_utils.extract_largest_contour_segmentation(
-                mask
-            )
-            bbox_width, bbox_height, area = models_utils.get_bbox_details(box)
+        current_image_id = coco_writer.add_image(file_path, w, h)
+        coco_writer.add_annotations(current_image_id, valid_boxes, valid_masks)
 
-            # Annotation key format in COCO JSON
-            annotation_info = {
-                "id": annotation_id_counter,
-                "image_id": image_id_counter,
-                "category_id": 1,
-                "bbox": [
-                    int(box[0]),
-                    int(box[1]),
-                    int(bbox_width),
-                    int(bbox_height),
-                ],
-                "area": int(area),
-                "iscrowd": 0,
-                "segmentation": segmentation,
-            }
-            coco_output["annotations"].append(annotation_info)
-            annotation_id_counter += 1
-          except (ValueError, SystemError) as e:
-            print(f"[ERROR] Failed to create annotation: {e}")
-            continue
   finally:
     # Ensure all I/O operations complete
     if writer:
@@ -232,9 +212,14 @@ def main(_) -> None:
 
   # Save COCO JSON file only if create_coco is True
   if create_coco:
-    with open(os.path.join(INPUT_DIR, COCO_OUTPUT_PATH), "w") as f:
-      json.dump(coco_output, f, indent=4)
-    print(f"\n✅ Processing complete. COCO JSON saved to '{COCO_OUTPUT_PATH}'.")
+    output_path = os.path.join(INPUT_DIR, COCO_OUTPUT_PATH)
+    coco_writer.save(output_path)
+    stats = coco_writer.get_statistics()
+    print(
+        f"\n✅ COCO JSON saved to '{COCO_OUTPUT_PATH}'"
+        f" ({stats['num_images']} images,"
+        f" {stats['num_annotations']} annotations)."
+    )
 
   print(f"✅ Cropped images saved to '{CLASSIFICATION_DIR}'.")
 
