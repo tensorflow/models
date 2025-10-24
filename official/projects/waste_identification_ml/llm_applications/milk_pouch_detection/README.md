@@ -20,7 +20,7 @@ SSH into your VM instance. If this is the first access, you will be prompted
 to install nVidia drivers. After this is complete, run:
 
 ```bash
-curl -o setup.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/setup.sh
+curl -o setup.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/setup.sh
 ```
 
 ### 3. Run the Setup Script

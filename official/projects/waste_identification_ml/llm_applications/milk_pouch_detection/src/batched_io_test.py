@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import batched_io
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import batched_io
 
 TEST_IMAGE_PATH = "/path/to/test_image.jpg"
 TEST_IMAGE = np.zeros((10, 10, 3), dtype=np.uint8)

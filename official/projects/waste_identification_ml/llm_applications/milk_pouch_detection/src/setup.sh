@@ -22,7 +22,8 @@ set -o pipefail
 
 # --- 1. Install System Dependencies ---
 echo "🔹 Starting: Install System Dependencies"
-sudo apt-get install -y python3-venv python3-pip lsof
+apt-get update
+apt-get install -y python3-venv python3-pip lsof curl
 echo "✅ Finished: Install System Dependencies"
 echo "-----"
 
@@ -88,16 +89,19 @@ echo "✅ Finished: Download Image Classifier Model"
 echo "-----"
 
 echo "Download the required files locally and modify the imports."
-curl -sS -o models.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models.py
-sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils|import models_utils|g' models.py
+curl -sS -o models.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/models.py
+sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils|import models_utils|g' models.py
 
-curl -sS -o classify_images.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/classify_images.py
-sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models|import models|g' classify_images.py
+curl -sS -o classify_images.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/classify_images.py
+sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models|import models|g' classify_images.py
 
-curl -sS -o models_utils.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models_utils.py
-curl -sS -o extract_objects.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/extract_objects.py
-curl -sS -o batched_io.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/batched_io.py
-curl -sS -o run_pipeline.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/run_pipeline.sh
+curl -sS -o coco_annotation_writer.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/coco_annotation_writer.py
+sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils|import models_utils|g' coco_annotation_writer.py
+
+curl -sS -o models_utils.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/models_utils.py
+curl -sS -o extract_objects.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/extract_objects.py
+curl -sS -o batched_io.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/batched_io.py
+curl -sS -o run_pipeline.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/run_pipeline.sh
 echo "Files downloaded and modified successfully!"
 
 # --- Completion ---

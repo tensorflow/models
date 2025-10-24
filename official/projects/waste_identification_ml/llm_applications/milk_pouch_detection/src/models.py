@@ -29,7 +29,7 @@ from sam2 import sam2_image_predictor
 import torch
 import torchvision
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils
 
 # Suppress common warnings for a cleaner console output.
 warnings.filterwarnings('ignore', category=UserWarning)

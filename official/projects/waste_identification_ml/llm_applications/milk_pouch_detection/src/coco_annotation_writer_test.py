@@ -35,7 +35,7 @@ import unittest
 
 import numpy as np
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import coco_annotation_writer
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import coco_annotation_writer
 
 # Simple binary mask (20x20 square in center of 100x100 image)
 TEST_MASK = np.zeros((100, 100), dtype=np.uint8)

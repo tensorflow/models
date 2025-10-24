@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 import torch
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils
 
 
 class UtilsTest(unittest.TestCase):
