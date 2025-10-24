@@ -25,7 +25,7 @@ from typing import List
 
 import numpy as np
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils
 
 
 class CocoAnnotationWriter:

@@ -37,7 +37,7 @@ from absl import flags
 import torch
 import tqdm
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models
 
 
 FLAGS = flags.FLAGS
