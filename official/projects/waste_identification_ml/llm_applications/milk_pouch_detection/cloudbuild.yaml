@@ -1,0 +1,20 @@
+steps:
+# Build the image.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--no-cache'
+  - '--progress=plain'
+  - '--build-arg'
+  - 'GCS_PATH=${_GCS_PATH}'
+  - '-t'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:latest'
+  - '.'
+
+# Push the container image to Artifact Registry
+images:
+- '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:latest'
+
+# Specify a high-performance machine type for the build
+options:
+  machineType: 'E2_HIGHCPU_32'

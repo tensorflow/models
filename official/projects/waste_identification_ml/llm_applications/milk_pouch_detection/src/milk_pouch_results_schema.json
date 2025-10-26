@@ -1,0 +1,32 @@
+[
+  {
+    "name": "event_timestamp",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "The timestamp when the event was processed."
+  },
+  {
+    "name": "source_bucket",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The GCS bucket of the source image."
+  },
+  {
+    "name": "source_image",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The path to the source image within the bucket."
+  },
+  {
+    "name": "classification",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The predicted class for the detected object."
+  },
+  {
+    "name": "classification_probability",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "The probability score of the classification."
+  }
+]
