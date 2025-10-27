@@ -3,6 +3,71 @@
 This pipeline detects and extracts dairy product packets from a folder of image
 frames.
 
+We offer two types of deployment approaches:
+
+## Deployment Approaches
+
+*   [Automated Deployment](#automated-deployment)
+*   [Manual Deployment](#manual-deployment)
+
+## Automated Deployment
+
+This project includes a fully automated deployment script, `deploy.sh`, that
+provisions all the necessary GCP resources and deploys the milk pouch detection
+service on a Google Compute Engine (GCE) instance.
+
+The script will:
+1.  Configure your GCP project.
+2.  Enable all required service APIs.
+3.  Create BigQuery dataset and table.
+4.  Create GCS buckets for images. Existing buckets can also be used.
+5.  Create an Artifact Registry repository.
+6.  Build and push the container image using Cloud Build.
+7.  Create a service account with the necessary permissions.
+8.  Deploy a GCE instance with the container running.
+
+### Prerequisites
+
+-   You must have the [Google Cloud CLI (`gcloud`)](https://cloud.google.com/sdk/docs/install) installed and authenticated.
+-   You need a GCP project with billing enabled.
+
+### Usage
+
+The `deploy.sh` script can be run from your local machine or a Cloudtop
+environment.
+
+```bash
+./deploy.sh --gcp_project_id=<your-gcp-project-id> [options]
+```
+
+### Arguments
+
+| Argument | Description | Required | Default |
+| :--- | :--- | :--- | :--- |
+| `--gcp_project_id` | Your Google Cloud Project ID. | **Yes** | |
+| `--region` | The GCP region for resource deployment. | No | `us-central1` |
+| `--zone` | The GCP zone for the GCE instance. | No | `us-central1-a` |
+| `--device` | The type of hardware for processing. Can be `cpu` or `gpu`. | No | `gpu` |
+
+### Example
+
+To deploy the service with a GPU in your project:
+
+```bash
+./deploy.sh --gcp_project_id my-waste-detection-project --device gpu --compute gce
+```
+
+After the deployment is complete, you can start using the service by uploading
+images to the source GCS bucket created by the script. The script output will
+provide the name of the bucket.
+
+```bash
+gsutil cp your-local-image.jpg gs://<source-bucket-name>/
+```
+---
+
+## Manual Deployment
+
 ### Prerequisites
 
 - GCP account with Compute Engine access
@@ -12,7 +77,8 @@ frames.
 
 ### 1. Create a VM Instance
 
-Many VM configurations will work, but the specs [here](/circularnet-docs/content/deploy-cn/before-you-begin.md) are relevant.
+Many VM configurations will work, but the specs
+[here](/circularnet-docs/content/deploy-cn/before-you-begin.md) are relevant.
 
 ### 2. Download the Setup Script
 
