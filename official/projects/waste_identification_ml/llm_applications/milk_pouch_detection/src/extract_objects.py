@@ -54,26 +54,23 @@ import warnings
 
 from absl import app
 from absl import flags
-import batched_io
-import coco_annotation_writer
-import models
 import natsort
 import numpy as np
 import torch
 import tqdm
+
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import batched_io
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import coco_annotation_writer
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.models import detection_segmentation
 
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-GROUNDING_DINO_WEIGHTS = (
-    "milk_pouch_project/grounding_dino_model/groundingdino_swint_ogc.pth"
-)
-GROUNDING_DINO_CONFIG = (
-    "milk_pouch_project/grounding_dino_model/GroundingDINO_SwinT_OGC.py"
-)
-SAM2_WEIGHTS = "milk_pouch_project/sam2_model/sam2.1_hiera_large.pt"
+GROUNDING_DINO_WEIGHTS = "grounding_dino/groundingdino_swint_ogc.pth"
+GROUNDING_DINO_CONFIG = "grounding_dino/GroundingDINO_SwinT_OGC.py"
+SAM2_WEIGHTS = "sam2/sam2.1_hiera_large.pt"
 SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_l.yaml"
 TEXT_PROMPT = "packets"
 INPUT_DIR = "input_images"
@@ -132,7 +129,7 @@ def main(_) -> None:
 
   print("Initializing image extraction and classification...")
   try:
-    pipeline = models.ObjectDetectionSegmentation(
+    pipeline = detection_segmentation.ObjectDetectionSegmentation(
         dino_config_path=GROUNDING_DINO_CONFIG,
         dino_weights_path=GROUNDING_DINO_WEIGHTS,
         sam_config_path=SAM2_CONFIG,

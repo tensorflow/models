@@ -37,17 +37,14 @@ from absl import flags
 import torch
 import tqdm
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models
-
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.models import classification
 
 FLAGS = flags.FLAGS
 INPUT_DIR = "input_images"
 CLASSIFICATION_DIR = "objects_for_classification"
 
 # Path to the custom trained model for Image Classifier.
-IMAGE_CLASSIFIER_WEIGHTS = (
-    "milk_pouch_project/image_classifier_model/best_vit_model_epoch_131.pt"
-)
+IMAGE_CLASSIFIER_WEIGHTS = "vit/best_vit_model_epoch_131.pt"
 CLASS_NAMES = ["dairy", "other"]
 
 
@@ -60,7 +57,7 @@ def main(_) -> None:
   os.makedirs(dairy_predictions, exist_ok=True)
   os.makedirs(other_predictions, exist_ok=True)
 
-  classifier = models.ImageClassifier(
+  classifier = classification.ImageClassifier(
       model_path=IMAGE_CLASSIFIER_WEIGHTS,
       class_names=CLASS_NAMES,
       device="cuda" if torch.cuda.is_available() else "cpu",
