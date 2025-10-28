@@ -208,7 +208,7 @@ echo ""
 # ---
 
 echo "✅ Step 6: Build container image using Cloud Build (with cloudbuild.yaml)..."
-gcloud builds submit --config cloudbuild.yaml \
+gcloud builds submit --timeout=2h --config cloudbuild.yaml \
   --substitutions=_REGION="${REGION}",_REPO_NAME="${REPO_NAME}",_IMAGE_NAME="${IMAGE_NAME}",_GCS_PATH="gs://${SOURCE_BUCKET_NAME}"
 
 echo "Skipping container build step. Assuming image already exists in Artifact Registry."
