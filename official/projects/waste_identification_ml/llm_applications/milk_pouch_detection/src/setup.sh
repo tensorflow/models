@@ -22,7 +22,6 @@ set -o pipefail
 
 # --- 1. Install System Dependencies ---
 echo "🔹 Starting: Install System Dependencies"
-apt-get update
 apt-get install -y python3-venv python3-pip lsof curl
 echo "✅ Finished: Install System Dependencies"
 echo "-----"
@@ -65,43 +64,42 @@ echo "-----"
 
 # --- 6. Set Up Project Directories ---
 echo "🔹 Starting: Create Project Directory Structure"
-mkdir -p milk_pouch_project/sam2_model
-mkdir -p milk_pouch_project/grounding_dino_model
-mkdir -p milk_pouch_project/image_classifier_model
+mkdir -p milk_pouch_project/models/sam2
+mkdir -p milk_pouch_project/models/grounding_dino
+mkdir -p milk_pouch_project/models/vit
 echo "✅ Finished: Create Project Directory Structure"
 echo "-----"
 
 # --- 7. Download Model Checkpoints ---
 echo "🔹 Starting: Download SAM2 Checkpoint"
-wget -P ./milk_pouch_project/sam2_model https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt
+wget -P ./milk_pouch_project/models/sam2 https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt
 echo "✅ Finished: Download SAM2 Checkpoint"
 echo "-----"
 
 echo "🔹 Starting: Download GroundingDINO Model and Config"
-wget -P ./milk_pouch_project/grounding_dino_model https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth
-wget -P ./milk_pouch_project/grounding_dino_model https://raw.githubusercontent.com/IDEA-Research/GroundingDINO/refs/heads/main/groundingdino/config/GroundingDINO_SwinT_OGC.py
+wget -P ./milk_pouch_project/grounding_dino https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth
+wget -P ./milk_pouch_project/models/grounding_dino https://raw.githubusercontent.com/IDEA-Research/GroundingDINO/refs/heads/main/groundingdino/config/GroundingDINO_SwinT_OGC.py
 echo "✅ Finished: Download GroundingDINO Model and Config"
 echo "-----"
 
 echo "🔹 Starting: Download Image Classifier Model"
-wget -P ./milk_pouch_project/image_classifier_model https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/dairy_product_packet_detection/best_vit_model_epoch_131.pt
+wget -P ./milk_pouch_project/models/vit https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/dairy_product_packet_detection/best_vit_model_epoch_131.pt
 echo "✅ Finished: Download Image Classifier Model"
 echo "-----"
 
 echo "Download the required files locally and modify the imports."
-curl -sS -o models.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/models.py
-sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils|import models_utils|g' models.py
+curl -sS -o models/detection_segmentation.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models/detection_segmentation.py
+sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models_utils|import ../models_utils|g' detection_segmentation.py
 
 curl -sS -o classify_images.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/classify_images.py
-sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models|import models|g' classify_images.py
+sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import models|import models|g' classify_images.py
 
-curl -sS -o coco_annotation_writer.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/coco_annotation_writer.py
-sed -i 's|from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils|import models_utils|g' coco_annotation_writer.py
-
-curl -sS -o models_utils.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/models_utils.py
-curl -sS -o extract_objects.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/extract_objects.py
-curl -sS -o batched_io.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/batched_io.py
-curl -sS -o run_pipeline.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/src/run_pipeline.sh
+curl -sS -o models/classification.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models/classification.py
+curl -sS -o models/llm.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models/llm.py
+curl -sS -o models_utils.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/models_utils.py
+curl -sS -o extract_objects.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/extract_objects.py
+curl -sS -o batched_io.py https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/batched_io.py
+curl -sS -o run_pipeline.sh https://raw.githubusercontent.com/tensorflow/models/master/official/projects/waste_identification_ml/llm_applications/milk_pouch_detection/run_pipeline.sh
 echo "Files downloaded and modified successfully!"
 
 # --- Completion ---
