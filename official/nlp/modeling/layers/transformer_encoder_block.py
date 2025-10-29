@@ -20,6 +20,7 @@ import tensorflow as tf, tf_keras
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import block_sparse_attention
 from official.nlp.modeling.layers import multi_query_attention
+from official.nlp.modeling.layers import talking_heads_attention
 from official.nlp.modeling.layers import util
 
 
@@ -118,6 +119,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       linformer_dim=None,
       linformer_shared_kv_projection=True,
       lowrank_query_seq_proj_dim=None,
+      enable_talking_heads=False,
+      enable_gqa_optimization=False,
       **kwargs,
   ):
     """Initializes `TransformerEncoderBlock`.
@@ -202,6 +205,10 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         keys and values.
       lowrank_query_seq_proj_dim: If set, applies a projection layer on query
         sequence to the given dimension. go/constformer-doc
+      enable_talking_heads: Enable talking heads as in
+        https://arxiv.org/pdf/2003.02436.
+      enable_gqa_optimization: Enable GQA optimization in multi-query attention.
+        This flag is valid only when num_kv_heads is set for GQA.
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -244,6 +251,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._linformer_dim = linformer_dim
     self._linformer_shared_kv_projection = linformer_shared_kv_projection
     self._lowrank_query_seq_proj_dim = lowrank_query_seq_proj_dim
+    self._enable_talking_heads = enable_talking_heads
+    self._enable_gqa_optimization = enable_gqa_optimization
     if (
         self._src_block_size is not None
         and self._num_kv_heads is not None
@@ -314,6 +323,11 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         bias_constraint=self._bias_constraint,
     )
     if self._src_block_size is not None:
+      if self._enable_talking_heads:
+        raise ValueError(
+            "Block sparse attention does not support talking heads. Please"
+            " set enable_talking_heads to False."
+        )
       attention_layer_kwargs.update(
           src_block_size=self._src_block_size,
           tgt_block_size=self._tgt_block_size,
@@ -326,9 +340,22 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     elif self._num_kv_heads is not None:
       attention_layer_kwargs.update(
           num_kv_heads=self._num_kv_heads,
+          enable_gqa_optimization=self._enable_gqa_optimization,
           name="multi_query_attention",
       )
-      attention_fn = multi_query_attention.MultiHeadAttention
+      if self._enable_talking_heads:
+        attention_fn = (
+            multi_query_attention.TalkingHeadsMultiQueryAttention
+        )
+      else:
+        attention_fn = multi_query_attention.MultiHeadAttention
+    elif self._enable_talking_heads:
+      attention_layer_kwargs.update(
+          name="talking_heads_attention",
+      )
+      attention_fn = (
+          talking_heads_attention.TalkingHeadsAttention
+      )
     else:
       attention_fn = tf_keras.layers.MultiHeadAttention
     self._attention_layer = attention_fn(
