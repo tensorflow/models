@@ -743,35 +743,46 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         num_attention_heads=num_attention_heads,
         inner_dim=2048,
         inner_activation='relu',
-        return_attention_scores=return_attention_scores)
+        return_attention_scores=return_attention_scores,
+    )
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf_keras.Input(shape=(sequence_length, width))
     output_tensor = test_layer(data_tensor)
 
     expected_layer_output_shape = [None, sequence_length, width]
     expected_attention_scores_shape = [
-        None, num_attention_heads, sequence_length, sequence_length
+        None,
+        num_attention_heads,
+        sequence_length,
+        sequence_length,
     ]
 
     if return_attention_scores:
       self.assertIsInstance(output_tensor, tuple)
       self.assertLen(output_tensor, 2)
       # First is the standard output.
-      self.assertEqual(output_tensor[0].shape.as_list(),
-                       expected_layer_output_shape)
+      self.assertEqual(
+          output_tensor[0].shape.as_list(), expected_layer_output_shape
+      )
       # Second is the attention scores.
-      self.assertEqual(output_tensor[1].shape.as_list(),
-                       expected_attention_scores_shape)
+      self.assertEqual(
+          output_tensor[1].shape.as_list(), expected_attention_scores_shape
+      )
     else:
       # Only the standard layer output.
-      self.assertEqual(output_tensor.shape.as_list(),
-                       expected_layer_output_shape)
+      self.assertEqual(
+          output_tensor.shape.as_list(), expected_layer_output_shape
+      )
 
   @parameterized.named_parameters(
       ('mqa', 1),
       ('gqa', 4),
+      ('talking_heads_mqa', 1, True),
+      ('talking_heads_gqa', 4, True),
   )
-  def test_attention_with_kv_heads(self, num_kv_heads):
+  def test_attention_with_kv_heads(
+      self, num_kv_heads, enable_talking_heads=False
+  ):
     num_attention_heads = 8
     sequence_length = 21
     width = 80
@@ -782,6 +793,8 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         inner_activation='relu',
         return_attention_scores=True,
         num_kv_heads=num_kv_heads,
+        enable_talking_heads=enable_talking_heads,
+        enable_gqa_optimization=True,
     )
     # Create a 3-dimensional input (the first dimension is implicit).
     data_tensor = tf_keras.Input(shape=(sequence_length, width))
