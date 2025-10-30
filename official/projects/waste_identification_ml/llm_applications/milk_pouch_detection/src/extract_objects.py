@@ -59,9 +59,9 @@ import numpy as np
 import torch
 import tqdm
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import batched_io
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection import coco_annotation_writer
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.models import detection_segmentation
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import batched_io
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import coco_annotation_writer
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src.models import detection_segmentation
 
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -198,7 +198,7 @@ def main(_) -> None:
       )
 
       # Add image info to COCO output only if create_coco is True
-      if create_coco:
+      if create_coco and coco_writer:
         current_image_id = coco_writer.add_image(file_path, w, h)
         coco_writer.add_annotations(current_image_id, valid_boxes, valid_masks)
 
@@ -208,7 +208,7 @@ def main(_) -> None:
       writer.__exit__(None, None, None)
 
   # Save COCO JSON file only if create_coco is True
-  if create_coco:
+  if create_coco and coco_writer:
     output_path = os.path.join(INPUT_DIR, COCO_OUTPUT_PATH)
     coco_writer.save(output_path)
     stats = coco_writer.get_statistics()
