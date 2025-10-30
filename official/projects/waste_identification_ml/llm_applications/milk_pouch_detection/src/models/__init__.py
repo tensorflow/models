@@ -29,6 +29,6 @@ Structure:
   - image_classifier_model/: Fine-tuned ViT classifier weights
 """
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.models import classification
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.models import detection_segmentation
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.models import llm
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src.models import classification
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src.models import detection_segmentation
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src.models import llm
