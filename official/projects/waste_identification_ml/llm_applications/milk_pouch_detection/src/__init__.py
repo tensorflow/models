@@ -12,19 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Model clients and weights for computer vision and LLM inference.
-
-This package contains:
-  - Python client classes for model inference
-  - Pre-trained model weights organized by model type
-
-Structure:
-  - classification.py: ImageClassifier (ViT-B/16)
-  - detection_segmentation.py: ObjectDetectionSegmentation (Grounding DINO +
-  SAM2)
-  - llm.py: LlmModels (using Ollama interface)
-
-  - grounding_dino_model/: Grounding DINO weights and config
-  - sam2_model/: SAM2 weights
-  - image_classifier_model/: Fine-tuned ViT classifier weights
-"""
+"""Top level package for milk pouch detection."""

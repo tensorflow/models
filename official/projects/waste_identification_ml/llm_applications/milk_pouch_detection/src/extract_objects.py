@@ -26,20 +26,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright 2025 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """Detects, segments, and saves objects from images in a directory.
 
 This script initializes a computer vision pipeline to process images, identify
@@ -68,9 +54,9 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-GROUNDING_DINO_WEIGHTS = "grounding_dino/groundingdino_swint_ogc.pth"
-GROUNDING_DINO_CONFIG = "grounding_dino/GroundingDINO_SwinT_OGC.py"
-SAM2_WEIGHTS = "sam2/sam2.1_hiera_large.pt"
+GROUNDING_DINO_WEIGHTS = "models/grounding_dino/groundingdino_swint_ogc.pth"
+GROUNDING_DINO_CONFIG = "models/grounding_dino/GroundingDINO_SwinT_OGC.py"
+SAM2_WEIGHTS = "models/sam2/sam2.1_hiera_large.pt"
 SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_l.yaml"
 TEXT_PROMPT = "packets"
 INPUT_DIR = "input_images"
