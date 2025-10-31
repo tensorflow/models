@@ -23,6 +23,7 @@ fi
 # --- Run pipeline ---
 echo "✅ Activating virtual environment..."
 source myenv/bin/activate
+cd milk_pouch_project
 
 # List the image files in the GCS path.
 # NOTE: Adjust the grep pattern if other image types are expected.

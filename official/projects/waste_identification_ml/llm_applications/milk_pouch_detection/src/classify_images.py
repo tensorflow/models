@@ -44,7 +44,7 @@ INPUT_DIR = "input_images"
 CLASSIFICATION_DIR = "objects_for_classification"
 
 # Path to the custom trained model for Image Classifier.
-IMAGE_CLASSIFIER_WEIGHTS = "vit/best_vit_model_epoch_131.pt"
+IMAGE_CLASSIFIER_WEIGHTS = "models/vit/best_vit_model_epoch_131.pt"
 CLASS_NAMES = ["dairy", "other"]
 
 
