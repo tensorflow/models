@@ -77,8 +77,36 @@ gsutil cp your-local-image.jpg gs://<source-bucket-name>/
 
 ### 1. Create a VM Instance
 
-Many VM configurations will work, but the specs
-[here](/circularnet-docs/content/deploy-cn/before-you-begin.md) are relevant.
+Many VM configurations will work, but CUDA version should be 12.4. Here's a
+supported configuration:
+<p>
+  <a href="https://cloud.google.com/compute/docs/gpus/create-gpu-vm-general-purpose">Create a Compute Engine virtual machine (VM) that has attached an NVIDIA T4 GPU</a>. Use the following settings on your VM:
+</p>
+<ul>
+  <li><strong>Machine configuration</strong>:
+    <ul>
+      <li><strong>Type</strong>: GPUs</li>
+      <li><strong>GPU type</strong>: NVIDIA T4</li>
+      <li><strong>Number of GPUs</strong>: 1</li>
+      <li><strong>Machine type</strong>: n1-standard-8 (8 vCPU, 4 core, 30 GB memory)</li>
+    </ul>
+  </li>
+  <li><strong>OS and storage</strong>: Click
+  <b>Change</b> and select the following:
+    <ul>
+      <li><strong>Operating system</strong>: Deep Learning on Linux</li>
+      <li><strong>Version</strong>: Deep Learning VM with
+      CUDA 12.4 preinstalled. Debian 11, Python 3.10. You can choose
+      any <i>M</i> number with this configuration, for example, M129.</li>
+      <li><strong>Boot disk type</strong>: Balanced persistent disk</li>
+      <li><strong>Size (GB)</strong>: 200 GB</li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <strong>Note</strong>: Give your VM a name that is easy to remember and deploy in a region and a zone close to your physical location that allows GPUs.
+</p>
+<br>
 
 ### 2. Download the Setup Script
 
@@ -105,14 +133,14 @@ detection pipeline.
 Given a gcs bucket path containing your test images, run:
 
 ```bash
-bash run_pipeline.sh --gcs_path=/path/to/test_images
+bash milk_pouch_product/run_pipeline.sh --gcs_path=/path/to/test_images
 ```
 
 Replace `/path/to/test_images` with the actual bucket path to your image
 folder, for example:
 
 ```bash
-bash run_pipeline.sh --gcs_path=gs://dairy_product_detection/test_images/
+bash milk_pouch_product/run_pipeline.sh --gcs_path=gs://dairy_product_detection/test_images/
 
 # Results will be in:
 # $gcs_path/predictions/dairy/
