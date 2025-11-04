@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 
 ARG GCS_PATH
 
@@ -47,7 +47,7 @@ ENV PATH=/usr/local/cuda/bin:$PATH
 
 # Copy the setup.sh script into the Docker image
 COPY ./src/setup.sh .
-RUN chmod +x setup.sh && ./setup.sh
+RUN chmod +x setup.sh && ./setup.sh --cuda-version=cu128
 RUN chmod +x run_pipeline.sh
 
 # Set the entrypoint to run the pipeline script in a loop.

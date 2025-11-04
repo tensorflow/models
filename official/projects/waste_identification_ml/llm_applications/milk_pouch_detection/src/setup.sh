@@ -1,8 +1,11 @@
 #!/bin/bash
-#
+
 # This script sets up the complete environment for a computer vision project
 # using a model ensemble approach of bounding box detection, segmentation,
 # and classification. The classification model is a pre-trained VIT model.
+#
+# Usage: ./setup.sh [--cuda-version cu124|cu128]
+#   --cuda-version: CUDA version to use (default: cu124)
 
 # Exit immediately if a command exits with a non-zero status.
 set -o errexit
@@ -11,9 +14,31 @@ set -o nounset
 # Pipes fail if any command in the pipe fails.
 set -o pipefail
 
+# Parse command line arguments
+CUDA_VERSION="cu124"
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --cuda-version)
+      CUDA_VERSION="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: $0 [--cuda-version cu124|cu128]"
+      exit 1
+      ;;
+  esac
+done
+
+echo "Using CUDA version: $CUDA_VERSION"
+echo "-----"
+
 echo "🔹 Starting: Install System Dependencies"
-apt-get update
-apt-get install -y python3-venv python3-pip lsof curl
+
+# Remove attempts to update deprecated packages
+sudo sed -i 's/^deb.*bullseye-backports/#&/' /etc/apt/sources.list
+sudo apt-get update
+sudo apt-get install -y python3-venv python3-pip lsof curl
 echo "✅ Finished: Install System Dependencies"
 echo "-----"
 
@@ -25,13 +50,19 @@ echo "-----"
 
 echo "🔹 Starting: Install Torch, Torchvision, Torchaudio"
 pip uninstall -y torch torchvision torchaudio > /dev/null 2>&1 || true
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install torch torchvision torchaudio --index-url "https://download.pytorch.org/whl/${CUDA_VERSION}"
 echo "✅ Finished: Install Torch, Torchvision, Torchaudio"
 echo "-----"
 
 echo "🔹 Starting: Install Grounding DINO"
 git clone https://github.com/IDEA-Research/GroundingDINO.git
-cd GroundingDINO
+
+# Fix out of date cuda references during compile, can remove once
+# https://github.com/IDEA-Research/GroundingDINO/pull/415 is merged.
+cd GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn
+sed -i 's/value.type()/value.scalar_type()/g' ms_deform_attn_cuda.cu
+sed -i 's/value.scalar_type().is_cuda()/value.is_cuda()/g' ms_deform_attn_cuda.cu
+cd /home/$USER/GroundingDINO/
 pip install -e .
 cd ..
 echo "✅ Finished: Install Grounding DINO"
