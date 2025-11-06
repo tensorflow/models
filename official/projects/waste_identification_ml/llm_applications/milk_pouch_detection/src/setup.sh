@@ -16,7 +16,7 @@ set -o pipefail
 
 # Parse command line arguments
 CUDA_VERSION="cu124"
-while [[ $# -gt 0 ]]; do
+while [[ "$#" -gt 0 ]]; do
   case $1 in
     --cuda-version)
       CUDA_VERSION="$2"
@@ -62,7 +62,8 @@ git clone https://github.com/IDEA-Research/GroundingDINO.git
 cd GroundingDINO/groundingdino/models/GroundingDINO/csrc/MsDeformAttn
 sed -i 's/value.type()/value.scalar_type()/g' ms_deform_attn_cuda.cu
 sed -i 's/value.scalar_type().is_cuda()/value.is_cuda()/g' ms_deform_attn_cuda.cu
-cd /home/$USER/GroundingDINO/
+
+cd /home/${USER}/GroundingDINO/
 pip install -e .
 cd ..
 echo "✅ Finished: Install Grounding DINO"
