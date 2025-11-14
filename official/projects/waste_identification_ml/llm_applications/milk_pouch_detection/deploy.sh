@@ -54,12 +54,6 @@ export REPO_NAME="milk-pouch-classification-repo"
 # Name of the container image and Cloud Run service
 export IMAGE_NAME="milk-pouch-classification-service"
 
-# [Input] GCS Bucket name for uploading original images
-export SOURCE_BUCKET_NAME="milk-pouch-classification-uploads"
-
-# [Output] GCS Bucket name for storing annotated images
-export DESTINATION_BUCKET_NAME="milk-pouch-classification-annotated"
-
 # [Output] Name of the BigQuery Dataset
 export BQ_DATASET="milk_pouch_classification"
 
@@ -108,6 +102,13 @@ if [[ "${DEVICE}" != "cpu" && "${DEVICE}" != "gpu" ]]; then
   echo "❌ Invalid device specified. Choose 'cpu' or 'gpu'."
   exit 1
 fi
+
+# [Input] GCS Bucket name for uploading original images
+export SOURCE_BUCKET_NAME="milk-pouch-classification-uploads-${PROJECT_ID}"
+
+# [Output] GCS Bucket name for storing annotated images
+export DESTINATION_BUCKET_NAME="milk-pouch-classification-annotated-${PROJECT_ID}"
+
 
 echo "🚀 Starting deployment for a '${DEVICE}' configuration..."
 echo ""
@@ -171,7 +172,7 @@ echo "✅ Step 3: Create BigQuery Dataset and Table..."
 bq --location=US mk --dataset "${PROJECT_ID}:${BQ_DATASET}" \
   || echo "Dataset '${BQ_DATASET}' already exists."
 bq mk --table "${PROJECT_ID}:${BQ_DATASET}.${BQ_TABLE}" \
-  ./milk_pouch_results_schema.json \
+  ./src/milk_pouch_results_schema.json \
   || echo "Table '${BQ_TABLE}' already exists."
 echo "BigQuery resources are ready."
 echo ""
