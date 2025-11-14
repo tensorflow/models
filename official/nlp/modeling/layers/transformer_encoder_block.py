@@ -121,6 +121,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       lowrank_query_seq_proj_dim=None,
       enable_talking_heads=False,
       enable_gqa_optimization=False,
+      softmax_robust_masking=False,
       **kwargs,
   ):
     """Initializes `TransformerEncoderBlock`.
@@ -209,6 +210,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         https://arxiv.org/pdf/2003.02436.
       enable_gqa_optimization: Enable GQA optimization in multi-query attention.
         This flag is valid only when num_kv_heads is set for GQA.
+      softmax_robust_masking: If true, will use a more numerically robust
+        masking impl for softmax.
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -253,6 +256,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._lowrank_query_seq_proj_dim = lowrank_query_seq_proj_dim
     self._enable_talking_heads = enable_talking_heads
     self._enable_gqa_optimization = enable_gqa_optimization
+    self._softmax_robust_masking = softmax_robust_masking
     if (
         self._src_block_size is not None
         and self._num_kv_heads is not None
@@ -314,6 +318,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         bias_initializer=tf_utils.clone_initializer(self._bias_initializer),
         attention_axes=self._attention_axes,
         output_shape=self._output_last_dim,
+        softmax_robust_masking=self._softmax_robust_masking,
         name="self_attention",
     )
     common_kwargs = dict(
@@ -512,6 +517,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         "linformer_dim": self._linformer_dim,
         "linformer_shared_kv_projection": self._linformer_shared_kv_projection,
         "lowrank_query_seq_proj_dim": self._lowrank_query_seq_proj_dim,
+        "softmax_robust_masking": self._softmax_robust_masking
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
