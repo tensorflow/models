@@ -28,7 +28,7 @@ cd milk_pouch_project
 # List the image files in the GCS path.
 # NOTE: Adjust the grep pattern if other image types are expected.
 echo "🖨️ Listing image files from GCS bucket: $gcs_path"
-mapfile -t all_gcs_files < <(gsutil ls "${gcs_path}*" | grep -iE '\.(png)$')
+mapfile -t all_gcs_files < <(gsutil ls "${gcs_path}*" | grep -iE '\.(png)$' | grep -v "/predictions/")
 num_files=${#all_gcs_files[@]}
 
 if (( num_files == 0 )); then
