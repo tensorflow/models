@@ -23,6 +23,7 @@
 #     [--zone=<zone>] \
 #     [--device=cpu|gpu] \
 #     [--compute=gce] \
+#     [--source_bucket_name=<source_bucket_name>]
 #
 # Arguments:
 #   --gcp_project_id: Specify the GCP project ID.
@@ -30,6 +31,7 @@
 #   --zone: Specify the zone for the resources. Default: us-central1-a.
 #   --device: Specify the device type (cpu or gpu). Default: cpu.
 #   --compute: Specify the compute platform (gce). Default: gce.
+#   --source_bucket_name: Specify the source GCS bucket name.
 #
 # Example:
 #   ./deploy.sh --device=gpu --compute=gce
@@ -71,6 +73,7 @@ REGION="us-central1"
 ZONE="us-central1-a" # Zone for the GCE instance
 DEVICE="gpu" # Default to GPU
 COMPUTE="gce" # Default to gce
+SOURCE_BUCKET_NAME=""
 
 # Parse command-line arguments --device [cpu|gpu] and --compute [cloud-run|gce]
 while [[ "$#" -gt 0 ]]; do
@@ -80,6 +83,7 @@ while [[ "$#" -gt 0 ]]; do
     --zone) ZONE="$2"; shift ;;
     --device) DEVICE="$2"; shift ;;
     --compute) COMPUTE="$2"; shift ;;
+    --source_bucket_name) SOURCE_BUCKET_NAME="$2"; shift ;;
     *) echo "Unknown parameter passed"; exit 1 ;;
   esac
   shift
@@ -104,10 +108,9 @@ if [[ "${DEVICE}" != "cpu" && "${DEVICE}" != "gpu" ]]; then
 fi
 
 # [Input] GCS Bucket name for uploading original images
-export SOURCE_BUCKET_NAME="milk-pouch-classification-uploads-${PROJECT_ID}"
-
-# [Output] GCS Bucket name for storing annotated images
-export DESTINATION_BUCKET_NAME="milk-pouch-classification-annotated-${PROJECT_ID}"
+if [[ -z "${SOURCE_BUCKET_NAME}" ]]; then
+  export SOURCE_BUCKET_NAME="milk-pouch-classification-uploads-${PROJECT_ID}"
+fi
 
 
 echo "🚀 Starting deployment for a '${DEVICE}' configuration..."
@@ -130,7 +133,6 @@ echo "Artifact Registry Repo: ${REPO_NAME}"
 echo "Image Name: ${IMAGE_NAME}"
 echo ""
 echo "Source GCS Bucket: ${SOURCE_BUCKET_NAME}"
-echo "Destination GCS Bucket: ${DESTINATION_BUCKET_NAME}"
 echo ""
 echo "BigQuery Dataset: ${BQ_DATASET}"
 echo "BigQuery Table: ${BQ_TABLE}"
@@ -186,12 +188,6 @@ gsutil mb \
   -c standard \
   -b on "gs://${SOURCE_BUCKET_NAME}" \
   || echo "Source Bucket 'gs://${SOURCE_BUCKET_NAME}' already exists."
-gsutil mb \
-  -p "${PROJECT_ID}" \
-  -l "${REGION}" \
-  -c standard \
-  -b on "gs://${DESTINATION_BUCKET_NAME}" \
-  || echo "Destination Bucket 'gs://${DESTINATION_BUCKET_NAME}' already exists."
 echo "GCS Buckets are ready."
 echo ""
 
