@@ -3,6 +3,44 @@
 This pipeline detects and extracts dairy product packets from a folder of image
 frames.
 
+## Workflow
+<!-- disableFinding(SNIPPET_INVALID_LANGUAGE) -->
+```mermaid
+graph TD
+    Start([Start Pipeline]) --> Init[Parse GCS Path & Batch Size]
+    Init --> ListFiles["List all image files from GCS<br/>(excluding 'predictions/' folder)"]
+    ListFiles --> BatchLoop{More files to process?}
+
+    subgraph Batch_Processing [Batch Processing Cycle]
+        direction TB
+        BatchLoop -- Yes --> Clear[Clear local input/output directories]
+        Clear --> Download[Download batch to 'input_images/']
+
+        Download --> ExtractScript[Run extract_objects.py]
+
+        subgraph Extraction [Object Extraction]
+            ExtractScript --> Detect[Detect & Segment Objects]
+            Detect --> Filter[Filter Masks by Area]
+            Filter --> SaveCrops[Save cropped objects to 'objects_for_classification/']
+        end
+
+        SaveCrops --> ClassifyScript[Run classify_images.py]
+
+        subgraph Classification [Object Classification]
+            ClassifyScript --> Predict[Classify Crops using ViT]
+            Predict --> Sort{Is Dairy?}
+            Sort -- Yes --> SaveDairy[Move to 'predictions/dairy/']
+            Sort -- No --> SaveOther[Move to 'predictions/others/']
+        end
+
+        SaveDairy --> Upload[Upload 'predictions/' to GCS]
+        SaveOther --> Upload
+    end
+
+    Upload --> BatchLoop
+    BatchLoop -- No --> End([End Pipeline])
+```
+
 We offer two types of deployment approaches:
 
 ## Deployment Approaches
