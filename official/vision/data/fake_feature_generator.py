@@ -28,7 +28,8 @@ def generate_image_np(height: int,
   """Returns a fake numpy image matrix array."""
   return np.reshape(
       np.mod(np.arange(height * width * num_channels), 255).astype(np.uint8),
-      newshape=(height, width, num_channels))
+      (height, width, num_channels),
+  )
 
 
 def generate_normalized_boxes_np(num_boxes: int) -> np.ndarray:
@@ -82,8 +83,7 @@ def generate_instance_masks_np(height: int,
   box_heights = boxes_np[:, 3].astype(int) - ymins
 
   for i, (x, y, w, h) in enumerate(zip(xmins, ymins, box_widths, box_heights)):
-    instance_masks_np[i, y:y + h, x:x + w, :] = np.reshape(
-        np.mod(np.arange(h * w), 2).astype(np.uint8), newshape=(h, w, 1))
+    instance_masks_np[i, y:y + h, x:x + w, :] = np.reshape(np.mod(np.arange(h * w), 2).astype(np.uint8), (h, w, 1))
   return instance_masks_np
 
 
