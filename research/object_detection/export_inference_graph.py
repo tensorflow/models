@@ -18,7 +18,7 @@ r"""Tool to export an object detection model for inference.
 Prepares an object detection tensorflow graph for inference using model
 configuration and a trained checkpoint. Outputs inference
 graph, associated checkpoint files, a frozen inference graph and a
-SavedModel (https://tensorflow.github.io/serving/serving_basic.html).
+SavedModel (https://www.tensorflow.org/tfx/serving/serving_basic.html).
 
 The inference graph contains one of three input nodes depending on the user
 specified option.
