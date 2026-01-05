@@ -54,7 +54,8 @@ echo "--- Authenticating Docker with gcloud ---"
 # Authenticate Docker to pull images from Google Artifact Registry.
 # `gcloud` is pre-installed on Deep Learning VM images.
 # This command configures Docker to use gcloud credentials for the specified registry domain.
-gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+REGISTRY_HOST=$(echo "${IMAGE_URI}" | cut -d'/' -f1)
+gcloud auth configure-docker "${REGISTRY_HOST}" --quiet
 echo "Docker authenticated."
 
 # Define the Docker image and container name.

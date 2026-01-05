@@ -27,8 +27,8 @@
 #
 # Arguments:
 #   --gcp_project_id: Specify the GCP project ID.
-#   --region: Specify the region for the resources. Default: us-central1.
-#   --zone: Specify the zone for the resources. Default: us-central1-a.
+#   --region: Specify the region for the resources. Default: asia-south1.
+#   --zone: Specify the zone for the resources. Default: asia-south1-a.
 #   --device: Specify the device type (cpu or gpu). Default: cpu.
 #   --compute: Specify the compute platform (gce). Default: gce.
 #   --source_bucket_name: Specify the source GCS bucket name.
@@ -69,8 +69,8 @@ export BQ_TABLE="milk_pouch_classification_results"
 # --- Argument Parsing ---
 # Set default values for device and compute platform
 PROJECT_ID="project-id-placeholder"
-REGION="us-central1"
-ZONE="us-central1-a" # Zone for the GCE instance
+REGION="asia-south1"
+ZONE="asia-south1-a" # Zone for the GCE instance
 DEVICE="gpu" # Default to GPU
 COMPUTE="gce" # Default to gce
 SOURCE_BUCKET_NAME=""
@@ -164,14 +164,15 @@ gcloud services enable \
   iam.googleapis.com \
   bigquery.googleapis.com \
   pubsub.googleapis.com \
-  cloudscheduler.googleapis.com
+  cloudscheduler.googleapis.com \
+  cloudresourcemanager.googleapis.com
 echo "All APIs have been enabled."
 echo ""
 
 # ---
 
 echo "✅ Step 3: Create BigQuery Dataset and Table..."
-bq --location=US mk --dataset "${PROJECT_ID}:${BQ_DATASET}" \
+bq --location="${REGION}" mk --dataset "${PROJECT_ID}:${BQ_DATASET}" \
   || echo "Dataset '${BQ_DATASET}' already exists."
 bq mk --table "${PROJECT_ID}:${BQ_DATASET}.${BQ_TABLE}" \
   ./src/milk_pouch_results_schema.json \
