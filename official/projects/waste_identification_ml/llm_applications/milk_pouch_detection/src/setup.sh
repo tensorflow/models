@@ -65,6 +65,7 @@ sed -i 's/value.scalar_type().is_cuda()/value.is_cuda()/g' ms_deform_attn_cuda.c
 
 cd /home/${USER}/GroundingDINO/
 pip install -e .
+pip install timm==0.6.12
 cd ..
 echo "✅ Finished: Install Grounding DINO"
 echo "-----"

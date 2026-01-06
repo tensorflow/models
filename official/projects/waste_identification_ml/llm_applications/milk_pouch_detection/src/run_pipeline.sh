@@ -88,7 +88,7 @@ for (( i=0; i<num_files; i+=batch_size )); do
   python3 classify_images.py
 
   # Move predictions back to GCS
-  if [ -d "predictions" ] && [ "$(ls -A predictions)" ]; then
+  if [ -d "predictions" ] && [ -n "$(find predictions -type f -print -quit)" ]; then
     echo "🖨️ Moving predictions for this batch back to GCS bucket: $gcs_path"
     gsutil -m cp -r predictions/ "$gcs_path"
   else
