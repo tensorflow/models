@@ -241,7 +241,7 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
             'num_groundtruths is larger than max_num_instances, %d v.s. %d',
             num_instances, max_num_instances)
         num_instances = max_num_instances
-      for k in range(int(num_instances)):
+      for k in range(int(np.squeeze(num_instances))):
         ann = {}
         ann['image_id'] = int(groundtruths['source_id'][i][j])
         if 'is_crowds' in groundtruths:
