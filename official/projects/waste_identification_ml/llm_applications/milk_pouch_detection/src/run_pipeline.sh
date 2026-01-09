@@ -81,11 +81,17 @@ for (( i=0; i<num_files; i+=batch_size )); do
 
   # Extract objects
   echo "🔎 Extracting objects from images..."
-  python3 extract_objects.py
+  if ! python3 extract_objects.py; then
+    echo "⚠️ Batch $(( i / batch_size + 1 )) failed during object extraction. Skipping to next batch."
+    continue
+  fi
 
   # Classify objects
   echo "🧠 Classifying objects..."
-  python3 classify_images.py
+  if ! python3 classify_images.py; then
+    echo "⚠️ Batch $(( i / batch_size + 1 )) failed during image classification. Skipping to next batch."
+    continue
+  fi
 
   # Move predictions back to GCS
   if [ -d "predictions" ] && [ -n "$(find predictions -type f -print -quit)" ]; then
