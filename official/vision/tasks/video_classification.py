@@ -324,7 +324,7 @@ class VideoClassificationTask(base_task.Task):
                       inputs: Tuple[Any, Any],
                       model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
-    """Validatation step.
+    """Validation step.
 
     Args:
       inputs: a dictionary of input tensors.
