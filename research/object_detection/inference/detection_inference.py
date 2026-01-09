@@ -20,7 +20,7 @@ import tensorflow.compat.v1 as tf
 from object_detection.core import standard_fields
 
 
-def build_input(tfrecord_paths):
+def build_input(tfrecord_paths, num_additional_channels=0):
   """Builds the graph's input.
 
   Args:
@@ -36,15 +36,28 @@ def build_input(tfrecord_paths):
 
   tf_record_reader = tf.TFRecordReader()
   _, serialized_example_tensor = tf_record_reader.read(filename_queue)
+
+  features_dict = {
+      standard_fields.TfExampleFields.image_encoded: tf.FixedLenFeature([], tf.string),
+  }
+
+  if num_additional_channels>0:
+      features_dict[standard_fields.TfExampleFields.image_additional_channels] = \
+          tf.FixedLenFeature([], tf.string)
+
   features = tf.parse_single_example(
       serialized_example_tensor,
-      features={
-          standard_fields.TfExampleFields.image_encoded:
-              tf.FixedLenFeature([], tf.string),
-      })
+      features=features_dict)
   encoded_image = features[standard_fields.TfExampleFields.image_encoded]
   image_tensor = tf.image.decode_image(encoded_image, channels=3)
   image_tensor.set_shape([None, None, 3])
+
+  if standard_fields.TfExampleFields.image_additional_channels in features:
+      encoded_additional_channels = features[standard_fields.TfExampleFields.image_additional_channels]
+      additional_channels_tensor = tf.image.decode_image(encoded_additional_channels, channels=num_additional_channels)
+      additional_channels_tensor.set_shape([None, None, num_additional_channels])
+      image_tensor = tf.concat([image_tensor, additional_channels_tensor], axis=2)
+
   image_tensor = tf.expand_dims(image_tensor, 0)
 
   return serialized_example_tensor, image_tensor
@@ -137,5 +150,7 @@ def infer_detections_and_add_to_example(
 
   if discard_image_pixels:
     del feature[standard_fields.TfExampleFields.image_encoded]
+    if standard_fields.TfExampleFields.image_additional_channels in feature:
+        del feature[standard_fields.TfExampleFields.image_additional_channels]
 
   return tf_example
