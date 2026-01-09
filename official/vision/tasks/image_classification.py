@@ -382,7 +382,7 @@ class ImageClassificationTask(base_task.Task):
                       inputs: Tuple[Any, Any],
                       model: tf_keras.Model,
                       metrics: Optional[List[Any]] = None):
-    """Runs validatation step.
+    """Runs validation step.
 
     Args:
       inputs: A tuple of input tensors of (features, labels).
