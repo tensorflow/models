@@ -21,7 +21,15 @@ from __future__ import print_function
 import functools
 
 import tensorflow.compat.v1 as tf
-from tensorflow.compat.v1 import estimator as tf_estimator
+try:
+    from tensorflow.compat.v1 import estimator as tf_estimator
+except ImportError as e:
+    raise RuntimeError(
+        "TensorFlow Estimator is required for Object Detection API training "
+        "but is not available in TensorFlow >= 2.16. "
+        "Please downgrade TensorFlow to <= 2.15."
+    ) from e
+
 from object_detection.builders import dataset_builder
 from object_detection.builders import image_resizer_builder
 from object_detection.builders import model_builder
