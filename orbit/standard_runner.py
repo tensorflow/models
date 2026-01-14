@@ -84,7 +84,7 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
   """
 
   def __init__(self,
-               train_dataset,
+               train_dataset: Any,
                options: Optional[StandardTrainerOptions] = None):
     """Initializes the `StandardTrainer` instance.
 
@@ -146,7 +146,7 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
     self._train_loop_fn(self._train_iter, num_steps)
     return self.train_loop_end()
 
-  def train_loop_begin(self):
+  def train_loop_begin(self) -> None:
     """Called once at the beginning of the training loop.
 
     This method is always called in eager mode, and is a good place to reset
@@ -157,7 +157,7 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractmethod
-  def train_step(self, iterator):
+  def train_step(self, iterator: Any) :
     """Implements one step of training.
 
     What a "step" consists of is up to the implementer. When using distribution
@@ -259,7 +259,7 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
   """
 
   def __init__(self,
-               eval_dataset,
+               eval_dataset: Any,
                options: Optional[StandardEvaluatorOptions] = None):
     """Initializes the `StandardEvaluator` instance.
 
