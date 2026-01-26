@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Object detection and segmentation model clients using Grounding DINO and SAM2."""
+"""Main bounding box detection and image segmentation logic."""
 
 import math
 from typing import Any, Optional
 import warnings
 
 from groundingdino.util import inference
+import models_utils
 import numpy as np
 from sam2 import build_sam
 from sam2 import sam2_image_predictor
 import torch
-
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import models_utils
 
 # Suppress common warnings for a cleaner console output.
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -158,11 +157,133 @@ class ObjectDetectionSegmentation:
         if (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) < max_box_area
     ]
 
+  def _filter_boxes_at_image_edge(
+      self, boxes: list[np.ndarray], image_height: int, edge_tolerance: int = 5
+  ) -> list[np.ndarray]:
+    """Filter out bounding boxes that touch the top or bottom edges of the image.
+
+    Objects at frame edges are likely partial views.
+    Since each object appears in multiple frames, we can skip these.
+
+    Args:
+      boxes: List of bounding boxes in [x1, y1, x2, y2] format.
+      image_height: Height of the image in pixels.
+      edge_tolerance: Pixel tolerance for edge detection (default: 5).
+
+    Returns:
+      List of bounding boxes that don't touch top or bottom edges.
+    """
+    return [
+        bbox
+        for bbox in boxes
+        if bbox[1] > edge_tolerance and bbox[3] < image_height - edge_tolerance
+    ]
+
+  def _calculate_texture_variance(
+      self, image: np.ndarray, bbox: np.ndarray
+  ) -> float:
+    """Calculate texture variance within a bounding box.
+
+    Args:
+      image: The input image array.
+      bbox: Bounding box in [x1, y1, x2, y2] format.
+
+    Returns:
+      Standard deviation of pixel intensities (grayscale) within the box.
+    """
+    x1, y1, x2, y2 = bbox.astype(int)
+    crop = image[y1:y2, x1:x2]
+
+    # Return and convert to grayscale if not already
+    return float(
+        np.std(np.mean(crop, axis=2) if len(crop.shape) == 3 else crop)
+    )
+
+  def _filter_boxes_by_texture(
+      self,
+      boxes: list[np.ndarray],
+      image: np.ndarray,
+      min_texture_variance: float = 20.0,
+  ) -> tuple[list[np.ndarray], dict[int, float]]:
+    """Filter out boxes with very low texture variance.
+
+    This filter exists to remove misdetections caused by lighting artifacts.
+
+    Args:
+      boxes: List of bounding boxes in [x1, y1, x2, y2] format.
+      image: The input image array.
+      min_texture_variance: Minimum std dev of pixel intensities to keep.
+
+    Returns:
+      Tuple of
+      (filtered boxes, dict of texture variances).
+    """
+    variance_dict = {}
+    filtered_boxes = []
+
+    for i, bbox in enumerate(boxes):
+      variance = self._calculate_texture_variance(image, bbox)
+      variance_dict[i] = variance
+
+      if variance <= min_texture_variance:
+        print(f'  Box {i} filtered (low texture variance: {variance:.2f})')
+      else:
+        filtered_boxes.append(bbox)
+
+    return filtered_boxes, variance_dict
+
+  def _filter_valid_boxes(
+      self,
+      boxes: np.ndarray,
+      image: np.ndarray,
+      image_shape: tuple[int, ...],
+      max_box_to_area_ratio: float,
+      min_texture_variance: float = 10.0,
+  ) -> tuple[list[np.ndarray], dict[int, float]]:
+    """Apply area, edge, and texture-based filtering to boxes.
+
+    Args:
+      boxes: Array of bounding boxes in [x1, y1, x2, y2] format.
+      image: The input image array (for texture analysis).
+      image_shape: Shape of the image (height, width, channels).
+      max_box_to_area_ratio: Maximum box area as ratio of image area.
+      min_texture_variance: Minimum texture variance to keep box.
+
+    Returns:
+      Tuple of (list of valid bounding boxes, dict of texture variances).
+    """
+    # Filter boxes by overall image area
+    image_area = math.prod(image_shape[:2])
+    valid_boxes = self._filter_boxes_by_area(
+        boxes, image_area * max_box_to_area_ratio
+    )
+    if not valid_boxes:
+      print('No objects passed area filter.')
+      return [], {}
+
+    # Filter boxes by intersection with edge of image
+    image_height = image_shape[0]
+    valid_boxes = self._filter_boxes_at_image_edge(valid_boxes, image_height)
+    if not valid_boxes:
+      print('No objects passed edge filter.')
+      return [], {}
+
+    # Filter boxes by texture variance
+    valid_boxes, variance_dict = self._filter_boxes_by_texture(
+        valid_boxes, image, min_texture_variance
+    )
+    if not valid_boxes:
+      print('No objects passed texture filter.')
+      return [], {}
+
+    return valid_boxes, variance_dict
+
   def detect_and_segment(
       self,
       image_path: str,
       text_prompt: str,
       max_box_to_area_ratio: float = 0.25,
+      min_texture_variance: float = 10.0,
   ) -> Optional[dict[str, Any]]:
     """Runs detection and batched segmentation pipeline on an image.
 
@@ -174,10 +295,11 @@ class ObjectDetectionSegmentation:
       image_path: The file path to the input image.
       text_prompt: The text description of objects to use for box detection
       max_box_to_area_ratio: Maximum box area as ratio of image area
+      min_texture_variance: Minimum texture variance to keep box
 
     Returns:
-      A dictionary containing the processed data ('image', 'boxes', 'masks')
-      or None if no objects were detected.
+      A dictionary containing the processed data ('image', 'boxes', 'masks',
+      'texture_variances') or None if no objects were detected.
     """
     print(f"\nProcessing '{image_path}'")
     image, cxchywh_boxes, _, _ = self._detect_objects(image_path, text_prompt)
@@ -189,13 +311,14 @@ class ObjectDetectionSegmentation:
     xyxy_boxes = models_utils.convert_boxes_cxcywh_to_xyxy(
         cxchywh_boxes, image.shape
     )
-    image_area = math.prod(image.shape[:2])
-    valid_boxes = self._filter_boxes_by_area(
-        xyxy_boxes, image_area * max_box_to_area_ratio
+    valid_boxes, variance_dict = self._filter_valid_boxes(
+        xyxy_boxes,
+        image,
+        image.shape,
+        max_box_to_area_ratio,
+        min_texture_variance,
     )
-
     if not valid_boxes:
-      print('No objects passed area filter.')
       return None
 
     masks, _ = self._segment_objects(image, valid_boxes)
@@ -205,4 +328,5 @@ class ObjectDetectionSegmentation:
         'image': image,
         'boxes': valid_boxes,
         'masks': masks,
+        'texture_variances': variance_dict,
     }
