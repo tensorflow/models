@@ -81,9 +81,17 @@ class TritonObjectDetector:
   ) -> np.ndarray:
     """Resizes a batch of masks to the target dimensions."""
     target_w, target_h = target_dims
-    return cv2.resize(
-        masks, (target_w, target_h), interpolation=cv2.INTER_NEAREST
+    masks_transposed = np.transpose(masks, (1, 2, 0))
+
+    resized_batch = cv2.resize(
+        masks_transposed, (target_w, target_h), interpolation=cv2.INTER_NEAREST
     )
+
+    # If N=1, cv2.resize might drop the last dim, so we ensure 3D
+    if resized_batch.ndim == 2:
+      return resized_batch[np.newaxis, ...]
+
+    return np.transpose(resized_batch, (2, 0, 1))
 
   def _scale_bbox_and_masks(
       self, results: Dict[str, Any], target_dims: Tuple[int, int]

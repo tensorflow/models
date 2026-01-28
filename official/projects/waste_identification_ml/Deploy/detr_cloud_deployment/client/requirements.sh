@@ -32,6 +32,8 @@ sudo apt-get install -y python3-venv python3-pip
 python3.10 -m venv myenv
 source myenv/bin/activate
 
+echo "Activated python environment, installing dependencies."
+
 pip install --no-cache-dir natsort absl-py opencv-python pandas pandas-gbq \
   google-cloud-bigquery google-auth trackpy google-cloud-storage \
   scikit-image scikit-learn webcolors==1.13 ffmpeg-python tritonclient[all] \

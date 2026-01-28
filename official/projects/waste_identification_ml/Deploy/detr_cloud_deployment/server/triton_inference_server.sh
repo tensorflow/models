@@ -33,6 +33,8 @@ command -v screen >/dev/null 2>&1 || { \
   sudo apt update && sudo apt install -y screen; \
 }
 
+echo "Starting Triton server in a screen session."
+
 # Start Triton server
 screen -dmS server bash -c '
 sudo docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
