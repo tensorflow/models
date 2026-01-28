@@ -97,14 +97,12 @@ class TritonObjectDetectorTest(unittest.TestCase):
     expected = np.array([[0.4, 0.4, 0.6, 0.6], [0.0, 0.0, 1.0, 1.0]])
     np.testing.assert_allclose(result, expected)
 
-  @mock.patch(f"{MODULE_PATH}.Image.fromarray")
-  def test_scale_bbox_and_masks(self, mock_fromarray):
+  @mock.patch(f"{MODULE_PATH}.cv2.resize")
+  def test_scale_bbox_and_masks(self, mock_cv2_resize):
     # Arrange
-    mock_img_instance = mock.Mock()
-    mock_fromarray.return_value = mock_img_instance
-    mock_img_instance.resize.return_value = np.ones(
+    mock_cv2_resize.return_value = np.ones(
         (20, 10)
-    )  # w=10, h=20 -> PIL resize returns (width, height) numpy array
+    )  # h=20, w=10. cv2 resize returns h, w
 
     results = {
         "xyxy": np.array([[0.1, 0.1, 0.5, 0.5]]),
@@ -118,8 +116,14 @@ class TritonObjectDetectorTest(unittest.TestCase):
     # Assert
     np.testing.assert_allclose(scaled_results["xyxy"], [[1.0, 2.0, 5.0, 10.0]])
     self.assertEqual(scaled_results["masks"].shape, (1, 20, 10))
-    mock_fromarray.assert_called_once_with(results["masks"][0])
-    mock_img_instance.resize.assert_called_once_with((10, 20))
+    self.assertEqual(scaled_results["masks"].dtype, bool)
+    mock_cv2_resize.assert_called_once()
+    args, kwargs = mock_cv2_resize.call_args
+    np.testing.assert_array_equal(args[0], np.ones((5, 5, 1)))
+    self.assertEqual(args[1], (10, 20))
+    self.assertEqual(
+        kwargs["interpolation"], triton_server_inference.cv2.INTER_NEAREST
+    )
 
   @mock.patch(f"{MODULE_PATH}.cv2.imread")
   @mock.patch(f"{MODULE_PATH}.cv2.cvtColor")
