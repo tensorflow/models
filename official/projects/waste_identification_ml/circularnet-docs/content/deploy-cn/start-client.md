@@ -6,7 +6,7 @@ Follow these steps to leverage the triton inference server you
 Go to the `client` folder within the the `waste_identification_ml` project:
 
 ```bash
-cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/client/
+cd models/official/projects/waste_identification_ml/Deploy/detr_cloud_deployment/client/
 ```
 
 The inference pipeline uses a script to set various parameters for inference,

@@ -11,7 +11,7 @@ terminal of your edge device, open the `server` folder in the
 `waste_identification_ml` project directory:
 
     ```
-    cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/server/
+    cd models/official/projects/waste_identification_ml/Deploy/detr_cloud_deployment/server/
     ```
 
 1. Run the `triton_server.sh` script to create the Triton inference server and

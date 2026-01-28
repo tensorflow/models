@@ -21,7 +21,7 @@ in Google Cloud or the terminal of your edge device:
 directory:
 
     ```
-    cd models/official/projects/waste_identification_ml/Triton_TF_Cloud_Deployment/client/
+    cd models/official/projects/waste_identification_ml/Deploy/detr_cloud_deployment/client/
     ```
 
 1. Run `requirements.sh` to install all the required packages and libraries:
