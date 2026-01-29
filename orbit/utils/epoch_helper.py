@@ -33,7 +33,7 @@ class EpochHelper:
     self._epoch_start_step = None
     self._in_epoch = False
 
-  def epoch_begin(self):
+  def epoch_begin(self) -> bool:
     """Returns whether a new epoch should begin."""
     if self._in_epoch:
       return False
@@ -43,7 +43,7 @@ class EpochHelper:
     self._in_epoch = True
     return True
 
-  def epoch_end(self):
+  def epoch_end(self) -> bool:
     """Returns whether the current epoch should end."""
     if not self._in_epoch:
       raise ValueError("`epoch_end` can only be called inside an epoch.")
@@ -56,10 +56,10 @@ class EpochHelper:
     return False
 
   @property
-  def batch_index(self):
+  def batch_index(self) -> int:
     """Index of the next batch within the current epoch."""
     return self._global_step.numpy() - self._epoch_start_step
 
   @property
-  def current_epoch(self):
+  def current_epoch(self) -> int:
     return self._current_epoch
