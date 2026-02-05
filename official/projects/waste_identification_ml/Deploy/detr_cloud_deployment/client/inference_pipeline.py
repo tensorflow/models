@@ -135,7 +135,6 @@ def main(_) -> None:
 
     # Perform Inference
     try:
-
       results = model_manager.predict(
           image_path=image_path,
           confidence_threshold=PREDICTION_THRESHOLD.value,
@@ -154,14 +153,17 @@ def main(_) -> None:
       )
 
     # Save the image with bounding boxes & masks
+    if not results["class_names"].any():
+      logger.info(f"No objects detected in {os.path.basename(image_path)}")
+      continue
+
     try:
-      if results["class_names"].any():
-        pil_image = Image.fromarray(image_for_saving)
-        save_path = os.path.join(
-            prediction_folder, os.path.basename(image_path)
-        )
-        utils.draw_detections_and_save_image(pil_image, results, save_path)
-        logger.info("Image with bounding box saved")
+      pil_image = Image.fromarray(image_for_saving)
+      save_path = os.path.join(
+          prediction_folder, os.path.basename(image_path)
+      )
+      utils.draw_detections_and_save_image(pil_image, results, save_path)
+      logger.info("Image with bounding box saved")
     except (KeyError, IndexError, TypeError, ValueError) as e:
       logger.info(
           f"Issue in saving visualization of results, due to error : {e}"
