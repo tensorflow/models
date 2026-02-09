@@ -1,4 +1,4 @@
-# Copyright 2025 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -121,18 +121,6 @@ def main(_) -> None:
 
     logger.info(f"Processing {os.path.basename(image_path)}")
 
-    original_image = cv2.imread(image_path)
-    image_for_tracking = cv2.resize(
-        original_image,
-        (_TRACKING_IMAGE_WIDTH, _TRACKING_IMAGE_HEIGHT),
-        interpolation=cv2.INTER_AREA,
-    )
-    image_for_saving = cv2.resize(
-        original_image,
-        (_IMAGE_SAVING_WIDTH, _IMAGE_SAVING_HEIGHT),
-        interpolation=cv2.INTER_AREA,
-    )
-
     # Perform Inference
     try:
       results = model_manager.predict(
@@ -152,11 +140,25 @@ def main(_) -> None:
           f" error : {e}"
       )
 
-    # Save the image with bounding boxes & masks
+    # Continue to next image if no objects detected
     if not results["class_names"].any():
       logger.info(f"No objects detected in {os.path.basename(image_path)}")
       continue
 
+    # Image resizing for tracking and saving
+    original_image = cv2.imread(image_path)
+    image_for_tracking = cv2.resize(
+        original_image,
+        (_TRACKING_IMAGE_WIDTH, _TRACKING_IMAGE_HEIGHT),
+        interpolation=cv2.INTER_AREA,
+    )
+    image_for_saving = cv2.resize(
+        original_image,
+        (_IMAGE_SAVING_WIDTH, _IMAGE_SAVING_HEIGHT),
+        interpolation=cv2.INTER_AREA,
+    )
+
+    # Save the image with bounding boxes & masks
     try:
       pil_image = Image.fromarray(image_for_saving)
       save_path = os.path.join(
