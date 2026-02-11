@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright 2025 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -207,10 +207,10 @@ def _crop_objects_from_masks(
   Returns:
     A list of numpy arrays, where each array is a cropped object.
   """
-  cropped_objects = []
-  for m in masks.astype(int):
-    cropped_object = np.where(np.expand_dims(m, -1), image, 0)
-    cropped_objects.append(cropped_object)
+  cropped_objects = [
+      np.where(np.expand_dims(m, -1), image, 0) for m in masks.astype(int)
+  ]
+
   return cropped_objects
 
 

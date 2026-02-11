@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright 2025 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,9 +46,9 @@ INPUT_DIRECTORY = flags.DEFINE_string(
 OUTPUT_DIRECTORY = flags.DEFINE_string(
     "output_directory", None, "The path to the directory to save the results."
 )
-MODEL = flags.DEFINE_string("model", None, "Model name")
+MODEL_NAME = flags.DEFINE_string("model_name", None, "Model name")
 PREDICTION_THRESHOLD = flags.DEFINE_float(
-    "score", None, "Threshold to filter the prediction results"
+    "threshold", None, "Threshold to filter the prediction results"
 )
 SEARCH_RANGE_X = flags.DEFINE_integer(
     "search_range_x",
@@ -102,7 +102,7 @@ def main(_) -> None:
       for filepath in utils.files_paths(os.path.basename(input_directory))
   }
 
-  model_manager = TritonObjectDetector(model_name=MODEL.value)
+  model_manager = TritonObjectDetector(model_name=MODEL_NAME.value)
   tracking_manager = ObjectTracker(
       search_range=(SEARCH_RANGE_Y.value, SEARCH_RANGE_X.value),
       memory=MEMORY.value,
