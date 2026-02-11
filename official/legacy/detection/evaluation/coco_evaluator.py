@@ -65,7 +65,7 @@ class OlnCOCOevalWrapper(cocoeval.COCOeval):
 
     Delta to the standard cocoapi function:
       More Averate Recall metrics are produced with different top-K proposals.
-    Note this functin can *only* be applied on the default parameter
+    Note this function can *only* be applied on the default parameter
     setting.
     Raises:
       Exception: Please run accumulate() first.
