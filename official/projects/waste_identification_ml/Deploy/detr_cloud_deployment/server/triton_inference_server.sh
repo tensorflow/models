@@ -15,9 +15,9 @@ fi
 
 # Define an associative array with model names and their URLs
 declare -A models=(
-  ["CircularNet_rfdetr_seg_preview_v1"]="https://storage.googleapis.com/"\
+  ["CircularNet_Segmentation_Model_v1"]="https://storage.googleapis.com/"\
 "tf_model_garden/vision/waste_identification_ml/"\
-"CircularNet_rfdetr_seg_preview_v1.zip"
+"CircularNet_Segmentation_Model_v1.zip"
 )
 
 # Download, unzip, and organize models
@@ -38,6 +38,4 @@ echo "Starting Triton server in a screen session."
 # Start Triton server
 screen -dmS server bash -c '
 sudo docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
--v ${PWD}/model_repository:/models \
-nvcr.io/nvidia/tritonserver:25.03-py3 \
-tritonserver --model-repository=/models --backend-config=pytorch,version=2'
+-v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:25.05-py3 tritonserver --model-repository=/models'

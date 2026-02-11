@@ -27,7 +27,7 @@ labels (e.g. person1, person2, cat) to every pixel in an input image.
 
 Model categories | Model backbone | Model type  | GCP bucket path |
 | ------ | ------ | ----- | ------ |
-Material Type & Form | Vision transformer | onnx model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/CircularNet_rfdetr_seg_preview_v1.zip)
+Material Type & Form | Vision transformer | onnx model | [click here](https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/CircularNet_Segmentation_Model_v1.zip)
 
 ## Full Documentation
 
