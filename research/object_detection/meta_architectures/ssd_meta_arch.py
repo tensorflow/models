@@ -1359,10 +1359,8 @@ class SSDMetaArch(model.DetectionModel):
       update_ops.extend(slim_update_ops)
     if self._box_predictor.is_keras_model:
       update_ops.extend(self._box_predictor.get_updates_for(None))
-      update_ops.extend(self._box_predictor.get_updates_for(
-          self._box_predictor.inputs))
+      update_ops.extend(self._box_predictor.get_updates_for(None))
     if self._feature_extractor.is_keras_model:
       update_ops.extend(self._feature_extractor.get_updates_for(None))
-      update_ops.extend(self._feature_extractor.get_updates_for(
-          self._feature_extractor.inputs))
+      update_ops.extend(self._feature_extractor.get_updates_for(None))
     return update_ops
