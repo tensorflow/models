@@ -68,7 +68,8 @@ class NewBestMetric:
                metric: Union[str, MetricFn],
                higher_is_better: bool = True,
                filename: Optional[str] = None,
-               write_metric=True):
+               write_metric=True,
+               min_delta: float = 0.0):
     """Initializes the instance.
 
     Args:
@@ -87,6 +88,9 @@ class NewBestMetric:
         file to obtain the initial value. Setting this to `False` for most
         clients in some multi-client setups can avoid unnecessary file writes.
         Has no effect if `filename` is `None`.
+      min_delta: Minimum change in the monitored quantity to qualify as an
+        improvement, i.e. an absolute change of less than min_delta, will count
+        as no improvement.
     """
     self.metric = metric
     self.higher_is_better = higher_is_better
@@ -95,6 +99,7 @@ class NewBestMetric:
         initial_value=-float_max if higher_is_better else float_max,
         filename=filename,
         write_value=write_metric)
+    self._min_delta = abs(min_delta)
 
   def __call__(self, output: runner.Output) -> bool:
     """Tests `output` and updates the current best value if necessary.
@@ -137,10 +142,10 @@ class NewBestMetric:
     """
     metric_value = self.metric_value(output)
     if self.higher_is_better:
-      if metric_value > self.best_value:
+      if metric_value > self.best_value + self._min_delta:
         return True
     else:  # Lower is better.
-      if metric_value < self.best_value:
+      if metric_value < self.best_value - self._min_delta:
         return True
     return False
 
