@@ -76,7 +76,7 @@ def create_cat_tf_example(encoded_cat_image_data):
       'image/width': dataset_util.int64_feature(width),
       'image/filename': dataset_util.bytes_feature(filename),
       'image/source_id': dataset_util.bytes_feature(filename),
-      'image/encoded': dataset_util.bytes_feature(encoded_image_data),
+      'image/encoded': dataset_util.bytes_feature(encoded_cat_image_data),
       'image/format': dataset_util.bytes_feature(image_format),
       'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
       'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
