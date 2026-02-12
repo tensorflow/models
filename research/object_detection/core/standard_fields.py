@@ -272,6 +272,7 @@ class TfExampleFields(object):
 
   Attributes:
     image_encoded: JPEG encoded string
+    image_additional_channels_encoded: JPEG encoded string of additional channels
     image_format: image format, e.g. "JPEG"
     filename: filename
     channels: number of channels of image
@@ -309,6 +310,7 @@ class TfExampleFields(object):
     detection_score: detection score for the class label and box.
   """
   image_encoded = 'image/encoded'
+  image_additional_channels = 'image/additional_channels/encoded'
   image_format = 'image/format'  # format is reserved keyword
   filename = 'image/filename'
   channels = 'image/channels'
