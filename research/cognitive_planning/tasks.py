@@ -80,7 +80,7 @@ def classification_loss(truth, predicted, weights=None, is_one_hot=True):
 
   Computes the mean of cross entropy losses for all pairs of true labels and
   predictions. It wraps around a tf implementation of the cross entropy loss
-  with additional reformating of the inputs. If the truth and predicted are
+  with additional reformatting of the inputs. If the truth and predicted are
   n-rank Tensors with n > 2, then these are reshaped to 2-rank Tensors. It
   allows for truth to be specified as one hot vector or class indices. Finally,
   a weight can be specified for each element in truth and predicted.
@@ -489,7 +489,7 @@ class RandomExplorationBasedTask(UnrolledTask):
         [np.reshape(p, [1, 2]) for p in path_coordinates])
 
     # The observations are taken along a smoothed trajectory following the path.
-    # We compute a mapping between the obeservations and the map vertices.
+    # We compute a mapping between the observations and the map vertices.
     path_to_obs = collections.defaultdict(list)
     obs_to_state = []
     for i, s in enumerate(states):
@@ -634,7 +634,7 @@ class AreNearbyTask(RandomExplorationBasedTask):
     assert len(observations.values()[0]) == len(states)
 
     # The observations are taken along a smoothed trajectory following the path.
-    # We compute a mapping between the obeservations and the map vertices.
+    # We compute a mapping between the observations and the map vertices.
     path_to_obs, obs_to_path = self._obs_to_state(path, states)
 
     # Go over all observations, and sample a query. With probability 0.5 this
@@ -751,7 +751,7 @@ class NeighboringQueriesTask(RandomExplorationBasedTask):
         2 x observation_size X observation_size x 3 containing a pair of query
         images.
       A tuple of size two. First element is a numpy array of size 2 containing
-        a one hot vector of whether the two observations are neighobring. Second
+        a one hot vector of whether the two observations are neighboring. Second
         element is a boolean numpy value denoting whether this is a valid
         episode.
     """
@@ -1166,7 +1166,7 @@ class GotoStaticXNoExplorationTask(UnrolledTask):
     closer to the goal the value is 1. In case, it takes the agent one step away
     from the goal it would be -1. If it leads to collision or if the agent uses
     action stop before reaching to the goal it is -2. To avoid scale issues the
-    gt_values are multipled by 0.5.
+    gt_values are multiplied by 0.5.
 
     Args:
       vertex: integer, the index of current vertex.
@@ -1355,7 +1355,7 @@ class NewTask(UnrolledTask):
     closer to the goal the value is 1. In case, it takes the agent one step away
     from the goal it would be -1. If it leads to collision or if the agent uses
     action stop before reaching to the goal it is -2. To avoid scale issues the
-    gt_values are multipled by 0.5.
+    gt_values are multiplied by 0.5.
 
     Args:
       vertex: integer, the index of current vertex.

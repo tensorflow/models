@@ -353,7 +353,7 @@ class CifarModelTrainer(object):
     return valid_accuracy, test_accuracy
 
   def run_model(self):
-    """Trains and evalutes the image model."""
+    """Trains and evaluates the image model."""
     hparams = self.hparams
 
     # Build the child graph

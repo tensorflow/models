@@ -88,7 +88,7 @@ flags.DEFINE_integer('train_iters', 200000, 'number of training iterations.')
 flags.DEFINE_integer('save_summaries_secs', 300,
                      'number of seconds between saving summaries')
 flags.DEFINE_integer('save_interval_secs', 300,
-                     'numer of seconds between saving variables')
+                     'number of seconds between saving variables')
 flags.DEFINE_integer('log_every_n_steps', 20, 'number of steps between logging')
 flags.DEFINE_string('modality_types', '',
                     'modality names in _ separated format')
@@ -122,8 +122,8 @@ flags.DEFINE_string(
 flags.DEFINE_bool('freeze_resnet_weights', True, '')
 flags.DEFINE_string(
     'eval_init_points_file_name', '',
-    'Name of the file that containts the initial locations and'
-    'worlds for each evalution point')
+    'Name of the file that contains the initial locations and'
+    'worlds for each evaluation point')
 
 FLAGS = flags.FLAGS
 TRAIN_WORLDS = [
@@ -377,7 +377,7 @@ def init(sequence_length, eval_init_points_file_name, worlds):
   logging.info('modality types: %r', modality_types)
   # negative reward_goal_range prevents the env from terminating early when the
   # agent is close to the goal. The policy should keep the agent until the end
-  # of the 100 steps either through chosing stop action or oscilating around
+  # of the 100 steps either through choosing stop action or oscillating around
   # the target.
 
   env = active_vision_dataset_env.ActiveVisionDatasetEnv(
