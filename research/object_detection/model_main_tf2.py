@@ -62,7 +62,9 @@ flags.DEFINE_integer(
     'MultiWorkerMirroredStrategy. When num_workers = 1 it uses '
     'MirroredStrategy.')
 flags.DEFINE_integer(
-    'checkpoint_every_n', 1000, 'Integer defining how often we checkpoint.')
+    'checkpoint_every_n', 1000, 'Integer defining how often we save the checkpoint.')
+flags.DEFINE_integer(
+    'checkpoint_max_to_keep', 7, 'Integer defining how many checkpoints to save.')
 flags.DEFINE_boolean('record_summaries', True,
                      ('Whether or not to record summaries defined by the model'
                       ' or the training pipeline. This does not impact the'
@@ -108,6 +110,7 @@ def main(unused_argv):
           train_steps=FLAGS.num_train_steps,
           use_tpu=FLAGS.use_tpu,
           checkpoint_every_n=FLAGS.checkpoint_every_n,
+          checkpoint_max_to_keep=FLAGS.checkpoint_max_to_keep,
           record_summaries=FLAGS.record_summaries)
 
 if __name__ == '__main__':
