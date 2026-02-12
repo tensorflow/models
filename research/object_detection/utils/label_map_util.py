@@ -379,6 +379,37 @@ def create_category_index_from_labelmap(label_map_path, use_display_name=True):
   return create_category_index(categories)
 
 
+def extract_label_names_from_category_index(category_index,
+                                            max_label_index,
+                                            fill_in_background=False):
+  """Extract label names from a category index and put them in a list.
+
+  All other missing ids in range 1 to max_label_index (inclusive) will be
+  added with a dummy class name ("class_<id>") if they are missing.
+
+  Args:
+    category_index: A category index, which is a dictionary that maps integer 
+      ids to dicts containing categories, e.g.
+      {1: {'id': 1, 'name': 'dog'}, 2: {'id': 2, 'name': 'cat'}, ...}.
+    max_label_index: Integer value for the maximum index in the labels.
+    fill_in_background: Whether to fill in background with respect to the id 
+      field in the proto. The id: 0 is reserved for the 'background' class and
+      will be added if it is missing.
+
+  Returns:
+    A list of label names, e.g. ['dog', 'cat', ...].
+  """
+  labels = []
+
+  if 0 in category_index or fill_in_background:
+    labels.append('background')
+
+  for i in range(1, max_label_index + 1):
+    category = category_index.get(i, {})
+    labels.append(category.get('name', 'class_' + str(i)))
+  return labels
+
+
 def create_class_agnostic_category_index():
   """Creates a category index with a single `object` class."""
   return {1: {'id': 1, 'name': 'object'}}
