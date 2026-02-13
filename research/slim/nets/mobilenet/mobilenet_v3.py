@@ -748,7 +748,7 @@ def _reduce_consecutive_layers(conv_defs, start_id, end_id, multiplier=0.5):
   defs = copy.deepcopy(conv_defs)
   for d in defs['spec'][start_id:end_id+1]:
     d.params.update({
-        'num_outputs': np.int(np.round(d.params['num_outputs'] * multiplier))
+        'num_outputs': int(np.round(d.params['num_outputs'] * multiplier))
     })
   return defs
 
