@@ -1517,3 +1517,34 @@ class VisualizeSingleFrameDetections(EvalMetricOpsVisualization):
                                               self._min_score_thresh,
                                               self._use_normalized_coordinates,
                                               self._keypoint_edges)
+
+
+# Function that returns the Centre Coordinate (x, y) of the detected box.
+def centre_point(image,
+                 boxes,
+                 scores,
+                 verbose=False,
+                 use_normalized_coordinates=False,
+                 max_boxes_to_draw=20,
+                 min_score_thresh=.5):
+  if not max_boxes_to_draw:
+    max_boxes_to_draw = boxes.shape[0]
+
+  if scores is None or scores[0] > min_score_thresh:
+    box = tuple(boxes[0].tolist()) # Assigning the first index of boxes
+
+    ymin, xmin, ymax, xmax = box # Extracting the respective values
+
+    image = Image.fromarray(np.uint8(image)).convert('RGB')
+    im_width, im_height = image.size
+
+    if use_normalized_coordinates:
+      (left, right, top, bottom) = (xmin * im_width, xmax * im_width,
+                                    ymin * im_height, ymax * im_height)
+    else:
+      (left, right, top, bottom) = (xmin, xmax, ymin, ymax)
+
+    centre_coords = (left+right)/2, (top+bottom)/2
+    if verbose: print('Detected Centre :', centre_coords)
+
+    return centre_coords
