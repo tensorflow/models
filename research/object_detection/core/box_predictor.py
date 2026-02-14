@@ -26,7 +26,7 @@ in our detection models.
 These modules are separated from the main model since the same
 few box predictor architectures are shared across many models.
 """
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import tensorflow.compat.v1 as tf
 
 BOX_ENCODINGS = 'box_encodings'
@@ -34,7 +34,7 @@ CLASS_PREDICTIONS_WITH_BACKGROUND = 'class_predictions_with_background'
 MASK_PREDICTIONS = 'mask_predictions'
 
 
-class BoxPredictor(object):
+class BoxPredictor(ABC):
   """BoxPredictor."""
 
   def __init__(self, is_training, num_classes):
