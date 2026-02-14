@@ -96,6 +96,13 @@ message WeightedSmoothL1LocalizationLoss {
 
 // Intersection over union location loss: 1 - IOU
 message WeightedIOULocalizationLoss {
+  enum IOU_type {
+    IOU = 0;
+    CIOU = 1;
+    DIOU = 2;
+	GIOU = 3;
+  }
+  optional IOU_type iou_type = 3 [default=IOU];
 }
 
 // L1 Localization Loss.
