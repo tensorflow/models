@@ -13,16 +13,16 @@
 # limitations under the License.
 
 """Defines types used by the keras uplift modeling library."""
+from typing import Union
 
 import tensorflow as tf, tf_keras
 
-TensorType = tf.Tensor | tf.SparseTensor | tf.RaggedTensor
-
+TensorType = Union[tf.Tensor, tf.SparseTensor, tf.RaggedTensor]
 ListOfTensors = list[TensorType]
 TupleOfTensors = tuple[TensorType, ...]
 DictOfTensors = dict[str, TensorType]
 
-CollectionOfTensors = ListOfTensors | TupleOfTensors | DictOfTensors
+CollectionOfTensors = Union[ListOfTensors, TupleOfTensors, DictOfTensors]
 
 
 class TwoTowerNetworkOutputs(tf.experimental.ExtensionType):

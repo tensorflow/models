@@ -16,7 +16,7 @@
 
 from collections.abc import Mapping
 import dataclasses
-from typing import Any
+from typing import Any, Optional
 
 from official.core.config_definitions import base_config
 
@@ -33,9 +33,9 @@ class SlicedMetricConfig(base_config.Config):
       values to slice on.
   """
 
-  slicing_feature: str | None = None
-  slicing_spec: Mapping[str, int] | None = None
-  slicing_feature_dtype: str | None = None
+  slicing_feature: Optional[str] = None
+  slicing_spec: Optional[Mapping[str, int]] = None
+  slicing_feature_dtype: Optional[str] = None
 
   def __post_init__(
       self, default_params: dict[str, Any], restrictions: list[str]
