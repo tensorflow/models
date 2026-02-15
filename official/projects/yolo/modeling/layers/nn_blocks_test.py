@@ -376,5 +376,23 @@ class RepConvTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotIn(None, grad)
     return
 
+  @parameterized.named_parameters(
+    ('test', 3, 32, 32),
+    ('test1 infilters!=outfilters', 3, 16, 32),
+    ('test2 kernelsize=4', 4, 32, 32),
+    ('test3 strides=2', 3, 32, 32, 2),
+    ('test4 strides=2 infilters!=outfilters', 3, 16, 32, 2),
+    ('test5 kernelsize=4 strides=2', 4, 32, 32, 2),
+    ('test6 strides=4', 3, 32, 32, 4))
+  def test_fuse_and_unfuse_result(self, kernel_size, infilters, outfilters, strides=1):
+    batch_size = 1
+    height = width = 224
+    inputs = tf.random.uniform([batch_size, height, width, infilters])
+    test_layer = nn_blocks.RepConv(outfilters, kernel_size=kernel_size, strides=strides)
+    unfuse = test_layer(inputs)
+    test_layer.fuse()
+    fuse = test_layer(inputs)
+    self.assertAllClose(unfuse, fuse, atol=1.0e-5)
+
 if __name__ == '__main__':
   tf.test.main()
