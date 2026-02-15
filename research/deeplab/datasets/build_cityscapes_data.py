@@ -19,7 +19,7 @@
 The Cityscapes dataset is expected to have the following directory structure:
 
   + cityscapes
-     - build_cityscapes_data.py (current working directiory).
+     - build_cityscapes_data.py (current working directory).
      - build_data.py
      + cityscapesscripts
        + annotation
