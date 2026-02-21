@@ -1,0 +1,11 @@
+name: Commit Lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  commitlint:
+    uses: KeepTruckin/github-workflows-catalog/.github/workflows/commitlint.yaml@master
+    with:
+      node_version: "20"

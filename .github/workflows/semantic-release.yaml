@@ -1,0 +1,15 @@
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - develop
+      - development
+
+jobs:
+  release:
+    uses: KeepTruckin/github-workflows-catalog/.github/workflows/semantic-release.yaml@master
+    secrets:
+      KTBOT_GH_PAT: ${{ secrets.KTBOT_GH_PAT }}
