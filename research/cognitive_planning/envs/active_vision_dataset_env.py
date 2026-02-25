@@ -936,7 +936,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
       path = nx.shortest_path(self._cur_graph.graph,
                               self._cur_graph.id_to_index[image_id],
                               super_source)
-    except:
+    except Exception:
       print 'path not found, image_id = ', self._cur_world, self._cur_image_id
       raise
     return path[:-1]

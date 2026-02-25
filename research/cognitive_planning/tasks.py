@@ -1153,7 +1153,7 @@ class GotoStaticXNoExplorationTask(UnrolledTask):
           len(nx.shortest_path(self._env.graph, vertex, t))
           for t in target_vertices
       ])
-    except:
+    except Exception:
       #logging.error('there is no path between vertex %d and at least one of '
       #              'the targets %r', vertex, target_vertices)
       raise
@@ -1342,7 +1342,7 @@ class NewTask(UnrolledTask):
           len(nx.shortest_path(self._env.graph, vertex, t))
           for t in target_vertices
       ])
-    except:
+    except Exception:
       logging.error('there is no path between vertex %d and at least one of '
                     'the targets %r', vertex, target_vertices)
       raise

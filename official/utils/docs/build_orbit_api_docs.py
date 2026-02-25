@@ -51,7 +51,7 @@ PROJECT_FULL_NAME = 'Orbit'
 def hide_module_model_and_layer_methods():
   """Hide methods and properties defined in the base classes of Keras layers.
 
-  We hide all methods and properties of the base classes, except:
+  We hide all methods and properties of the base classes, except Exception:
   - `__init__` is always documented.
   - `call` is always documented, as it can carry important information for
     complex layers.

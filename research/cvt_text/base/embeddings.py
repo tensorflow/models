@@ -132,7 +132,7 @@ class PretrainedEmbeddingLoader(object):
             utils.log('vector for line', i, 'has size', vec.size, 'so skipping')
             utils.log(line[:100] + '...')
             continue
-        except:
+        except Exception:
           utils.log('can\'t parse line', i, 'so skipping')
           utils.log(line[:100] + '...')
           continue

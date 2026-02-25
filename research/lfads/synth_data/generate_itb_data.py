@@ -123,7 +123,7 @@ with tf.Session() as sess:
   try:
     saver.restore(sess, model_checkpoint_path)
     print ('Model restored from', model_checkpoint_path)
-  except:
+  except Exception:
     assert False, ("No checkpoints to restore from, is the path %s correct?"
                    %model_checkpoint_path)
 

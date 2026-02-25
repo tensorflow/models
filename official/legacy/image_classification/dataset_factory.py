@@ -226,7 +226,7 @@ class DatasetBuilder:
     }
     try:
       return dtype_map[self.config.dtype]
-    except:
+    except Exception:
       raise ValueError('Invalid DType provided. Supported types: {}'.format(
           dtype_map.keys()))
 
