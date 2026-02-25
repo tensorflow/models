@@ -1,0 +1,21 @@
+--extra-index-url https://pypi.nvidia.com
+
+natsort==8.4.0
+absl-py==2.4.0
+opencv-python==4.13.0.92
+pandas==2.3.3
+pandas-gbq==0.33.0
+google-cloud-bigquery==3.40.1
+google-auth==2.48.0
+google-cloud-storage==3.9.0
+scikit-image==0.25.2
+scikit-learn==1.7.2
+webcolors==1.13
+ffmpeg-python==0.2.0
+tritonclient[all]==2.65.0
+supervision==0.26.1
+pillow==12.0.0
+trackpy==0.7
+cupy-cuda12x[cuda_dlls]
+cupy-cuda12x[ctk]
+cuml-cu12==25.12.*

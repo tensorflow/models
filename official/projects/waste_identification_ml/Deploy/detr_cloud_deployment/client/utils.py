@@ -31,21 +31,15 @@ import datetime
 import logging
 import os
 import subprocess
-import sys
 import time
 
+import color_extraction
 import natsort
 import numpy as np
 import pandas as pd
 import PIL
 from PIL import Image
 import supervision as sv
-
-
-sys.path.append(
-    'models/official/projects/waste_identification_ml/model_inference/'
-)
-import color_and_property_extractor  # pylint: disable=g-bad-import-order, g-import-not-at-top
 
 _DETECTION_COLOR_PALETTE = sv.ColorPalette.from_hex([
     '#ffff00',
@@ -236,11 +230,9 @@ def extract_color_names(results, image_for_saving):
   )
   # Perform color detection using clustering approach.
   dominant_colors = [
-      *map(color_and_property_extractor.find_dominant_color, cropped_objects)
+      *map(color_extraction.find_dominant_color, cropped_objects)
   ]
-  generic_color_names = color_and_property_extractor.get_generic_color_name(
-      dominant_colors
-  )
+  generic_color_names = color_extraction.get_generic_color_name(dominant_colors)
   return generic_color_names
 
 

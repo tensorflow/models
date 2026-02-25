@@ -27,8 +27,11 @@
 # limitations under the License.
 """Pipeline to run the prediction on the images folder with Triton server."""
 
-import os
+import cuml.accel  # pylint: disable=g-bad-import-order, g-import-not-at-top
 
+cuml.accel.install()  # pylint: disable=g-bad-import-order, g-import-not-at-top
+
+import os  # pylint: disable=g-bad-import-order, g-import-not-at-top
 from absl import app
 from absl import flags
 from big_query_ops import BigQueryManager
@@ -141,7 +144,7 @@ def main(_) -> None:
       )
 
     # Continue to next image if no objects detected
-    if not results["class_names"].any():
+    if results["class_names"].size == 0:
       logger.info(f"No objects detected in {os.path.basename(image_path)}")
       continue
 

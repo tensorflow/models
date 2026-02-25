@@ -249,7 +249,7 @@ class TritonObjectDetector:
         raw_outputs, confidence_threshold, max_boxes
     )
 
-    if results['labels'].any():
+    if results['labels'].size != 0:
       # Scale to output dimensions
       results = self._scale_bbox_and_masks(results, output_dims)
 
