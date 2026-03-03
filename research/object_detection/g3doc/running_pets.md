@@ -105,9 +105,9 @@ copy the files into your GCS bucket (substituting `${YOUR_GCS_BUCKET}`):
 
 ```bash
 # From tensorflow/models/research/
-gsutil cp pet_faces_train.record-* gs://${YOUR_GCS_BUCKET}/data/
-gsutil cp pet_faces_val.record-* gs://${YOUR_GCS_BUCKET}/data/
-gsutil cp object_detection/data/pet_label_map.pbtxt gs://${YOUR_GCS_BUCKET}/data/pet_label_map.pbtxt
+gcloud storage cp pet_faces_train.record-* gs://${YOUR_GCS_BUCKET}/data/
+gcloud storage cp pet_faces_val.record-* gs://${YOUR_GCS_BUCKET}/data/
+gcloud storage cp object_detection/data/pet_label_map.pbtxt gs://${YOUR_GCS_BUCKET}/data/pet_label_map.pbtxt
 ```
 
 Please remember the path where you upload the data to, as we will need this
@@ -128,7 +128,7 @@ Bucket.
 ``` bash
 wget http://storage.googleapis.com/download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_11_06_2017.tar.gz
 tar -xvf faster_rcnn_resnet101_coco_11_06_2017.tar.gz
-gsutil cp faster_rcnn_resnet101_coco_11_06_2017/model.ckpt.* gs://${YOUR_GCS_BUCKET}/data/
+gcloud storage cp faster_rcnn_resnet101_coco_11_06_2017/model.ckpt.* gs://${YOUR_GCS_BUCKET}/data/
 ```
 
 Remember the path where you uploaded the model checkpoint to, as we will need it
@@ -160,7 +160,7 @@ sed -i "s|PATH_TO_BE_CONFIGURED|"gs://${YOUR_GCS_BUCKET}"/data|g" \
     object_detection/samples/configs/faster_rcnn_resnet101_pets.config
 
 # Copy edited template to cloud.
-gsutil cp object_detection/samples/configs/faster_rcnn_resnet101_pets.config \
+gcloud storage cp object_detection/samples/configs/faster_rcnn_resnet101_pets.config \
     gs://${YOUR_GCS_BUCKET}/data/faster_rcnn_resnet101_pets.config
 ```
 
@@ -285,7 +285,7 @@ command from `tensorflow/models/research/`:
 
 ```bash
 # From tensorflow/models/research/
-gsutil cp gs://${YOUR_GCS_BUCKET}/model_dir/model.ckpt-${CHECKPOINT_NUMBER}.* .
+gcloud storage cp gs://${YOUR_GCS_BUCKET}/model_dir/model.ckpt-${CHECKPOINT_NUMBER}.* .
 python object_detection/export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path object_detection/samples/configs/faster_rcnn_resnet101_pets.config \
