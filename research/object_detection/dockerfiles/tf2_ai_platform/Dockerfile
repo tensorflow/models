@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     python3-opencv \
     wget
 
-# Installs google cloud sdk, this is mostly for using gsutil to export model.
+# Installs google cloud sdk, this is mostly for using gcloud storage to export model.
 RUN wget -nv \
     https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz && \
     mkdir /root/tools && \
@@ -29,7 +29,7 @@ RUN wget -nv \
 
 # Path configuration
 ENV PATH $PATH:/root/tools/google-cloud-sdk/bin
-# Make sure gsutil will use the default service account
+# Make sure gcloud storage will use the default service account
 RUN echo '[GoogleCompute]\nservice_account = default' > /etc/boto.cfg
 
 WORKDIR /home/tensorflow

@@ -131,7 +131,7 @@ class BigQueryManager:
     try:
       commands = [
           f"rm -r {os.path.basename(input_directory)}",
-          f"gsutil -m cp -r {prediction_folder} {output_directory}",
+          f"gcloud storage cp --recursive {prediction_folder} {output_directory}",
           f"rm -r {prediction_folder}",
       ]
       subprocess.run(" && ".join(commands), shell=True, check=True)
