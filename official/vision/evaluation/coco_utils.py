@@ -219,9 +219,9 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
   Returns:
     coco_groundtruths: the ground-truth dataset in COCO format.
   """
-  source_ids = np.concatenate(groundtruths['source_id'], axis=0)
-  heights = np.concatenate(groundtruths['height'], axis=0)
-  widths = np.concatenate(groundtruths['width'], axis=0)
+  source_ids = np.concatenate(groundtruths['source_id'], axis=0).reshape(-1)
+  heights = np.concatenate(groundtruths['height'], axis=0).reshape(-1)
+  widths = np.concatenate(groundtruths['width'], axis=0).reshape(-1)
   gt_images = [{'id': int(i), 'height': int(h), 'width': int(w)} for i, h, w
                in zip(source_ids, heights, widths)]
 
