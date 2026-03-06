@@ -42,7 +42,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     output = layer(input_seq, token_type)
     output_shape = output.shape.as_list()
     expected_shape = [1, 4, 16]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
+    self.assertListEqual(output_shape, expected_shape)
 
   def test_embedding_layer_without_token_type(self):
     layer = mobile_bert_layers.MobileBertEmbedding(10, 8, 2, 16)
@@ -50,7 +50,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     output = layer(input_seq)
     output_shape = output.shape.as_list()
     expected_shape = [1, 4, 16]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
+    self.assertListEqual(output_shape, expected_shape)
 
   def test_embedding_layer_get_config(self):
     layer = mobile_bert_layers.MobileBertEmbedding(
@@ -72,7 +72,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     output = layer(feature)
     output_shape = output.shape.as_list()
     expected_shape = [2, 3, 4]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
+    self.assertListEqual(output_shape, expected_shape)
 
   @parameterized.named_parameters(('with_kq_shared_bottleneck', False),
                                   ('without_kq_shared_bottleneck', True))
@@ -83,7 +83,17 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     output = layer(feature)
     output_shape = output.shape.as_list()
     expected_shape = [2, 3, 512]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
+    self.assertListEqual(output_shape, expected_shape)
+
+  def test_transformer_with_squared_relu(self):
+    feature = tf.random.uniform([2, 3, 512])
+    layer = mobile_bert_layers.MobileBertTransformer(
+        intermediate_act_fn='squared_relu'
+    )
+    output = layer(feature)
+    output_shape = output.shape.as_list()
+    expected_shape = [2, 3, 512]
+    self.assertListEqual(output_shape, expected_shape)
 
   def test_transfomer_with_mask(self):
     feature = tf.random.uniform([2, 3, 512])
@@ -94,7 +104,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     output = layer(feature, input_mask)
     output_shape = output.shape.as_list()
     expected_shape = [2, 3, 512]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
+    self.assertListEqual(output_shape, expected_shape)
 
   def test_transfomer_return_attention_score(self):
     sequence_length = 5
@@ -104,8 +114,7 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
         num_attention_heads=num_attention_heads)
     _, attention_score = layer(feature, return_attention_scores=True)
     expected_shape = [2, num_attention_heads, sequence_length, sequence_length]
-    self.assertListEqual(
-        attention_score.shape.as_list(), expected_shape, msg=None)
+    self.assertListEqual(attention_score.shape.as_list(), expected_shape)
 
   def test_transformer_get_config(self):
     layer = mobile_bert_layers.MobileBertTransformer(
