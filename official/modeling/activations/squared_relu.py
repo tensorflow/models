@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Activations package definition."""
-from official.modeling.activations.gelu import gelu
-from official.modeling.activations.mish import mish
-from official.modeling.activations.relu import relu6
-from official.modeling.activations.sigmoid import hard_sigmoid
-from official.modeling.activations.squared_relu import squared_relu
-from official.modeling.activations.swish import hard_swish
-from official.modeling.activations.swish import identity
-from official.modeling.activations.swish import simple_swish
+"""Customized Squared ReLU activation."""
+
+import tensorflow as tf, tf_keras
+
+
+@tf_keras.utils.register_keras_serializable(package='Text')
+def squared_relu(features: tf.Tensor) -> tf.Tensor:
+  """Computes the Squared ReLU activation function.
+
+  Args:
+    features: A `Tensor` representing preactivation values.
+
+  Returns:
+    The activation value.
+  """
+  features_tensor = tf.convert_to_tensor(features)
+  return tf.math.square(tf.nn.relu(features_tensor))

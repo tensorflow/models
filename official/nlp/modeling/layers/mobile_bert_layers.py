@@ -16,7 +16,6 @@
 import tensorflow as tf, tf_keras
 
 from official.modeling import tf_utils
-
 from official.nlp.modeling.layers import on_device_embedding
 from official.nlp.modeling.layers import position_embedding
 
@@ -288,11 +287,12 @@ class MobileBertTransformer(tf_keras.layers.Layer):
       layer_name = layer_prefix + '/intermediate_dense'
       intermediate_layer = tf_keras.layers.EinsumDense(
           'abc,cd->abd',
-          activation=self.intermediate_act_fn,
+          activation=tf_utils.get_activation(self.intermediate_act_fn),
           output_shape=[None, self.intermediate_size],
           bias_axes='d',
           kernel_initializer=tf_utils.clone_initializer(self.initializer),
-          name=layer_name)
+          name=layer_name,
+      )
       layer_name = layer_prefix + '/output_dense'
       output_layer = tf_keras.layers.EinsumDense(
           'abc,cd->abd',
