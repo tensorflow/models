@@ -29,14 +29,14 @@ cd milk_pouch_project
 # NOTE: Adjust the grep pattern if other image types are expected.
 echo "=== DEBUGGING START ==="
 echo "DEBUG: gcs_path variable is: '${gcs_path}'"
-echo "DEBUG: Running 'gsutil ls \"${gcs_path}\"' to check accessibility:"
-gsutil ls "${gcs_path}" || echo "❌ gsutil ls failed"
-echo "DEBUG: Running 'gsutil ls -r \"${gcs_path}\" | head -n 10' to check content:"
-gsutil ls -r "${gcs_path}" | head -n 10 || echo "❌ gsutil recursive ls failed"
+echo "DEBUG: Running 'gcloud storage ls "${gcs_path}"' to check accessibility:"
+gcloud storage ls "${gcs_path}" || echo "❌ gsutil ls failed"
+echo "DEBUG: Running 'gcloud storage ls --recursive "${gcs_path}" | head -n 10' to check content:"
+gcloud storage ls --recursive "${gcs_path}" | head -n 10 || echo "❌ gsutil recursive ls failed"
 echo "=== DEBUGGING END ==="
 
 echo "🖨️ Listing image files from GCS bucket: $gcs_path"
-mapfile -t all_gcs_files < <(gsutil ls -r "${gcs_path}" | grep -iE '\.(png|jpg|jpeg)$' | grep -v "/predictions/" | grep -v "/processed/")
+mapfile -t all_gcs_files < <(gcloud storage ls --recursive "${gcs_path}" | grep -iE '\.(png|jpg|jpeg)$' | grep -v "/predictions/" | grep -v "/processed/")
 num_files=${#all_gcs_files[@]}
 
 if (( num_files == 0 )); then
@@ -77,7 +77,7 @@ for (( i=0; i<num_files; i+=batch_size )); do
 
   # Copy current batch files from GCS
   echo "🖨️ Copying $num_in_batch files from GCS to input_images/..."
-  gsutil -m cp "${current_batch[@]}" input_images/
+  gcloud storage cp "${current_batch[@]}" input_images/
 
   # Extract objects
   echo "🔎 Extracting objects from images..."
@@ -96,7 +96,7 @@ for (( i=0; i<num_files; i+=batch_size )); do
   # Move predictions back to GCS
   if [ -d "predictions" ] && [ -n "$(find predictions -type f -print -quit)" ]; then
     echo "🖨️ Moving predictions for this batch back to GCS bucket: $gcs_path"
-    gsutil -m cp -r predictions/ "$gcs_path"
+    gcloud storage cp --recursive predictions/ "$gcs_path"
   else
     echo "⚠️ No predictions generated for this batch."
   fi
@@ -109,7 +109,7 @@ for (( i=0; i<num_files; i+=batch_size )); do
 
   target_root="${clean_gcs_path}processed/"
 
-  # Group files by their destination directory to optimize gsutil calls
+  # Group files by their destination directory to optimize gcloud storage calls
   declare -a current_move_batch
   current_move_dir=""
 
@@ -128,7 +128,7 @@ for (( i=0; i<num_files; i+=batch_size )); do
     # If the destination directory changes, flush the current batch
     if [[ "$dest_dir" != "$current_move_dir" ]]; then
       if (( ${#current_move_batch[@]} > 0 )); then
-        gsutil -m mv "${current_move_batch[@]}" "$current_move_dir"
+        gcloud storage mv "${current_move_batch[@]}" "$current_move_dir"
         current_move_batch=()
       fi
       current_move_dir="$dest_dir"
@@ -138,7 +138,7 @@ for (( i=0; i<num_files; i+=batch_size )); do
 
   # Flush any remaining files
   if (( ${#current_move_batch[@]} > 0 )); then
-    gsutil -m mv "${current_move_batch[@]}" "$current_move_dir"
+    gcloud storage mv "${current_move_batch[@]}" "$current_move_dir"
   fi
 
   unset current_move_batch

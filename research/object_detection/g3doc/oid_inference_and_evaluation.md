@@ -58,7 +58,7 @@ access to the cloud bucket with the images. Then run:
 # From tensorflow/models/research/oid
 SPLIT=validation  # Set SPLIT to "test" to download the images in the test set
 mkdir raw_images_${SPLIT}
-gsutil -m rsync -r gs://open-images-dataset/$SPLIT raw_images_${SPLIT}
+gcloud storage rsync --recursive gs://open-images-dataset/$SPLIT raw_images_${SPLIT}
 ```
 
 Another option for downloading the images is to follow the URLs contained in the

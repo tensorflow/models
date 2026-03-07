@@ -94,7 +94,7 @@ def setup_logger_and_directories(input_dir):
   """
 
   input_directory = (input_dir).rstrip('/\\')
-  command = f'gsutil -m cp -r {input_directory} .'
+  command = f'gcloud storage cp --recursive {input_directory} .'
   subprocess.run(command, shell=True, check=True)
   prediction_folder = os.path.basename(input_directory) + '_prediction'
   os.makedirs(prediction_folder, exist_ok=True)
