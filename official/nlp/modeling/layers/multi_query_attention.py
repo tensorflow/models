@@ -29,9 +29,7 @@ from official.modeling import tf_utils
 _CHR_IDX = string.ascii_lowercase
 
 
-def _build_proj_equation(
-    free_dims: int, bound_dims: int, output_dims: int
-) -> ...:
+def _build_proj_equation(free_dims: int, bound_dims: int, output_dims: int):
   """Builds an einsum equation for projections inside attention layer.
 
   Args:
@@ -423,4 +421,3 @@ class TalkingHeadsMultiQueryAttention(MultiHeadAttention):
       )
 
     return attention_output, attention_scores
-
