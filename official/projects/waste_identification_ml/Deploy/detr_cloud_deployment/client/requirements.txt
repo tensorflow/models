@@ -14,7 +14,7 @@ webcolors==1.13
 ffmpeg-python==0.2.0
 tritonclient[all]==2.65.0
 supervision==0.26.1
-pillow==12.0.0
+pillow==12.1.1
 trackpy==0.7
 cupy-cuda12x[cuda_dlls]
 cupy-cuda12x[ctk]
