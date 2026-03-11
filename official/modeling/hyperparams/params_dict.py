@@ -16,6 +16,7 @@
 
 import collections
 import copy
+import logging
 import re
 
 import six
@@ -192,6 +193,9 @@ class ParamsDict(object):
                          'To extend the existing keys, use '
                          '`override` with `is_strict` = False.'.format(k))
         else:
+          logging.warning(
+              'Adding new key `%s` to ParamsDict because is_strict=False.', k
+          )
           self._set(k, v)
       else:
         if isinstance(v, dict):

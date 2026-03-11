@@ -292,6 +292,7 @@ class ParseConfigOptions:
   tpu: str = ''
   tf_data_service: str = ''
   params_override: str = ''
+  strict_override: bool = True
 
   def __contains__(self, name):
     return name in dataclasses.asdict(self)
@@ -330,9 +331,13 @@ class ExperimentParser:
 
   def parse_config_file(self, params):
     """Override the configs of params from the config_file."""
+    is_strict = True
+    if isinstance(self._flags_obj, ParseConfigOptions):
+      is_strict = self._flags_obj.strict_override
     for config_file in self._flags_obj.config_file or []:
       params = hyperparams.override_params_dict(
-          params, config_file, is_strict=True)
+          params, config_file, is_strict=is_strict
+      )
     return params
 
   def parse_runtime(self, params):
@@ -363,14 +368,28 @@ class ExperimentParser:
     return params
 
   def parse_params_override(self, params):
+    """Overrides params from the --params_override flag.
+
+    Args:
+      params: A ParamsDict object to be overridden.
+
+    Returns:
+      The overridden ParamsDict object.
+    """
     # Get the second level of override from `--params_override`.
     # `--params_override` is typically used as a further override over the
     # template. For example, one may define a particular template for training
     # ResNet50 on ImageNet in a config file and pass it via `--config_file`,
     # then define different learning rates and pass it via `--params_override`.
     if self._flags_obj.params_override:
+      is_strict = True
+      if isinstance(self._flags_obj, ParseConfigOptions):
+        is_strict = self._flags_obj.strict_override
       params = hyperparams.override_params_dict(
-          params, self._flags_obj.params_override, is_strict=True)
+          params,
+          self._flags_obj.params_override,
+          is_strict=is_strict,
+      )
     return params
 
 
