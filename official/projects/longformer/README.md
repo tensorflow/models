@@ -21,7 +21,7 @@ pytorch longformer tokenized data to tf_records.
 Option 1. Use our saved checkpoint of `allenai/longformer-base-4096` stored in cloud storage
 
 ```bash
-gsutil cp -r gs://model-garden-ucsd-zihan/longformer-4096 .
+gcloud storage cp --recursive gs://model-garden-ucsd-zihan/longformer-4096 .
 ```
 Option 2. Create it directly
 
