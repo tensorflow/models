@@ -241,7 +241,7 @@ class TritonObjectDetector:
     raw_outputs = [
         response.as_numpy('dets'),
         response.as_numpy('labels'),
-        response.as_numpy('4245'),
+        response.as_numpy('masks'),
     ]
 
     # Reformat Triton output
