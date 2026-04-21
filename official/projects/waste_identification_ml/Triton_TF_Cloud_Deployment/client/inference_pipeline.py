@@ -201,9 +201,9 @@ def main(_) -> None:
       else:
         logger.info("Zero predictions after threshold.")
         continue
-    except (KeyError, IndexError, TypeError, ValueError) as e:
+    except (KeyError, IndexError, TypeError, ValueError):
       logger.info("Failed to filter out predictions.")
-      logger.exception("Exception occured:", e)
+      logger.exception("Exception occurred.")
 
     try:
       # Convert bbox coordinates into normalized coordinates.
@@ -246,9 +246,9 @@ def main(_) -> None:
       else:
         logger.info("Zero predictions after processing.")
         continue
-    except (KeyError, IndexError, TypeError, ValueError) as e:
+    except (KeyError, IndexError, TypeError, ValueError):
       logger.info("Issue in post processing predictions results.")
-      logger.exception("Exception occured:", e)
+      logger.exception("Exception occurred.")
 
     try:
       if result["num_detections"][0]:
@@ -266,9 +266,9 @@ def main(_) -> None:
             threshold=PREDICTION_THRESHOLD.value,
         )
         logger.info("Visualization saved.")
-    except (KeyError, IndexError, TypeError, ValueError) as e:
+    except (KeyError, IndexError, TypeError, ValueError):
       logger.info("Issue in saving visualization of results.")
-      logger.exception("Exception occured:", e)
+      logger.exception("Exception occurred.")
 
     try:
       # Resize an image for object tracking..
@@ -393,7 +393,7 @@ def main(_) -> None:
   except (KeyError, IndexError, TypeError, ValueError):
     logger.info("Issue in cropping objects")
     logger.info("Failed to crop objects.")
-    logger.exception("Exception occured:", e)
+    logger.exception("Exception occurred.")
 
   if isinstance(agg_features, pd.DataFrame) and not agg_features.empty:
     try:
