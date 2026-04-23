@@ -428,15 +428,17 @@ def preprocess_text(inputs, remove_space=True, lower=False):
     The preprocessed text.
 
   """
+  # Byte strings need to be explicitly decoded to unicode text,
+  # typically using UTF-8. A latin-1 fallback is included for
+  # backward compatibility with legacy sentence piece models.
+  if isinstance(inputs, six.binary_type):
+    try:
+      inputs = six.ensure_text(inputs, "utf-8")
+    except UnicodeDecodeError:
+      inputs = six.ensure_text(inputs, "latin-1")
   outputs = inputs
   if remove_space:
     outputs = " ".join(inputs.strip().split())
-
-  if six.PY2 and isinstance(outputs, str):
-    try:
-      outputs = six.ensure_text(outputs, "utf-8")
-    except UnicodeDecodeError:
-      outputs = six.ensure_text(outputs, "latin-1")
 
   outputs = unicodedata.normalize("NFKD", outputs)
   outputs = "".join([c for c in outputs if not unicodedata.combining(c)])

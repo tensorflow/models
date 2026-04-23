@@ -151,6 +151,18 @@ class TokenizationTest(tf.test.TestCase):
     self.assertFalse(tokenization._is_punctuation(u"A"))
     self.assertFalse(tokenization._is_punctuation(u" "))
 
+  def test_preprocess_text(self):
+    self.assertEqual(tokenization.preprocess_text("hello world"), "hello world")
+    self.assertEqual(tokenization.preprocess_text(b"hello \xc3\xa9"), "hello e")
+    self.assertEqual(tokenization.preprocess_text(b"hello \xe9"), "hello e")
+    self.assertEqual(
+        tokenization.preprocess_text(b"hello  world", remove_space=True),
+        "hello world",
+    )
+    self.assertEqual(
+        tokenization.preprocess_text("Hello World", lower=True), "hello world"
+    )
+
 
 if __name__ == "__main__":
   tf.test.main()
