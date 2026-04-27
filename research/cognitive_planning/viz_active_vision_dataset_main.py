@@ -45,7 +45,9 @@ matplotlib.use('TkAgg')
 import tensorflow as tf
 from matplotlib import pyplot as plt
 import numpy as np
+import glob
 import os
+from PIL import Image
 from pyglib import app
 from pyglib import flags
 import gin
@@ -266,12 +268,13 @@ def visualize(env, input_folder, output_root_folder):
         cv2.imwrite(os.path.join(output_folder, '{0:03d}'.format(j) + '.jpg'),
                     img[:, :, ::-1])
       print 'converting to gif'
-      os.system(
-          'convert -set delay 20 -colors 256 -dispose 1 {}/*.jpg {}.gif'.format(
-              output_folder,
-              os.path.join(output_gifs_folder, pure_name + '.gif')
-          )
-      )
+      jpg_files = sorted(glob.glob(os.path.join(output_folder, '*.jpg')))
+      gif_output = os.path.join(output_gifs_folder, pure_name + '.gif')
+      pil_frames = [Image.open(f) for f in jpg_files]
+      if pil_frames:
+        pil_frames[0].save(
+            gif_output, save_all=True, append_images=pil_frames[1:],
+            loop=0, duration=20)
 
 def evaluate_folder(env, folder_path):
   """Evaluates the performance from the evals folder."""
