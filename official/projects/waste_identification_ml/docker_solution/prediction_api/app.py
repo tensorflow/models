@@ -34,6 +34,8 @@ from official.projects.waste_identification_ml.docker_solution.prediction_api im
 
 
 HEIGHT, WIDTH = 512, 1024
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB upload limit
+MAX_IMAGE_DIMENSION = 10000  # max pixels per side
 
 app = fastapi.FastAPI()
 model_manager = app_utils.ModelManager()
@@ -57,11 +59,24 @@ async def predict(
     A JSON encoded list of detections.
   """
   image_data = await image.read()
+  if len(image_data) > MAX_FILE_SIZE:
+    return fastapi.responses.JSONResponse(
+        content={'message': 'Uploaded file exceeds the 10 MB size limit.'},
+        status_code=413,
+    )  # Request Entity Too Large
   try:
+    p_image = PIL.Image.open(io.BytesIO(image_data))
+    p_image.verify()
     p_image = PIL.Image.open(io.BytesIO(image_data))
   except (OSError, PIL.UnidentifiedImageError):
     return fastapi.responses.JSONResponse(
         content={'message': 'Could not open image_data as an image.'},
+        status_code=400,
+    )  # Bad Request
+
+  if p_image.width > MAX_IMAGE_DIMENSION or p_image.height > MAX_IMAGE_DIMENSION:
+    return fastapi.responses.JSONResponse(
+        content={'message': 'Image dimensions exceed the allowed limit.'},
         status_code=400,
     )  # Bad Request
 
