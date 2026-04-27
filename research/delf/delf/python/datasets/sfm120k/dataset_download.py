@@ -15,7 +15,9 @@
 """Structure-from-Motion dataset (Sfm120k) download function."""
 
 import os
+import tarfile
 
+import requests
 import tensorflow as tf
 
 
@@ -40,7 +42,7 @@ def download_train(data_dir):
     tf.io.gfile.mkdir(datasets_dir)
 
   # Download folder train/retrieval-SfM-120k/.
-  src_dir = 'http://cmp.felk.cvut.cz/cnnimageretrieval/data/train/ims'
+  src_dir = 'https://cmp.felk.cvut.cz/cnnimageretrieval/data/train/ims'
   dst_dir = os.path.join(datasets_dir, 'retrieval-SfM-120k', 'ims')
   download_file = 'ims.tar.gz'
   if not tf.io.gfile.exists(dst_dir):
@@ -49,24 +51,28 @@ def download_train(data_dir):
     print('>> Image directory does not exist. Creating: {}'.format(dst_dir))
     tf.io.gfile.makedirs(dst_dir)
     print('>> Downloading ims.tar.gz...')
-    os.system('wget {} -O {}'.format(src_file, dst_file))
+    with open(dst_file, 'wb') as f:
+      f.write(requests.get(src_file, timeout=60).content)
     print('>> Extracting {}...'.format(dst_file))
-    os.system('tar -zxf {} -C {}'.format(dst_file, dst_dir))
+    with tarfile.open(dst_file, 'r:gz') as tar:
+      safe_members = [m for m in tar.getmembers()
+                      if not os.path.isabs(m.name) and '..' not in m.name.split('/')]
+      tar.extractall(dst_dir, members=safe_members)
     print('>> Extracted, deleting {}...'.format(dst_file))
-    os.system('rm {}'.format(dst_file))
+    os.remove(dst_file)
 
   # Create symlink for train/retrieval-SfM-30k/.
   dst_dir_old = os.path.join(datasets_dir, 'retrieval-SfM-120k', 'ims')
   dst_dir = os.path.join(datasets_dir, 'retrieval-SfM-30k', 'ims')
   if not (tf.io.gfile.exists(dst_dir) or os.path.islink(dst_dir)):
     tf.io.gfile.makedirs(os.path.join(datasets_dir, 'retrieval-SfM-30k'))
-    os.system('ln -s {} {}'.format(dst_dir_old, dst_dir))
+    os.symlink(dst_dir_old, dst_dir)
     print(
             '>> Created symbolic link from retrieval-SfM-120k/ims to '
             'retrieval-SfM-30k/ims')
 
   # Download db files.
-  src_dir = 'http://cmp.felk.cvut.cz/cnnimageretrieval/data/train/dbs'
+  src_dir = 'https://cmp.felk.cvut.cz/cnnimageretrieval/data/train/dbs'
   datasets = ['retrieval-SfM-120k', 'retrieval-SfM-30k']
   for dataset in datasets:
     dst_dir = os.path.join(datasets_dir, dataset)
@@ -89,15 +95,16 @@ def download_train(data_dir):
       if not os.path.isfile(dst_file):
         print('>> DB file {} does not exist. Downloading...'.format(
                 download_files[i]))
-        os.system('wget {} -O {}'.format(src_file, dst_file))
+        with open(dst_file, 'wb') as f:
+          f.write(requests.get(src_file, timeout=60).content)
 
       if download_eccv2020:
         eccv2020_dst_file = os.path.join(dst_dir, download_eccv2020)
         if not os.path.isfile(eccv2020_dst_file):
           eccv2020_src_dir = \
-            "http://ptak.felk.cvut.cz/personal/toliageo/share/how/dataset/"
+            "https://ptak.felk.cvut.cz/personal/toliageo/share/how/dataset/"
           eccv2020_dst_file = os.path.join(dst_dir, download_eccv2020)
           eccv2020_src_file = os.path.join(eccv2020_src_dir,
                                            download_eccv2020)
-          os.system('wget {} -O {}'.format(eccv2020_src_file,
-                                           eccv2020_dst_file))
+          with open(eccv2020_dst_file, 'wb') as f:
+            f.write(requests.get(eccv2020_src_file, timeout=60).content)
