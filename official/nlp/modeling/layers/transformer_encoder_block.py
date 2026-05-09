@@ -122,6 +122,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       enable_talking_heads=False,
       enable_gqa_optimization=False,
       softmax_robust_masking=False,
+      attention_fn=None,
+      attention_layer_kwargs=None,
       **kwargs,
   ):
     """Initializes `TransformerEncoderBlock`.
@@ -212,6 +214,10 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         This flag is valid only when num_kv_heads is set for GQA.
       softmax_robust_masking: If true, will use a more numerically robust
         masking impl for softmax.
+      attention_fn: An optional external attention class or function to use
+        instead of the default MultiHeadAttention layer.
+      attention_layer_kwargs: An optional dict of additional keyword args to be
+        passed to the created attention layer.
       **kwargs: keyword arguments.
     """
     util.filter_kwargs(kwargs)
@@ -257,6 +263,8 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     self._enable_talking_heads = enable_talking_heads
     self._enable_gqa_optimization = enable_gqa_optimization
     self._softmax_robust_masking = softmax_robust_masking
+    self._attention_fn = attention_fn
+    self._attention_layer_kwargs = attention_layer_kwargs or {}
     if (
         self._src_block_size is not None
         and self._num_kv_heads is not None
@@ -327,6 +335,12 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
     )
+    if self._attention_fn is not None:
+      attention_fn = self._attention_fn
+      common_kwargs = {}  # common kwargs is not needed for external attention.
+    else:
+      attention_fn = tf_keras.layers.MultiHeadAttention
+    # Note: for any of these following options attention_fn will be replaced
     if self._src_block_size is not None:
       if self._enable_talking_heads:
         raise ValueError(
@@ -361,10 +375,11 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       attention_fn = (
           talking_heads_attention.TalkingHeadsAttention
       )
-    else:
-      attention_fn = tf_keras.layers.MultiHeadAttention
+    if self._attention_layer_kwargs:
+      attention_layer_kwargs = self._attention_layer_kwargs
     self._attention_layer = attention_fn(
-        **attention_layer_kwargs, **common_kwargs
+        **attention_layer_kwargs,
+        **common_kwargs,
     )
     self._attention_dropout = tf_keras.layers.Dropout(
         rate=self._attention_dropout_rate
@@ -517,7 +532,9 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
         "linformer_dim": self._linformer_dim,
         "linformer_shared_kv_projection": self._linformer_shared_kv_projection,
         "lowrank_query_seq_proj_dim": self._lowrank_query_seq_proj_dim,
-        "softmax_robust_masking": self._softmax_robust_masking
+        "softmax_robust_masking": self._softmax_robust_masking,
+        "attention_fn": self._attention_fn,
+        "attention_layer_kwargs": self._attention_layer_kwargs,
     }
     base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
