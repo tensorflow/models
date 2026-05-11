@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """Dataclasses for learning rate schedule config."""
+import dataclasses
 from typing import List, Optional
 
-import dataclasses
 from official.modeling.hyperparams import base_config
 
 
@@ -23,7 +23,7 @@ from official.modeling.hyperparams import base_config
 class ConstantLrConfig(base_config.Config):
   """Configuration for constant learning rate.
 
-  This class is a containers for the constant learning rate decay configs.
+  This class is a container for the constant learning rate decay configs.
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to Constant.
@@ -68,7 +68,7 @@ class StepwiseLrConfig(base_config.Config):
 class ExponentialLrConfig(base_config.Config):
   """Configuration for exponential learning rate decay.
 
-  This class is a containers for the exponential learning rate decay configs.
+  This class is a container for the exponential learning rate decay configs.
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to ExponentialDecay.
@@ -92,7 +92,7 @@ class ExponentialLrConfig(base_config.Config):
 class PolynomialLrConfig(base_config.Config):
   """Configuration for polynomial learning rate decay.
 
-  This class is a containers for the polynomial learning rate decay configs.
+  This class is a container for the polynomial learning rate decay configs.
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to PolynomialDecay.
@@ -118,7 +118,7 @@ class PolynomialLrConfig(base_config.Config):
 class CosineLrConfig(base_config.Config):
   """Configuration for Cosine learning rate decay.
 
-  This class is a containers for the cosine learning rate decay configs,
+  This class is a container for the cosine learning rate decay configs,
   tf_keras.experimental.CosineDecay.
 
   Attributes:
@@ -133,6 +133,35 @@ class CosineLrConfig(base_config.Config):
   name: str = 'CosineDecay'
   initial_learning_rate: Optional[float] = None
   decay_steps: Optional[int] = None
+  alpha: float = 0.0
+  offset: int = 0
+
+
+@dataclasses.dataclass
+class CosineRestartsLrConfig(base_config.Config):
+  """Configuration for Cosine restarts learning rate decay.
+
+  This class is a container for the cosine restarts learning rate decay configs,
+  tf_keras.experimental.CosineDecayRestarts.
+
+  Attributes:
+    name: Name of the learning rate schedule. Defaults to CosineDecayRestarts.
+    initial_learning_rate: A float. The initial learning rate. Defaults to None.
+    first_decay_steps: A scalar `int32` or `int64` `Tensor` or a Python
+      number. Number of steps to decay over.
+    t_mul: A scalar `float32` or `float64` `Tensor` or a Python number.
+      Used to derive the number of iterations in the i-th period.
+    m_mul: A scalar `float32` or `float64` `Tensor` or a Python number.
+      Used to derive the initial learning rate of the i-th period.
+    alpha: A float. Minimum learning rate value as a fraction of
+      initial_learning_rate.
+    offset: An int. The offset applied to steps. Defaults to 0.
+  """
+  name: str = 'CosineDecayRestarts'
+  initial_learning_rate: Optional[float] = None
+  first_decay_steps: Optional[int] = None
+  t_mul: float = 2.0
+  m_mul: float = 1.0
   alpha: float = 0.0
   offset: int = 0
 

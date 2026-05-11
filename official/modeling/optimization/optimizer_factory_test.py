@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for optimizer_factory.py."""
+import math
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf, tf_keras
@@ -329,6 +330,41 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     }
     expected_lr_step_values = [[0, 0.1], [250, 0.08535534], [500, 0.04999999],
                                [750, 0.01464466], [1000, 0]]
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+
+    for step, value in expected_lr_step_values:
+      self.assertAlmostEqual(lr(step).numpy(), value)
+
+  def test_cosine_restarts_lr_schedule(self):
+    params = {
+        'optimizer': {
+            'type': 'sgd',
+            'sgd': {
+                'momentum': 0.9
+            }
+        },
+        'learning_rate': {
+            'type': 'cosine_restarts',
+            'cosine_restarts': {
+                'initial_learning_rate': 0.1,
+                'first_decay_steps': 1000,
+                't_mul': 0.75,
+                'm_mul': 0.5
+            }
+        }
+    }
+    expected_lr_step_values = [
+        # Period 1: length 1000.
+        [0, 0.1],
+        [250, 0.1 * (1.0 + math.cos(math.pi * 250.0 / 1000.0)) / 2.0],
+        [500, 0.1 * (1.0 + math.cos(math.pi * 500.0 / 1000.0)) / 2.0],
+        [750, 0.1 * (1.0 + math.cos(math.pi * 750.0 / 1000.0)) / 2.0],
+        # Period 2: length 750, starts at 1000 with init_lr = 0.1 * 0.5 = 0.05.
+        [1000, 0.05],
+        [1250, 0.05 * (1.0 + math.cos(math.pi * 250.0 / 750.0)) / 2.0],
+    ]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()

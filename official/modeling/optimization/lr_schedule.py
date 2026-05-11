@@ -90,6 +90,10 @@ CosineDecayWithOffset = _make_offset_wrapper(
     "CosineDecayWithOffset",
     tf_keras.optimizers.schedules.CosineDecay,
 )
+CosineDecayRestartsWithOffset = _make_offset_wrapper(
+    "CosineDecayRestartsWithOffset",
+    tf_keras.optimizers.schedules.CosineDecayRestarts,
+)
 
 
 class LinearWarmup(tf_keras.optimizers.schedules.LearningRateSchedule):

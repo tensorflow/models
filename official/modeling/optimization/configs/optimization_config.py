@@ -18,9 +18,8 @@ This file define the dataclass for optimization configs (OptimizationConfig).
 It also has two helper functions get_optimizer_config, and get_lr_config from
 an OptimizationConfig class.
 """
-from typing import Optional
-
 import dataclasses
+from typing import Optional
 
 from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import oneof
@@ -119,6 +118,9 @@ class LrConfig(oneof.OneOfConfig):
   )
   cosine: lr_cfg.CosineLrConfig = dataclasses.field(
       default_factory=lr_cfg.CosineLrConfig
+  )
+  cosine_restarts: lr_cfg.CosineRestartsLrConfig = dataclasses.field(
+      default_factory=lr_cfg.CosineRestartsLrConfig
   )
   power: lr_cfg.DirectPowerLrConfig = dataclasses.field(
       default_factory=lr_cfg.DirectPowerLrConfig

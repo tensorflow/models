@@ -77,6 +77,7 @@ class OffsetLearningRateTest(tf.test.TestCase, parameterized.TestCase):
       dict(class_name=lr_schedule.PolynomialDecayWithOffset),
       dict(class_name=lr_schedule.ExponentialDecayWithOffset),
       dict(class_name=lr_schedule.CosineDecayWithOffset),
+      dict(class_name=lr_schedule.CosineDecayRestartsWithOffset),
   )
   def test_generated_docstring(self, class_name):
     self.assertNotEmpty(class_name.__init__.__doc__)
@@ -103,6 +104,38 @@ class OffsetLearningRateTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(offset_lr, class_name)
     for step in range(10, 101, 10):
       self.assertEqual(offset_lr(step), base_lr(step - offset))
+
+  @parameterized.named_parameters(
+      dict(testcase_name='period_1', start=5, end=15, offset_shift=0),
+      dict(testcase_name='period_2', start=15, end=25, offset_shift=10),
+      dict(testcase_name='period_3', start=25, end=35, offset_shift=20),
+  )
+  def test_cosine_decay_restarts_with_offset(self, start, end, offset_shift):
+    offset = 5
+    m_mul = 0.5
+    first_decay_steps = 10
+
+    restarts_lr = lr_schedule.CosineDecayRestartsWithOffset(
+        offset=offset,
+        initial_learning_rate=1.0,
+        first_decay_steps=first_decay_steps,
+        t_mul=1.0,
+        m_mul=m_mul,
+    )
+
+    # The equivalent cosine decay with offset.
+    period_start = offset + offset_shift
+    initial_learning_rate = m_mul ** (period_start // first_decay_steps)
+    decay_lr = lr_schedule.CosineDecayWithOffset(
+        offset=period_start,
+        initial_learning_rate=initial_learning_rate,
+        decay_steps=first_decay_steps,
+    )
+
+    for step in range(start, end):
+      self.assertAlmostEqual(
+          restarts_lr(step).numpy(), decay_lr(step).numpy(), places=5
+      )
 
 
 if __name__ == '__main__':

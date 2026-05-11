@@ -61,6 +61,7 @@ LR_CLS = {
     'polynomial': lr_schedule.PolynomialDecayWithOffset,
     'exponential': lr_schedule.ExponentialDecayWithOffset,
     'cosine': lr_schedule.CosineDecayWithOffset,
+    'cosine_restarts': lr_schedule.CosineDecayRestartsWithOffset,
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
     'power_with_offset': lr_schedule.PowerDecayWithOffset,
