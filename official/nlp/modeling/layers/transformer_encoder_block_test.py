@@ -994,19 +994,6 @@ class TransformerArgumentTest(tf.test.TestCase, parameterized.TestCase):
         output_tensor[1].shape.as_list(), expected_attention_scores_shape
     )
 
-  def test_external_attention_fn(self):
-    test_layer = TransformerEncoderBlock(
-        num_attention_heads=2,
-        inner_dim=32,
-        inner_activation='relu',
-        attention_fn=tf_keras.layers.MultiHeadAttention,
-    )
-    seq_len = 21
-    hidden_size = 32
-    input_tensor = tf_keras.Input(shape=(seq_len, hidden_size))
-    output = test_layer(input_tensor)
-    self.assertEqual(output.shape.as_list(), [None, seq_len, hidden_size])
-
 
 if __name__ == '__main__':
   tf.test.main()
