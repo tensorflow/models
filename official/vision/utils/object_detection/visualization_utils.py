@@ -19,12 +19,18 @@ The functions do not return a value, instead they modify the image itself.
 """
 import collections
 import functools
-from typing import Any, Dict, Optional, List, Union
+import sys
+from typing import Any, Dict, List, Optional, Union
 
 from absl import logging
 # Set headless-friendly backend.
 import matplotlib
-matplotlib.use('Agg')  # pylint: disable=multiple-statements
+# Only set Agg if we are not in an interactive IPython/Colab environment.
+if 'IPython' not in sys.modules:
+  try:
+    matplotlib.use('Agg')  # pylint: disable=multiple-statements
+  except (ValueError, ImportError):
+    pass
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
 import numpy as np
 from PIL import Image
