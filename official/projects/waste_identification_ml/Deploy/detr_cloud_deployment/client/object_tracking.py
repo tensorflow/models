@@ -43,15 +43,27 @@ class ObjectTracker:
   links them using trackpy, and aggregates the tracking results.
   """
 
-  def __init__(self, search_range: tuple[int, int] = (20, 20), memory: int = 3):
+  def __init__(
+      self,
+      search_range: tuple[int, int] = (20, 20),
+      memory: int = 3,
+      adaptive_stop: int = 5,
+      adaptive_step: float = 0.95,
+  ):
     """Initializes the tracker.
 
     Args:
         search_range: (y_range, x_range) pixels for tracking.
         memory: Number of frames an object can vanish and still be linked.
+        adaptive_stop: Minimum search range (pixels) to try before giving up on
+          linking a subnet. Prevents SubnetOversizeException on dense frames.
+        adaptive_step: Multiplicative factor (0 < step < 1) by which the search
+          range is reduced each adaptive iteration.
     """
     self.search_range = search_range
     self.memory = memory
+    self.adaptive_stop = adaptive_stop
+    self.adaptive_step = adaptive_step
     self.all_detections: List[pd.DataFrame] = []
 
     # Region properties to extract
@@ -216,6 +228,8 @@ class ObjectTracker:
         full_df[tracking_cols],
         search_range=self.search_range,
         memory=self.memory,
+        adaptive_stop=self.adaptive_stop,
+        adaptive_step=self.adaptive_step
     )
 
     additional_columns = [

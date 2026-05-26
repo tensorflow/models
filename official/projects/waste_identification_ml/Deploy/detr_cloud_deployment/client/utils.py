@@ -30,6 +30,8 @@
 import datetime
 import logging
 import os
+import pathlib
+import re
 import subprocess
 import time
 
@@ -94,6 +96,10 @@ def setup_logger_and_directories(input_dir):
   """
 
   input_directory = (input_dir).rstrip('/\\')
+  local_dir = os.path.basename(input_directory)
+  # A failed previous run can leave a file where gsutil needs a directory.
+  if os.path.isfile(local_dir):
+    os.remove(local_dir)
   command = f'gsutil -m cp -r {input_directory} .'
   subprocess.run(command, shell=True, check=True)
   prediction_folder = os.path.basename(input_directory) + '_prediction'
@@ -167,6 +173,13 @@ def get_image_capture_time(image_path):
       return f'Error processing image or file: {e}'
 
 
+def parse_imgage_names_to_datetime(filename):
+  stem = pathlib.Path(filename).stem
+  m = re.match(r'img_(\d{8})_(\d{6})(\d*)', stem)
+  dt_str = f'{m.group(1)}_{m.group(2)}{m.group(3)}'
+  return datetime.datetime.strptime(dt_str, '%Y%m%d_%H%M%S%f')
+
+
 def files_paths(folder_path):
   """List the full paths of image files in a folder and sort them.
 
@@ -184,7 +197,13 @@ def files_paths(folder_path):
       image_files_full_path.append(entry.path)
 
   # Sort the list of files by name
-  image_files_full_path = natsort.natsorted(image_files_full_path)
+  try:
+    image_files_full_path = sorted(
+        image_files_full_path, key=parse_imgage_names_to_datetime
+    )
+  except AttributeError:
+    print('Failed to parse image names to datetime, using natsort instead.')
+    image_files_full_path = natsort.natsorted(image_files_full_path)
   return image_files_full_path
 
 

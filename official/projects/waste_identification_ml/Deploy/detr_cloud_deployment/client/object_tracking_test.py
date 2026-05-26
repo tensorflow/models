@@ -42,13 +42,18 @@ class ObjectTrackerTest(unittest.TestCase):
   def setUp(self):
     super().setUp()
     self.tracker = object_tracking.ObjectTracker(
-        search_range=(10, 10), memory=2
+        search_range=(10, 10),
+        memory=2,
+        adaptive_stop=3,
+        adaptive_step=0.9,
     )
 
   def test_init(self):
     # Assert
     self.assertEqual(self.tracker.search_range, (10, 10))
     self.assertEqual(self.tracker.memory, 2)
+    self.assertEqual(self.tracker.adaptive_stop, 3)
+    self.assertEqual(self.tracker.adaptive_step, 0.9)
     self.assertEqual(self.tracker.all_detections, [])
 
   @mock.patch(f"{MODULE_PATH}.cv2.resize")
@@ -251,7 +256,7 @@ class ObjectTrackerTest(unittest.TestCase):
         "color": ["red", "blue", "red", "blue"],
     }
     group_df = pd.DataFrame(group_data)
-    result = self.tracker._select_class_with_scores(group_df)
+    result = self.tracker._select_class_with_model_scores(group_df)
 
     self.assertEqual(result["class_name"], "c2")
 
@@ -263,7 +268,7 @@ class ObjectTrackerTest(unittest.TestCase):
         "color": ["red", "blue", "red", "red"],
     }
     group_df = pd.DataFrame(group_data)
-    result = self.tracker._select_class_with_scores(group_df)
+    result = self.tracker._select_class_with_model_scores(group_df)
 
     self.assertEqual(result["class_name"], "c1")
 
