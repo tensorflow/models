@@ -85,6 +85,9 @@ _IMAGE_SAVING_WIDTH = 432
 _IMAGE_SAVING_HEIGHT = 432
 _TRACKING_IMAGE_WIDTH = 300
 _TRACKING_IMAGE_HEIGHT = 300
+# https://soft-matter.github.io/trackpy/dev/tutorial/adaptive-search.html
+_ADAPTIVE_STOP = 5
+_ADAPTIVE_STEP = 0.95
 
 
 def main(_) -> None:
@@ -106,10 +109,14 @@ def main(_) -> None:
   }
 
   model_manager = TritonObjectDetector(model_name=MODEL_NAME.value)
+
   tracking_manager = ObjectTracker(
       search_range=(SEARCH_RANGE_Y.value, SEARCH_RANGE_X.value),
       memory=MEMORY.value,
+      adaptive_stop=_ADAPTIVE_STOP,
+      adaptive_step=_ADAPTIVE_STEP,
   )
+
   storage_manager = BigQueryManager(
       project_id=PROJECT_ID.value,
       dataset_id=BQ_DATASET_ID.value,
