@@ -161,6 +161,23 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     else:
       self.assertLess(loss, 1.0)
 
+  def test_build_losses_broadcasting_regression(self):
+    config = sentence_prediction.SentencePredictionConfig(
+        init_checkpoint=self.get_temp_dir(),
+        model=self.get_model_config(num_classes=1),
+        train_data=self._train_data_config,
+    )
+    task = sentence_prediction.SentencePredictionTask(config)
+
+    labels = {"label_ids": tf.constant([1.0, 2.0], dtype=tf.float32)}
+    model_outputs = tf.constant([[1.0], [4.0]], dtype=tf.float32)
+
+    loss = task.build_losses(labels, model_outputs)
+    # True MSE between [1.0, 2.0] and [[1.0], [4.0]] is (0^2 + 2^2) / 2 = 2.0.
+    # Without the reshape fix, Keras broadcasting results in an incorrect loss
+    # of 3.5.
+    self.assertAllClose(loss, 2.0)
+
   @parameterized.parameters(("matthews_corrcoef", 2),
                             ("pearson_spearman_corr", 1),
                             ("f1", 2))
