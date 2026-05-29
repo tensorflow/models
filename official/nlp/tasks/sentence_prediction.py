@@ -101,7 +101,10 @@ class SentencePredictionTask(base_task.Task):
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     label_ids = labels[self.label_field]
     if self.task_config.model.num_classes == 1:
-      loss = tf_keras.losses.mean_squared_error(label_ids, model_outputs)
+      # Reshape to avoid silent broadcasting bugs in Keras.
+      loss = tf_keras.losses.mean_squared_error(
+          tf.reshape(label_ids, [-1]), tf.reshape(model_outputs, [-1])
+      )
     else:
       loss = tf_keras.losses.sparse_categorical_crossentropy(
           label_ids, tf.cast(model_outputs, tf.float32), from_logits=True)
