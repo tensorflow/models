@@ -16,10 +16,10 @@
 """Tests object_detection.core.hyperparams_builder."""
 
 import unittest
+from google.protobuf import text_format
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tf_slim as slim
-from google.protobuf import text_format
 
 from object_detection.builders import hyperparams_builder
 from object_detection.core import freezable_batch_norm

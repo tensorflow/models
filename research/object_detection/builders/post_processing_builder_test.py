@@ -15,8 +15,8 @@
 
 """Tests for post_processing_builder."""
 
-import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
+import tensorflow.compat.v1 as tf
 from object_detection.builders import post_processing_builder
 from object_detection.protos import post_processing_pb2
 from object_detection.utils import test_case

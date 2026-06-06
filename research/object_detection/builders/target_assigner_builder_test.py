@@ -14,9 +14,8 @@
 # limitations under the License.
 # ==============================================================================
 
-import tensorflow.compat.v1 as tf
-
 from google.protobuf import text_format
+import tensorflow.compat.v1 as tf
 
 
 from object_detection.builders import target_assigner_builder

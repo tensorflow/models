@@ -17,10 +17,9 @@
 
 import os
 import unittest
+from google.protobuf import text_format
 import numpy as np
 import tensorflow.compat.v1 as tf
-
-from google.protobuf import text_format
 
 from object_detection.builders import input_reader_builder
 from object_detection.core import standard_fields as fields

@@ -15,9 +15,8 @@
 
 """Tests for preprocessor_builder."""
 
-import tensorflow.compat.v1 as tf
-
 from google.protobuf import text_format
+import tensorflow.compat.v1 as tf
 
 from object_detection.builders import preprocessor_builder
 from object_detection.core import preprocessor

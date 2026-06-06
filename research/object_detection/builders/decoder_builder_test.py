@@ -19,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from google.protobuf import text_format
 import numpy as np
 import tensorflow.compat.v1 as tf
 
-from google.protobuf import text_format
 from object_detection.builders import decoder_builder
 from object_detection.core import standard_fields as fields
 from object_detection.dataset_tools import seq_example_util
