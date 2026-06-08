@@ -191,11 +191,14 @@ def decode_jpeg(image_string: tf.Tensor, channels: int = 0) -> tf.Tensor:
   Returns:
     A Tensor of shape [T, H, W, C] of type uint8 with the decoded images.
   """
-  return tf.map_fn(
-      lambda x: tf.image.decode_jpeg(x, channels=channels),
-      image_string,
-      back_prop=False,
-      dtype=tf.uint8)
+  return tf.nest.map_structure(
+      tf.stop_gradient,
+      tf.map_fn(
+          lambda x: tf.image.decode_jpeg(x, channels=channels),
+          image_string,
+          dtype=tf.uint8,
+      ),
+  )
 
 
 def decode_image(image_string: tf.Tensor, channels: int = 0) -> tf.Tensor:
@@ -211,12 +214,15 @@ def decode_image(image_string: tf.Tensor, channels: int = 0) -> tf.Tensor:
   Returns:
     A Tensor of shape [T, H, W, C] of type uint8 with the decoded images.
   """
-  return tf.map_fn(
-      lambda x: tf.image.decode_image(  # pylint: disable=g-long-lambda
-          x, channels=channels, expand_animations=False),
-      image_string,
-      back_prop=False,
-      dtype=tf.uint8,
+  return tf.nest.map_structure(
+      tf.stop_gradient,
+      tf.map_fn(
+          lambda x: tf.image.decode_image(  # pylint: disable=g-long-lambda
+              x, channels=channels, expand_animations=False
+          ),
+          image_string,
+          dtype=tf.uint8,
+      ),
   )
 
 
