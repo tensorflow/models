@@ -1,0 +1,27 @@
+--extra-index-url https://download.pytorch.org/whl/cu124
+sam3 @ git+https://github.com/facebookresearch/sam3.git@967fdd651f71ca14949122fed4c918a778ca9334
+natsort
+absl-py==2.4.0
+einops==0.8.2
+google-api-core==2.30.3
+google-auth==2.49.2
+google-auth-oauthlib==1.3.1
+google-cloud-bigquery==3.41.0
+google-cloud-core==2.5.1
+google-cloud-storage==3.10.1
+huggingface_hub==1.11.0
+opencv-python>=4.8.0,<4.10.0
+pandas==2.3.3
+pandas-gbq==0.35.0
+pycocotools
+scikit-image
+scikit-learn
+scipy
+seaborn
+supervision
+matplotlib
+termcolor
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+torchmetrics
+trackers
