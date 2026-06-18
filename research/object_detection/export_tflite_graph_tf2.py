@@ -95,8 +95,8 @@ python object_detection/export_tflite_model_tf2.py \
 from absl import app
 from absl import flags
 
-import tensorflow.compat.v2 as tf
 from google.protobuf import text_format
+import tensorflow.compat.v2 as tf
 from object_detection import export_tflite_graph_lib_tf2
 from object_detection.protos import pipeline_pb2
 

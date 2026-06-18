@@ -19,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 import os
 import unittest
+from google.protobuf import text_format
 import numpy as np
 import six
 import tensorflow.compat.v1 as tf
-from google.protobuf import text_format
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import array_ops
 from tensorflow.python.tools import strip_unused_lib

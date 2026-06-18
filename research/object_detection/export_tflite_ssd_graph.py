@@ -91,8 +91,8 @@ python object_detection/export_tflite_ssd_graph.py \
        "
 """
 
-import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
+import tensorflow.compat.v1 as tf
 from object_detection import export_tflite_ssd_graph_lib
 from object_detection.protos import pipeline_pb2
 

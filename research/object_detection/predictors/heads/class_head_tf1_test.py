@@ -15,10 +15,10 @@
 
 """Tests for object_detection.predictors.heads.class_head."""
 import unittest
+from google.protobuf import text_format
 import numpy as np
 import tensorflow.compat.v1 as tf
 
-from google.protobuf import text_format
 from object_detection.builders import hyperparams_builder
 from object_detection.predictors.heads import class_head
 from object_detection.protos import hyperparams_pb2
