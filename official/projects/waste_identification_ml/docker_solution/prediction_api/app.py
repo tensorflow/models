@@ -26,7 +26,9 @@ on a VM instance at the client's side.
 
 import io
 import json
+import os
 import fastapi
+import fastapi.security
 import PIL
 import tensorflow as tf, tf_keras
 import uvicorn
@@ -37,6 +39,13 @@ HEIGHT, WIDTH = 512, 1024
 
 app = fastapi.FastAPI()
 model_manager = app_utils.ModelManager()
+_api_key_header = fastapi.security.APIKeyHeader(name='X-API-Key')
+
+
+def _verify_api_key(api_key: str = fastapi.Security(_api_key_header)):
+  expected = os.environ.get('PREDICTION_API_KEY', '')
+  if not expected or api_key != expected:
+    raise fastapi.HTTPException(status_code=401, detail='Invalid or missing API key')
 
 
 @app.on_event('startup')
@@ -47,6 +56,7 @@ def startup_event():
 @app.post('/predict')
 async def predict(
     image: fastapi.UploadFile = fastapi.File(default=None),
+    _: None = fastapi.Depends(_verify_api_key),
 ) -> fastapi.responses.JSONResponse:
   """Predicts objects in the uploaded image.
 
