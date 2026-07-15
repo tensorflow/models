@@ -25,7 +25,7 @@ class NewBestMetricTest(tf.test.TestCase):
 
   def test_new_best_metric_higher_is_better(self):
     new_best_metric = actions.NewBestMetric(
-        lambda x: x['value'], higher_is_better=True)
+        lambda x: x['value'], higher_is_better=True)  # pyrefly: ignore[bad-argument-type]
     self.assertTrue(new_best_metric.test({'value': 0.0}))
     self.assertTrue(new_best_metric.commit({'value': 0.0}))
     self.assertFalse(new_best_metric.test({'value': 0.0}))

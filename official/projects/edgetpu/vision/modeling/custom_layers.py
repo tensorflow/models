@@ -395,7 +395,7 @@ def argmax(input_tensor,
       which axis of the input Tensor to reduce across. For vectors, use axis =
       0.
     output_type: An optional tf.DType. Note that default is different from
-      tflite (int64) to make default behavior compatible with darwinn.
+      tflite (int64) to make default behavior compatible with Edge TPU.
     name: Optional name for operations.
     keepdims: If true, retains reduced dimensions with length 1.
     epsilon: Optional small number which is intended to be always below

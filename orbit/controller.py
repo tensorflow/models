@@ -510,7 +510,7 @@ class Controller:
       should_record = False  # Allows static optimization in no-summary cases.
       if self.summary_interval:
         # Create a predicate to determine when summaries should be written.
-        should_record = lambda: (self.global_step % self.summary_interval == 0)
+        should_record = lambda: (self.global_step % self.summary_interval == 0)  # pyrefly: ignore[unsupported-operation]
       assert isinstance(self.trainer, runner.AbstractTrainer)
       with tf.summary.record_if(should_record):
         num_steps_tensor = tf.convert_to_tensor(num_steps, dtype=tf.int32)

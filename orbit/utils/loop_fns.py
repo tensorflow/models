@@ -120,7 +120,7 @@ def create_tf_while_loop_fn(step_fn):
     for _ in tf.range(num_steps):
       # Clear out the outer name scope so the ops created inside `tf.while_loop`
       # don't get "while/" as name prefix.
-      with tf.name_scope(""):
+      with tf.name_scope(""):  # pyrefly: ignore[bad-instantiation]
         step_fn(iterator)
 
   return loop_fn
@@ -183,7 +183,7 @@ def create_tf_while_loop_fn_with_state(step_fn):
     for _ in tf.range(num_steps):
       # Clear out the outer name scope so the ops created inside `tf.while_loop`
       # don't get "while/" as name prefix.
-      with tf.name_scope(""):
+      with tf.name_scope(""):  # pyrefly: ignore[bad-instantiation]
         # Relax the shapes within the loop, so the shape of `state` can change
         # across iterations. This is useful to aggregate outputs from each step
         # and concat to `state`.
@@ -209,4 +209,4 @@ class LoopFnWithSummaries(tpu_summaries.OptionalSummariesFunction):
       num_steps -= 1
     if num_steps >= 1:
       output = self.without_summaries(iterator, num_steps)
-    return output
+    return output  # pyrefly: ignore[unbound-name]

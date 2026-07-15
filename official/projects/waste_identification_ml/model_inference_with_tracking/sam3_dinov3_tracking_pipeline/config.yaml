@@ -1,0 +1,218 @@
+# ==============================================================================
+# PET Bottle Grade Detection & Tracking Pipeline Configuration
+# ==============================================================================
+# This configuration file defines filesystem paths, model parameters, class
+# hierarchies, detection thresholds, tracking options, and visualization settings
+# used across the SAM3 + DINOv3 inference and tracking pipeline.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. FILESYSTEM PATHS
+# ------------------------------------------------------------------------------
+# Defines input/output directories and naming conventions for generated artifacts.
+paths:
+  # Absolute path to the root directory containing immediate capture-session
+  # subfolders. Each subfolder holds individual image frames from one session.
+  input_image_directory: "/home/umairsabir/pfc_test_data/"
+
+  # Absolute path to the root directory where results will be written. A separate
+  # output directory is created for each subfolder in `input_image_directory`.
+  output_root_directory: "/home/umairsabir/pfc_tracking_output/version_1/"
+
+  # Subfolder created INSIDE each per-subfolder result directory to store
+  # individual annotated frames (active when `visualization.save_frames: true`).
+  output_frame_subfolder: "tracked_frames"
+
+  # Filename of the MP4 video compiled from annotated frames and saved INSIDE
+  # each per-subfolder result directory (active when `visualization.save_video: true`).
+  output_video_filename: "tracked_output.mp4"
+
+  # Subfolder created INSIDE each per-subfolder result directory to store
+  # thumbnail collages (track grids) grouped by category and class
+  # (active when `visualization.save_track_grids: true`).
+  track_grid_subfolder: "track_grids_by_category"
+
+
+# ------------------------------------------------------------------------------
+# 2. MODEL CONFIGURATIONS
+# ------------------------------------------------------------------------------
+# Paths and runtime hyperparameters for the segmentation (SAM3) and
+# classification (DINOv3) models.
+models:
+  sam3:
+    # Absolute path to the pretrained SAM3 open-vocabulary segmentation weights (.pt).
+    checkpoint_path: "/home/umairsabir/sam3_original_weight/sam3.pt"
+    # Hardware accelerator device for running SAM3 inference ("cuda" for GPU, "cpu" for CPU).
+    device: "cuda"
+
+  dinov3:
+    # Absolute path to the local DINOv3 repository directory containing code definition scripts.
+    repo_dir: "/home/umairsabir/dinov3"
+    # Absolute path to the trained DINOv3 fine-grained classifier checkpoint file (.pth).
+    checkpoint_path: "/home/umairsabir/training_output/version_1/model.pth"
+    # Vision Transformer architecture name identifying the backbone (e.g., "dinov3_vitl16").
+    model_name: "dinov3_vitl16"
+    # Target resolution (width & height in pixels) for resizing cropped detections before classification.
+    inference_image_size: 256
+    # Batch size used when passing cropped bounding box images through the DINOv3 classifier.
+    classification_batch_size: 32
+    # Standard RGB channel mean normalization values (ImageNet defaults required by DINOv3).
+    image_mean: [0.485, 0.456, 0.406]
+    # Standard RGB channel standard deviation normalization values (ImageNet defaults).
+    image_std: [0.229, 0.224, 0.225]
+
+
+# ------------------------------------------------------------------------------
+# 3. FINE-GRAINED TARGET CLASSES
+# ------------------------------------------------------------------------------
+# Complete list of target classes in exact label-index order.
+# IMPORTANT: The ordering MUST exactly match the index-to-class mapping output by
+# the DINOv3 classification model header (index 0 -> first class, index 1 -> second class, etc.).
+classes:
+- 'brown_bottles_grade3'
+- 'clean_PET_cold_drink_bottles_with_label_cap_ring_grade1'
+- 'clean_PET_cold_drink_bottles_without_label_cap_ring_grade1'
+- 'clean_PET_mango_juice_bottles_without_label_cap_ring_grade1'
+- 'clean_PET_water_bottles_with_label_cap_ring_grade1'
+- 'clean_PET_water_bottles_without_label_cap_ring_grade1'
+- 'clean_jars_grade1'
+- 'clean_liquor_bottles_without_label_cap_ring_grade1'
+- 'coloured_PET_bottles_grade3'
+- 'dirt_PET_cold_drink_bottles_with_label_cap_ring_grade3'
+- 'dirt_PET_cold_drink_bottles_without_label_cap_ring_grade3'
+- 'dirt_PET_mango_juice_bottles_without_label_cap_ring_grade3'
+- 'dirt_PET_water_bottles_with_label_cap_ring_grade3'
+- 'dirt_PET_water_bottles_without_label_cap_ring_grade3'
+- 'dirt_jars_grade3'
+- 'dirt_liquor_bottles_without_label_cap_ring_grade3'
+- 'full_sleeved_bottles_grade3'
+- 'green_bottles_grade3'
+- 'liquor_bottles_with_label_cap_ring_grade3'
+- 'non_food_bottles_grade3'
+- 'partially_sleeved_mango_juice_bottles_with_label_cap_ring_grade3'
+
+# ------------------------------------------------------------------------------
+# 4. COLLAPSED CATEGORIES (HIERARCHICAL GROUPING)
+# ------------------------------------------------------------------------------
+# Optional grouping of fine-grained classes into broader high-level categories
+# (e.g., reporting by acceptance status or PET grade instead of individual classes).
+#
+# Rules when `enable: true`:
+#   - Every class in `classes` above MUST appear in exactly one category under `mapping`.
+#   - If any class is missing or duplicated across categories, config loading raises an error.
+#
+# Rules when `enable: false`:
+#   - The `mapping` dictionary is ignored.
+#   - Per-category reporting tables and category-level folder structures are skipped.
+collapsed_categories:
+  enable: false
+  mapping:
+    accepted:
+    - 'milk_accepted'
+    rejected:
+    - 'milk_rejected'
+
+
+# ------------------------------------------------------------------------------
+# 5. DETECTION & PROMPT PARAMETERS
+# ------------------------------------------------------------------------------
+# Controls text-prompt selection and hyperparameter settings for SAM3 mask
+# generation and bounding box cropping.
+detection:
+  # Key identifying which prompt configuration from `configs` below is actively used during inference.
+  active_prompt: "bottles and containers"
+
+  # Glob patterns specifying which image file extensions to scan inside each session folder.
+  image_file_extensions: ["*.png", "*.jpg", "*.jpeg"]
+
+  # Hyperparameter sets indexed by prompt string.
+  configs:
+    "bottles and containers":
+      # Minimum SAM3 confidence score (0.0 to 1.0) required to generate a mask.
+      confidence_threshold: 0.5
+      # Minimum classification/detection score (0.0 to 1.0) required to retain a bounding box.
+      score_threshold: 0.20
+      # Containment/overlap ratio (0.0 to 1.0) above which a smaller bounding box is
+      # suppressed if it is enclosed inside a larger bounding box (prevents nested duplicates).
+      containment_threshold: 0.98
+      # Maximum pixel length of the image's shorter edge during resizing before SAM3 inference.
+      max_short_side: 1024
+      # Target resolution [width, height] in pixels for resizing bounding box crops for DINOv3.
+      crop_size: [256, 256]
+      # Number of padding pixels added around tight bounding boxes before cropping (captures context).
+      crop_buffer_pixels: 5
+
+    "packets":
+      confidence_threshold: 0.3
+      score_threshold: 0.0
+      containment_threshold: 0.98
+      # Intersection over Union (IoU) threshold above which overlapping bounding boxes
+      # of the same prompt class are merged together into a single bounding box.
+      merge_overlap_threshold: 0.7
+      max_short_side: 1024
+      crop_size: [256, 256]
+      crop_buffer_pixels: 5
+
+
+# ------------------------------------------------------------------------------
+# 6. MULTI-OBJECT TRACKING (BYTETRACK)
+# ------------------------------------------------------------------------------
+# Controls tracking behavior across consecutive video/capture frames using ByteTrack.
+tracking:
+  # Toggle tracking on/off across frames:
+  #   - true: Runs ByteTrack to assign stable track IDs across consecutive frames.
+  #   - false: Bypasses ByteTrack entirely; every detection in every frame receives a
+  #            fresh sequential ID. Use `false` when images in subfolders are independent
+  #            (not sequential video frames). When `false`, the thresholds below are ignored.
+  enable: true
+
+  # Minimum Intersection over Union (IoU, 0.0 to 1.0) between a detection box and a predicted
+  # track box required for ByteTrack to link them together across consecutive frames.
+  bytetrack_minimum_iou_threshold: 0.1
+
+  # Minimum number of consecutive frames a track must persist before ByteTrack confirms
+  # and emits the track ID in pipeline outputs.
+  bytetrack_minimum_consecutive_frames: 2
+
+
+# ------------------------------------------------------------------------------
+# 7. VISUALIZATION & ARTIFACT GENERATION
+# ------------------------------------------------------------------------------
+# Toggles and visual styling options for generating output charts, frames, and videos.
+visualization:
+  # ---------------------------------------------------------------------------
+  # Output Toggles (Disabling these saves disk space and speeds up processing)
+  # ---------------------------------------------------------------------------
+  # If true, creates `output_frame_subfolder` ("tracked_frames/") inside each per-subfolder
+  # result directory and saves individual annotated PNG images with bounding boxes and track IDs.
+  save_frames: true
+
+  # If true, compiles annotated frames into an MP4 video file named `output_video_filename`
+  # ("tracked_output.mp4") directly inside each per-subfolder result directory.
+  save_video: false
+
+  # If true, generates and saves track gallery collages (thumbnail grids of each tracked object)
+  # inside `track_grid_subfolder` ("track_grids_by_category/"), grouped by category/class.
+  save_track_grids: true
+
+  # ---------------------------------------------------------------------------
+  # Render & Styling Settings
+  # ---------------------------------------------------------------------------
+  # Playback frame rate (Frames Per Second) when compiling tracking output videos.
+  output_video_fps: 1
+
+  # If true, overlays the model's confidence percentage text on top of bounding box labels.
+  show_confidence_in_labels: true
+
+  # RGB background color [R, G, B] used to fill padding when letterboxing non-square crops
+  # to match `crop_size`. Defaults to DINOv3 / ImageNet mean background color to minimize bias.
+  background_blend_color_rgb: [124, 116, 104]
+
+  # Number of thumbnail columns per row in generated track summary grid figures.
+  track_grid_columns_per_row: 5
+
+  # Physical size (in inches) of each individual thumbnail cell in track summary grid figures.
+  track_grid_thumbnail_size_inches: 3
+
+  # Image resolution in Dots Per Inch (DPI) used when exporting track grid PNG figures.
+  track_grid_dpi: 150

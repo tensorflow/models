@@ -39,7 +39,7 @@ archivePrefix = {arXiv},
 }
 """
 _DOWNLOAD_URL_TMPL = (
-    "http://nlp.cs.washington.edu/triviaqa/data/triviaqa-{}.tar.gz")
+    "https://nlp.cs.washington.edu/triviaqa/data/triviaqa-{}.tar.gz")
 _TRAIN_FILE_FORMAT = "*-train.json"
 _VALIDATION_FILE_FORMAT = "*-dev.json"
 _TEST_FILE_FORMAT = "*test-without-answers.json"
@@ -198,7 +198,7 @@ class TriviaQA(tfds.core.BeamBasedBuilder):
           builder=self,
           description=_DESCRIPTION,
           supervised_keys=None,
-          homepage="http://nlp.cs.washington.edu/triviaqa/",
+          homepage="https://nlp.cs.washington.edu/triviaqa/",
           citation=_CITATION,
           features=tfds.features.FeaturesDict({
               "id": tfds.features.Text(),
@@ -274,7 +274,7 @@ class TriviaQA(tfds.core.BeamBasedBuilder):
         }),
 
         supervised_keys=None,
-        homepage="http://nlp.cs.washington.edu/triviaqa/",
+        homepage="https://nlp.cs.washington.edu/triviaqa/",
         citation=_CITATION,
     )
 

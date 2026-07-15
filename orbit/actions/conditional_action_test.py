@@ -27,7 +27,7 @@ class ConditionalActionTest(tf.test.TestCase):
       raise AssertionError(str(arg))
 
     conditional_action = actions.ConditionalAction(
-        condition=lambda x: x['value'], action=raise_assertion)
+        condition=lambda x: x['value'], action=raise_assertion)  # pyrefly: ignore[bad-argument-type]
 
     conditional_action({'value': False})  # Nothing is raised.
     with self.assertRaises(AssertionError) as ctx:

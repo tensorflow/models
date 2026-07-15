@@ -93,7 +93,7 @@ class NewBestMetric:
     float_max = sys.float_info.max
     self._best_value = JSONPersistedValue(
         initial_value=-float_max if higher_is_better else float_max,
-        filename=filename,
+        filename=filename,  # pyrefly: ignore[bad-argument-type]
         write_value=write_metric)
 
   def __call__(self, output: runner.Output) -> bool:
