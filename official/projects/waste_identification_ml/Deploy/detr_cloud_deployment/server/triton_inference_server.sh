@@ -17,8 +17,9 @@ fi
 declare -A models=(
   ["CircularNet_Segmentation_Model_v1"]="https://storage.googleapis.com/"\
 "tf_model_garden/vision/waste_identification_ml/"\
-"CircularNet_Segmentation_Model_v1.zip"
+"CN-ModelCheckpoints/CN-TritonInferenceServer/CircularNet_model_v2.zip"
 )
+
 
 # Download, unzip, and organize models
 for model_name in "${!models[@]}"; do
