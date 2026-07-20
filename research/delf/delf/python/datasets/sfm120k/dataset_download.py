@@ -15,7 +15,8 @@
 """Structure-from-Motion dataset (Sfm120k) download function."""
 
 import os
-
+import urllib.request
+import tarfile
 import tensorflow as tf
 
 
@@ -49,17 +50,23 @@ def download_train(data_dir):
     print('>> Image directory does not exist. Creating: {}'.format(dst_dir))
     tf.io.gfile.makedirs(dst_dir)
     print('>> Downloading ims.tar.gz...')
-    os.system('wget {} -O {}'.format(src_file, dst_file))
+    urllib.request.urlretrieve(src_file, dst_file)
     print('>> Extracting {}...'.format(dst_file))
-    os.system('tar -zxf {} -C {}'.format(dst_file, dst_dir))
+    if os.path.exists(dst_file):
+      with tarfile.open(dst_file, "r:gz") as tar:
+        tar.extractall(path=dst_dir)
     print('>> Extracted, deleting {}...'.format(dst_file))
-    os.system('rm {}'.format(dst_file))
+    if os.path.exists(dst_file):
+      os.remove(dst_file)
 
   # Create symlink for train/retrieval-SfM-30k/.
   dst_dir_old = os.path.join(datasets_dir, 'retrieval-SfM-120k', 'ims')
   dst_dir = os.path.join(datasets_dir, 'retrieval-SfM-30k', 'ims')
   if not (tf.io.gfile.exists(dst_dir) or os.path.islink(dst_dir)):
     tf.io.gfile.makedirs(os.path.join(datasets_dir, 'retrieval-SfM-30k'))
+    if os.path.islink(dst_dir) or os.path.exists(dst_dir):
+      os.remove(dst_dir)
+      os.symlink(dst_dir_old, dst_dir)
     os.system('ln -s {} {}'.format(dst_dir_old, dst_dir))
     print(
             '>> Created symbolic link from retrieval-SfM-120k/ims to '
@@ -89,7 +96,7 @@ def download_train(data_dir):
       if not os.path.isfile(dst_file):
         print('>> DB file {} does not exist. Downloading...'.format(
                 download_files[i]))
-        os.system('wget {} -O {}'.format(src_file, dst_file))
+        urllib.request.urlretrieve(src_file, dst_file)
 
       if download_eccv2020:
         eccv2020_dst_file = os.path.join(dst_dir, download_eccv2020)
@@ -99,5 +106,4 @@ def download_train(data_dir):
           eccv2020_dst_file = os.path.join(dst_dir, download_eccv2020)
           eccv2020_src_file = os.path.join(eccv2020_src_dir,
                                            download_eccv2020)
-          os.system('wget {} -O {}'.format(eccv2020_src_file,
-                                           eccv2020_dst_file))
+          urllib.request.urlretrieve(eccv2020_src_file, eccv2020_dst_file)
