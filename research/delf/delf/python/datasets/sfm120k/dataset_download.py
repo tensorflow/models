@@ -15,8 +15,39 @@
 """Structure-from-Motion dataset (Sfm120k) download function."""
 
 import os
+import urllib3
+import tarfile
+import requests
+from tqdm import tqdm
 
 import tensorflow as tf
+
+# Suppress SSL Warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+def wget(src, dst, sha256checksum=False):
+    """Download a file and calculate it's SHA256 chacksum"""
+
+    # Writing in chunks helps in preventing running out of memory
+    with requests.get(src, stream=True, verify=False) as r:
+        r.raise_for_status()
+        with open(dst, 'wb') as f, tqdm(desc="Downloading",
+        unit='iB',
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as bar:
+            for chunk in r.iter_content(chunk_size=8192):
+                size = f.write(chunk)
+                bar.update(size)
+
+    if sha256checksum:
+        from hashlib import sha256
+        checksum = sha256(open(dst,"rb").read()).hexdigest()
+        print("SHA256 checksum: ", checksum)
+        f = open(f"{dst}.sha256","a")
+        f.write(f"{checksum}  {dst}")
+        f.close()
 
 
 def download_train(data_dir):
@@ -49,18 +80,22 @@ def download_train(data_dir):
     print('>> Image directory does not exist. Creating: {}'.format(dst_dir))
     tf.io.gfile.makedirs(dst_dir)
     print('>> Downloading ims.tar.gz...')
-    os.system('wget {} -O {}'.format(src_file, dst_file))
+    wget(src_file, dst_file, sha256checksum=True)
     print('>> Extracting {}...'.format(dst_file))
-    os.system('tar -zxf {} -C {}'.format(dst_file, dst_dir))
+    downloaded_tar = tarfile.open(dst_file)
+    downloaded_tar.extractall(dst_dir)
+    downloaded_tar.close()
     print('>> Extracted, deleting {}...'.format(dst_file))
-    os.system('rm {}'.format(dst_file))
+    if os.path.exists(dst_file):
+      os.remove(dst_file)
+
 
   # Create symlink for train/retrieval-SfM-30k/.
   dst_dir_old = os.path.join(datasets_dir, 'retrieval-SfM-120k', 'ims')
   dst_dir = os.path.join(datasets_dir, 'retrieval-SfM-30k', 'ims')
   if not (tf.io.gfile.exists(dst_dir) or os.path.islink(dst_dir)):
     tf.io.gfile.makedirs(os.path.join(datasets_dir, 'retrieval-SfM-30k'))
-    os.system('ln -s {} {}'.format(dst_dir_old, dst_dir))
+    os.symlink(dst_dir_old, dst_dir)
     print(
             '>> Created symbolic link from retrieval-SfM-120k/ims to '
             'retrieval-SfM-30k/ims')
@@ -89,7 +124,7 @@ def download_train(data_dir):
       if not os.path.isfile(dst_file):
         print('>> DB file {} does not exist. Downloading...'.format(
                 download_files[i]))
-        os.system('wget {} -O {}'.format(src_file, dst_file))
+        wget(src_file, dst_file)
 
       if download_eccv2020:
         eccv2020_dst_file = os.path.join(dst_dir, download_eccv2020)
@@ -99,5 +134,4 @@ def download_train(data_dir):
           eccv2020_dst_file = os.path.join(dst_dir, download_eccv2020)
           eccv2020_src_file = os.path.join(eccv2020_src_dir,
                                            download_eccv2020)
-          os.system('wget {} -O {}'.format(eccv2020_src_file,
-                                           eccv2020_dst_file))
+          wget(eccv2020_src_file, eccv2020_dst_file)
