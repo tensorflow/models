@@ -273,15 +273,35 @@ class Controller:
     """
     self._require("trainer", for_method="train")
 
-    # TODO(momernick): Support steps=None or -1 (training to exhaustion).
     current_step = self.global_step.numpy()  # Cache, since this is expensive.
-    _log(f"train | step: {current_step: 6d} | training until step {steps}...")
-    while current_step < steps:
-      # Calculates steps to run for the next train loop.
-      num_steps = min(steps - current_step, self.steps_per_loop)
-      self._train_n_steps(num_steps)
+
+    if steps == -1:
+      _log(f"train | step: {current_step: 6d} | training until exhaustion...")
+    else:
+      _log(f"train | step: {current_step: 6d} | training until step {steps}...")
+
+    while steps == -1 or current_step < steps:
+    # Calculates steps to run for the next train loop.
+      if steps == -1:
+        num_steps = self.steps_per_loop
+      else:
+        num_steps = min(steps - current_step, self.steps_per_loop)
+
+      try:
+        self._train_n_steps(num_steps)
+      except (tf.errors.OutOfRangeError, StopIteration):
+        _log("Training stopped because the underlying iterator is exhausted.")
+        break
+
       self._maybe_save_checkpoint()
-      current_step = self.global_step.numpy()
+
+      new_step = self.global_step.numpy()
+      # Stop if the iterator is exhausted (step count didn't increase as expected).
+      if new_step < current_step + num_steps:
+        _log("Training stopped because the underlying iterator is exhausted.")
+        break
+
+      current_step = new_step
 
     if checkpoint_at_completion:
       self._maybe_save_checkpoint(check_interval=False)
