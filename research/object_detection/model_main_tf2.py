@@ -28,6 +28,15 @@ python model_main_tf2.py -- \
 """
 from absl import flags
 import tensorflow.compat.v2 as tf
+from packaging import version
+
+if version.parse(tf.__version__) >= version.parse("2.16.0"):
+    raise RuntimeError(
+        "Object Detection API training is not compatible with TensorFlow >= 2.16. "
+        "Estimator support was removed in TensorFlow 2.16+. "
+        "Please use TensorFlow <= 2.15 or migrate to a supported framework."
+    )
+
 from object_detection import model_lib_v2
 
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '

@@ -1,17 +1,30 @@
 # TensorFlow Object Detection API
+
 [![TensorFlow 2.2](https://img.shields.io/badge/TensorFlow-2.2-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0)
 [![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
 [![Python 3.6](https://img.shields.io/badge/Python-3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
 
 ## Deprecation
 
-*Note to our users*: the Tensorflow Object Detection API is no longer being
+_Note to our users_: the Tensorflow Object Detection API is no longer being
 maintained to be compatible with new versions of external dependencies
 (from pip, apt-get etc.). Any changes that follow are meant for internal
 maintenance. We may use the OD API to release projects in the future,
 in which case we will provide full install instructions or Docker images.
 We encourage users seeking an actively maintained detection / segmentation
-codebase to consider [TF-Vision](https://github.com/tensorflow/models/tree/master/official/vision)
+codebase to consider [TF-Vision]
+
+## TensorFlow Version Compatibility
+
+The Object Detection API depends on TensorFlow Estimator, which was removed in TensorFlow 2.16 and later.
+
+Training models using this API is supported only with:
+
+- TensorFlow <= 2.15
+- Python versions compatible with TensorFlow <= 2.15
+  Using TensorFlow >= 2.16 will result in a runtime error.
+
+(https://github.com/tensorflow/models/tree/master/official/vision)
 or [scenic](https://github.com/google-research/scenic). We have preserved
 the original install instructions below in case anyone wants to try out old
 models or scripts.
@@ -39,6 +52,7 @@ Song Y, Guadarrama S, Murphy K, CVPR 2017
 </p>
 
 ## Support for TensorFlow 2 and 1
+
 The TensorFlow Object Detection API supports both TensorFlow 2 (TF2) and
 TensorFlow 1 (TF1). A majority of the modules in the library are both TF1 and
 TF2 compatible. In cases where they are not, we provide two versions.
@@ -47,16 +61,16 @@ Although we will continue to maintain the TF1 models and provide support, we
 encourage users to try the Object Detection API with TF2 for the following
 reasons:
 
-* We provide new architectures supported in TF2 only and we will continue to
+- We provide new architectures supported in TF2 only and we will continue to
   develop in TF2 going forward.
 
-* The popular models we ported from TF1 to TF2 achieve the same performance.
+- The popular models we ported from TF1 to TF2 achieve the same performance.
 
-* A single training and evaluation binary now supports both GPU and TPU
+- A single training and evaluation binary now supports both GPU and TPU
   distribution strategies making it possible to train models with synchronous
   SGD by default.
 
-* Eager execution with new binaries makes debugging easy!
+- Eager execution with new binaries makes debugging easy!
 
 Finally, if are an existing user of the Object Detection API we have retained
 the same config language you are familiar with and ensured that the
@@ -70,18 +84,21 @@ Please select one of the links below for TensorFlow version-specific
 documentation of the Object Detection API:
 
 <!-- mdlint off(WHITESPACE_LINE_LENGTH) -->
+
 ### Tensorflow 2.x
-  *   <a href='g3doc/tf2.md'>
-        Object Detection API TensorFlow 2</a><br>
-  *   <a href='g3doc/tf2_detection_zoo.md'>
-        TensorFlow 2 Model Zoo</a><br>
+
+- <a href='g3doc/tf2.md'>
+    Object Detection API TensorFlow 2</a><br>
+- <a href='g3doc/tf2_detection_zoo.md'>
+    TensorFlow 2 Model Zoo</a><br>
 
 ### Tensorflow 1.x
-  *   <a href='g3doc/tf1.md'>
-        Object Detection API TensorFlow 1</a><br>
-  *   <a href='g3doc/tf1_detection_zoo.md'>
-        TensorFlow 1 Model Zoo</a><br>
-<!-- mdlint on -->
+
+- <a href='g3doc/tf1.md'>
+    Object Detection API TensorFlow 1</a><br>
+- <a href='g3doc/tf1_detection_zoo.md'>
+          TensorFlow 1 Model Zoo</a><br>
+  <!-- mdlint on -->
 
 ## Whats New
 
@@ -114,17 +131,16 @@ architectures. The findings from our paper are not specific to CenterNet and
 can also be applied to Mask R-CNN or without any detector at all.
 Please see links below for more details
 
-*   [DeepMAC documentation](g3doc/deepmac.md).
-*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
-    in TF Model garden code base.
-*   [DeepMAC Colab](./colab_tutorials/deepmac_colab.ipynb) that lets you run a
-    pre-trained DeepMAC model on user-specified boxes. Note that you are not
-    restricted to COCO classes!
-*   Project website - [git.io/deepmac](https://git.io/deepmac)
+- [DeepMAC documentation](g3doc/deepmac.md).
+- [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
+  in TF Model garden code base.
+- [DeepMAC Colab](./colab_tutorials/deepmac_colab.ipynb) that lets you run a
+  pre-trained DeepMAC model on user-specified boxes. Note that you are not
+  restricted to COCO classes!
+- Project website - [git.io/deepmac](https://git.io/deepmac)
 
 <b>Thanks to contributors</b>: Vighnesh Birodkar, Zhichao Lu, Siyang Li,
- Vivek Rathod, Jonathan Huang
-
+Vivek Rathod, Jonathan Huang
 
 ### Mobile Inference for TF2 models
 
@@ -138,24 +154,24 @@ currently supported. See <a href='g3doc/running_on_mobile_tf2.md'>documentation<
 We are happy to announce that the TF OD API officially supports TF2! Our release
 includes:
 
-* New binaries for train/eval/export that are designed to run in eager mode.
-* A suite of TF2 compatible (Keras-based) models; this includes migrations of
+- New binaries for train/eval/export that are designed to run in eager mode.
+- A suite of TF2 compatible (Keras-based) models; this includes migrations of
   our most popular TF1.x models (e.g., SSD with MobileNet, RetinaNet,
   Faster R-CNN, Mask R-CNN), as well as a few new architectures for which we
   will only maintain TF2 implementations:
 
-    1. CenterNet - a simple and effective anchor-free architecture based on
-       the recent [Objects as Points](https://arxiv.org/abs/1904.07850) paper by
-       Zhou et al.
-    2. [EfficientDet](https://arxiv.org/abs/1911.09070) - a recent family of
-       SOTA models discovered with the help of Neural Architecture Search.
+  1. CenterNet - a simple and effective anchor-free architecture based on
+     the recent [Objects as Points](https://arxiv.org/abs/1904.07850) paper by
+     Zhou et al.
+  2. [EfficientDet](https://arxiv.org/abs/1911.09070) - a recent family of
+     SOTA models discovered with the help of Neural Architecture Search.
 
-* COCO pre-trained weights for all of the models provided as TF2 style
+- COCO pre-trained weights for all of the models provided as TF2 style
   object-based checkpoints.
-* Access to [Distribution Strategies](https://www.tensorflow.org/guide/distributed_training)
+- Access to [Distribution Strategies](https://www.tensorflow.org/guide/distributed_training)
   for distributed training --- our model are designed to be trainable using sync
   multi-GPU and TPU platforms.
-* Colabs demo’ing eager mode training and inference.
+- Colabs demo’ing eager mode training and inference.
 
 See our release blogpost [here](https://blog.tensorflow.org/2020/07/tensorflow-2-meets-object-detection-api.html).
 If you are an existing user of the TF OD API using TF 1.x, don’t worry, we’ve
@@ -188,14 +204,14 @@ uses attention to incorporate contextual information images (e.g. from
 temporally nearby frames taken by a static camera) in order to improve accuracy.
 Importantly, these contextual images need not be labeled.
 
-*   When applied to a challenging wildlife detection dataset
-    ([Snapshot Serengeti](http://lila.science/datasets/snapshot-serengeti)),
-    Context R-CNN with context from up to a month of images outperforms a
-    single-frame baseline by 17.9% mAP, and outperforms S3D (a 3d convolution
-    based baseline) by 11.2% mAP.
-*   Context R-CNN leverages temporal context from the unlabeled frames of a
-    novel camera deployment to improve performance at that camera, boosting
-    model generalizeability.
+- When applied to a challenging wildlife detection dataset
+  ([Snapshot Serengeti](http://lila.science/datasets/snapshot-serengeti)),
+  Context R-CNN with context from up to a month of images outperforms a
+  single-frame baseline by 17.9% mAP, and outperforms S3D (a 3d convolution
+  based baseline) by 11.2% mAP.
+- Context R-CNN leverages temporal context from the unlabeled frames of a
+  novel camera deployment to improve performance at that camera, boosting
+  model generalizeability.
 
 Read about Context R-CNN on the Google AI blog
 [here](https://ai.googleblog.com/2020/06/leveraging-temporal-context-for-object.html).
@@ -216,6 +232,7 @@ Rathod, Ronny Votel, Zhichao Lu, David Ross, Pietro Perona, Tanya Birch, and the
 Wildlife Insights AI Team.
 
 ## Release Notes
+
 See [notes](g3doc/release_notes.md) for all past releases.
 
 ## Getting Help
@@ -234,11 +251,11 @@ reporting an issue.
 
 ## Maintainers
 
-* Jonathan Huang ([@GitHub jch1](https://github.com/jch1))
-* Vivek Rathod ([@GitHub tombstone](https://github.com/tombstone))
-* Vighnesh Birodkar ([@GitHub vighneshbirodkar](https://github.com/vighneshbirodkar))
-* Austin Myers ([@GitHub austin-myers](https://github.com/austin-myers))
-* Zhichao Lu ([@GitHub pkulzc](https://github.com/pkulzc))
-* Ronny Votel ([@GitHub ronnyvotel](https://github.com/ronnyvotel))
-* Yu-hui Chen ([@GitHub yuhuichen1015](https://github.com/yuhuichen1015))
-* Derek Chow  ([@GitHub derekjchow](https://github.com/derekjchow))
+- Jonathan Huang ([@GitHub jch1](https://github.com/jch1))
+- Vivek Rathod ([@GitHub tombstone](https://github.com/tombstone))
+- Vighnesh Birodkar ([@GitHub vighneshbirodkar](https://github.com/vighneshbirodkar))
+- Austin Myers ([@GitHub austin-myers](https://github.com/austin-myers))
+- Zhichao Lu ([@GitHub pkulzc](https://github.com/pkulzc))
+- Ronny Votel ([@GitHub ronnyvotel](https://github.com/ronnyvotel))
+- Yu-hui Chen ([@GitHub yuhuichen1015](https://github.com/yuhuichen1015))
+- Derek Chow ([@GitHub derekjchow](https://github.com/derekjchow))
