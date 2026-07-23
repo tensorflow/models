@@ -570,6 +570,101 @@ class LabelMapUtilTest(tf.test.TestCase):
     np.testing.assert_array_equal(gt_hierarchy_dict_lut['descendants'],
                                   descendants_lut)
 
+  def test_extract_label_names_from_category_index_max_label_index(self):
+    category_index = {
+        1: {
+            'name': u'dog',
+            'id': 1
+        },
+        3: {
+            'name': u'cat',
+            'id': 3
+        }
+    }
+    label_names = label_map_util.extract_label_names_from_category_index(
+        category_index, max_label_index=3)
+    self.assertListEqual(
+        [u'dog', u'class_2', u'cat'],
+        label_names
+    )
+
+    category_index = {
+        1: {
+            'name': u'dog',
+            'id': 1
+        },
+        3: {
+            'name': u'cat',
+            'id': 3
+        }
+    }
+    label_names = label_map_util.extract_label_names_from_category_index(
+        category_index, max_label_index=4)
+    self.assertListEqual(
+        [u'dog', u'class_2', u'cat', u'class_4'],
+        label_names
+    )
+
+  def test_extract_label_names_from_category_index_fill_in_background(self):
+    category_index = {
+        1: {
+            'name': u'dog',
+            'id': 1
+        },
+        2: {
+            'name': u'cat',
+            'id': 2
+        }
+    }
+    label_names = label_map_util.extract_label_names_from_category_index(
+        category_index, max_label_index=2, fill_in_background=True)
+    self.assertListEqual(
+        [u'background', u'dog', u'cat'],
+        label_names
+    )
+
+    category_index = {
+        0: {
+            'name': u'background',
+            'id': 0
+        },
+        1: {
+            'name': u'dog',
+            'id': 1
+        },
+        2: {
+            'name': u'cat',
+            'id': 2
+        }
+    }
+    label_names = label_map_util.extract_label_names_from_category_index(
+        category_index, max_label_index=2, fill_in_background=False)
+    self.assertListEqual(
+        [u'background', u'dog', u'cat'],
+        label_names
+    )
+
+    category_index = {
+        0: {
+            'name': u'background',
+            'id': 0
+        },
+        1: {
+            'name': u'dog',
+            'id': 1
+        },
+        2: {
+            'name': u'cat',
+            'id': 2
+        }
+    }
+    label_names = label_map_util.extract_label_names_from_category_index(
+        category_index, max_label_index=2, fill_in_background=True)
+    self.assertListEqual(
+        [u'background', u'dog', u'cat'],
+        label_names
+    )
+
 
 if __name__ == '__main__':
   tf.test.main()
