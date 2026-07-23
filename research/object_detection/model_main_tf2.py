@@ -69,6 +69,9 @@ flags.DEFINE_boolean('record_summaries', True,
                       ' summaries of the loss values which are always'
                       ' recorded.'))
 
+flags.DEFINE_boolean('allow_growth', False,
+                     ('Whether or not to limit gpu memory growth.'))
+
 FLAGS = flags.FLAGS
 
 
@@ -76,6 +79,17 @@ def main(unused_argv):
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
   tf.config.set_soft_device_placement(True)
+  
+  if FLAGS.allow_growth:
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+      try:
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+          tf.config.experimental.set_memory_growth(gpu, True)
+      except RuntimeError as e:
+        # Memory growth must be set before GPUs have been initialized
+        pass
 
   if FLAGS.checkpoint_dir:
     model_lib_v2.eval_continuously(
