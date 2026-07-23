@@ -434,7 +434,7 @@ class KLCost_GaussianGaussian(object):
     """
     # L = -KL + log p(x|z), to maximize bound on likelihood
     # -L = KL - log p(x|z), to minimize bound on NLL
-    # so 'KL cost' is postive KL divergence
+    # so 'KL cost' is positive KL divergence
     kl_b = 0.0
     for z, prior_z in zip(zs, prior_zs):
       assert isinstance(z, Gaussian)
@@ -475,7 +475,7 @@ class KLCost_GaussianGaussianProcessSampled(object):
 
     # L = -KL + log p(x|z), to maximize bound on likelihood
     # -L = KL - log p(x|z), to minimize bound on NLL
-    # so 'KL cost' is postive KL divergence
+    # so 'KL cost' is positive KL divergence
     z0_bxu = post_zs[0].sample
     logq_bxu = post_zs[0].logp(z0_bxu)
     logp_bxu = prior_z_process.logp_t(z0_bxu)
