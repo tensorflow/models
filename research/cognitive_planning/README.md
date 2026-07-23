@@ -104,11 +104,11 @@ python train_supervised_active_vision.py \
   --logtostderr
 ```
 
-The training can be run for different modalities and modality combinations, including semantic segmentation, object detectors, RGB images, depth images. Low resolution images and outputs of detectors pretrained on COCO dataset and semantic segmenation pre trained on NYU dataset are provided as a part of this distribution and can be found in Meta directory of AVD_Minimal. 
+The training can be run for different modalities and modality combinations, including semantic segmentation, object detectors, RGB images, depth images. Low resolution images and outputs of detectors pretrained on COCO dataset and semantic segmentation pre trained on NYU dataset are provided as a part of this distribution and can be found in Meta directory of AVD_Minimal. 
 Additional details are described in the comments of the code and in the paper.
 
 ### Run Evaluation
-Use the following command for unrolling the policy on the eval environments. The inference code periodically check the checkpoint folder for new checkpoints to use it for unrolling the policy on the eval environments. After each evaluation, it will create a folder in the $CHECKPOINT_DIR/evals/$ITER where $ITER is the iteration number at which the checkpoint is stored.
+Use the following command for unrolling the policy on the eval environments. The inference code periodically checks the checkpoint folder for new checkpoints to use it for unrolling the policy on the eval environments. After each evaluation, it will create a folder in the $CHECKPOINT_DIR/evals/$ITER where $ITER is the iteration number at which the checkpoint is stored.
 ```shell
 # Eval
 python train_supervised_active_vision.py \
@@ -143,7 +143,7 @@ To ask questions or report issues please open an issue on the tensorflow/models
 Please assign issues to @arsalan-mousavian.
 
 ## Reference
-The details of the training and experiments can be found in the following paper. If you find our work useful in your research please consider citing our paper:
+The details of the training and experiments can be found in the following paper. If you find our work useful in your research, please consider citing our paper:
 
 ```
 @inproceedings{MousavianECCVW18,
