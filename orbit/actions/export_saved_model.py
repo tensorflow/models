@@ -17,7 +17,7 @@
 import os
 import re
 
-from typing import Callable, Optional
+from typing import Any, Callable, List, Optional
 
 import tensorflow as tf, tf_keras
 
@@ -100,7 +100,7 @@ class ExportFileManager:
     self._subdirectory = subdirectory or ''
 
   @property
-  def managed_files(self):
+  def managed_files(self) -> List[str]:
     """Returns all files managed by this instance, in sorted order.
 
     Returns:
@@ -116,7 +116,7 @@ class ExportFileManager:
         files.append(file)
     return files
 
-  def clean_up(self):
+  def clean_up(self) -> None:
     """Cleans up old files matching `{base_name}-*`.
 
     The most recent `max_to_keep` files are preserved.
@@ -141,7 +141,7 @@ class ExportSavedModel:
   def __init__(self,
                model: tf.Module,
                file_manager: ExportFileManager,
-               signatures,
+               signatures: Any,
                options: Optional[tf.saved_model.SaveOptions] = None):
     """Initializes the instance.
 
@@ -157,7 +157,7 @@ class ExportSavedModel:
     self.signatures = signatures
     self.options = options
 
-  def __call__(self, _):
+  def __call__(self, _) -> None:
     """Exports the SavedModel."""
     export_dir = self.file_manager.next_name()
     tf.saved_model.save(self.model, export_dir, self.signatures, self.options)
