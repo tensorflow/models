@@ -174,7 +174,7 @@ class JSONPersistedValue:
 
   def __init__(self,
                initial_value: Any,
-               filename: str,
+               filename: Optional[str],
                write_value: bool = True):
     """Initializes the instance.
 
@@ -206,11 +206,11 @@ class JSONPersistedValue:
     if self._value is None:
       self.write(initial_value)
 
-  def read(self):
+  def read(self) -> Any:
     """Returns the value."""
     return self._value
 
-  def write(self, value):
+  def write(self, value: Any) -> None:
     """Writes the value, updating the backing store if one was provided."""
     self._value = value
     if self._filename is not None and self._write_value:
