@@ -18,7 +18,7 @@ Parse image and ground-truths in a dataset to training targets and package them
 into (image, labels) tuple for RetinaNet.
 """
 
-from typing import Optional
+from typing import Optional, List
 
 from absl import logging
 import tensorflow as tf, tf_keras
@@ -37,17 +37,17 @@ class Parser(parser.Parser):
 
   def __init__(self,
                output_size,
-               min_level: int | None,
+               min_level: Optional[int] = None,
                max_level,
-               num_scales: int | None,
-               aspect_ratios: list[float] | None,
-               anchor_size: float | None,
+               num_scales: Optional[int] = None,
+               aspect_ratios: Optional[List[float]] = None,
+               anchor_size: Optional[float] = None,
                match_threshold=0.5,
                unmatched_threshold=0.5,
                box_coder_weights=None,
                aug_type=None,
                aug_rand_hflip=False,
-               aug_rand_jpeg: cfg.RandJpegQuality | None = None,
+               aug_rand_jpeg: Optional[cfg.RandJpegQuality] = None,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
                use_autoaugment=False,

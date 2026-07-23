@@ -31,7 +31,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
       min_level: int,
       max_level: int,
       num_classes: int,
-      num_anchors_per_location: int | dict[str, int],
+      num_anchors_per_location: Union[int, Dict[str, int]] = None,
       num_convs: int = 4,
       num_filters: int = 256,
       attribute_heads: Optional[List[Dict[str, Any]]] = None,
