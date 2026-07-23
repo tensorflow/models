@@ -94,5 +94,7 @@ ENV/
 # PyCharm
 .idea/
 
+.vscode/
+
 # For mac
 .DS_Store

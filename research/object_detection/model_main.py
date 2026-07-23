@@ -33,7 +33,7 @@ flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
 flags.DEFINE_boolean('eval_training_data', False,
                      'If training data should be evaluated for this job. Note '
-                     'that one call only use this in eval-only mode, and '
+                     'that one can only use this in eval-only mode, and '
                      '`checkpoint_dir` must be supplied.')
 flags.DEFINE_integer('sample_1_of_n_eval_examples', 1, 'Will sample one of '
                      'every n eval input examples, where n is provided.')
