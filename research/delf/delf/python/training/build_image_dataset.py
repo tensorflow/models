@@ -49,6 +49,7 @@ from __future__ import print_function
 
 import csv
 import os
+import pathlib
 
 from absl import app
 from absl import flags
@@ -476,6 +477,10 @@ def _build_test_tfrecord_dataset(csv_path, image_dir):
 
 
 def main(unused_argv):
+  # Create the output directory if it does not exist.
+  directory_path = pathlib.Path(FLAGS.output_directory)
+  directory_path.mkdir(parents=True, exist_ok=True)
+
   _build_train_tfrecord_dataset(FLAGS.train_csv_path,
                                 FLAGS.train_clean_csv_path,
                                 FLAGS.train_directory,
