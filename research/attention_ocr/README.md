@@ -56,7 +56,7 @@ pip install --upgrade tensorflow-gpu=1.15
 
 ```
 cd research/attention_ocr/python/datasets
-aria2c -c -j 20 -i ../../../street/python/fsns_urls.txt
+aria2c -c -j 20 -i fsns_urls.txt
 cd ..
 ```
 
@@ -64,7 +64,7 @@ cd ..
 4. `train.py` works with both CPU and GPU, though using GPU is preferable. It has been tested with a Titan X and with a GTX980.
 
 [TF]: https://www.tensorflow.org/install/
-[FSNS]: https://github.com/tensorflow/models/tree/master/research/street
+[FSNS]: https://github.com/tensorflow/models/tree/archive/research/street
 
 ## Dataset
 
@@ -99,8 +99,9 @@ https://download.tensorflow.org/data/fsns-20160927/validation/validation-00000-o
 https://download.tensorflow.org/data/fsns-20160927/validation/validation-00063-of-00064
 ```
 
-All URLs are stored in the [research/street](https://github.com/tensorflow/models/tree/master/research/street) 
-repository in the text file `python/fsns_urls.txt`.
+All URLs are stored in the [research/street](https://github.com/tensorflow/models/tree/archive/research/street) repository in the text file `python/fsns_urls.txt`. Note that the above links to an
+old archive branch that contains deprecated models and the same .txt file is available at
+`python/datasets/fsns_urls.txt` with helper code at `python/datasets/fsns_urls.py`.
 
 ## How to use this code
 
@@ -229,7 +230,7 @@ python model_export.py \
 
 Alternatively you can:
 1. define a placeholder for images (or use directly an numpy array)
-2. [create a graph ](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/eval.py#L60)
+2. [create a graph](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/eval.py#L60)
 ```
 endpoints = model.create_base(images_placeholder, labels_one_hot=None)
 ```
@@ -244,7 +245,7 @@ predictions = sess.run(endpoints.predicted_chars,
 Please note that tensor names may change overtime and old stored checkpoints can
 become unloadable. In many cases such backward incompatible changes can be
 fixed with a [string substitution][1] to update the checkpoint itself or using a
-custom var_list with [assign_from_checkpoint_fn][2]. For anything
+custom `var_list` with [`assign_from_checkpoint_fn`][2]. For anything
 other than a one time experiment please use the [TensorFlow Serving][serving].
 
 [1]: https://github.com/tensorflow/tensorflow/blob/aaf7adc/tensorflow/contrib/rnn/python/tools/checkpoint_convert.py
