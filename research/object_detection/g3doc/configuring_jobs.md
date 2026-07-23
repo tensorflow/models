@@ -14,9 +14,9 @@ model parameters (ie. SGD parameters, input preprocessing and feature extractor
 initialization values).
 3. The `eval_config`, which determines what set of metrics will be reported for
 evaluation.
-4. The `train_input_config`, which defines what dataset the model should be
+4. The `train_input_reader`, which defines what dataset the model should be
 trained on.
-5. The `eval_input_config`, which defines what dataset the model will be
+5. The `eval_input_reader`, which defines what dataset the model will be
 evaluated on. Typically this should be different than the training input
 dataset.
 
