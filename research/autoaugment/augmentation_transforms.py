@@ -402,8 +402,8 @@ def _cutout_pil_impl(pil_img, level):
   _, upper_coord, lower_coord = (
       create_cutout_mask(img_height, img_width, num_channels, size))
   pixels = pil_img.load()  # create the pixel map
-  for i in range(upper_coord[0], lower_coord[0]):  # for every col:
-    for j in range(upper_coord[1], lower_coord[1]):  # For every row
+  for i in range(upper_coord[0], lower_coord[1]):  # for every col:
+    for j in range(upper_coord[0], lower_coord[1]):  # For every row
       pixels[i, j] = (125, 122, 113, 0)  # set the colour accordingly
   return pil_img
 
