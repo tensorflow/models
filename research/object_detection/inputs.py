@@ -143,7 +143,7 @@ def assert_or_prune_invalid_boxes(boxes):
     boxes_tensor = tf.concat([ymin, xmin, ymax, xmax], axis=1)
     boxlist = box_list.BoxList(boxes_tensor)
     # TODO(b/149221748) Remove pruning when XLA supports assertions.
-    boxlist = box_list_ops.prune_small_boxes(boxlist, 0)
+    boxlist, _ = box_list_ops.prune_small_boxes(boxlist, 0)
 
   return boxlist.get()
 
