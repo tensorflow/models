@@ -210,8 +210,11 @@ class RetinaNetModel(tf_keras.Model):
       if raw_attributes:
         outputs.update({
             'attribute_outputs': raw_attributes,
-            'detection_attributes': final_results['detection_attributes'],
         })
+        if self.detection_generator.get_config()['apply_nms']:
+          outputs.update({
+              'detection_attributes': final_results['detection_attributes'],
+          })
       return outputs
 
   @property
