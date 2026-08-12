@@ -24,6 +24,7 @@ import tensorflow as tf, tf_keras
 
 from official.core import exp_factory
 from official.vision import registry_imports  # pylint: disable=unused-import
+from official.vision.configs import retinanet as retinanet_cfg
 from official.vision.serving import detection
 
 
@@ -52,15 +53,14 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     if not decode_boxes:
       params.task.model.detection_generator.decode_boxes = False
     detection_module = detection.DetectionModule(
-        params,
-        batch_size=1,
-        input_image_size=[640, 640],
-        input_type=input_type)
+        params, batch_size=1, input_image_size=[640, 640], input_type=input_type
+    )
     return detection_module
 
   def _export_from_module(self, module, input_type, save_directory):
     signatures = module.get_inference_signatures(
-        {input_type: 'serving_default'})
+        {input_type: 'serving_default'}
+    )
     tf.saved_model.save(module, save_directory, signatures=signatures)
 
   def _get_dummy_input(self, input_type, batch_size, image_size):
@@ -73,18 +73,20 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
       image = Image.fromarray(np.zeros((h, w, 3), dtype=np.uint8))
       byte_io = io.BytesIO()
       image.save(byte_io, 'PNG')
-      return [byte_io.getvalue() for b in range(batch_size)]
+      return [byte_io.getvalue() for _ in range(batch_size)]
     elif input_type == 'tf_example':
       image_tensor = tf.zeros((h, w, 3), dtype=tf.uint8)
       encoded_jpeg = tf.image.encode_jpeg(tf.constant(image_tensor)).numpy()
       example = tf.train.Example(
           features=tf.train.Features(
               feature={
-                  'image/encoded':
-                      tf.train.Feature(
-                          bytes_list=tf.train.BytesList(value=[encoded_jpeg])),
-              })).SerializeToString()
-      return [example for b in range(batch_size)]
+                  'image/encoded': tf.train.Feature(
+                      bytes_list=tf.train.BytesList(value=[encoded_jpeg])
+                  ),
+              }
+          )
+      ).SerializeToString()
+      return [example for _ in range(batch_size)]
     elif input_type == 'tflite':
       return tf.zeros((batch_size, h, w, 3), dtype=np.float32)
 
@@ -119,49 +121,66 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
   ):
     tmp_dir = self.get_temp_dir()
     module = self._get_detection_module(
-        experiment_name, input_type, outer_boxes_scale, nms_version)
+        experiment_name, input_type, outer_boxes_scale, nms_version
+    )
 
     self._export_from_module(module, input_type, tmp_dir)
 
     self.assertTrue(os.path.exists(os.path.join(tmp_dir, 'saved_model.pb')))
     self.assertTrue(
-        os.path.exists(os.path.join(tmp_dir, 'variables', 'variables.index')))
+        os.path.exists(os.path.join(tmp_dir, 'variables', 'variables.index'))
+    )
     self.assertTrue(
         os.path.exists(
-            os.path.join(tmp_dir, 'variables',
-                         'variables.data-00000-of-00001')))
+            os.path.join(tmp_dir, 'variables', 'variables.data-00000-of-00001')
+        )
+    )
 
-    imported = tf.saved_model.load(tmp_dir)
+    imported = tf.saved_model.load(tmp_dir)  # pylint: disable=g-unsafe-pickle-load
     detection_fn = imported.signatures['serving_default']
 
     images = self._get_dummy_input(
-        input_type, batch_size=1, image_size=image_size)
+        input_type, batch_size=1, image_size=image_size
+    )
 
     signatures = module.get_inference_signatures(
-        {input_type: 'serving_default'})
+        {input_type: 'serving_default'}
+    )
     expected_outputs = signatures['serving_default'](tf.constant(images))
     outputs = detection_fn(tf.constant(images))
 
-    self.assertAllEqual(outputs['detection_boxes'].numpy(),
-                        expected_outputs['detection_boxes'].numpy())
+    self.assertAllEqual(
+        outputs['detection_boxes'].numpy(),
+        expected_outputs['detection_boxes'].numpy(),
+    )
     # Outer boxes have not been supported in RetinaNet models.
     if 'retinanet' not in experiment_name:
       if module.params.task.model.include_mask and outer_boxes_scale > 1.0:
-        self.assertAllEqual(outputs['detection_outer_boxes'].numpy(),
-                            expected_outputs['detection_outer_boxes'].numpy())
-    self.assertAllEqual(outputs['detection_classes'].numpy(),
-                        expected_outputs['detection_classes'].numpy())
-    self.assertAllEqual(outputs['detection_scores'].numpy(),
-                        expected_outputs['detection_scores'].numpy())
-    self.assertAllEqual(outputs['num_detections'].numpy(),
-                        expected_outputs['num_detections'].numpy())
+        self.assertAllEqual(
+            outputs['detection_outer_boxes'].numpy(),
+            expected_outputs['detection_outer_boxes'].numpy(),
+        )
+    self.assertAllEqual(
+        outputs['detection_classes'].numpy(),
+        expected_outputs['detection_classes'].numpy(),
+    )
+    self.assertAllEqual(
+        outputs['detection_scores'].numpy(),
+        expected_outputs['detection_scores'].numpy(),
+    )
+    self.assertAllEqual(
+        outputs['num_detections'].numpy(),
+        expected_outputs['num_detections'].numpy(),
+    )
 
-  @parameterized.parameters(('retinanet_resnetfpn_coco',),
-                            ('maskrcnn_spinenet_coco',))
+  @parameterized.parameters(
+      ('retinanet_resnetfpn_coco',), ('maskrcnn_spinenet_coco',)
+  )
   def test_build_model_pass_with_none_batch_size(self, experiment_type):
     params = exp_factory.get_exp_config(experiment_type)
     detection.DetectionModule(
-        params, batch_size=None, input_image_size=[640, 640])
+        params, batch_size=None, input_image_size=[640, 640]
+    )
 
   def test_export_retinanet_with_intermediate_features(self):
     tmp_dir = self.get_temp_dir()
@@ -172,7 +191,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
         output_intermediate_features=True,
     )
     self._export_from_module(module, input_type, tmp_dir)
-    imported = tf.saved_model.load(tmp_dir)
+    imported = tf.saved_model.load(tmp_dir)  # pylint: disable=g-unsafe-pickle-load
     detection_fn = imported.signatures['serving_default']
     images = self._get_dummy_input(
         input_type, batch_size=1, image_size=[384, 384]
@@ -218,7 +237,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
     self._export_from_module(module, input_type, tmp_dir)
 
-    imported = tf.saved_model.load(tmp_dir)
+    imported = tf.saved_model.load(tmp_dir)  # pylint: disable=g-unsafe-pickle-load
     detection_fn = imported.signatures['serving_default']
 
     images = self._get_dummy_input(
@@ -254,7 +273,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
     self._export_from_module(module, input_type, tmp_dir)
 
-    imported = tf.saved_model.load(tmp_dir)
+    imported = tf.saved_model.load(tmp_dir)  # pylint: disable=g-unsafe-pickle-load
     detection_fn = imported.signatures['serving_default']
 
     images = self._get_dummy_input(
@@ -269,6 +288,31 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
         },
         outputs.keys(),
     )
+
+  def test_export_retinanet_with_attributes(self):
+    params = exp_factory.get_exp_config('retinanet_resnetfpn_coco')
+    params.task.model.detection_generator.nms_version = 'v1'
+    params.task.model.head.attribute_heads = [
+        retinanet_cfg.AttributeHead(name='color', size=3),
+    ]
+    module = detection.DetectionModule(
+        params,
+        batch_size=1,
+        input_image_size=[640, 640],
+        input_type='image_tensor',
+    )
+    tmp_dir = self.get_temp_dir()
+    self._export_from_module(module, 'image_tensor', tmp_dir)
+
+    imported = tf.saved_model.load(tmp_dir)  # pylint: disable=g-unsafe-pickle-load
+    detection_fn = imported.signatures['serving_default']
+    images = self._get_dummy_input(
+        'image_tensor', batch_size=1, image_size=[640, 640]
+    )
+    outputs = detection_fn(tf.constant(images))
+
+    self.assertIn('detection_attribute:color', outputs)
+    self.assertEqual(outputs['detection_attribute:color'].shape, (1, 100, 3))
 
 
 if __name__ == '__main__':

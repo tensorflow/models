@@ -15,7 +15,7 @@
 """Detection input and model functions for serving/inference."""
 
 import math
-from typing import Mapping, Tuple
+from typing import Mapping, Optional, Tuple
 
 from absl import logging
 import tensorflow as tf, tf_keras
@@ -143,6 +143,15 @@ class DetectionModule(export_base.ExportModule):
           tf.reshape(level_output, (self._batch_size, -1, feature_size))
       )
     return tf.concat(flatten_outputs, axis=1)
+
+  def _get_attribute_size(self, name: str) -> Optional[int]:
+    """Helper to retrieve attribute prediction size by head name."""
+    head_cfg = getattr(self.params.task.model, 'head', None)
+    if head_cfg and getattr(head_cfg, 'attribute_heads', None):
+      for att_cfg in head_cfg.attribute_heads:
+        if att_cfg.name == name:
+          return att_cfg.size
+    return None
 
   def preprocess(
       self, images: tf.Tensor
@@ -306,6 +315,34 @@ class DetectionModule(export_base.ExportModule):
 
     if 'detection_masks' in detections.keys():
       final_outputs['detection_masks'] = detections['detection_masks']
+
+    # Include attribute prediction outputs if present.
+    if self.params.task.model.detection_generator.apply_nms:
+      if 'detection_attributes' in detections:
+        for name, attr_tensor in detections['detection_attributes'].items():
+          final_outputs[f'detection_attribute:{name}'] = attr_tensor
+    elif (
+        isinstance(self.params.task.model, configs.retinanet.RetinaNet)
+        and not self.params.task.model.detection_generator.decode_boxes
+    ):
+      if 'attribute_outputs' in detections:
+        for name, attr_dict in detections['attribute_outputs'].items():
+          attr_size = self._get_attribute_size(name)
+          if attr_size is not None:
+            final_outputs[f'raw_attribute:{name}'] = self._flatten_output(
+                attr_dict, attr_size
+            )
+    else:
+      if 'attribute_outputs' in detections:
+        for name, attr_dict in detections['attribute_outputs'].items():
+          attr_size = self._get_attribute_size(name)
+          if attr_size is not None:
+            final_outputs[f'raw_attribute:{name}'] = self._flatten_output(
+                attr_dict, attr_size
+            )
+      if 'decoded_box_attributes' in detections:
+        for name, attr_tensor in detections['decoded_box_attributes'].items():
+          final_outputs[f'decoded_box_attribute:{name}'] = attr_tensor
     if (
         isinstance(self.params.task.model, configs.retinanet.RetinaNet)
         and self.params.task.export_config.output_intermediate_features
