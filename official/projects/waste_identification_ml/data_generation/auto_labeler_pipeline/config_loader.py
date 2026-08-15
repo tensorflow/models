@@ -27,9 +27,9 @@ The design splits configuration into two kinds of value:
 
   * Invariants live here in code as module constants: the canonical
     augmentation order, the set of allowed augmentation names, the set of
-    allowed crop variants, and the numeric ranges that thresholds must fall
-    in. These are not knobs; they define what the pipeline is capable of, and
-    the YAML is validated against them.
+    allowed crop variants, the allowed folder-name values, and the numeric
+    ranges that thresholds must fall in. These are not knobs; they define
+    what the pipeline is capable of, and the YAML is validated against them.
 
 Because ``config.yaml`` is hand-edited, validation is strict and eager. A bad
 value produces a :class:`ConfigError` at load time, before any dataset walk or
@@ -68,6 +68,16 @@ ALLOWED_CROP_VARIANTS = (
     "imagenet_mean_background",
 )
 
+# The pipeline's on-disk folder names are fixed in code. Each YAML field
+# below is validated to be exactly the single allowed value. They are exposed
+# through the config so scripts do not embed the string literal themselves.
+_ALLOWED_FOLDER_NAMES = {
+    "input_images_folder_name": ("images",),
+    "train_val_folder_name": ("train_val_images",),
+    "train_split_name": ("train",),
+    "val_split_name": ("val",),
+}
+
 # Required keys inside each prompt's ``detection`` block.
 _REQUIRED_DETECTION_KEYS = (
     "confidence_threshold",
@@ -82,13 +92,24 @@ _REQUIRED_TOP_LEVEL_KEYS = (
     "root_dir",
     "sam3_checkpoint_path",
     "cuda_visible_devices",
+    "input_images_folder_name",
+    "train_val_folder_name",
+    "train_split_name",
+    "val_split_name",
     "prompt_to_detect",
     "keep_every_nth",
     "train_ratio",
     "min_detections",
     "crop_variants",
+    "max_cpu_workers",
+    "queue_maxsize",
+    "rotation_fill_color",
     "prompts",
 )
+
+# RGB channel bounds for rotation_fill_color.
+_MIN_RGB_VALUE = 0
+_MAX_RGB_VALUE = 255
 
 
 class ConfigError(Exception):
@@ -143,17 +164,26 @@ class PipelineConfig:
   Attributes:
       root_dir: Parent directory containing one subfolder per dataset.
       classifier_dir: Sibling directory for the classifier-ready dataset,
-        derived from ``root_dir`` by appending ``_classifier`` to its final path
-        component.
-      rejected_dir: Sibling directory that receives sparse images, derived from
-        ``root_dir`` by appending ``_empty`` to its final path component.
+        derived from ``root_dir`` by appending ``_classifier`` to its final
+        path component.
+      rejected_dir: Sibling directory that receives sparse images, derived
+        from ``root_dir`` by appending ``_empty`` to its final path component.
       sam3_checkpoint_path: Absolute path to the SAM3 checkpoint.
       cuda_visible_devices: Value assigned to CUDA_VISIBLE_DEVICES.
+      input_images_folder_name: Subfolder inside each dataset holding raw
+        input images.
+      train_val_folder_name: Subfolder inside each dataset written by the
+        train/val split stage.
+      train_split_name: Name of the train split folder.
+      val_split_name: Name of the val split folder.
       prompt_to_detect: The active prompt; a key into ``prompts``.
       keep_every_nth: Subsampling interval for the train/val split.
       train_ratio: Fraction of kept images assigned to the train split.
       min_detections: Minimum post-filter detections to keep an image.
       crop_variants: Crop variants to write, in canonical allowed order.
+      max_cpu_workers: Size of the CPU thread pool used for crop saving.
+      queue_maxsize: Maximum in-flight CPU jobs before the GPU loop blocks.
+      rotation_fill_color: RGB fill color used to pad rotated images.
       prompts: Mapping from prompt name to its :class:`PromptConfig`.
   """
 
@@ -162,11 +192,18 @@ class PipelineConfig:
   rejected_dir: str
   sam3_checkpoint_path: str
   cuda_visible_devices: str
+  input_images_folder_name: str
+  train_val_folder_name: str
+  train_split_name: str
+  val_split_name: str
   prompt_to_detect: str
   keep_every_nth: int
   train_ratio: float
   min_detections: int
   crop_variants: tuple[str, ...]
+  max_cpu_workers: int
+  queue_maxsize: int
+  rotation_fill_color: tuple[int, int, int]
   prompts: dict[str, PromptConfig]
 
   @property
@@ -221,8 +258,8 @@ def _require_keys(
   Args:
       mapping: The mapping to inspect.
       required_keys: Keys that must be present.
-      context: Human-readable description of where the mapping came from, used
-        in the error message.
+      context: Human-readable description of where the mapping came from,
+        used in the error message.
 
   Raises:
       ConfigError: If any required key is missing.
@@ -264,7 +301,8 @@ def _require_number_in_range(
     raise ConfigError(f"{field_name} must be a number, got {value!r}.")
   if not minimum <= value <= maximum:
     raise ConfigError(
-        f"{field_name} must be between {minimum} and {maximum}, got {value!r}."
+        f"{field_name} must be between {minimum} and {maximum}, "
+        f"got {value!r}."
     )
   return float(value)
 
@@ -287,6 +325,53 @@ def _require_positive_int(value: Any, field_name: str) -> int:
   if value < 1:
     raise ConfigError(f"{field_name} must be at least 1, got {value!r}.")
   return int(value)
+
+
+def _require_non_empty_string(value: Any, field_name: str) -> str:
+  """Validates that a value is a non-empty string.
+
+  Args:
+      value: The value to validate.
+      field_name: Field name used in the error message.
+
+  Returns:
+      The validated string, unchanged.
+
+  Raises:
+      ConfigError: If the value is not a non-empty string.
+  """
+  if not isinstance(value, str) or not value.strip():
+    raise ConfigError(f"{field_name} must be a non-empty string.")
+  return value
+
+
+def _require_allowed_folder_name(
+    value: Any, field_name: str
+) -> str:
+  """Validates a folder-name field against its single allowed value.
+
+  Each folder-name knob has exactly one allowed value declared in
+  ``_ALLOWED_FOLDER_NAMES``. Any other value is rejected with a message
+  listing the allowed set.
+
+  Args:
+      value: The value to validate.
+      field_name: The top-level YAML field name (also the key into
+        ``_ALLOWED_FOLDER_NAMES``).
+
+  Returns:
+      The validated string.
+
+  Raises:
+      ConfigError: If the value is not in the allowed set for that field.
+  """
+  allowed_values = _ALLOWED_FOLDER_NAMES[field_name]
+  if value not in allowed_values:
+    raise ConfigError(
+        f"{field_name} must be one of {list(allowed_values)}, "
+        f"got {value!r}."
+    )
+  return value
 
 
 def _validate_crop_size(
@@ -348,6 +433,42 @@ def _validate_crop_variants(raw_variants: Any) -> tuple[str, ...]:
       raise ConfigError(f"Duplicate crop variant {variant!r}.")
     seen.add(variant)
   return tuple(variant for variant in ALLOWED_CROP_VARIANTS if variant in seen)
+
+
+def _validate_rotation_fill_color(
+    raw_color: Any,
+) -> tuple[int, int, int]:
+  """Validates the rotation fill color entry into an RGB tuple.
+
+  Args:
+      raw_color: The value read from YAML; expected to be a three-element
+        sequence of integers in the range ``[0, 255]``.
+
+  Returns:
+      The color as an ``(r, g, b)`` tuple of ints.
+
+  Raises:
+      ConfigError: If the value is not three integers in the allowed range.
+  """
+  context = "rotation_fill_color"
+  if not isinstance(raw_color, (list, tuple)) or len(raw_color) != 3:
+    raise ConfigError(
+        f"{context} must be a list of exactly three integers "
+        f"in [{_MIN_RGB_VALUE}, {_MAX_RGB_VALUE}], got {raw_color!r}."
+    )
+  channels = []
+  for index, channel_value in enumerate(raw_color):
+    if isinstance(channel_value, bool) or not isinstance(channel_value, int):
+      raise ConfigError(
+          f"{context}[{index}] must be an integer, got {channel_value!r}."
+      )
+    if not _MIN_RGB_VALUE <= channel_value <= _MAX_RGB_VALUE:
+      raise ConfigError(
+          f"{context}[{index}] must be in "
+          f"[{_MIN_RGB_VALUE}, {_MAX_RGB_VALUE}], got {channel_value!r}."
+      )
+    channels.append(int(channel_value))
+  return (channels[0], channels[1], channels[2])
 
 
 def _validate_augmentations(
@@ -483,6 +604,32 @@ def _validate_prompts(raw_prompts: Any) -> dict[str, PromptConfig]:
   return validated
 
 
+def _validate_cuda_visible_devices(raw_value: Any) -> str:
+  """Validates cuda_visible_devices, allowing ints and coercing to string.
+
+  Args:
+      raw_value: The value read from YAML.
+
+  Returns:
+      The value as a string suitable for CUDA_VISIBLE_DEVICES.
+
+  Raises:
+      ConfigError: If the value is neither a string nor an integer.
+  """
+  if isinstance(raw_value, bool):
+    raise ConfigError(
+        f"cuda_visible_devices must be a string or integer, got {raw_value!r}."
+    )
+  if isinstance(raw_value, int):
+    return str(raw_value)
+  if isinstance(raw_value, str):
+    return raw_value
+  raise ConfigError(
+      "cuda_visible_devices must be a string (quote it in YAML) or "
+      f"integer, got {raw_value!r}."
+  )
+
+
 # ── Public loader ───────────────────────────────────────────────────────────
 
 
@@ -522,27 +669,26 @@ def load_config(config_path: str) -> PipelineConfig:
 
   _require_keys(raw_config, _REQUIRED_TOP_LEVEL_KEYS, "config.yaml")
 
-  root_dir = raw_config["root_dir"]
-  if not isinstance(root_dir, str) or not root_dir.strip():
-    raise ConfigError("root_dir must be a non-empty string.")
+  root_dir = _require_non_empty_string(raw_config["root_dir"], "root_dir")
+  sam3_checkpoint_path = _require_non_empty_string(
+      raw_config["sam3_checkpoint_path"], "sam3_checkpoint_path"
+  )
+  cuda_visible_devices = _validate_cuda_visible_devices(
+      raw_config["cuda_visible_devices"]
+  )
 
-  sam3_checkpoint_path = raw_config["sam3_checkpoint_path"]
-  if (
-      not isinstance(sam3_checkpoint_path, str)
-      or not sam3_checkpoint_path.strip()
-  ):
-    raise ConfigError("sam3_checkpoint_path must be a non-empty string.")
-
-  cuda_visible_devices = raw_config["cuda_visible_devices"]
-  if isinstance(cuda_visible_devices, int) and not isinstance(
-      cuda_visible_devices, bool
-  ):
-    cuda_visible_devices = str(cuda_visible_devices)
-  elif not isinstance(cuda_visible_devices, str):
-    raise ConfigError(
-        "cuda_visible_devices must be a string (quote it in YAML) or"
-        f" integer, got {cuda_visible_devices!r}."
-    )
+  input_images_folder_name = _require_allowed_folder_name(
+      raw_config["input_images_folder_name"], "input_images_folder_name"
+  )
+  train_val_folder_name = _require_allowed_folder_name(
+      raw_config["train_val_folder_name"], "train_val_folder_name"
+  )
+  train_split_name = _require_allowed_folder_name(
+      raw_config["train_split_name"], "train_split_name"
+  )
+  val_split_name = _require_allowed_folder_name(
+      raw_config["val_split_name"], "val_split_name"
+  )
 
   keep_every_nth = _require_positive_int(
       raw_config["keep_every_nth"], "keep_every_nth"
@@ -554,11 +700,20 @@ def load_config(config_path: str) -> PipelineConfig:
       raw_config["min_detections"], "min_detections"
   )
   crop_variants = _validate_crop_variants(raw_config["crop_variants"])
+  max_cpu_workers = _require_positive_int(
+      raw_config["max_cpu_workers"], "max_cpu_workers"
+  )
+  queue_maxsize = _require_positive_int(
+      raw_config["queue_maxsize"], "queue_maxsize"
+  )
+  rotation_fill_color = _validate_rotation_fill_color(
+      raw_config["rotation_fill_color"]
+  )
   prompts = _validate_prompts(raw_config["prompts"])
 
-  prompt_to_detect = raw_config["prompt_to_detect"]
-  if not isinstance(prompt_to_detect, str) or not prompt_to_detect:
-    raise ConfigError("prompt_to_detect must be a non-empty string.")
+  prompt_to_detect = _require_non_empty_string(
+      raw_config["prompt_to_detect"], "prompt_to_detect"
+  )
   if prompt_to_detect not in prompts:
     raise ConfigError(
         f"prompt_to_detect {prompt_to_detect!r} has no block under "
@@ -571,10 +726,17 @@ def load_config(config_path: str) -> PipelineConfig:
       rejected_dir=_derive_sibling_dir(root_dir, "_empty"),
       sam3_checkpoint_path=sam3_checkpoint_path,
       cuda_visible_devices=cuda_visible_devices,
+      input_images_folder_name=input_images_folder_name,
+      train_val_folder_name=train_val_folder_name,
+      train_split_name=train_split_name,
+      val_split_name=val_split_name,
       prompt_to_detect=prompt_to_detect,
       keep_every_nth=keep_every_nth,
       train_ratio=train_ratio,
       min_detections=min_detections,
       crop_variants=crop_variants,
+      max_cpu_workers=max_cpu_workers,
+      queue_maxsize=queue_maxsize,
+      rotation_fill_color=rotation_fill_color,
       prompts=prompts,
   )

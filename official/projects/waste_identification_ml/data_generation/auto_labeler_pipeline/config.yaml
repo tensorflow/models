@@ -26,6 +26,24 @@ sam3_checkpoint_path: "/home/umairsabir/sam3_original_weight/sam3.pt"
 cuda_visible_devices: "0"
 
 # ----------------------------------------------------------------------------
+# Folder layout.
+#
+# These name the standard subfolders the pipeline reads and writes. Each name
+# has exactly one allowed value in code; they are listed here so the layout
+# is self-documenting rather than hidden.
+# ----------------------------------------------------------------------------
+
+# Subfolder inside each dataset that holds the raw input images.
+input_images_folder_name: "images"
+
+# Subfolder inside each dataset written by split_train_val.py.
+train_val_folder_name: "train_val_images"
+
+# Split names under train_val_folder_name and under the classifier dataset.
+train_split_name: "train"
+val_split_name: "val"
+
+# ----------------------------------------------------------------------------
 # Which object class this run is labelling.
 #
 # This MUST be one of the keys under `prompts:` below. It selects, in one
@@ -51,9 +69,20 @@ min_detections: 2
 
 # segment_to_classifier.py: which crop variants to write.
 # Allowed values: raw, black_background, imagenet_mean_background.
-# One variant -> flat layout under each class
-# folder; multiple variants -> one subdirectory per variant.
+# One variant -> flat layout under each class folder; multiple variants ->
+# one subdirectory per variant.
 crop_variants: ["imagenet_mean_background"]
+
+# segment_to_classifier.py: CPU thread pool sizing for crop saving.
+# max_cpu_workers is the pool size; queue_maxsize is how many CPU jobs are
+# allowed to be in flight before the GPU loop blocks on one completing.
+max_cpu_workers: 16
+queue_maxsize: 32
+
+# augment.py: RGB fill color used to pad rotated images. The default matches
+# the ImageNet-mean background produced by segment_to_classifier.py so
+# rotated crops blend into their background.
+rotation_fill_color: [124, 116, 104]
 
 # ----------------------------------------------------------------------------
 # Per-prompt behaviour.
@@ -67,6 +96,7 @@ crop_variants: ["imagenet_mean_background"]
 # supported ones to enable here.
 # ----------------------------------------------------------------------------
 prompts:
+
   "bottles and containers":
     detection:
       confidence_threshold: 0.5

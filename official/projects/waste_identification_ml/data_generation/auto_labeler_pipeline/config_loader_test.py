@@ -45,11 +45,18 @@ class ConfigLoaderTest(parameterized.TestCase):
         "root_dir": "/data/datasets/milk_packet/2026-06-23",
         "sam3_checkpoint_path": "/models/sam3.pt",
         "cuda_visible_devices": "0",
+        "input_images_folder_name": "images",
+        "train_val_folder_name": "train_val_images",
+        "train_split_name": "train",
+        "val_split_name": "val",
         "prompt_to_detect": "packets",
         "keep_every_nth": 6,
         "train_ratio": 0.10,
         "min_detections": 2,
         "crop_variants": ["imagenet_mean_background"],
+        "max_cpu_workers": 16,
+        "queue_maxsize": 32,
+        "rotation_fill_color": [124, 116, 104],
         "prompts": {
             "bottles and containers": {
                 "detection": {
@@ -111,6 +118,13 @@ class ConfigLoaderTest(parameterized.TestCase):
     self.assertAlmostEqual(config.train_ratio, 0.10)
     self.assertEqual(config.min_detections, 2)
     self.assertEqual(config.crop_variants, ("imagenet_mean_background",))
+    self.assertEqual(config.input_images_folder_name, "images")
+    self.assertEqual(config.train_val_folder_name, "train_val_images")
+    self.assertEqual(config.train_split_name, "train")
+    self.assertEqual(config.val_split_name, "val")
+    self.assertEqual(config.max_cpu_workers, 16)
+    self.assertEqual(config.queue_maxsize, 32)
+    self.assertEqual(config.rotation_fill_color, (124, 116, 104))
 
     # Active properties
     self.assertEqual(config.active_detection.confidence_threshold, 0.3)
@@ -274,6 +288,50 @@ class ConfigLoaderTest(parameterized.TestCase):
         config_loader._derive_sibling_dir("/data/run/", "_empty"),
         "/data/run_empty",
     )
+
+  def test_load_config_invalid_folder_name(self):
+    """Ensures ConfigError is raised when folder name is invalid."""
+    cfg_dict = self._get_valid_config_dict()
+    cfg_dict["input_images_folder_name"] = "invalid_folder"
+    path = self._create_temp_yaml(cfg_dict)
+    with self.assertRaisesRegex(
+        config_loader.ConfigError, "must be one of.*images"
+    ):
+      config_loader.load_config(path)
+
+  @parameterized.parameters(
+      ("max_cpu_workers", 0, "must be at least 1"),
+      ("max_cpu_workers", -5, "must be at least 1"),
+      ("max_cpu_workers", "16", "must be an integer"),
+      ("queue_maxsize", 0, "must be at least 1"),
+  )
+  def test_load_config_invalid_positive_int(
+      self, field_name: str, bad_value: Any, expected_error: str
+  ):
+    """Ensures positive int fields validate type and range."""
+    cfg_dict = self._get_valid_config_dict()
+    cfg_dict[field_name] = bad_value
+    path = self._create_temp_yaml(cfg_dict)
+    with self.assertRaisesRegex(config_loader.ConfigError, expected_error):
+      config_loader.load_config(path)
+
+  @parameterized.parameters(
+      ([124, 116], "must be a list of exactly three integers"),
+      ([124, 116, 104, 10], "must be a list of exactly three integers"),
+      ([256, 116, 104], "must be in \\[0, 255\\]"),
+      ([-1, 116, 104], "must be in \\[0, 255\\]"),
+      (["124", 116, 104], "must be an integer"),
+      ([True, 116, 104], "must be an integer"),
+  )
+  def test_load_config_invalid_rotation_fill_color(
+      self, bad_color: Any, expected_error: str
+  ):
+    """Ensures rotation_fill_color validates length, integer type, and range."""
+    cfg_dict = self._get_valid_config_dict()
+    cfg_dict["rotation_fill_color"] = bad_color
+    path = self._create_temp_yaml(cfg_dict)
+    with self.assertRaisesRegex(config_loader.ConfigError, expected_error):
+      config_loader.load_config(path)
 
 
 if __name__ == "__main__":
