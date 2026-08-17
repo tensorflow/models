@@ -110,7 +110,6 @@ prompts:
     - rot45
     - rot65
     - rot90
-    - blur
 
   "packets":
     detection:
