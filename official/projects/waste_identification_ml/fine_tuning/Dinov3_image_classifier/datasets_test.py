@@ -15,14 +15,17 @@
 """Tests for datasets and data loaders in DINOv3 image classifier."""
 
 import os
+import pathlib
 import tempfile
 import unittest
+
 from absl.testing import parameterized
 from PIL import Image
 import torch
 from torch.utils import data as torch_data
 from torchvision import datasets as tv_datasets
 from torchvision.transforms import v2
+
 from official.projects.waste_identification_ml.fine_tuning.Dinov3_image_classifier import datasets
 
 
@@ -146,6 +149,125 @@ class DatasetsTest(parameterized.TestCase):
           batch_x.shape, (batch_size, 3, self.image_size, self.image_size)
       )
       self.assertEqual(batch_y.shape, (batch_size,))
+
+
+class ComputeBalancedClassWeightsTest(parameterized.TestCase):
+  """Test suite for the compute_balanced_class_weights helper."""
+
+  def setUp(self):
+    super().setUp()
+    self.temp_dir = tempfile.TemporaryDirectory()
+
+  def tearDown(self):
+    self.temp_dir.cleanup()
+    super().tearDown()
+
+  def _create_class_directory(
+      self, base_dir: pathlib.Path, class_name: str, number_of_files: int
+  ) -> None:
+    """Creates a class subdirectory populated with dummy files.
+
+    Args:
+      base_dir: The parent directory that will contain the class folder.
+      class_name: Name of the class subdirectory to create.
+      number_of_files: How many placeholder files to write into the class
+        folder.
+    """
+    class_directory = base_dir / class_name
+    class_directory.mkdir(parents=True, exist_ok=True)
+    for file_index in range(number_of_files):
+      (class_directory / f'sample_{file_index}.jpg').write_bytes(b'')
+
+  def test_returns_balanced_weights_for_equal_class_counts(self):
+    """Verifies equal counts yield equal weights of value 1.0."""
+    train_directory = pathlib.Path(self.temp_dir.name)
+    self._create_class_directory(train_directory, 'cardboard', 4)
+    self._create_class_directory(train_directory, 'plastic', 4)
+
+    weights = datasets.compute_balanced_class_weights(train_directory)
+
+    self.assertEqual(weights.dtype, torch.float32)
+    self.assertEqual(weights.shape, (2,))
+    torch.testing.assert_close(
+        weights, torch.tensor([1.0, 1.0], dtype=torch.float32)
+    )
+
+  def test_returns_higher_weight_for_minority_class(self):
+    """Verifies the rarer class receives a proportionally larger weight."""
+    train_directory = pathlib.Path(self.temp_dir.name)
+    # 8 cardboard vs 2 plastic. Total = 10, number_of_classes = 2.
+    # cardboard weight = 10 / (2 * 8) = 0.625
+    # plastic   weight = 10 / (2 * 2) = 2.5
+    self._create_class_directory(train_directory, 'cardboard', 8)
+    self._create_class_directory(train_directory, 'plastic', 2)
+
+    weights = datasets.compute_balanced_class_weights(train_directory)
+
+    self.assertEqual(weights.shape, (2,))
+    torch.testing.assert_close(
+        weights, torch.tensor([0.625, 2.5], dtype=torch.float32)
+    )
+
+  def test_class_ordering_is_alphabetical(self):
+    """Verifies weights are ordered alphabetically by class name."""
+    train_directory = pathlib.Path(self.temp_dir.name)
+    # Create in non-alphabetical order to prove sorting takes effect.
+    self._create_class_directory(train_directory, 'plastic', 1)
+    self._create_class_directory(train_directory, 'cardboard', 4)
+
+    weights = datasets.compute_balanced_class_weights(train_directory)
+
+    # Alphabetical: cardboard first, plastic second.
+    # cardboard weight = 5 / (2 * 4) = 0.625
+    # plastic   weight = 5 / (2 * 1) = 2.5
+    torch.testing.assert_close(
+        weights, torch.tensor([0.625, 2.5], dtype=torch.float32)
+    )
+
+  def test_raises_when_no_class_subdirectories(self):
+    """Verifies an empty train directory raises ValueError."""
+    train_directory = pathlib.Path(self.temp_dir.name)
+
+    with self.assertRaisesRegex(ValueError, 'No class subdirectories'):
+      datasets.compute_balanced_class_weights(train_directory)
+
+  def test_raises_when_a_class_directory_is_empty(self):
+    """Verifies an empty class subdirectory raises ValueError."""
+    train_directory = pathlib.Path(self.temp_dir.name)
+    self._create_class_directory(train_directory, 'cardboard', 4)
+    # Create empty plastic directory (no files).
+    (train_directory / 'plastic').mkdir()
+
+    with self.assertRaisesRegex(ValueError, 'empty'):
+      datasets.compute_balanced_class_weights(train_directory)
+
+  def test_ignores_files_at_top_level(self):
+    """Verifies stray non-directory entries at the top level are skipped."""
+    train_directory = pathlib.Path(self.temp_dir.name)
+    self._create_class_directory(train_directory, 'cardboard', 4)
+    self._create_class_directory(train_directory, 'plastic', 4)
+    # A stray file next to the class directories.
+    (train_directory / 'README.txt').write_text('not a class')
+
+    weights = datasets.compute_balanced_class_weights(train_directory)
+
+    # Should still see only the two class directories.
+    self.assertEqual(weights.shape, (2,))
+
+  def test_ignores_subdirectories_inside_class_folder(self):
+    """Verifies nested directories inside a class folder are not counted."""
+    train_directory = pathlib.Path(self.temp_dir.name)
+    self._create_class_directory(train_directory, 'cardboard', 4)
+    self._create_class_directory(train_directory, 'plastic', 4)
+    # A nested directory that should NOT be counted as a file.
+    (train_directory / 'cardboard' / 'thumbnails').mkdir()
+
+    weights = datasets.compute_balanced_class_weights(train_directory)
+
+    # Both classes still have 4 files each, so weights remain balanced.
+    torch.testing.assert_close(
+        weights, torch.tensor([1.0, 1.0], dtype=torch.float32)
+    )
 
 
 if __name__ == '__main__':

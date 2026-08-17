@@ -12,14 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Datasets and data loaders for the DINOv3 image classifier."""
 
 from collections.abc import Sequence
+import logging
+import pathlib
 from typing import TypeAlias
+
 import torch
 from torch.utils import data as torch_data
 from torchvision import datasets
 from torchvision.transforms import v2
+
+_LOGGER = logging.getLogger(__name__)
 
 DatasetsTuple: TypeAlias = tuple[
     datasets.ImageFolder, datasets.ImageFolder, list[str]
@@ -175,3 +194,56 @@ def get_data_loaders(
       prefetch_factor=prefetch_factor,
   )
   return train_loader, valid_loader
+
+
+def compute_balanced_class_weights(
+    train_directory: pathlib.Path,
+) -> torch.Tensor:
+  """Computes sklearn-style balanced class weights from a directory tree.
+
+  Counts the number of image files in each class subdirectory of
+  `train_directory` and returns weights using the formula
+  `n_samples / (n_classes * class_count)`. Classes are ordered alphabetically
+  to match `torchvision.datasets.ImageFolder` ordering.
+
+  Args:
+      train_directory: Path to the training directory. Expected to contain
+        one subdirectory per class, in PyTorch ImageFolder format.
+
+  Returns:
+      A 1D `torch.Tensor` of dtype `float32` and shape `(number_of_classes,)`
+      containing the class weight for each class, ordered alphabetically by
+      class name.
+
+  Raises:
+      ValueError: If `train_directory` contains no class subdirectories or if
+        any class subdirectory contains no files.
+  """
+  class_names = sorted(
+      entry.name for entry in train_directory.iterdir() if entry.is_dir()
+  )
+  if not class_names:
+    raise ValueError(
+        f"No class subdirectories found in train_directory: {train_directory}"
+    )
+
+  class_counts = []
+  for class_name in class_names:
+    class_path = train_directory / class_name
+    number_of_files = sum(
+        1 for entry in class_path.iterdir() if entry.is_file()
+    )
+    if number_of_files == 0:
+      raise ValueError(f"Class directory is empty: {class_path}")
+    class_counts.append(number_of_files)
+
+  number_of_classes = len(class_counts)
+  total_samples = sum(class_counts)
+  weights = [
+      total_samples / (number_of_classes * count) for count in class_counts
+  ]
+
+  _LOGGER.info("Class counts: %s", dict(zip(class_names, class_counts)))
+  _LOGGER.info("Class weights: %s", dict(zip(class_names, weights)))
+
+  return torch.tensor(weights, dtype=torch.float32)

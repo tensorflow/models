@@ -18,6 +18,7 @@ import pathlib
 from unittest import mock
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import torch
 from torch import nn
 
@@ -44,6 +45,44 @@ class _DummyBackbone(nn.Module):
         "x_norm_clstoken": torch.ones((batch_size, self._hidden_size)),
         "x_norm_patchtokens": torch.ones((batch_size, 8, self._hidden_size)),
     }
+
+
+class ValidateImageSizeTest(parameterized.TestCase):
+  """Tests for the module-level validate_image_size helper."""
+
+  @parameterized.named_parameters(
+      ("exact_patch_size", 16, 16),
+      ("small_multiple", 32, 16),
+      ("standard_224", 224, 16),
+      ("standard_256", 256, 16),
+      ("standard_512", 512, 16),
+      ("patch_size_8", 64, 8),
+  )
+  def test_accepts_valid_image_size(self, image_size, patch_size):
+    """Verifies valid multiples of the patch size do not raise."""
+    # No assertion needed: any raised exception fails the test.
+    models.validate_image_size(image_size, patch_size)
+
+  @parameterized.named_parameters(
+      ("not_a_multiple", 225, 16),
+      ("off_by_one_low", 15, 16),
+      ("off_by_one_high", 17, 16),
+      ("odd_number", 100, 16),
+  )
+  def test_rejects_non_multiple_image_size(self, image_size, patch_size):
+    """Verifies image sizes that are not multiples of patch_size raise."""
+    with self.assertRaisesRegex(ValueError, "positive multiple"):
+      models.validate_image_size(image_size, patch_size)
+
+  @parameterized.named_parameters(
+      ("zero", 0, 16),
+      ("negative", -16, 16),
+      ("negative_multiple", -32, 16),
+  )
+  def test_rejects_non_positive_image_size(self, image_size, patch_size):
+    """Verifies zero or negative image sizes raise even if divisible."""
+    with self.assertRaisesRegex(ValueError, "positive multiple"):
+      models.validate_image_size(image_size, patch_size)
 
 
 class LoadModelTest(absltest.TestCase):
@@ -219,6 +258,14 @@ class Dinov3ClassificationTest(absltest.TestCase):
     self.assertEqual(
         classifier.head.out_features, models.DEFAULT_NUMBER_OF_CLASSES
     )
+
+
+class ModuleConstantsTest(absltest.TestCase):
+  """Sanity checks on module-level constants."""
+
+  def test_dinov3_patch_size_is_sixteen(self):
+    """Verifies DINOV3_PATCH_SIZE matches the expected DINOv3 ViT patch size."""
+    self.assertEqual(models.DINOV3_PATCH_SIZE, 16)
 
 
 if __name__ == "__main__":

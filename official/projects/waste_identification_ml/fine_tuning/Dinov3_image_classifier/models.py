@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Builds a linear classifier on top of a DINOv3 backbone."""
 
 import logging
@@ -32,6 +46,27 @@ SUPPORTED_POOLING_STRATEGIES = (POOLING_CLS, POOLING_CLS_MEAN_PATCH)
 
 # Default number of output classes for classification models.
 DEFAULT_NUMBER_OF_CLASSES = 2
+
+# DINOv3 ViT backbones use 16x16 patches. Input image sizes must be a
+# multiple of this value so the patch embedding tiles cleanly.
+DINOV3_PATCH_SIZE = 16
+
+
+def validate_image_size(image_size: int, patch_size: int) -> None:
+  """Verifies that the chosen image size is a multiple of the patch size.
+
+  Args:
+    image_size: Side length in pixels of the square input image.
+    patch_size: Side length in pixels of the backbone's patch embedding.
+
+  Raises:
+    ValueError: If `image_size` is not a positive multiple of `patch_size`.
+  """
+  if image_size <= 0 or image_size % patch_size != 0:
+    raise ValueError(
+        f"image_size must be a positive multiple of {patch_size}, "
+        f"got {image_size}."
+    )
 
 
 def load_model(
