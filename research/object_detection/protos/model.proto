@@ -5,6 +5,13 @@ package object_detection.protos;
 import "object_detection/protos/center_net.proto";
 import "object_detection/protos/faster_rcnn.proto";
 import "object_detection/protos/ssd.proto";
+import "object_detection/protos/detr.proto";
+import "object_detection/protos/anchor_generator.proto";
+import "object_detection/protos/box_predictor.proto";
+import "object_detection/protos/hyperparams.proto";
+import "object_detection/protos/image_resizer.proto";
+import "object_detection/protos/losses.proto";
+import "object_detection/protos/post_processing.proto";
 
 // Top level configuration for DetectionModels.
 message DetectionModel {
@@ -19,6 +26,8 @@ message DetectionModel {
     ExperimentalModel experimental_model = 3;
 
     CenterNet center_net = 4;
+
+    DETR detr = 5;
   }
 }
 
