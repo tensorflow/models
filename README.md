@@ -1,3 +1,9 @@
+# This is my fork of official Tensorflow repository. 
+For my work with DeepLab and RUGD dataset, please go to research/deeplab where is  more informations
+#
+#
+#
+
 <div align="center">
   <img src="https://storage.googleapis.com/tf_model_garden/tf_model_garden_logo.png">
 </div>
