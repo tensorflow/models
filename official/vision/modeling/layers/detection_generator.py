@@ -792,7 +792,7 @@ def _generate_detections_tflite(
     raw_scores: Mapping[str, tf.Tensor],
     anchor_boxes: Mapping[str, tf.Tensor],
     config: Dict[str, Any],
-    box_coder_weights: List[float] | None = None,
+    box_coder_weights: Optional[List[float]] = None,
 ) -> Sequence[Any]:
   """Generate detections for conversion to TFLite.
 

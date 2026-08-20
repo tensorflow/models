@@ -14,7 +14,7 @@
 
 """Factory methods to build models."""
 
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Union, Dict
 
 import tensorflow as tf, tf_keras
 
@@ -263,8 +263,8 @@ def build_retinanet(
     l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
     backbone: Optional[tf_keras.Model] = None,
     decoder: Optional[tf_keras.Model] = None,
-    num_anchors_per_location: int | dict[str, int] | None = None,
-    anchor_boxes: Mapping[str, tf.Tensor] | None = None,
+    num_anchors_per_location: Optional[Union[int, Dict[str, int]]] = None,
+    anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
 ) -> tf_keras.Model:
   """Builds a RetinaNet model.
 

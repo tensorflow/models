@@ -15,7 +15,7 @@
 """Contains definitions of MobileNet Networks."""
 
 import dataclasses
-from typing import Any
+from typing import Any, Optional
 
 from absl import logging
 import tensorflow as tf, tf_keras
@@ -90,9 +90,9 @@ class BlockSpec(hyperparams.Config):
   use_normalization: bool = True
   activation: str = 'relu6'
   # Used for block type InvertedResConv.
-  expand_ratio: float | None = 6.0
+  expand_ratio: Optional[float] = 6.0
   # Used for block type InvertedResConv with SE.
-  se_ratio: float | None = None
+  se_ratio: Optional[float] = None
   use_depthwise: bool = True
   use_residual: bool = True
   is_output: bool = True
@@ -143,8 +143,8 @@ class Conv2DBNBlock(tf_keras.layers.Layer):
       use_explicit_padding: bool = False,
       activation: str = 'relu6',
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: tf_keras.regularizers.Regularizer | None = None,
-      bias_regularizer: tf_keras.regularizers.Regularizer | None = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       use_normalization: bool = True,
       use_sync_bn: bool = False,
       norm_momentum: float = 0.99,
@@ -1228,10 +1228,10 @@ class MobileNet(tf_keras.Model):
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,
       kernel_initializer: str = 'VarianceScaling',
-      kernel_regularizer: tf_keras.regularizers.Regularizer | None = None,
-      bias_regularizer: tf_keras.regularizers.Regularizer | None = None,
+      kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
       # The followings should be kept the same most of the times.
-      output_stride: int | None = None,
+      output_stride: Optional[int] = None,
       min_depth: int = 8,
       # divisible is not used in MobileNetV1.
       divisible_by: int = 8,
@@ -1593,7 +1593,7 @@ def build_mobilenet(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer | None = None,
+    l2_regularizer: Optional[tf_keras.regularizers.Regularizer] = None,
 ) -> tf_keras.Model:
   """Builds MobileNet backbone from a config."""
   backbone_type = backbone_config.type

@@ -14,6 +14,8 @@
 
 """Keras metric for computing the mean uplift sliced by treatment group."""
 
+from typing import Optional
+
 import tensorflow as tf, tf_keras
 
 from official.recommendation.uplift import types
@@ -68,7 +70,7 @@ class UpliftMean(tf_keras.metrics.Metric):
       self,
       y_true: tf.Tensor,
       y_pred: types.TwoTowerTrainingOutputs,
-      sample_weight: tf.Tensor | None = None,
+      sample_weight: Optional[tf.Tensor] = None,
   ) -> None:
     """Updates the overall, control and treatment uplift means.
 
