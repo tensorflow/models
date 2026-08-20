@@ -49,7 +49,7 @@ We can generate a tf.Example proto for this image using the following code:
 
 ```python
 
-def create_cat_tf_example(encoded_cat_image_data):
+def create_cat_tf_example(encoded_image_data):
    """Creates a tf.Example proto from sample cat image.
 
   Args:
@@ -59,16 +59,16 @@ def create_cat_tf_example(encoded_cat_image_data):
     example: The created tf.Example.
   """
 
-  height = 1032.0
-  width = 1200.0
-  filename = 'example_cat.jpg'
-  image_format = b'jpg'
+  height = 1032
+  width = 1200
+  filename = 'example_cat.jpg'.encode('utf-8')
+  image_format = 'jpg'.encode('utf-8')
 
-  xmins = [322.0 / 1200.0]
-  xmaxs = [1062.0 / 1200.0]
-  ymins = [174.0 / 1032.0]
-  ymaxs = [761.0 / 1032.0]
-  classes_text = ['Cat']
+  xmins = [322.0 / width]
+  xmaxs = [1062.0 / width]
+  ymins = [174.0 / height]
+  ymaxs = [761.0 / height]
+  classes_text = ['Cat'.encode('utf-8')]
   classes = [1]
 
   tf_example = tf.train.Example(features=tf.train.Features(feature={
@@ -139,7 +139,7 @@ def create_tf_example(example):
 
 
 def main(_):
-  writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+  writer = tf.io.TFRecordWriter(FLAGS.output_path)
 
   # TODO(user): Write code to read in your dataset to examples variable
 
