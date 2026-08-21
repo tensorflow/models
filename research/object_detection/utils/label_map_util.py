@@ -168,8 +168,8 @@ def load_labelmap(path, validator=None):
   Returns:
     a StringIntLabelMapProto
   """
-  with tf.io.gfile.GFile(path, 'r') as fid:
-    label_map_string = fid.read()
+  with tf.io.gfile.GFile(path, 'rb') as fid:
+    label_map_string = fid.read(-1)
     label_map = string_int_label_map_pb2.StringIntLabelMap()
     try:
       text_format.Merge(label_map_string, label_map)
