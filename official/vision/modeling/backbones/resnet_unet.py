@@ -163,7 +163,7 @@ class ConvNeXtBlock(tf_keras.Model):
     else:
       self._squeeze_excitation = None
 
-  def call(self, x, training=None):
+  def call(self, x, training=None):  # pyrefly: ignore[bad-override]
     inputs = x
 
     x = self.depthwise_conv(x)
@@ -407,9 +407,9 @@ class ResNetUNet(tf_keras.Model):
       endpoints[str(i + 2)] = x
 
     norm_layer = lambda: tf_keras.layers.LayerNormalization(epsilon=1e-6)
-    for i in range(len(upsample_filters)):
+    for i in range(len(upsample_filters)):  # pyrefly: ignore[bad-argument-type]
       backbone_feature = layers.Conv2D(
-          filters=int(upsample_filters[i] * stem_depth_multiplier),
+          filters=int(upsample_filters[i] * stem_depth_multiplier),  # pyrefly: ignore[unsupported-operation]
           kernel_size=1,
           strides=1,
           use_bias=False,
@@ -424,7 +424,7 @@ class ResNetUNet(tf_keras.Model):
         x = backbone_feature
       else:
         x = layers.Conv2D(
-            filters=int(upsample_filters[i] * stem_depth_multiplier),
+            filters=int(upsample_filters[i] * stem_depth_multiplier),  # pyrefly: ignore[unsupported-operation]
             kernel_size=1,
             strides=1,
             use_bias=False,
@@ -439,17 +439,17 @@ class ResNetUNet(tf_keras.Model):
             x, scale=2,
             use_keras_layer=True) + backbone_feature
 
-      for _ in range(upsample_repeats[i]):
+      for _ in range(upsample_repeats[i]):  # pyrefly: ignore[unsupported-operation]
         x = ConvNeXtBlock(
-            int(upsample_filters[i] * self._depth_multiplier),
+            int(upsample_filters[i] * self._depth_multiplier),  # pyrefly: ignore[unsupported-operation]
             drop_rate=nn_layers.get_stochastic_depth_rate(
                 self._init_stochastic_depth_rate, i + 6, 8),
-            kernel_size=upsample_kernel_sizes[i])(x)
+            kernel_size=upsample_kernel_sizes[i])(x)  # pyrefly: ignore[unsupported-operation]
       x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
       endpoints[str(5 - i)] = x
 
     if classification_output:
-      endpoints['6'] = endpoints[str(5 - len(upsample_repeats) + 1)]
+      endpoints['6'] = endpoints[str(5 - len(upsample_repeats) + 1)]  # pyrefly: ignore[bad-argument-type]
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 

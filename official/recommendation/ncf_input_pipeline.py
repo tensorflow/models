@@ -152,23 +152,23 @@ def create_ncf_input_data(params,
 
     train_dataset = create_dataset_from_tf_record_files(
         params["train_dataset_path"],
-        input_meta_data["train_prebatch_size"],
+        input_meta_data["train_prebatch_size"],  # pyrefly: ignore[unsupported-operation]
         params["batch_size"],
         is_training=True,
         rebatch=False)
 
     # Re-batch evaluation dataset for TPU Pods.
     # TODO (b/162341937) remove once it's fixed.
-    eval_rebatch = (params["use_tpu"] and strategy.num_replicas_in_sync > 8)
+    eval_rebatch = (params["use_tpu"] and strategy.num_replicas_in_sync > 8)  # pyrefly: ignore[missing-attribute]
     eval_dataset = create_dataset_from_tf_record_files(
         params["eval_dataset_path"],
-        input_meta_data["eval_prebatch_size"],
+        input_meta_data["eval_prebatch_size"],  # pyrefly: ignore[unsupported-operation]
         params["eval_batch_size"],
         is_training=False,
         rebatch=eval_rebatch)
 
-    num_train_steps = int(input_meta_data["num_train_steps"])
-    num_eval_steps = int(input_meta_data["num_eval_steps"])
+    num_train_steps = int(input_meta_data["num_train_steps"])  # pyrefly: ignore[unsupported-operation]
+    num_eval_steps = int(input_meta_data["num_eval_steps"])  # pyrefly: ignore[unsupported-operation]
   else:
     if params["use_tpu"]:
       raise ValueError("TPU training does not support data producer yet. "

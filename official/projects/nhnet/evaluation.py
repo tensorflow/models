@@ -101,7 +101,7 @@ def continuous_eval(strategy,
     model = models.create_model(model_type, params)
     metric_layer = metrics_v2.MetricLayer(params.vocab_size)
     eval_summary_writer = tf.summary.create_file_writer(
-        os.path.join(model_dir, "summaries/eval"))
+        os.path.join(model_dir, "summaries/eval"))  # pyrefly: ignore[no-matching-overload]
     global_step = tf.Variable(
         0,
         trainable=False,

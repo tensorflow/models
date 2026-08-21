@@ -282,8 +282,8 @@ class ResampleFeatureMap(tf_keras.layers.Layer):
         data_format=self.data_format,
         name='conv2d')
     self.bn = build_batch_norm(
-        is_training_bn=self.is_training_bn,
-        data_format=self.data_format,
+        is_training_bn=self.is_training_bn,  # pyrefly: ignore[bad-argument-type]
+        data_format=self.data_format,  # pyrefly: ignore[bad-argument-type]
         strategy=self.strategy,
         name='bn')
     self.built = True

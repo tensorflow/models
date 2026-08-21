@@ -431,7 +431,7 @@ class DarknetLoss(YoloLossBase):
 
     # Mask the confidence loss and take the sum across all the grid cells.
     if self._ignore_thresh != 0.0:
-      bce = loss_utils.apply_mask(obj_mask, bce)
+      bce = loss_utils.apply_mask(obj_mask, bce)  # pyrefly: ignore[unbound-name]
     conf_loss = tf.cast(tf.reduce_sum(bce, axis=(1, 2, 3)), dtype=y_pred.dtype)
 
     # Apply the weights to each loss.
@@ -559,7 +559,7 @@ class ScaledLoss(YoloLossBase):
     bce = tf_keras.losses.binary_crossentropy(
         tf.expand_dims(true_conf, axis=-1), pred_conf, from_logits=True)
     if self._ignore_thresh != 0.0:
-      bce = loss_utils.apply_mask(obj_mask, bce)
+      bce = loss_utils.apply_mask(obj_mask, bce)  # pyrefly: ignore[unbound-name]
       conf_loss = tf.reduce_sum(bce) / tf.reduce_sum(obj_mask)
     else:
       conf_loss = tf.reduce_mean(bce)
@@ -692,17 +692,17 @@ class YoloLoss:
       self._loss_dict[key] = losses[loss_type](
           classes=classes,
           anchors=anchors[key],
-          truth_thresh=truth_thresholds[key],
-          ignore_thresh=ignore_thresholds[key],
-          loss_type=loss_types[key],
-          iou_normalizer=iou_normalizers[key],
-          cls_normalizer=cls_normalizers[key],
-          object_normalizer=object_normalizers[key],
-          box_type=box_types[key],
-          objectness_smooth=objectness_smooths[key],
-          max_delta=max_deltas[key],
-          path_stride=path_strides[key],
-          scale_x_y=scale_xys[key],
+          truth_thresh=truth_thresholds[key],  # pyrefly: ignore[unsupported-operation]
+          ignore_thresh=ignore_thresholds[key],  # pyrefly: ignore[unsupported-operation]
+          loss_type=loss_types[key],  # pyrefly: ignore[unsupported-operation]
+          iou_normalizer=iou_normalizers[key],  # pyrefly: ignore[unsupported-operation]
+          cls_normalizer=cls_normalizers[key],  # pyrefly: ignore[unsupported-operation]
+          object_normalizer=object_normalizers[key],  # pyrefly: ignore[unsupported-operation]
+          box_type=box_types[key],  # pyrefly: ignore[unsupported-operation]
+          objectness_smooth=objectness_smooths[key],  # pyrefly: ignore[unsupported-operation]
+          max_delta=max_deltas[key],  # pyrefly: ignore[unsupported-operation]
+          path_stride=path_strides[key],  # pyrefly: ignore[unsupported-operation]
+          scale_x_y=scale_xys[key],  # pyrefly: ignore[unsupported-operation]
           update_on_repeat=update_on_repeat,
           label_smoothing=label_smoothing)
 

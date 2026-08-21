@@ -193,7 +193,7 @@ class MobileBERTEncoder(tf_keras.Model):
     return dict(self._config)
 
   @classmethod
-  def from_config(cls, config):
+  def from_config(cls, config):  # pyrefly: ignore[bad-override]
     return cls(**config)
 
   def get_embedding_table(self):

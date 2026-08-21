@@ -165,7 +165,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
       )
       if (
           hardware_feature.embedding_feature
-          == tf.tpu.experimental.HardwareFeature.EmbeddingFeature.V2
+          == tf.tpu.experimental.HardwareFeature.EmbeddingFeature.V2  # pyrefly: ignore[missing-attribute]
       ):
         tpu_metadata = cluster_resolver.get_tpu_system_metadata()
         device_assignment = tf.tpu.experimental.DeviceAssignment.build(

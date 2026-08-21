@@ -415,15 +415,15 @@ def nested_csv_str_to_json_str(csv_str):
         numeric_val = int(v)
       # Add the value to the array.
       if name not in array_param_map:
-        max_index_map[name] = index
-        array_param_map[name] = [None] * (index + 1)
-        array_param_map[name][index] = numeric_val
-      elif index < max_index_map[name]:
-        array_param_map[name][index] = numeric_val
+        max_index_map[name] = index  # pyrefly: ignore[unsupported-operation]
+        array_param_map[name] = [None] * (index + 1)  # pyrefly: ignore[unsupported-operation]
+        array_param_map[name][index] = numeric_val  # pyrefly: ignore[unsupported-operation]
+      elif index < max_index_map[name]:  # pyrefly: ignore[unsupported-operation]
+        array_param_map[name][index] = numeric_val  # pyrefly: ignore[unsupported-operation]
       else:
-        array_param_map[name] += [None] * (index - max_index_map[name])
-        array_param_map[name][index] = numeric_val
-        max_index_map[name] = index
+        array_param_map[name] += [None] * (index - max_index_map[name])  # pyrefly: ignore[unsupported-operation]
+        array_param_map[name][index] = numeric_val  # pyrefly: ignore[unsupported-operation]
+        max_index_map[name] = index  # pyrefly: ignore[unsupported-operation]
       continue
 
     # If a GCS path (e.g. gs://...) is provided, wrap this in quotes

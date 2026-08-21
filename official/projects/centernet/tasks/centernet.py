@@ -420,8 +420,8 @@ class CenterNetTask(base_task.Task):
     if state is None:
       self.coco_metric.reset_states()
       state = self.coco_metric
-    self.coco_metric.update_state(step_outputs[self.coco_metric.name][0],
-                                  step_outputs[self.coco_metric.name][1])
+    self.coco_metric.update_state(step_outputs[self.coco_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+                                  step_outputs[self.coco_metric.name][1])  # pyrefly: ignore[unsupported-operation]
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):

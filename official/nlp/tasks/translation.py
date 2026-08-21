@@ -330,9 +330,9 @@ class TranslationTask(base_task.Task):
       state = {}
 
     for in_token_ids, out_token_ids, unique_ids in zip(
-        step_outputs["inputs"],
-        step_outputs["outputs"],
-        step_outputs["unique_ids"]):
+        step_outputs["inputs"],  # pyrefly: ignore[unsupported-operation]
+        step_outputs["outputs"],  # pyrefly: ignore[unsupported-operation]
+        step_outputs["unique_ids"]):  # pyrefly: ignore[unsupported-operation]
       for in_ids, out_ids, u_id in zip(
           in_token_ids.numpy(), out_token_ids.numpy(), unique_ids.numpy()):
         state[u_id] = (in_ids, out_ids)

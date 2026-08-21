@@ -34,7 +34,7 @@ from official.projects.triviaqa import prediction
 flags.DEFINE_string('data_dir', None, 'TensorFlow Datasets directory.')
 
 flags.DEFINE_enum('split', None,
-                  [tfds.Split.TRAIN, tfds.Split.VALIDATION, tfds.Split.TEST],
+                  [tfds.Split.TRAIN, tfds.Split.VALIDATION, tfds.Split.TEST],  # pyrefly: ignore[missing-attribute]
                   'For which split to generate predictions.')
 
 flags.DEFINE_string('predictions_path', None, 'Output for predictions.')

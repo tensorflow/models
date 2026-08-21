@@ -19,7 +19,7 @@ from typing import Any, Optional
 import warnings
 
 from groundingdino.util import inference
-import models_utils
+import models_utils  # pyrefly: ignore[missing-import]
 import numpy as np
 from sam2 import build_sam
 from sam2 import sam2_image_predictor
@@ -129,7 +129,7 @@ class ObjectDetectionSegmentation:
 
     # Stack all boxes for batched prediction
     # SAM2 expects shape (num_boxes, 4)
-    batched_boxes = np.stack(boxes, axis=0)
+    batched_boxes = np.stack(boxes, axis=0)  # pyrefly: ignore[no-matching-overload]
     masks, scores, _ = self.sam_predictor.predict(
         point_coords=None,
         point_labels=None,
@@ -321,7 +321,7 @@ class ObjectDetectionSegmentation:
     if not valid_boxes:
       return None
 
-    masks, _ = self._segment_objects(image, valid_boxes)
+    masks, _ = self._segment_objects(image, valid_boxes)  # pyrefly: ignore[bad-argument-type]
     print(f'Segmentation complete. Generated {len(masks)} masks.')
 
     return {

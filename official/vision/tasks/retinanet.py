@@ -433,15 +433,15 @@ class RetinaNetTask(base_task.Task):
     if self._task_config.use_coco_metrics:
       if state is None:
         self.coco_metric.reset_states()
-      self.coco_metric.update_state(step_outputs[self.coco_metric.name][0],
-                                    step_outputs[self.coco_metric.name][1])
+      self.coco_metric.update_state(step_outputs[self.coco_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+                                    step_outputs[self.coco_metric.name][1])  # pyrefly: ignore[unsupported-operation]
     if self._task_config.use_wod_metrics:
       if state is None:
         self.wod_metric.reset_states()
-      self.wod_metric.update_state(step_outputs[self.wod_metric.name][0],
-                                   step_outputs[self.wod_metric.name][1])
+      self.wod_metric.update_state(step_outputs[self.wod_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+                                   step_outputs[self.wod_metric.name][1])  # pyrefly: ignore[unsupported-operation]
 
-    if 'visualization' in step_outputs:
+    if 'visualization' in step_outputs:  # pyrefly: ignore[not-iterable]
       # Update detection state for writing summary if there are artifacts for
       # visualization.
       if state is None:

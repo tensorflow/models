@@ -77,8 +77,8 @@ class Conv2DBNCFG(Config):
       repr=False, default=None)
 
   def __post_init__(self):
-    conv_weights_dict = self.weights_dict['conv']
-    norm_weights_dict = self.weights_dict['norm']
+    conv_weights_dict = self.weights_dict['conv']  # pyrefly: ignore[unsupported-operation]
+    norm_weights_dict = self.weights_dict['norm']  # pyrefly: ignore[unsupported-operation]
 
     self.weights = conv_weights_dict['kernel']
 
@@ -138,12 +138,12 @@ class ResidualBlockCFG(Config):
       repr=False, default=None)
 
   def __post_init__(self):
-    conv_weights_dict = self.weights_dict['conv']
-    norm_weights_dict = self.weights_dict['norm']
-    conv_block_weights_dict = self.weights_dict['conv_block']
+    conv_weights_dict = self.weights_dict['conv']  # pyrefly: ignore[unsupported-operation]
+    norm_weights_dict = self.weights_dict['norm']  # pyrefly: ignore[unsupported-operation]
+    conv_block_weights_dict = self.weights_dict['conv_block']  # pyrefly: ignore[unsupported-operation]
 
-    if 'skip' in self.weights_dict:
-      skip_weights_dict = self.weights_dict['skip']
+    if 'skip' in self.weights_dict:  # pyrefly: ignore[not-iterable]
+      skip_weights_dict = self.weights_dict['skip']  # pyrefly: ignore[unsupported-operation]
       self.skip_weights = skip_weights_dict['conv']['kernel']
       self.skip_beta = skip_weights_dict['norm']['beta']
       self.skip_gamma = skip_weights_dict['norm']['gamma']
@@ -207,8 +207,8 @@ class HeadConvCFG(Config):
       repr=False, default=None)
 
   def __post_init__(self):
-    conv_1_weights_dict = self.weights_dict['layer_with_weights-0']
-    conv_2_weights_dict = self.weights_dict['layer_with_weights-1']
+    conv_1_weights_dict = self.weights_dict['layer_with_weights-0']  # pyrefly: ignore[unsupported-operation]
+    conv_2_weights_dict = self.weights_dict['layer_with_weights-1']  # pyrefly: ignore[unsupported-operation]
 
     self.conv_1_weights = conv_1_weights_dict['kernel']
     self.conv_1_bias = conv_1_weights_dict['bias']
@@ -230,10 +230,10 @@ class HourglassCFG(Config):
 
   weights_dict: Optional[Dict[str, np.ndarray]] = dataclasses.field(
       repr=False, default=None)
-  is_last_stage: bool = dataclasses.field(repr=False, default=None)
+  is_last_stage: bool = dataclasses.field(repr=False, default=None)  # pyrefly: ignore[bad-assignment]
 
   def __post_init__(self):
-    self.is_last_stage = False if 'inner_block' in self.weights_dict else True
+    self.is_last_stage = False if 'inner_block' in self.weights_dict else True  # pyrefly: ignore[not-iterable]
 
   def get_weights(self):
     """It is not used in this class."""
@@ -271,15 +271,15 @@ class HourglassCFG(Config):
           layer.submodules[3]
       ]
       enc_dec_weight_dicts = [
-          self.weights_dict['encoder_block1'],
-          self.weights_dict['encoder_block2'],
-          self.weights_dict['decoder_block']
+          self.weights_dict['encoder_block1'],  # pyrefly: ignore[unsupported-operation]
+          self.weights_dict['encoder_block2'],  # pyrefly: ignore[unsupported-operation]
+          self.weights_dict['decoder_block']  # pyrefly: ignore[unsupported-operation]
       ]
 
       for l, weights_dict in zip(enc_dec_layers, enc_dec_weight_dicts):
         n_weights += self.load_block_weights(l, weights_dict)
 
-      if len(self.weights_dict['inner_block']) == 1:
+      if len(self.weights_dict['inner_block']) == 1:  # pyrefly: ignore[unsupported-operation]
         # still in an outer hourglass
         inner_weights_dict = self.weights_dict['inner_block']['0']
       else:
@@ -287,7 +287,7 @@ class HourglassCFG(Config):
         inner_weights_dict = self.weights_dict['inner_block']
 
       inner_hg_layer = layer.submodules[2]
-      inner_hg_cfg = type(self)(weights_dict=inner_weights_dict)
+      inner_hg_cfg = type(self)(weights_dict=inner_weights_dict)  # pyrefly: ignore[bad-argument-type]
       n_weights += inner_hg_cfg.load_weights(inner_hg_layer)
 
     else:

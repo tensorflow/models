@@ -174,5 +174,5 @@ class ProgressivePolicy:
     new_optimizer = self.get_optimizer(new_stage_id)
     self._volatiles.reassign_trackable(optimizer=new_optimizer)
     new_model = self.get_model(
-        new_stage_id, old_model=self.cur_model if pass_old_model else None)
+        new_stage_id, old_model=self.cur_model if pass_old_model else None)  # pyrefly: ignore[bad-argument-type]
     self._volatiles.reassign_trackable(model=new_model)

@@ -99,7 +99,7 @@ class MaskConverModel(tf_keras.Model):
            image_info: Optional[tf.Tensor] = None,
            box_indices: Optional[tf.Tensor] = None,
            classes: Optional[tf.Tensor] = None,
-           training: bool = None
+           training: bool = None  # pyrefly: ignore[bad-function-definition]
            ) -> Dict[str, Optional[Any]]:
     backbone_features = self.backbone(inputs)
 
@@ -136,7 +136,7 @@ class MaskConverModel(tf_keras.Model):
 
     if not training:
       outputs = {'classes': classes,
-                 'confidence': confidence,
+                 'confidence': confidence,  # pyrefly: ignore[unbound-name]
                  'mask_proposal_logits': mask_proposal_logits,
                  'class_heatmaps': class_heatmaps}
       if self.panoptic_generator is not None:

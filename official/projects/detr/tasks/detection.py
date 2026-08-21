@@ -425,8 +425,8 @@ class DetectionTask(base_task.Task):
       state = self.coco_metric
 
     state.update_state(
-        step_outputs['ground_truths'],
-        step_outputs['predictions'])
+        step_outputs['ground_truths'],  # pyrefly: ignore[unsupported-operation]
+        step_outputs['predictions'])  # pyrefly: ignore[unsupported-operation]
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):

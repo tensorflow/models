@@ -249,7 +249,7 @@ class MaskRCNNTask(base_task.Task):
       frcnn_box_loss += frcnn_box_loss_i
     frcnn_cls_loss /= num_det_heads
     frcnn_box_loss /= num_det_heads
-    return frcnn_cls_loss, frcnn_box_loss
+    return frcnn_cls_loss, frcnn_box_loss  # pyrefly: ignore[bad-return]
 
   def _build_mask_loss(self, outputs: Mapping[str, Any]) -> tf.Tensor:
     """Builds losses for the masks."""
@@ -519,7 +519,7 @@ class MaskRCNNTask(base_task.Task):
         hasattr(self.task_config, 'allow_image_summary')
         and self.task_config.allow_image_summary
     ):
-      logs.update(
+      logs.update(  # pyrefly: ignore[no-matching-overload]
           {'visualization': (tf.cast(images, dtype=tf.float32), outputs)}
       )
 
@@ -540,16 +540,16 @@ class MaskRCNNTask(base_task.Task):
 
     if self.task_config.use_coco_metrics:
       self.coco_metric.update_state(
-          step_outputs[self.coco_metric.name][0],
-          step_outputs[self.coco_metric.name][1],
+          step_outputs[self.coco_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+          step_outputs[self.coco_metric.name][1],  # pyrefly: ignore[unsupported-operation]
       )
     if self.task_config.use_wod_metrics:
       self.wod_metric.update_state(
-          step_outputs[self.wod_metric.name][0],
-          step_outputs[self.wod_metric.name][1],
+          step_outputs[self.wod_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+          step_outputs[self.wod_metric.name][1],  # pyrefly: ignore[unsupported-operation]
       )
 
-    if 'visualization' in step_outputs:
+    if 'visualization' in step_outputs:  # pyrefly: ignore[not-iterable]
       # Update detection state for writing summary if there are artifacts for
       # visualization.
       if state is None:

@@ -342,7 +342,7 @@ def run_ncf(_):
         train_history = history.history
         train_loss = train_history["loss"][-1]
 
-  stats = build_stats(train_loss, eval_results, time_callback)
+  stats = build_stats(train_loss, eval_results, time_callback)  # pyrefly: ignore[unbound-name]
   return stats
 
 
@@ -499,7 +499,7 @@ def run_ncf_custom_training(params,
                  hr_sum / hr_count)
     if eval_summary_writer:
       with eval_summary_writer.as_default():
-        tf.summary.scalar("hit_rate", hr_sum / hr_count, step=current_step)
+        tf.summary.scalar("hit_rate", hr_sum / hr_count, step=current_step)  # pyrefly: ignore[unbound-name]
 
     if (FLAGS.early_stopping and
         float(hr_sum / hr_count) > params["hr_threshold"]):

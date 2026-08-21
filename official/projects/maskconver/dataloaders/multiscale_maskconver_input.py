@@ -208,7 +208,7 @@ class Parser(parser.Parser):
       if self._augmenter is not None:
         image = self._augmenter.distort(image)
 
-    image = preprocess_ops.normalize_image(image)
+    image = preprocess_ops.normalize_image(image)  # pyrefly: ignore[unbound-name]
 
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
@@ -239,10 +239,10 @@ class Parser(parser.Parser):
       return mask
 
     panoptic_category_mask = _process_mask(
-        category_mask,
+        category_mask,  # pyrefly: ignore[unbound-name]
         -1, image_info)
     panoptic_instance_mask = _process_mask(
-        instance_mask,
+        instance_mask,  # pyrefly: ignore[unbound-name]
         self._panoptic_ignore_label, image_info)
 
     mask_level = self._mask_target_level
@@ -472,8 +472,8 @@ class Parser(parser.Parser):
       else:
         mask = tf.image.pad_to_bounding_box(
             mask, 0, 0,
-            self._segmentation_groundtruth_padded_size[0],
-            self._segmentation_groundtruth_padded_size[1])
+            self._segmentation_groundtruth_padded_size[0],  # pyrefly: ignore[unsupported-operation]
+            self._segmentation_groundtruth_padded_size[1])  # pyrefly: ignore[unsupported-operation]
       mask -= 1
       # Assign ignore label to the padded region.
       mask = tf.where(

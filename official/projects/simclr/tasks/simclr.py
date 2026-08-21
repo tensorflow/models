@@ -328,7 +328,7 @@ class SimCLRPretrainTask(base_task.Task):
 
     logs = {self.loss: losses['total_loss']}
 
-    for m in metrics:
+    for m in metrics:  # pyrefly: ignore[not-iterable]
       m.update_state(losses[m.name])
       logs.update({m.name: m.result()})
 

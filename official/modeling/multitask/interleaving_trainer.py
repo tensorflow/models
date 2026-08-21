@@ -75,7 +75,7 @@ class MultiTaskInterleavingTrainer(base_trainer.MultiTaskBaseTrainer):
     # created before the training and let the optimizer to create the slot
     # variable all together.
     if isinstance(optimizer, tf_keras.optimizers.experimental.Optimizer):
-      multi_task_model.build()
+      multi_task_model.build()  # pyrefly: ignore[missing-argument]
       optimizer.build(multi_task_model.trainable_variables)
 
   def task_step_counter(self, name):

@@ -36,7 +36,7 @@ class ImageConfig(hyperparams.Config):
   width: int = dataclasses.field(init=False)
 
   # Image height and width should be auto computed.
-  def __post_init__(self, height: int, width: int):
+  def __post_init__(self, height: int, width: int):  # pyrefly: ignore[bad-function-definition]
     self.height = int((-self.x_range[0] + self.x_range[1]) / self.resolution)
     self.width = int((-self.y_range[0] + self.y_range[1]) / self.resolution)
 

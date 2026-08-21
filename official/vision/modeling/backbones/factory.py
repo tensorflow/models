@@ -84,7 +84,7 @@ def build_backbone(input_specs: Union[tf_keras.layers.InputSpec,
                                       Sequence[tf_keras.layers.InputSpec]],
                    backbone_config: hyperparams.Config,
                    norm_activation_config: hyperparams.Config,
-                   l2_regularizer: tf_keras.regularizers.Regularizer = None,
+                   l2_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
                    **kwargs) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds backbone from a config.
 

@@ -213,11 +213,11 @@ class MegaEncoder(tf_keras.layers.Layer):
     else:
       raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
-    if type_ids is None:
-      type_ids = tf.zeros_like(mask)
+    if type_ids is None:  # pyrefly: ignore[unbound-name]
+      type_ids = tf.zeros_like(mask)  # pyrefly: ignore[unbound-name]
 
     if word_embeddings is None:
-      word_embeddings = self._embedding_layer(word_ids)
+      word_embeddings = self._embedding_layer(word_ids)  # pyrefly: ignore[unbound-name]
 
     if dense_inputs is not None:
       mask = tf.concat([mask, dense_mask], axis=1)

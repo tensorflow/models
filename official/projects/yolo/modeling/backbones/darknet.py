@@ -488,11 +488,11 @@ class Darknet(tf_keras.Model):
             stack_outputs[config.route], config, name=f'{config.layer}_{i}')
         stack_outputs.append(x)
       if (config.is_output and self._min_size is None):
-        endpoints[str(config.output_name)] = x
+        endpoints[str(config.output_name)] = x  # pyrefly: ignore[unbound-name]
       elif (self._min_size is not None and
             config.output_name >= self._min_size and
             config.output_name <= self._max_size):
-        endpoints[str(config.output_name)] = x
+        endpoints[str(config.output_name)] = x  # pyrefly: ignore[unbound-name]
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints.keys()}
     return endpoints
@@ -512,7 +512,7 @@ class Darknet(tf_keras.Model):
       residual_filter_scale = 1
       scale_filters = 2
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_csp_down'
+    self._default_dict['name'] = f'{name}_csp_down'  # pyrefly: ignore[bad-assignment]
     if self._dilate:
       self._default_dict['dilation_rate'] = config.dilation_rate
       degrid = int(tf.math.log(float(config.dilation_rate)) / tf.math.log(2.))
@@ -530,7 +530,7 @@ class Darknet(tf_keras.Model):
 
     dilated_reps = config.repetitions - degrid
     for i in range(dilated_reps):
-      self._default_dict['name'] = f'{name}_{i}'
+      self._default_dict['name'] = f'{name}_{i}'  # pyrefly: ignore[bad-assignment]
       x = nn_blocks.DarkResidual(
           filters=config.filters // scale_filters,
           filter_scale=residual_filter_scale,
@@ -542,7 +542,7 @@ class Darknet(tf_keras.Model):
           1, self._default_dict['dilation_rate'] // 2
       )
       self._default_dict['name'] = (
-          f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
+          f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"  # pyrefly: ignore[bad-assignment]
       )
       x = nn_blocks.DarkResidual(
           filters=config.filters // scale_filters,
@@ -550,7 +550,7 @@ class Darknet(tf_keras.Model):
           **self._default_dict,
       )(x)
 
-    self._default_dict['name'] = f'{name}_csp_connect'
+    self._default_dict['name'] = f'{name}_csp_connect'  # pyrefly: ignore[bad-assignment]
     output = nn_blocks.CSPConnect(
         filters=config.filters,
         filter_scale=csp_filter_scale,
@@ -562,7 +562,7 @@ class Darknet(tf_keras.Model):
 
   def _csp_tiny_stack(self, inputs, config, name):
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_csp_tiny'
+    self._default_dict['name'] = f'{name}_csp_tiny'  # pyrefly: ignore[bad-assignment]
     x, x_route = nn_blocks.CSPTiny(
         filters=config.filters, **self._default_dict)(
             inputs)
@@ -579,7 +579,7 @@ class Darknet(tf_keras.Model):
         name=f'{name}_tiny/pool')(
             inputs)
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_tiny/conv'
+    self._default_dict['name'] = f'{name}_tiny/conv'  # pyrefly: ignore[bad-assignment]
     x = nn_blocks.ConvBN(
         filters=config.filters,
         kernel_size=(3, 3),
@@ -593,7 +593,7 @@ class Darknet(tf_keras.Model):
 
   def _residual_stack(self, inputs, config, name):
     self._default_dict['activation'] = self._get_activation(config.activation)
-    self._default_dict['name'] = f'{name}_residual_down'
+    self._default_dict['name'] = f'{name}_residual_down'  # pyrefly: ignore[bad-assignment]
     if self._dilate:
       self._default_dict['dilation_rate'] = config.dilation_rate
       if config.repetitions < 8:
@@ -609,7 +609,7 @@ class Darknet(tf_keras.Model):
         config.repetitions - self._default_dict['dilation_rate'] // 2 - 1
     )
     for i in range(dilated_reps):
-      self._default_dict['name'] = f'{name}_{i}'
+      self._default_dict['name'] = f'{name}_{i}'  # pyrefly: ignore[bad-assignment]
       x = nn_blocks.DarkResidual(filters=config.filters, **self._default_dict)(
           x
       )
@@ -619,7 +619,7 @@ class Darknet(tf_keras.Model):
           self._default_dict['dilation_rate'] // 2
       )
       self._default_dict['name'] = (
-          f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
+          f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"  # pyrefly: ignore[bad-assignment]
       )
       x = nn_blocks.DarkResidual(filters=config.filters, **self._default_dict)(
           x
@@ -635,7 +635,7 @@ class Darknet(tf_keras.Model):
     i = 0
     self._default_dict['activation'] = self._get_activation(config.activation)
     while i < config.repetitions:
-      self._default_dict['name'] = f'{name}_{i}'
+      self._default_dict['name'] = f'{name}_{i}'  # pyrefly: ignore[bad-assignment]
       layer = self._registry(config, self._default_dict)
       x = layer(x)
       i += 1
@@ -679,7 +679,7 @@ def build_darknet(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
+    l2_regularizer: tf_keras.regularizers.Regularizer = None  # pyrefly: ignore[bad-function-definition]
 ) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds darknet."""
 

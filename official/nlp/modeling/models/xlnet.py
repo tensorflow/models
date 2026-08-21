@@ -178,7 +178,7 @@ class XLNetClassifier(tf_keras.Model):
       self,
       network: Union[tf_keras.layers.Layer, tf_keras.Model],
       num_classes: int,
-      initializer: tf_keras.initializers.Initializer = 'random_normal',
+      initializer: tf_keras.initializers.Initializer = 'random_normal',  # pyrefly: ignore[bad-function-definition]
       summary_type: str = 'last',
       dropout_rate: float = 0.1,
       head_name: str = 'sentence_prediction',  # pytype: disable=annotation-type-mismatch  # typed-keras
@@ -270,7 +270,7 @@ class XLNetSpanLabeler(tf_keras.Model):
       start_n_top: int = 5,
       end_n_top: int = 5,
       dropout_rate: float = 0.1,
-      span_labeling_activation: tf_keras.initializers.Initializer = 'tanh',
+      span_labeling_activation: tf_keras.initializers.Initializer = 'tanh',  # pyrefly: ignore[bad-function-definition]
       initializer: tf_keras.initializers.Initializer = 'glorot_uniform',  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):
     super().__init__(**kwargs)

@@ -432,7 +432,7 @@ class BigBirdAttention(tf_keras.layers.MultiHeadAttention):
     self.rand_attn = tf.constant(rand_attn, dtype=tf.int32)
 
   def _compute_attention(self, query, key, value, attention_mask=None):
-    (band_mask, encoder_from_mask, encoder_to_mask,
+    (band_mask, encoder_from_mask, encoder_to_mask,  # pyrefly: ignore[not-iterable]
      blocked_encoder_mask) = attention_mask
     query_shape = tf.shape(query)
     from_seq_length = query_shape[1]

@@ -190,7 +190,7 @@ def find_dominant_color(
     dominant_color = kmeans.cluster_centers_[0].astype(int)
   else:
     dominant_color = np.array([0, 0, 0], dtype=int)
-  return tuple(dominant_color)
+  return tuple(dominant_color)  # pyrefly: ignore[bad-return]
 
 
 def color_difference(color1: int, color2: int) -> Union[float, int]:

@@ -177,7 +177,7 @@ class ConvBN(tf_keras.layers.Layer):
   def call(self, x):
     x = self.conv(x)
     if self._use_bn and not self._fuse:
-      x = self.bn(x)
+      x = self.bn(x)  # pyrefly: ignore[not-callable]
     x = self._activation_fn(x)
     return x
 

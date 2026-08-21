@@ -42,7 +42,7 @@ class MultilevelROIAligner(tf_keras.layers.Layer):
       self,  # pytype: disable=annotation-type-mismatch
       features: Mapping[str, tf.Tensor],
       boxes: tf.Tensor,
-      training: bool = None,
+      training: bool = None,  # pyrefly: ignore[bad-function-definition]
   ):
     """Generates ROIs.
 

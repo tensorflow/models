@@ -48,7 +48,7 @@ class AugmentConfig(base_config.Config):
   def build(self) -> augment.ImageAugment:
     """Build the augmenter using this config."""
     params = self.params or {}
-    augmenter = AUGMENTERS.get(self.name, None)
+    augmenter = AUGMENTERS.get(self.name, None)  # pyrefly: ignore[no-matching-overload]
     return augmenter(**params) if augmenter is not None else None
 
 

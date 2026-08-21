@@ -629,6 +629,6 @@ def build_yolo_decoder(
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
 
-  base_model.update(base_dict)
+  base_model.update(base_dict)  # pyrefly: ignore[no-matching-overload]
   model = YoloDecoder(input_specs, **base_model, **kwargs)
   return model

@@ -229,7 +229,7 @@ class MosaicDecoderHead(tf_keras.layers.Layer):
       y = self._pixelwise_classifier(y)
       y = self._activation_fn(y)
 
-    return y
+    return y  # pyrefly: ignore[bad-return]
 
   def get_config(self) -> Dict[str, Any]:
     """Returns a config dictionary for initialization from serialization."""

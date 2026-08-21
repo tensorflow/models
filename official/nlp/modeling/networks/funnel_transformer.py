@@ -410,7 +410,7 @@ class FunnelTransformerEncoder(tf_keras.layers.Layer):
     if pool_type in (_MAX, _AVG):
       self._att_input_pool_layers = []
       for layer_pool_stride in pool_strides:
-        att_input_pool_layer = pool_cls(
+        att_input_pool_layer = pool_cls(  # pyrefly: ignore[unbound-name]
             pool_size=layer_pool_stride,
             strides=layer_pool_stride,
             padding='same',
@@ -524,7 +524,7 @@ class FunnelTransformerEncoder(tf_keras.layers.Layer):
       attention_mask = _pool_and_concat(
           attention_mask,
           unpool_length=self._unpool_length,
-          strides=self._pool_strides[0],
+          strides=self._pool_strides[0],  # pyrefly: ignore[bad-argument-type]
           axes=[1])
 
       for i, layer in enumerate(self._transformer_layers):
@@ -553,7 +553,7 @@ class FunnelTransformerEncoder(tf_keras.layers.Layer):
           attention_mask = _pool_and_concat(
               attention_mask,
               unpool_length=self._unpool_length,
-              strides=[self._pool_strides[i + 1], self._pool_strides[i]],
+              strides=[self._pool_strides[i + 1], self._pool_strides[i]],  # pyrefly: ignore[bad-argument-type]
               axes=[1, 2])
         encoder_outputs.append(x)
     elif self._pool_type == _TRUNCATED_AVG:
@@ -561,8 +561,8 @@ class FunnelTransformerEncoder(tf_keras.layers.Layer):
       # Note we do not compute this in __init__ due to inference converter issue
       # b/215659399.
       pooling_transforms = _create_truncated_avg_transforms(
-          self._max_sequence_length, self._pool_strides)
-      attention_masks = _create_truncated_avg_masks(mask, self._pool_strides,
+          self._max_sequence_length, self._pool_strides)  # pyrefly: ignore[bad-argument-type]
+      attention_masks = _create_truncated_avg_masks(mask, self._pool_strides,  # pyrefly: ignore[bad-argument-type]
                                                     pooling_transforms)
       for i, layer in enumerate(self._transformer_layers):
         attention_mask = attention_masks[i]

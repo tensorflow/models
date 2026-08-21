@@ -110,7 +110,7 @@ class StridedTransformerEncoderBlock(
       # `self._use_query_residual` into one if clause because else is only for
       # `_norm_first == False`.
       if self._use_query_residual:
-        attention_output = source_tensor + attention_output
+        attention_output = source_tensor + attention_output  # pyrefly: ignore[unbound-name]
     else:
       if self._use_query_residual:
         attention_output = target_tensor + attention_output
@@ -126,7 +126,7 @@ class StridedTransformerEncoderBlock(
     layer_output = self._output_dropout(layer_output)
 
     if self._norm_first:
-      return source_attention_output + layer_output
+      return source_attention_output + layer_output  # pyrefly: ignore[unbound-name]
 
     layer_output = tf.cast(layer_output, tf.float32)
     return self._output_layer_norm(layer_output + attention_output)
@@ -223,7 +223,7 @@ class StridedTransformerScaffold(transformer_scaffold.TransformerScaffold):
         attention_output, training=training)
 
     if self._norm_first:
-      attention_output = source_tensor + attention_output
+      attention_output = source_tensor + attention_output  # pyrefly: ignore[unbound-name]
     else:
       attention_output = self._attention_layer_norm(
           target_tensor + attention_output, training=training)
@@ -240,7 +240,7 @@ class StridedTransformerScaffold(transformer_scaffold.TransformerScaffold):
       layer_output = self._output_dropout(layer_output, training=training)
       layer_output = tf.cast(layer_output, tf.float32)
       if self._norm_first:
-        layer_output = source_attention_output + layer_output
+        layer_output = source_attention_output + layer_output  # pyrefly: ignore[unbound-name]
       else:
         layer_output = self._output_layer_norm(
             layer_output + attention_output, training=training)
@@ -249,7 +249,7 @@ class StridedTransformerScaffold(transformer_scaffold.TransformerScaffold):
         # if norm_first, assume the feedforward block will not apply layer norm
         layer_output = self._feedforward_block(
             attention_output, training=training)
-        layer_output += source_attention_output
+        layer_output += source_attention_output  # pyrefly: ignore[unbound-name]
       else:
         # if not norm_first, assume that the feedforwad does apply layer norm
         layer_output = self._feedforward_block(

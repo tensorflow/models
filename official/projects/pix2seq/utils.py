@@ -295,7 +295,7 @@ def build_prompt_seq_from_task_id(
     prompt_seq = tf.zeros(prompt_shape, dtype=tf.int64) + tf.cast(
         task_id, dtype=tf.int64
     )
-  return prompt_seq
+  return prompt_seq  # pyrefly: ignore[unbound-name]
 
 
 def clip_or_pad_to_max_len(data, max_len, dim):

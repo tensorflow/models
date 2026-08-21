@@ -159,7 +159,7 @@ class UniversalDetector(tf_keras.layers.Layer):
 
     weighted_loss = [self._loss_weights[k] * v for k, v in loss_dict.items()]
     total_loss = sum(weighted_loss)
-    return total_loss, loss_dict
+    return total_loss, loss_dict  # pyrefly: ignore[bad-return]
 
   def call(self,
            features: typing.TensorDict,
@@ -510,8 +510,8 @@ def _get_decoder_head(
   configs.max_deeplab.pixel_space_head.head_channels = pixel_space_intermediate
   for low_level_config in low_level:
     low_level_ = configs.max_deeplab.auxiliary_low_level.add()
-    low_level_.feature_key = low_level_config["feature_key"]
-    low_level_.channels_project = low_level_config["channels_project"]
+    low_level_.feature_key = low_level_config["feature_key"]  # pyrefly: ignore[bad-assignment]
+    low_level_.channels_project = low_level_config["channels_project"]  # pyrefly: ignore[bad-assignment]
   configs.max_deeplab.auxiliary_semantic_head.output_channels = num_classes
   configs.max_deeplab.auxiliary_semantic_head.head_channels = aux_sem_intermediate
 
@@ -656,7 +656,7 @@ def _semantic_loss(
 def _entity_mask_loss(loss_dict: Dict[str, tf.Tensor],
                       labels: tf.Tensor,
                       outputs: tf.Tensor,
-                      alpha: float = gin.REQUIRED):
+                      alpha: float = gin.REQUIRED):  # pyrefly: ignore[bad-function-definition]
   """PQ loss for entity-mask training.
 
   This method adds the PQ loss term to loss_dict directly. The match result will
@@ -722,7 +722,7 @@ def _entity_mask_loss(loss_dict: Dict[str, tf.Tensor],
 def _instance_discrimination_loss(loss_dict: Dict[str, Any],
                                   labels: Dict[str, Any],
                                   outputs: Dict[str, Any],
-                                  tau: float = gin.REQUIRED):
+                                  tau: float = gin.REQUIRED):  # pyrefly: ignore[bad-function-definition]
   """Instance discrimination loss.
 
   This method adds the ID loss term to loss_dict directly.
@@ -770,7 +770,7 @@ def _paragraph_grouping_loss(
     loss_dict: Dict[str, Any],
     labels: Dict[str, Any],
     outputs: Dict[str, Any],
-    tau: float = gin.REQUIRED,
+    tau: float = gin.REQUIRED,  # pyrefly: ignore[bad-function-definition]
     loss_mode="vanilla",
     fl_alpha: float = 0.25,
     fl_gamma: float = 2.,

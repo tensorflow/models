@@ -110,7 +110,7 @@ class Featurizer(tf_keras.layers.Layer):
     return batch_dims
 
   def _get_batch_size_and_dims(self,  # pytype: disable=annotation-type-mismatch
-                               training: bool = None) -> Tuple[int, tf.Tensor]:
+                               training: bool = None) -> Tuple[int, tf.Tensor]:  # pyrefly: ignore[bad-function-definition]
     # We use training as a ternary indicator, None for test mode.
     # Test mode will be used for saving model and model inference.
     if training is None:
@@ -128,7 +128,7 @@ class Featurizer(tf_keras.layers.Layer):
   def call(self,  # pytype: disable=annotation-type-mismatch
            pillars: tf.Tensor,
            indices: tf.Tensor,
-           training: bool = None) -> tf.Tensor:
+           training: bool = None) -> tf.Tensor:  # pyrefly: ignore[bad-function-definition]
     """Forward pass of the featurizer."""
     # Add batch index to pillar indices.
     # (B, P, 1)
@@ -159,7 +159,7 @@ class Featurizer(tf_keras.layers.Layer):
 
   @classmethod
   def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
-    return cls(**config)
+    return cls(**config)  # pyrefly: ignore[bad-return]
 
   @property
   def output_specs(self) -> tf.TensorShape:

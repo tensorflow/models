@@ -318,7 +318,7 @@ class TransformerScaffold(tf_keras.layers.Layer):
                                                training=training)
 
     if self._norm_first:
-      attention_output = source_tensor + attention_output
+      attention_output = source_tensor + attention_output  # pyrefly: ignore[unbound-name]
     else:
       attention_output = self._attention_layer_norm(input_tensor +
                                                     attention_output,
@@ -339,7 +339,7 @@ class TransformerScaffold(tf_keras.layers.Layer):
       # add.
       layer_output = tf.cast(layer_output, tf.float32)
       if self._norm_first:
-        layer_output = source_attention_output + layer_output
+        layer_output = source_attention_output + layer_output  # pyrefly: ignore[unbound-name]
       else:
         layer_output = self._output_layer_norm(layer_output + attention_output,
                                                training=training)
@@ -348,7 +348,7 @@ class TransformerScaffold(tf_keras.layers.Layer):
         # if norm_first, assume the feedforward block will not apply layer norm
         layer_output = self._feedforward_block(attention_output,
                                                training=training)
-        layer_output += source_attention_output
+        layer_output += source_attention_output  # pyrefly: ignore[unbound-name]
       else:
         # Attention: if not norm_first, assume that the feedforwad does apply
         # layer norm. The feedford also apply residual connection. Please

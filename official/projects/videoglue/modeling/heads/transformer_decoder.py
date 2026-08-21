@@ -295,7 +295,7 @@ class TransformerDecoder(tf_keras.layers.Layer):
     all_hidden_states = ()
     all_attentions = ()
 
-    memory_shape = _get_shape(memory)
+    memory_shape = _get_shape(memory)  # pyrefly: ignore[bad-argument-type]
     memory = tf.reshape(memory, [memory_shape[0], -1, memory_shape[-1]])
     hidden_states = inputs
 

@@ -341,7 +341,7 @@ class SemanticSegmentationTask(base_task.Task):
     if state is None and self.iou_metric is not None:
       self.iou_metric.reset_states()
 
-    if 'visualization' in step_outputs:
+    if 'visualization' in step_outputs:  # pyrefly: ignore[not-iterable]
       # Update segmentation state for writing summary if there are artifacts for
       # visualization.
       if state is None:

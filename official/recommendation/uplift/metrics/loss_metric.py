@@ -169,13 +169,13 @@ class LossMetric(tf_keras.metrics.Metric):
     if isinstance(self._loss_fn, tf_keras.metrics.Metric):
       self._loss.update_state(
           y_true,
-          y_pred=pred,
+          y_pred=pred,  # pyrefly: ignore[unexpected-keyword]
           sample_weight=sample_weight,
           **is_treatment,
       )
     else:
       self._loss.update_state(
-          values=self._loss_fn(y_true, pred, **self._loss_fn_kwargs),
+          values=self._loss_fn(y_true, pred, **self._loss_fn_kwargs),  # pyrefly: ignore[bad-argument-type]
           sample_weight=sample_weight,
           **is_treatment,
       )

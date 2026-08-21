@@ -158,9 +158,9 @@ class DeepMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
         matched_gt_indices=intermediate_outputs['matched_gt_indices'],
         matched_gt_boxes=matched_gt_boxes,
         matched_gt_classes=intermediate_outputs['matched_gt_classes'],
-        gt_masks=gt_masks,
-        gt_classes=gt_classes,
-        gt_boxes=mask_head_gt_boxes,
+        gt_masks=gt_masks,  # pyrefly: ignore[bad-argument-type]
+        gt_classes=gt_classes,  # pyrefly: ignore[bad-argument-type]
+        gt_boxes=mask_head_gt_boxes,  # pyrefly: ignore[bad-argument-type]
         training=training)
     model_outputs.update(model_mask_outputs)
     return model_outputs
@@ -230,8 +230,8 @@ class DeepMaskRCNNModel(maskrcnn_model.MaskRCNNModel):
       mask_head_classes = gt_classes
 
     else:
-      roi_aligner_boxes = rois
-      mask_head_classes = roi_classes
+      roi_aligner_boxes = rois  # pyrefly: ignore[unbound-name]
+      mask_head_classes = roi_classes  # pyrefly: ignore[unbound-name]
 
     mask_logits, mask_probs = self._features_to_mask_outputs(
         features, roi_aligner_boxes, mask_head_classes)

@@ -2031,7 +2031,7 @@ class AutoAugment(ImageAugment):
         policy_info = list(policy_info) + [
             replace_value, self.cutout_const, self.translate_const
         ]
-        tf_policy.append(_parse_policy_info(*policy_info))
+        tf_policy.append(_parse_policy_info(*policy_info))  # pyrefly: ignore[bad-argument-type]
       # Now build the tf policy that will apply the augmentation procedue
       # on image.
       def make_final_policy(tf_policy_):
@@ -2070,7 +2070,7 @@ class AutoAugment(ImageAugment):
       image = tf.cast(image, dtype=tf.uint8)
 
     tf_policies = self._make_tf_policies()
-    image, bboxes = select_and_apply_random_policy(tf_policies, image, bboxes)
+    image, bboxes = select_and_apply_random_policy(tf_policies, image, bboxes)  # pyrefly: ignore[bad-assignment]
     image = tf.cast(image, dtype=input_image_type)
     assert bboxes is not None
     return image, bboxes
@@ -2490,7 +2490,7 @@ class RandAugment(ImageAugment):
   def distort_with_boxes(self, image: tf.Tensor,
                          bboxes: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     """See base class."""
-    image, bboxes = self._distort_common(image, bboxes)
+    image, bboxes = self._distort_common(image, bboxes)  # pyrefly: ignore[bad-assignment]
     assert bboxes is not None
     return image, bboxes
 

@@ -377,7 +377,7 @@ def create_preprocessing(*,
       input_signature=[])
   if tokenize_with_offsets:
     preprocessing.tokenize_with_offsets = tf_keras.Model(
-        sentences, [tokens, start_offsets, limit_offsets])
+        sentences, [tokens, start_offsets, limit_offsets])  # pyrefly: ignore[unbound-name]
     preprocessing.tokenize_with_offsets.get_special_tokens_dict = (
         preprocessing.tokenize.get_special_tokens_dict)
   # Conceptually, this should be

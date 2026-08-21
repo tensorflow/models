@@ -180,7 +180,7 @@ class MaskConverHead(tf_keras.layers.Layer):
     # Segmentation head layers.
     self._convs = []
     self._norms = []
-    for i in range(self._config_dict['num_convs']):
+    for i in range(self._config_dict['num_convs']):  # pyrefly: ignore[bad-argument-type]
       if use_depthwise_convolution:
         self._convs.append(
             tf_keras.layers.DepthwiseConv2D(
@@ -269,7 +269,7 @@ class MaskConverHead(tf_keras.layers.Layer):
       x = conv(x)
       x = norm(x)
       x = self._activation(x)
-    if self._config_dict['upsample_factor'] > 1:
+    if self._config_dict['upsample_factor'] > 1:  # pyrefly: ignore[unsupported-operation]
       x = spatial_transform_ops.nearest_upsampling(
           x, scale=self._config_dict['upsample_factor'])
 

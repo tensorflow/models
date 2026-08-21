@@ -165,7 +165,7 @@ def _read_tfds(tfds_name: Text,
       interleave_cycle_length=cycle_length,
       interleave_block_length=block_length,
       input_context=input_context,
-      shuffle_seed=seed,
+      shuffle_seed=seed,  # pyrefly: ignore[bad-argument-type]
       repeat_filenames=repeat_filenames,
       # Only assert cardinality when we have a finite dataset.
       assert_cardinality=not repeat_filenames,
@@ -201,12 +201,12 @@ def _read_tfds(tfds_name: Text,
       # input pipelines. We read the entire dataset first and then shard in the
       # host memory.
       read_config = dataclasses.replace(read_config, input_context=None)
-      load_kwargs.update({'read_config': read_config})
+      load_kwargs.update({'read_config': read_config})  # pyrefly: ignore[no-matching-overload]
       dataset = tfds.load(**load_kwargs)
       dataset = dataset.shard(input_context.num_input_pipelines,
                               input_context.input_pipeline_id)
     else:
-      load_kwargs.update({'read_config': read_config})
+      load_kwargs.update({'read_config': read_config})  # pyrefly: ignore[no-matching-overload]
       dataset = tfds.load(**load_kwargs)
   return dataset
 
@@ -476,7 +476,7 @@ class InputReader:
 
     dataset = tf.nest.map_structure(_shuffle_and_decode, dataset)
     if tf.nest.is_nested(dataset):
-      dataset = self._combine_fn(dataset)
+      dataset = self._combine_fn(dataset)  # pyrefly: ignore[not-callable]
 
     if self._sample_fn is not None:
       dataset = dataset.apply(self._sample_fn)
@@ -571,7 +571,7 @@ class InputReader:
            dataset: Optional[tf.data.Dataset] = None) -> tf.data.Dataset:
     """Generates a tf.data.Dataset object."""
     if dataset is None:
-      dataset = self._read_data_source(self._matched_files, self._dataset_fn,
+      dataset = self._read_data_source(self._matched_files, self._dataset_fn,  # pyrefly: ignore[bad-argument-type]
                                        input_context)
     dataset = self._decode_and_parse_dataset(dataset, self._global_batch_size,
                                              input_context)

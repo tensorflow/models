@@ -35,8 +35,8 @@ class SegmentationHead3D(tf_keras.layers.Layer):
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
                use_batch_normalization: bool = False,
-               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
-               bias_regularizer: tf_keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
+               bias_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
                output_logits: bool = True,  # pytype: disable=annotation-type-mismatch  # typed-keras
                **kwargs):
     """Initialize params to build segmentation head.

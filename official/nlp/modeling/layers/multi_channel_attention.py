@@ -126,7 +126,7 @@ class MultiChannelAttention(tf_keras.layers.MultiHeadAttention):
     super()._build_attention(rank)  # pytype: disable=attribute-error  # typed-keras
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
-  def call(self,
+  def call(self,  # pyrefly: ignore[bad-override]
            query,
            value,
            key=None,

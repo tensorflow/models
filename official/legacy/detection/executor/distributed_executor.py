@@ -444,10 +444,10 @@ class DistributedExecutor(object):
 
       eval_metric = eval_metric_fn()
       train_metric = train_metric_fn()
-      train_summary_writer = summary_writer_fn(model_dir, 'eval_train')
+      train_summary_writer = summary_writer_fn(model_dir, 'eval_train')  # pyrefly: ignore[bad-argument-type]
       self.train_summary_writer = train_summary_writer.writer
 
-      test_summary_writer = summary_writer_fn(model_dir, 'eval_test')
+      test_summary_writer = summary_writer_fn(model_dir, 'eval_test')  # pyrefly: ignore[bad-argument-type]
       self.eval_summary_writer = test_summary_writer.writer
 
     # Use training summary writer in TimeHistory if it's in use
@@ -472,7 +472,7 @@ class DistributedExecutor(object):
       _save_checkpoint(checkpoint, model_dir,
                        checkpoint_name.format(step=current_step))
     if test_step:
-      eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
+      eval_iterator = self._get_input_iterator(eval_input_fn, strategy)  # pyrefly: ignore[bad-argument-type]
       eval_metric_result = self._run_evaluation(test_step, current_step,
                                                 eval_metric, eval_iterator)
       logging.info('Step: %s evalation metric = %s.', current_step,
@@ -506,7 +506,7 @@ class DistributedExecutor(object):
         train_metric_result = train_loss
       if callable(optimizer.lr):
         train_metric_result.update(
-            {'learning_rate': optimizer.lr(current_step).numpy()})
+            {'learning_rate': optimizer.lr(current_step).numpy()})  # pyrefly: ignore[missing-attribute]
       else:
         train_metric_result.update({'learning_rate': optimizer.lr.numpy()})
       logging.info('Train Step: %d/%d  / loss = %s / training metric = %s',
@@ -526,7 +526,7 @@ class DistributedExecutor(object):
         last_save_checkpoint_step = current_step
 
       if continuous_eval and current_step < total_steps and test_step:
-        eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
+        eval_iterator = self._get_input_iterator(eval_input_fn, strategy)  # pyrefly: ignore[bad-argument-type]
         eval_metric_result = self._run_evaluation(test_step, current_step,
                                                   eval_metric, eval_iterator)
         logging.info('Step: %s evalation metric = %s.', current_step,
@@ -547,7 +547,7 @@ class DistributedExecutor(object):
 
     if test_step:
       logging.info('Running final evaluation after training is complete.')
-      eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
+      eval_iterator = self._get_input_iterator(eval_input_fn, strategy)  # pyrefly: ignore[bad-argument-type]
       eval_metric_result = self._run_evaluation(test_step, current_step,
                                                 eval_metric, eval_iterator)
       logging.info('Final evaluation metric = %s.', eval_metric_result)
@@ -702,7 +702,7 @@ class DistributedExecutor(object):
                                                 eval_metric, eval_iterator)
       logging.info('Step: %s evalation metric = %s.', current_step,
                    eval_metric_result)
-      summary_writer(metrics=eval_metric_result, step=current_step)
+      summary_writer(metrics=eval_metric_result, step=current_step)  # pyrefly: ignore[not-callable]
       reset_states(eval_metric)
 
     tf_keras.backend.set_learning_phase(old_phase)
@@ -749,8 +749,8 @@ class ExecutorBuilder(object):
   """
 
   def __init__(self, strategy_type=None, strategy_config=None):
-    _ = distribute_utils.configure_cluster(strategy_config.worker_hosts,
-                                           strategy_config.task_index)
+    _ = distribute_utils.configure_cluster(strategy_config.worker_hosts,  # pyrefly: ignore[missing-attribute]
+                                           strategy_config.task_index)  # pyrefly: ignore[missing-attribute]
     """Constructor.
 
     Args:
@@ -762,10 +762,10 @@ class ExecutorBuilder(object):
     """
     self._strategy = distribute_utils.get_distribution_strategy(
         distribution_strategy=strategy_type,
-        num_gpus=strategy_config.num_gpus,
-        all_reduce_alg=strategy_config.all_reduce_alg,
-        num_packs=strategy_config.num_packs,
-        tpu_address=strategy_config.tpu)
+        num_gpus=strategy_config.num_gpus,  # pyrefly: ignore[missing-attribute]
+        all_reduce_alg=strategy_config.all_reduce_alg,  # pyrefly: ignore[missing-attribute]
+        num_packs=strategy_config.num_packs,  # pyrefly: ignore[missing-attribute]
+        tpu_address=strategy_config.tpu)  # pyrefly: ignore[missing-attribute]
 
   @property
   def strategy(self):

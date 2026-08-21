@@ -174,9 +174,9 @@ class WodProcessor:
     range_images, range_image_top_pose = self._parse_range_image_and_top_pose(
         frame)
     points_r1 = self._convert_range_image_to_point_cloud(
-        frame, range_images, range_image_top_pose, 0)
+        frame, range_images, range_image_top_pose, 0)  # pyrefly: ignore[bad-argument-type]
     points_r2 = self._convert_range_image_to_point_cloud(
-        frame, range_images, range_image_top_pose, 1)
+        frame, range_images, range_image_top_pose, 1)  # pyrefly: ignore[bad-argument-type]
     points = np.concatenate([points_r1, points_r2], axis=0)
 
     # Get image col/row of points

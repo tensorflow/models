@@ -172,7 +172,7 @@ class ImageClassifier:
     pred_class = self.class_names[pred_idx.item()]
     pred_prob_value = pred_prob.item()
 
-    return (pred_class, pred_prob_value)
+    return (pred_class, pred_prob_value)  # pyrefly: ignore[bad-return]
 
   def classify(self, image_path: str) -> tuple[str, float]:
     """Classifies an image and returns the predicted class and probability.

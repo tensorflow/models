@@ -199,10 +199,10 @@ class SentencePredictionTask(base_task.Task):
     if state is None:
       state = {'sentence_prediction': [], 'labels': []}
     state['sentence_prediction'].append(
-        np.concatenate([v.numpy() for v in step_outputs['sentence_prediction']],
+        np.concatenate([v.numpy() for v in step_outputs['sentence_prediction']],  # pyrefly: ignore[unsupported-operation]
                        axis=0))
     state['labels'].append(
-        np.concatenate([v.numpy() for v in step_outputs['labels']], axis=0))
+        np.concatenate([v.numpy() for v in step_outputs['labels']], axis=0))  # pyrefly: ignore[unsupported-operation]
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):

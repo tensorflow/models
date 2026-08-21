@@ -82,7 +82,7 @@ class YoloHead(tf_keras.layers.Layer):
         kernel_regularizer=kernel_regularizer,
         bias_regularizer=bias_regularizer)
 
-    self._conv_config = dict(
+    self._conv_config = dict(  # pyrefly: ignore[bad-unpacking]
         filters=self._output_conv,
         kernel_size=(1, 1),
         strides=(1, 1),

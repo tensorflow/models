@@ -344,8 +344,8 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
       state = [self.panoptic_quality_metric]
 
     self.panoptic_quality_metric.update_state(
-        step_outputs[self.panoptic_quality_metric.name][0],
-        step_outputs[self.panoptic_quality_metric.name][1])
+        step_outputs[self.panoptic_quality_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+        step_outputs[self.panoptic_quality_metric.name][1])  # pyrefly: ignore[unsupported-operation]
 
     return state
 

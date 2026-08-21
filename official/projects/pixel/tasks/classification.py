@@ -186,11 +186,11 @@ class PixelClassificationTask(base_task.Task):
       state = {'sentence_prediction': [], 'labels': []}
     state['sentence_prediction'].append(
         np.concatenate(
-            [v.numpy() for v in step_outputs['sentence_prediction']], axis=0
+            [v.numpy() for v in step_outputs['sentence_prediction']], axis=0  # pyrefly: ignore[unsupported-operation]
         )
     )
     state['labels'].append(
-        np.concatenate([v.numpy() for v in step_outputs['labels']], axis=0)
+        np.concatenate([v.numpy() for v in step_outputs['labels']], axis=0)  # pyrefly: ignore[unsupported-operation]
     )
     return state
 

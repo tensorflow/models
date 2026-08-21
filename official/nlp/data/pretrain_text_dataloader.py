@@ -191,7 +191,7 @@ class BertPretrainTextDataLoader(data_loader.DataLoader):
     model_inputs["input_mask"] = padded_inputs_and_mask["input_word_ids"][1]
 
     if self._use_next_sentence_label:
-      model_inputs["next_sentence_labels"] = is_next
+      model_inputs["next_sentence_labels"] = is_next  # pyrefly: ignore[unbound-name]
 
     for name in model_inputs:
       t = model_inputs[name]

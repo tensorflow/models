@@ -121,7 +121,7 @@ class TwoTowerUpliftModel(tf_keras.Model):
     return config
 
   @classmethod
-  def from_config(cls, config: MutableMapping[str, Any]) -> TwoTowerUpliftModel:
+  def from_config(cls, config: MutableMapping[str, Any]) -> TwoTowerUpliftModel:  # pyrefly: ignore[bad-override]
     config["uplift_network"] = tf_keras.layers.deserialize(
         config["uplift_network"]
     )

@@ -136,7 +136,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(
               stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
@@ -182,7 +182,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      classifier_kwargs.update({
+      classifier_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
@@ -212,7 +212,7 @@ class RetinaNetHeadQuantized(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      box_regressor_kwargs.update({
+      box_regressor_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(
               stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],

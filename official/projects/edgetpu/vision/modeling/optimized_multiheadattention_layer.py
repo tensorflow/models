@@ -101,7 +101,7 @@ class OptimizedMultiHeadAttention(tf_keras.layers.MultiHeadAttention):
       rank: the rank of query, key, value tensors.
     """
     if self._attention_axes is None:
-      self._attention_axes = tuple(range(1, rank - 2))
+      self._attention_axes = tuple(range(1, rank - 2))  # pyrefly: ignore[bad-assignment]
     else:
       self._attention_axes = tuple(self._attention_axes)
     (

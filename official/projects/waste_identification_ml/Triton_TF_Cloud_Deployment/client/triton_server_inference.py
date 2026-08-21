@@ -60,7 +60,7 @@ def prepare_image(
 
 def infer(
     model_name: str, inputs: triton_grpc.InferInput
-) -> dict[str, Any]:
+) -> dict[str, Any]:  # pyrefly: ignore[bad-return]
   """Wraps inference and converts the result to a dictionary of output keys.
 
   Args:

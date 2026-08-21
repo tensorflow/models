@@ -146,6 +146,6 @@ def perform_detection(
      bounding boxes, classes, and scores, etc.
   """
   detection = model(image)
-  detection = {key: value.numpy() for key, value in detection.items()}
+  detection = {key: value.numpy() for key, value in detection.items()}  # pyrefly: ignore[missing-attribute]
   return detection
 

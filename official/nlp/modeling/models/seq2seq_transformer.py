@@ -199,7 +199,7 @@ class Seq2SeqTransformer(tf_keras.Model):
 
     encoder_inputs = self.encoder_dropout(encoder_inputs)
 
-    encoder_outputs = self.encoder_layer(
+    encoder_outputs = self.encoder_layer(  # pyrefly: ignore[not-callable]
         encoder_inputs, attention_mask=attention_mask)
 
     if targets is None:
@@ -216,7 +216,7 @@ class Seq2SeqTransformer(tf_keras.Model):
 
       # Create cache storing decoder attention values for each layer.
       init_decode_length = (max_decode_length if self._padded_decode else 0)
-      num_heads = self.decoder_layer.num_attention_heads
+      num_heads = self.decoder_layer.num_attention_heads  # pyrefly: ignore[missing-attribute]
       dim_per_head = self._embedding_width // num_heads
 
       # Cache dtype needs to match beam_search dtype.
@@ -231,7 +231,7 @@ class Seq2SeqTransformer(tf_keras.Model):
                   tf.zeros(
                       [batch_size, init_decode_length, num_heads, dim_per_head],
                       dtype=self.compute_dtype)
-          } for layer in range(self.decoder_layer.num_layers)
+          } for layer in range(self.decoder_layer.num_layers)  # pyrefly: ignore[missing-attribute]
       }
       # pylint: enable=g-complex-comprehension
 
@@ -284,7 +284,7 @@ class Seq2SeqTransformer(tf_keras.Model):
         tf.expand_dims(boolean_mask, axis=1), dtype=source_dtype)
     attention_mask = tf.tile(attention_mask, [1, decoder_length, 1])
 
-    outputs = self.decoder_layer(
+    outputs = self.decoder_layer(  # pyrefly: ignore[not-callable]
         decoder_inputs,
         encoder_outputs,
         self_attention_mask=self_attention_mask,
@@ -342,7 +342,7 @@ class Seq2SeqTransformer(tf_keras.Model):
       attention_mask = cache.get("encoder_decoder_attention_mask")
       attention_mask = tf.tile(attention_mask, [1, decoder_length, 1])
 
-      decoder_outputs = self.decoder_layer(
+      decoder_outputs = self.decoder_layer(  # pyrefly: ignore[not-callable]
           decoder_input,
           cache.get("encoder_outputs"),
           self_attention_mask=self_attention_mask,

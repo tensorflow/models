@@ -312,7 +312,7 @@ def deserialize_keras_object(
     )
   else:
     return tf_keras.utils.deserialize_keras_object(
-        config, custom_objects, module_objects, printable_module_name
+        config, custom_objects, module_objects, printable_module_name  # pyrefly: ignore[bad-argument-count]
     )
 
 

@@ -204,28 +204,28 @@ class FFFNerTask(base_task.Task):
       }
     state['sentence_prediction_is_entity'].append(
         np.concatenate(
-            [v.numpy() for v in step_outputs['sentence_prediction_is_entity']],
+            [v.numpy() for v in step_outputs['sentence_prediction_is_entity']],  # pyrefly: ignore[unsupported-operation]
             axis=0))
     state['sentence_prediction_entity_type'].append(
         np.concatenate([
-            v.numpy() for v in step_outputs['sentence_prediction_entity_type']
+            v.numpy() for v in step_outputs['sentence_prediction_entity_type']  # pyrefly: ignore[unsupported-operation]
         ],
                        axis=0))
     state['labels_is_entity'].append(
-        np.concatenate([v.numpy() for v in step_outputs['labels_is_entity']],
+        np.concatenate([v.numpy() for v in step_outputs['labels_is_entity']],  # pyrefly: ignore[unsupported-operation]
                        axis=0))
     state['labels_entity_type'].append(
-        np.concatenate([v.numpy() for v in step_outputs['labels_entity_type']],
+        np.concatenate([v.numpy() for v in step_outputs['labels_entity_type']],  # pyrefly: ignore[unsupported-operation]
                        axis=0))
     state['ids'].append(
-        np.concatenate([v.numpy() for v in step_outputs['id']], axis=0))
+        np.concatenate([v.numpy() for v in step_outputs['id']], axis=0))  # pyrefly: ignore[unsupported-operation]
     state['sentence_id'].append(
-        np.concatenate([v.numpy() for v in step_outputs['sentence_id']],
+        np.concatenate([v.numpy() for v in step_outputs['sentence_id']],  # pyrefly: ignore[unsupported-operation]
                        axis=0))
     state['span_start'].append(
-        np.concatenate([v.numpy() for v in step_outputs['span_start']], axis=0))
+        np.concatenate([v.numpy() for v in step_outputs['span_start']], axis=0))  # pyrefly: ignore[unsupported-operation]
     state['span_end'].append(
-        np.concatenate([v.numpy() for v in step_outputs['span_end']], axis=0))
+        np.concatenate([v.numpy() for v in step_outputs['span_end']], axis=0))  # pyrefly: ignore[unsupported-operation]
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):

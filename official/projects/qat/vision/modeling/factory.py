@@ -39,7 +39,7 @@ def build_qat_classification_model(
     quantization: common.Quantization,
     input_specs: tf_keras.layers.InputSpec,
     model_config: configs.image_classification.ImageClassificationModel,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
+    l2_regularizer: tf_keras.regularizers.Regularizer = None  # pyrefly: ignore[bad-function-definition]
 ) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Apply model optimization techniques.
 

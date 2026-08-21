@@ -271,9 +271,9 @@ def calculate_single_result(
   box = result['detection_boxes'][0][index]
   class_idx = result['detection_classes'][0][index]
   if flag == 'after':
-    combined_label = category_indices[class_idx] + '_Na'
+    combined_label = category_indices[class_idx] + '_Na'  # pyrefly: ignore[unsupported-operation]
   elif flag == 'before':
-    combined_label = 'Na_' + category_indices[class_idx]
+    combined_label = 'Na_' + category_indices[class_idx]  # pyrefly: ignore[unsupported-operation]
   return score, box, combined_label
 
 

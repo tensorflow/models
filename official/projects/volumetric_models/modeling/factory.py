@@ -27,7 +27,7 @@ def build_segmentation_model_3d(
     input_specs: Union[tf_keras.layers.InputSpec,
                        Sequence[tf_keras.layers.InputSpec]],
     model_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
+    l2_regularizer: tf_keras.regularizers.Regularizer = None  # pyrefly: ignore[bad-function-definition]
 ) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds Segmentation model."""
   norm_activation_config = model_config.norm_activation

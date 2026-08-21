@@ -20,22 +20,22 @@ import sys
 
 from absl import app
 from absl import flags
-import big_query_ops
+import big_query_ops  # pyrefly: ignore[missing-import]
 import cv2
-import feature_extraction
-import ffmpeg_ops
-import mask_bbox_saver
+import feature_extraction  # pyrefly: ignore[missing-import]
+import ffmpeg_ops  # pyrefly: ignore[missing-import]
+import mask_bbox_saver  # pyrefly: ignore[missing-import]
 import numpy as np
-import object_tracking
-import object_tracking_postprocessing
+import object_tracking  # pyrefly: ignore[missing-import]
+import object_tracking_postprocessing  # pyrefly: ignore[missing-import]
 import pandas as pd
-import triton_server_inference
-import utils
+import triton_server_inference  # pyrefly: ignore[missing-import]
+import utils  # pyrefly: ignore[missing-import]
 
 sys.path.append(
     "models/official/projects/waste_identification_ml/model_inference/"
 )
-import color_and_property_extractor  # pylint: disable=g-bad-import-order, g-import-not-at-top
+import color_and_property_extractor  # pylint: disable=g-bad-import-order, g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 INPUT_DIRECTORY = flags.DEFINE_string(
     "input_directory", None, "The path to the directory containing images."
@@ -292,7 +292,7 @@ def main(_) -> None:
 
       # Crop objects from an image using masks for color detection.
       cropped_objects = [
-          np.where(np.expand_dims(i, -1), image_plot, 0)
+          np.where(np.expand_dims(i, -1), image_plot, 0)  # pyrefly: ignore[no-matching-overload]
           for i in result["detection_masks_reframed"]
       ]
 
@@ -393,7 +393,7 @@ def main(_) -> None:
   except (KeyError, IndexError, TypeError, ValueError):
     logger.info("Issue in cropping objects")
     logger.info("Failed to crop objects.")
-    logger.exception("Exception occured:", e)
+    logger.exception("Exception occured:", e)  # pyrefly: ignore[unbound-name]
 
   if isinstance(agg_features, pd.DataFrame) and not agg_features.empty:
     try:

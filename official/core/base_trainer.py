@@ -462,7 +462,7 @@ class Trainer(_AsyncTrainer):
 
     return {**passthrough_logs, **logs}
 
-  def eval_end(self, aggregated_logs=None):
+  def eval_end(self, aggregated_logs=None):  # pyrefly: ignore[bad-override]
     """Processes evaluation results."""
     self.join()
     logs = {}

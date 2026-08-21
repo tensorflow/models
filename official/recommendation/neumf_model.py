@@ -35,7 +35,7 @@ from __future__ import print_function
 
 import sys
 
-from six.moves import xrange  # pylint: disable=redefined-builtin
+from six.moves import xrange  # pylint: disable=redefined-builtin  # pyrefly: ignore[missing-source-for-stubs]
 import tensorflow as tf, tf_keras
 from tensorflow import estimator as tf_estimator
 from typing import Any, Dict, Text
@@ -239,7 +239,7 @@ def construct_model(user_input: tf.Tensor, item_input: tf.Tensor,
   model.summary()
   sys.stdout.flush()
 
-  return model
+  return model  # pyrefly: ignore[bad-return]
 
 
 def _get_estimator_spec_with_metrics(logits: tf.Tensor,

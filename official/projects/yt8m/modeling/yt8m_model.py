@@ -127,7 +127,7 @@ class VideoClassificationModel(tf_keras.Model):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config):
+  def from_config(cls, config):  # pyrefly: ignore[bad-override]
     return cls(**config)
 
   def call(

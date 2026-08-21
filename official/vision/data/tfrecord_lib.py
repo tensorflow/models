@@ -171,7 +171,7 @@ def write_tf_record_dataset(output_path, annotation_iterator,
     writers[idx % num_shards].write(tf_example.SerializeToString())
 
   if multiple_processes is None or multiple_processes > 0:
-    pool.close()
+    pool.close()  # pyrefly: ignore[unbound-name]
     pool.join()
 
   for writer in writers:

@@ -351,7 +351,7 @@ class YT8MTask(base_task.Task):
     logs = {self.loss: loss}
     logs.update(
         self.process_metrics(
-            metrics,
+            metrics,  # pyrefly: ignore[bad-argument-type]
             labels=labels,
             outputs=outputs,
             model_losses=all_losses,
@@ -398,7 +398,7 @@ class YT8MTask(base_task.Task):
     logs = {self.loss: all_losses['total_loss']}
     logs.update(
         self.process_metrics(
-            metrics,
+            metrics,  # pyrefly: ignore[bad-argument-type]
             labels=labels,
             outputs=outputs,
             model_losses=all_losses,
@@ -421,8 +421,8 @@ class YT8MTask(base_task.Task):
       if state is None:
         state = self.avg_prec_metric
       self.avg_prec_metric.accumulate(
-          labels=step_logs[self.avg_prec_metric.name][0],
-          predictions=step_logs[self.avg_prec_metric.name][1],
+          labels=step_logs[self.avg_prec_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+          predictions=step_logs[self.avg_prec_metric.name][1],  # pyrefly: ignore[unsupported-operation]
       )
     return state
 

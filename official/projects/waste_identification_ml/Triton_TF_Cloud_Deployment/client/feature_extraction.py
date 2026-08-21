@@ -59,7 +59,7 @@ def extract_properties(
       image, results[masks]
   )  # Use the helper function
   if not list_of_df:  # Handle case where there are no valid masks
-    return pd.DataFrame(columns=_PROPERTIES)
+    return pd.DataFrame(columns=_PROPERTIES)  # pyrefly: ignore[bad-argument-type]
 
   features = pd.concat(list_of_df, ignore_index=True)
   features.rename(

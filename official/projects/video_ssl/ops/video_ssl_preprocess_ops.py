@@ -399,7 +399,7 @@ def sample_ssl_sequence(sequence: tf.Tensor,
       offset=offset_2)
 
   indices = tf.concat([indices_1, indices_2], axis=0)
-  indices.set_shape((num_windows * num_steps,))
+  indices.set_shape((num_windows * num_steps,))  # pyrefly: ignore[unsupported-operation]
   output = tf.gather(sequence, indices)
 
   return output

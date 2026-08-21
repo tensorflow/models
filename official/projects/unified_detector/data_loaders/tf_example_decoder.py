@@ -122,11 +122,11 @@ class TfExampleDecoder(decoder.Decoder):
       vector_floats += [('image/object/%s' % name, 'groundtruth_%s' % name, 0)
                         for name in additional_regression_names]
 
-    self._init_scalar_features(scalar_strings, tf.string)
-    self._init_vector_features(vector_strings, tf.string)
-    self._init_scalar_features(scalar_ints, tf.int64)
-    self._init_vector_features(vector_ints, tf.int64)
-    self._init_vector_features(vector_floats, tf.float32)
+    self._init_scalar_features(scalar_strings, tf.string)  # pyrefly: ignore[bad-argument-type]
+    self._init_vector_features(vector_strings, tf.string)  # pyrefly: ignore[bad-argument-type]
+    self._init_scalar_features(scalar_ints, tf.int64)  # pyrefly: ignore[bad-argument-type]
+    self._init_vector_features(vector_ints, tf.int64)  # pyrefly: ignore[bad-argument-type]
+    self._init_vector_features(vector_floats, tf.float32)  # pyrefly: ignore[bad-argument-type]
 
   def _init_scalar_features(
       self,

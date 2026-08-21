@@ -45,8 +45,8 @@ import numpy as np
 import torch
 import tqdm
 
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import batched_io
-from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import coco_annotation_writer
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import batched_io  # pyrefly: ignore[missing-module-attribute]
+from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src import coco_annotation_writer  # pyrefly: ignore[missing-module-attribute]
 from official.projects.waste_identification_ml.llm_applications.milk_pouch_detection.src.models import detection_segmentation
 
 

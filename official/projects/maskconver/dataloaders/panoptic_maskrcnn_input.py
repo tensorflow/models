@@ -371,7 +371,7 @@ class Parser(maskrcnn_input.Parser):
         smoothed_mask = tf.nn.max_pool(smoothed_mask, 21, 1, padding='SAME')
 
         smoothed_mask = tf.cast(tf.squeeze(smoothed_mask, axis=2), tf.int32)
-        connected_components = tfa_image.connected_components(
+        connected_components = tfa_image.connected_components(  # pyrefly: ignore[not-callable]
             images=smoothed_mask)
         counts = tf.math.bincount(connected_components)
         ids = tf.argsort(counts[1:], axis=-1, direction='DESCENDING') + 1
@@ -548,8 +548,8 @@ class Parser(maskrcnn_input.Parser):
       else:
         mask = tf.image.pad_to_bounding_box(
             mask, 0, 0,
-            self._segmentation_groundtruth_padded_size[0],
-            self._segmentation_groundtruth_padded_size[1])
+            self._segmentation_groundtruth_padded_size[0],  # pyrefly: ignore[unsupported-operation]
+            self._segmentation_groundtruth_padded_size[1])  # pyrefly: ignore[unsupported-operation]
       mask -= 1
       # Assign ignore label to the padded region.
       mask = tf.where(

@@ -187,7 +187,7 @@ class MultiHeadAttention(tf_keras.layers.MultiHeadAttention):
           output_shape = self._output_shape
       else:
         output_shape = [self._query_shape[-1]]
-      output_shape = [None] + output_shape
+      output_shape = [None] + output_shape  # pyrefly: ignore[unsupported-operation]
       self._output_dense = tf_keras.layers.EinsumDense(
           "BNTH,DNH->BTD",
           output_shape=output_shape,

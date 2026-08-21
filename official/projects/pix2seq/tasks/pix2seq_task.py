@@ -364,7 +364,7 @@ class Pix2SeqTask(base_task.Task):
       state = self.coco_metric
 
     state.update_state(
-        step_outputs['ground_truths'], step_outputs['predictions']
+        step_outputs['ground_truths'], step_outputs['predictions']  # pyrefly: ignore[unsupported-operation]
     )
     return state
 

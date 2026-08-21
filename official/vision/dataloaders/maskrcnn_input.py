@@ -197,7 +197,7 @@ class Parser(parser.Parser):
       classes = tf.gather(classes, indices)
       boxes = tf.gather(boxes, indices)
       if self._include_mask:
-        masks = tf.gather(masks, indices)
+        masks = tf.gather(masks, indices)  # pyrefly: ignore[unbound-name]
 
     # Gets original image and its size.
     image = data['image']
@@ -213,7 +213,7 @@ class Parser(parser.Parser):
     image, boxes, masks = preprocess_ops.random_horizontal_flip(
         image,
         boxes,
-        masks=None if not self._include_mask else masks,
+        masks=None if not self._include_mask else masks,  # pyrefly: ignore[unbound-name]
         prob=tf.where(self._aug_rand_hflip, 0.5, 0.0),
     )
     image, boxes, masks = preprocess_ops.random_vertical_flip(
@@ -303,7 +303,7 @@ class Parser(parser.Parser):
     }
     if self._include_mask:
       outer_boxes = preprocess_ops.clip_or_pad_to_fixed_size(
-          outer_boxes, self._max_num_instances, -1)
+          outer_boxes, self._max_num_instances, -1)  # pyrefly: ignore[unbound-name]
       masks = preprocess_ops.clip_or_pad_to_fixed_size(
           masks, self._max_num_instances, -1)
       labels.update({

@@ -134,7 +134,7 @@ def round_filters(filters: int, config: ModelConfig) -> int:
   if not width_coefficient:
     return filters
 
-  filters *= width_coefficient
+  filters *= width_coefficient  # pyrefly: ignore[bad-assignment]
   min_depth = min_depth or divisor
   new_filters = max(min_depth, int(filters + divisor / 2) // divisor * divisor)
   # Make sure that round down does not go down by more than 10%.
@@ -189,7 +189,7 @@ def conv2d_block(inputs: tf.Tensor,
         'kernel_initializer': CONV_KERNEL_INITIALIZER
     })
 
-  x = conv2d(**init_kwargs)(inputs)
+  x = conv2d(**init_kwargs)(inputs)  # pyrefly: ignore[missing-argument]
 
   if use_batch_norm:
     bn_axis = 1 if data_format == 'channels_first' else -1

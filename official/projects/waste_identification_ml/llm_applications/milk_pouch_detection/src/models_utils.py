@@ -264,7 +264,7 @@ def extract_largest_contour_segmentation(mask: np.ndarray) -> list[float]:
   if not valid_segmentations:
     return []
 
-  return [max(valid_segmentations, key=len)]
+  return [max(valid_segmentations, key=len)]  # pyrefly: ignore[bad-return]
 
 
 def get_bbox_details(box: list[int]) -> tuple[int, int, int]:

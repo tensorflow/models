@@ -45,7 +45,7 @@ def pad_or_trim_to_shape(x: np.ndarray, shape: List[int]) -> np.ndarray:
   Returns:
     y: An np array with padded/trimmed shape.
   """
-  shape = np.array(shape)
+  shape = np.array(shape)  # pyrefly: ignore[bad-assignment]
 
   # Try to pad from end
   pad_end = shape - np.minimum(x.shape, shape)
@@ -188,7 +188,7 @@ def image_to_frame_boxes(image_boxes: Any, vehicle_xy: Tuple[float],
   image_box_center_y = ymin + image_box_width * 0.5
 
   center_x = (image_box_center_x - vehicle_xy[0]) * resolution
-  center_y = (vehicle_xy[1] - 1 - image_box_center_y) * resolution
+  center_y = (vehicle_xy[1] - 1 - image_box_center_y) * resolution  # pyrefly: ignore[bad-index]
   box_length = image_box_length * resolution
   box_width = image_box_width * resolution
 
@@ -236,7 +236,7 @@ def generate_anchors(min_level: int, max_level: int, image_size: Tuple[int],
   anchor_widths = []
   for anchor_size in anchor_sizes:
     anchor_lengths.append(anchor_size[0])
-    anchor_widths.append(anchor_size[1])
+    anchor_widths.append(anchor_size[1])  # pyrefly: ignore[bad-index]
   anchor_lengths = tf.convert_to_tensor(anchor_lengths, dtype=tf.float32)
   anchor_widths = tf.convert_to_tensor(anchor_widths, dtype=tf.float32)
   # (1, 1, k)
@@ -249,7 +249,7 @@ def generate_anchors(min_level: int, max_level: int, image_size: Tuple[int],
     boxes_i = []
     stride = 2 ** level
     # (w,)
-    x = tf.range(stride / 2, image_size[1], stride, dtype=tf.float32)
+    x = tf.range(stride / 2, image_size[1], stride, dtype=tf.float32)  # pyrefly: ignore[bad-index]
     # (h,)
     y = tf.range(stride / 2, image_size[0], stride, dtype=tf.float32)
     # (h, w)

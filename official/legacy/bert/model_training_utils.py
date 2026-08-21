@@ -222,7 +222,7 @@ def run_customized_training_loop(
       strategy, model_fn, loss_fn, model_dir, steps_per_epoch, train_input_fn
   ]
 
-  steps_between_evals = int(steps_per_epoch / num_eval_per_epoch)
+  steps_between_evals = int(steps_per_epoch / num_eval_per_epoch)  # pyrefly: ignore[unsupported-operation]
   if [arg for arg in required_arguments if arg is None]:
     raise ValueError('`strategy`, `model_fn`, `loss_fn`, `model_dir`, '
                      '`steps_per_epoch` and `train_input_fn` are required '
@@ -259,14 +259,14 @@ def run_customized_training_loop(
     raise ValueError(
         'if `metric_fn` is specified, metric_fn must be a callable.')
 
-  total_training_steps = steps_per_epoch * epochs
+  total_training_steps = steps_per_epoch * epochs  # pyrefly: ignore[unsupported-operation]
   train_iterator = _get_input_iterator(train_input_fn, strategy)
   eval_loss_metric = tf_keras.metrics.Mean('training_loss', dtype=tf.float32)
 
   with distribute_utils.get_strategy_scope(strategy):
     # To correctly place the model weights on accelerators,
     # model and optimizer should be created in scope.
-    model, sub_model = model_fn()
+    model, sub_model = model_fn()  # pyrefly: ignore[not-callable]
     if not hasattr(model, 'optimizer'):
       raise ValueError('User should set optimizer attribute to model '
                        'inside `model_fn`.')
@@ -294,13 +294,13 @@ def run_customized_training_loop(
     # If evaluation is required, make a copy of metric as it will be used by
     # both train and evaluation.
     train_metrics = [
-        metric.__class__.from_config(metric.get_config())
+        metric.__class__.from_config(metric.get_config())  # pyrefly: ignore[missing-attribute]
         for metric in eval_metrics
     ]
 
     # Create summary writers
     if _should_export_summary(strategy):
-      summary_dir = os.path.join(model_dir, 'summaries')
+      summary_dir = os.path.join(model_dir, 'summaries')  # pyrefly: ignore[no-matching-overload]
     else:
       # In multi worker training we need every worker to write summary, because
       # variables can trigger synchronization on read and synchronization needs
@@ -326,12 +326,12 @@ def run_customized_training_loop(
       inputs, labels = inputs
       with tf.GradientTape() as tape:
         model_outputs = model(inputs, training=True)
-        loss = loss_fn(labels, model_outputs)
+        loss = loss_fn(labels, model_outputs)  # pyrefly: ignore[not-callable]
         # Raw loss is used for reporting in metrics/logs.
         raw_loss = loss
         if scale_loss:
           # Scales down the loss for gradients to be invariant from replicas.
-          loss = loss / strategy.num_replicas_in_sync
+          loss = loss / strategy.num_replicas_in_sync  # pyrefly: ignore[missing-attribute]
 
       if explicit_allreduce:
         grad_utils.minimize_using_explicit_allreduce(tape, optimizer, loss,
@@ -370,7 +370,7 @@ def run_customized_training_loop(
                          'retracing.')
 
       for _ in tf.range(steps):
-        strategy.run(_replicated_step, args=(next(iterator),))
+        strategy.run(_replicated_step, args=(next(iterator),))  # pyrefly: ignore[missing-attribute]
 
     def train_single_step(iterator):
       """Performs a distributed training step.
@@ -381,7 +381,7 @@ def run_customized_training_loop(
       Raises:
         ValueError: Any of the arguments or tensor shapes are invalid.
       """
-      strategy.run(_replicated_step, args=(next(iterator),))
+      strategy.run(_replicated_step, args=(next(iterator),))  # pyrefly: ignore[missing-attribute]
 
     def test_step(iterator):
       """Calculates evaluation metrics on distributed devices."""
@@ -392,13 +392,13 @@ def run_customized_training_loop(
         inputs, labels = inputs
         model_outputs = model(inputs, training=False)
         for metric in eval_metrics:
-          metric.update_state(labels, model_outputs)
+          metric.update_state(labels, model_outputs)  # pyrefly: ignore[missing-attribute]
         return model_outputs, labels
 
-      outputs, labels = strategy.run(_test_step_fn, args=(next(iterator),))
-      outputs = tf.nest.map_structure(strategy.experimental_local_results,
+      outputs, labels = strategy.run(_test_step_fn, args=(next(iterator),))  # pyrefly: ignore[missing-attribute]
+      outputs = tf.nest.map_structure(strategy.experimental_local_results,  # pyrefly: ignore[missing-attribute]
                                       outputs)
-      labels = tf.nest.map_structure(strategy.experimental_local_results,
+      labels = tf.nest.map_structure(strategy.experimental_local_results,  # pyrefly: ignore[missing-attribute]
                                      labels)
       return outputs, labels
 
@@ -422,14 +422,14 @@ def run_customized_training_loop(
       # gather all the logits and labels here to calculate the evaluation loss
       # outside.
       loss_list, loss_weights = list(), list()
-      for _ in range(eval_steps):
+      for _ in range(eval_steps):  # pyrefly: ignore[bad-argument-type]
         outputs, labels = test_step(test_iterator)
         for cur_logits, cur_labels in zip(outputs, labels):
           # This is to handle cases when cur_labels is not a single tensor,
           # but a dict of tensors.
           cur_weight = tf.shape(tf.nest.flatten(cur_labels)[0])[0]
           if cur_weight != 0:
-            loss_list.append(loss_fn(cur_labels, cur_logits).numpy())
+            loss_list.append(loss_fn(cur_labels, cur_logits).numpy())  # pyrefly: ignore[not-callable]
             loss_weights.append(cur_weight)
       # The sample_weights are the actual number of examples in each batch,
       # a summation of numbers of examples in each replica if using

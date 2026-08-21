@@ -61,4 +61,4 @@ class SelfAttentionMask(tf_keras.layers.Layer):
     if isinstance(inputs, list) and to_mask is None:
       to_mask = inputs[1]
       inputs = inputs[0]
-    return get_mask(inputs, to_mask)
+    return get_mask(inputs, to_mask)  # pyrefly: ignore[bad-argument-type]

@@ -54,7 +54,7 @@ NEW_OPTIMIZERS_CLS = {
     'rmsprop': tf_keras.optimizers.experimental.RMSprop,
     'adagrad': tf_keras.optimizers.experimental.Adagrad,
 }
-NEW_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)
+NEW_OPTIMIZERS_CLS.update(SHARED_OPTIMIZERS)  # pyrefly: ignore[no-matching-overload]
 
 LR_CLS = {
     'stepwise': lr_schedule.PiecewiseConstantDecayWithOffset,

@@ -1323,7 +1323,7 @@ class MobileNet(tf_keras.Model):
 
     block_specs = SUPPORTED_SPECS_MAP.get(model_id)
     self._decoded_specs = block_spec_decoder(
-        specs=block_specs,
+        specs=block_specs,  # pyrefly: ignore[bad-argument-type]
         filter_size_scale=self._filter_size_scale,
         divisible_by=self._get_divisible_by(),
         finegrain_classification_mode=self._finegrain_classification_mode,

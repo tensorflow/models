@@ -524,7 +524,7 @@ class TransformerXL(tf_keras.layers.Layer):
         segment_attention_bias = (self.segment_attention_bias
                                   if self._tie_attention_biases
                                   else self.segment_attention_bias[i])
-        segment_encoding = segment_embedding[i]
+        segment_encoding = segment_embedding[i]  # pyrefly: ignore[unsupported-operation]
 
       content_attention_bias = (self.content_attention_bias
                                 if self._tie_attention_biases

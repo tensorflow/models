@@ -68,7 +68,7 @@ class MosaicSegmentationModel(tf_keras.Model):
 
   def call(self,  # pytype: disable=annotation-type-mismatch,signature-mismatch
            inputs: tf.Tensor,
-           training: bool = None) -> Dict[str, tf.Tensor]:
+           training: bool = None) -> Dict[str, tf.Tensor]:  # pyrefly: ignore[bad-function-definition]
     backbone_features = self.backbone(inputs)
 
     if self.neck is not None:

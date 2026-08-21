@@ -122,7 +122,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      self._conv_kwargs.update({
+      self._conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
@@ -140,7 +140,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if isinstance(self._config_dict['num_anchors_per_location'], dict):
-      self._classifier_kwargs['filters'] = {
+      self._classifier_kwargs['filters'] = {  # pyrefly: ignore[bad-assignment]
           level: v * self._config_dict['num_classes']
           for level, v in self._config_dict['num_anchors_per_location'].items()
       }
@@ -150,7 +150,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
           * self._config_dict['num_anchors_per_location']
       )
     if self._config_dict['use_separable_conv']:
-      self._classifier_kwargs.update({
+      self._classifier_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'depthwise_initializer': tf_keras.initializers.RandomNormal(
               stddev=0.03
           ),
@@ -161,7 +161,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
           'pointwise_regularizer': self._config_dict['kernel_regularizer'],
       })
     else:
-      self._classifier_kwargs.update({
+      self._classifier_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
@@ -173,7 +173,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if isinstance(self._config_dict['num_anchors_per_location'], dict):
-      self._box_regressor_kwargs['filters'] = {
+      self._box_regressor_kwargs['filters'] = {  # pyrefly: ignore[bad-assignment]
           level: v * self._config_dict['num_params_per_anchor']
           for level, v in self._config_dict['num_anchors_per_location'].items()
       }
@@ -183,7 +183,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
           * self._config_dict['num_anchors_per_location']
       )
     if self._config_dict['use_separable_conv']:
-      self._box_regressor_kwargs.update({
+      self._box_regressor_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'depthwise_initializer': tf_keras.initializers.RandomNormal(
               stddev=0.03
           ),
@@ -194,7 +194,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
           'pointwise_regularizer': self._config_dict['kernel_regularizer'],
       })
     else:
-      self._box_regressor_kwargs.update({
+      self._box_regressor_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
@@ -219,7 +219,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
 
   def _init_attribute_kwargs(self):
     self._attribute_kwargs = []
-    for att_config in self._config_dict['attribute_heads']:
+    for att_config in self._config_dict['attribute_heads']:  # pyrefly: ignore[not-iterable]
       att_type = att_config['type']
       att_size = att_config['size']
       att_prediction_tower_name = att_config['prediction_tower_name']
@@ -278,7 +278,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
       self, attributes, level, level_idx, this_level_features, classnet_x
   ):
     prediction_tower_output = {}
-    for att_config in self._config_dict['attribute_heads']:
+    for att_config in self._config_dict['attribute_heads']:  # pyrefly: ignore[not-iterable]
       att_name = att_config['name']
       att_type = att_config['type']
       if (
@@ -333,7 +333,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
         conv_kwargs = self._conv_kwargs_new_kernel_init(self._conv_kwargs)
         if not self._config_dict['share_level_convs']:
           # Do not share convs.
-          this_level_convs.append(
+          this_level_convs.append(  # pyrefly: ignore[unbound-name]
               conv_op(name=f'{net_name}-conv_{level}_{i}', **conv_kwargs)
           )
         elif level == self._config_dict['min_level']:
@@ -343,7 +343,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
         )
       norms.append(this_level_norms)
       if not self._config_dict['share_level_convs']:
-        convs.append(this_level_convs)
+        convs.append(this_level_convs)  # pyrefly: ignore[unbound-name]
 
     # Create predictors after additional convs.
     if self._config_dict['share_level_convs']:
@@ -373,7 +373,7 @@ class RetinaNetHead(tf_keras.layers.Layer):
     self._att_norms = {}
 
     for att_config, att_predictor_kwargs in zip(
-        self._config_dict['attribute_heads'], self._attribute_kwargs
+        self._config_dict['attribute_heads'], self._attribute_kwargs  # pyrefly: ignore[bad-argument-type]
     ):
       att_name = att_config['name']
       att_num_convs = (
@@ -612,7 +612,7 @@ class RPNHead(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(
               stddev=0.01),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
@@ -650,7 +650,7 @@ class RPNHead(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      classifier_kwargs.update({
+      classifier_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(
               stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
@@ -665,7 +665,7 @@ class RPNHead(tf_keras.layers.Layer):
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
     if not self._config_dict['use_separable_conv']:
-      box_regressor_kwargs.update({
+      box_regressor_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.RandomNormal(
               stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],

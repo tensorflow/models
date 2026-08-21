@@ -182,7 +182,7 @@ class MaskRCNNModel(tf_keras.Model):
         matched_gt_indices=intermediate_outputs['matched_gt_indices'],
         matched_gt_boxes=matched_gt_boxes,
         matched_gt_classes=intermediate_outputs['matched_gt_classes'],
-        gt_masks=gt_masks,
+        gt_masks=gt_masks,  # pyrefly: ignore[bad-argument-type]
         training=training)
     model_outputs.update(model_mask_outputs)  # pytype: disable=attribute-error  # dynamic-method-lookup
     return model_outputs
@@ -291,11 +291,11 @@ class MaskRCNNModel(tf_keras.Model):
         class_outputs = tf.add_n(all_class_outputs) / len(all_class_outputs)
 
       detections = self.detection_generator(
-          box_outputs,
-          class_outputs,
+          box_outputs,  # pyrefly: ignore[unbound-name]
+          class_outputs,  # pyrefly: ignore[unbound-name]
           current_rois,
           image_shape,
-          regression_weights,
+          regression_weights,  # pyrefly: ignore[unbound-name]
           bbox_per_class=(not self._config_dict['class_agnostic_bbox_pred']))
       model_outputs.update({
           'cls_outputs': class_outputs,
@@ -320,13 +320,13 @@ class MaskRCNNModel(tf_keras.Model):
         })
 
     intermediate_outputs = {
-        'matched_gt_boxes': matched_gt_boxes,
-        'matched_gt_indices': matched_gt_indices,
-        'matched_gt_classes': matched_gt_classes,
+        'matched_gt_boxes': matched_gt_boxes,  # pyrefly: ignore[unbound-name]
+        'matched_gt_indices': matched_gt_indices,  # pyrefly: ignore[unbound-name]
+        'matched_gt_classes': matched_gt_classes,  # pyrefly: ignore[unbound-name]
         'current_rois': current_rois,
     }
     if self.outer_boxes_scale > 1.0:
-      intermediate_outputs['matched_gt_outer_boxes'] = matched_gt_outer_boxes
+      intermediate_outputs['matched_gt_outer_boxes'] = matched_gt_outer_boxes  # pyrefly: ignore[unbound-name]
     return (model_outputs, intermediate_outputs)
 
   def _call_mask_outputs(
@@ -343,7 +343,7 @@ class MaskRCNNModel(tf_keras.Model):
 
     model_outputs = dict(model_box_outputs)
     if training:
-      current_rois, roi_classes, roi_masks = self.mask_sampler(
+      current_rois, roi_classes, roi_masks = self.mask_sampler(  # pyrefly: ignore[not-callable]
           current_rois, matched_gt_boxes, matched_gt_classes,
           matched_gt_indices, gt_masks)
       roi_masks = tf.stop_gradient(roi_masks)
@@ -473,15 +473,15 @@ class MaskRCNNModel(tf_keras.Model):
               matched_gt_classes, matched_gt_indices, rois)
     else:
       return (class_outputs, box_outputs, model_outputs,
-              (matched_gt_boxes, matched_gt_outer_boxes), matched_gt_classes,
+              (matched_gt_boxes, matched_gt_outer_boxes), matched_gt_classes,  # pyrefly: ignore[unbound-name]
               matched_gt_indices, rois)
 
   def _features_to_mask_outputs(self, features, rois, roi_classes):
     # Mask RoI align.
-    mask_roi_features = self.mask_roi_aligner(features, rois)
+    mask_roi_features = self.mask_roi_aligner(features, rois)  # pyrefly: ignore[not-callable]
 
     # Mask head.
-    raw_masks = self.mask_head([mask_roi_features, roi_classes])
+    raw_masks = self.mask_head([mask_roi_features, roi_classes])  # pyrefly: ignore[not-callable]
 
     return raw_masks, tf.nn.sigmoid(raw_masks)
 
@@ -498,11 +498,11 @@ class MaskRCNNModel(tf_keras.Model):
     if self._include_mask and self.mask_head is not None:
       items.update(mask_head=self.mask_head)
 
-    return items
+    return items  # pyrefly: ignore[bad-return]
 
   def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config):
+  def from_config(cls, config):  # pyrefly: ignore[bad-override]
     return cls(**config)

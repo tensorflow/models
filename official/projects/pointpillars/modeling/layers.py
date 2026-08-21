@@ -148,4 +148,4 @@ class ConvBlock(tf_keras.layers.Layer):
 
   @classmethod
   def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
-    return cls(**config)
+    return cls(**config)  # pyrefly: ignore[bad-return]

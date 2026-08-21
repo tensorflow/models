@@ -161,7 +161,7 @@ class LinearWarmup(tf_keras.optimizers.schedules.LearningRateSchedule):
     else:
       config = {"after_warmup_lr_sched": self._after_warmup_lr_sched}  # pytype: disable=attribute-error
 
-    config.update({
+    config.update({  # pyrefly: ignore[no-matching-overload]
         "warmup_steps": self._warmup_steps,
         "warmup_learning_rate": self._init_warmup_lr,
         "name": self._name
@@ -229,7 +229,7 @@ class PolynomialWarmUp(tf_keras.optimizers.schedules.LearningRateSchedule):
     else:
       config = {"after_warmup_lr_sched": self._after_warmup_lr_sched}  # pytype: disable=attribute-error
 
-    config.update({
+    config.update({  # pyrefly: ignore[no-matching-overload]
         "warmup_steps": self._warmup_steps,
         "power": self._power,
         "name": self._name

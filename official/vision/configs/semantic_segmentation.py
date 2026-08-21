@@ -237,7 +237,7 @@ def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
               num_classes=21,
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               backbone=backbones.Backbone(
                   type='dilated_resnet',
                   dilated_resnet=backbones.DilatedResNet(
@@ -329,7 +329,7 @@ def seg_deeplabv3plus_pascal() -> cfg.ExperimentConfig:
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
               num_classes=21,
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               backbone=backbones.Backbone(
                   type='dilated_resnet',
                   dilated_resnet=backbones.DilatedResNet(
@@ -498,7 +498,7 @@ def mnv2_deeplabv3_pascal() -> cfg.ExperimentConfig:
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
               num_classes=21,
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               backbone=backbones.Backbone(
                   type='mobilenet',
                   mobilenet=backbones.MobileNet(
@@ -599,7 +599,7 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
               # Cityscapes uses only 19 semantic classes for train/evaluation.
               # The void (background) class is ignored in train and evaluation.
               num_classes=19,
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               backbone=backbones.Backbone(
                   type='dilated_resnet',
                   dilated_resnet=backbones.DilatedResNet(
@@ -700,7 +700,7 @@ def mnv2_deeplabv3_cityscapes() -> cfg.ExperimentConfig:
               # Cityscapes uses only 19 semantic classes for train/evaluation.
               # The void (background) class is ignored in train and evaluation.
               num_classes=19,
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               backbone=backbones.Backbone(
                   type='mobilenet',
                   mobilenet=backbones.MobileNet(

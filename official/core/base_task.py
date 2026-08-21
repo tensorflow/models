@@ -141,7 +141,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     logging.info("Finished loading pretrained checkpoint from %s",
                  ckpt_dir_or_file)
 
-  def build_model(self) -> tf_keras.Model:
+  def build_model(self) -> tf_keras.Model:  # pyrefly: ignore[bad-return]
     """[Optional] Creates model architecture.
 
     Returns:

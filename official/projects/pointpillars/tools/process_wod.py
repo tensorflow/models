@@ -93,7 +93,7 @@ def process_wod(pipeline: beam.Pipeline,
 
 def main(_):
   pipeline_options = beam.options.pipeline_options.PipelineOptions(
-      _PIPELINE_OPTIONS.value.split(','))
+      _PIPELINE_OPTIONS.value.split(','))  # pyrefly: ignore[missing-attribute]
 
   if _CONFIG_FILE.value:
     cfg = hyperparams.read_yaml_to_params_dict(_CONFIG_FILE.value)
@@ -106,8 +106,8 @@ def main(_):
 
   wod_processor = WodProcessor(image_config, pillars_config)
   for folder in _SRC_FOLDERS:
-    src_file_pattern = os.path.join(_SRC_DIR.value, folder, '*.tfrecord')
-    dst_path = os.path.join(_DST_DIR.value, folder)
+    src_file_pattern = os.path.join(_SRC_DIR.value, folder, '*.tfrecord')  # pyrefly: ignore[no-matching-overload]
+    dst_path = os.path.join(_DST_DIR.value, folder)  # pyrefly: ignore[no-matching-overload]
     logging.info('Processing %s, writing to %s', src_file_pattern, dst_path)
 
     pipeline = beam.Pipeline(options=pipeline_options)

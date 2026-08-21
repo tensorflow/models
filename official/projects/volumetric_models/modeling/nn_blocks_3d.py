@@ -31,8 +31,8 @@ class BasicBlock3DVolume(tf_keras.layers.Layer):
                strides: Union[int, Sequence[int]],
                kernel_size: Union[int, Sequence[int]],
                kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
-               bias_regularizer: tf_keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
+               bias_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
                activation: str = 'relu',
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,

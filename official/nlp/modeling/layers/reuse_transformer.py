@@ -334,9 +334,9 @@ class ReuseTransformer(tf_keras.layers.Layer):
         reuse_attention_scores=reuse_attention_scores,
         return_attention_scores=True)
     attention_output, attention_scores = attention_output
-    attention_output = self._attention_dropout(attention_output)
+    attention_output = self._attention_dropout(attention_output)  # pyrefly: ignore[not-callable]
     if self._norm_first:
-      attention_output = source_tensor + attention_output
+      attention_output = source_tensor + attention_output  # pyrefly: ignore[unbound-name]
     else:
       attention_output = self._attention_layer_norm(target_tensor +
                                                     attention_output)
@@ -348,10 +348,10 @@ class ReuseTransformer(tf_keras.layers.Layer):
     inner_output = self._intermediate_activation_layer(inner_output)
     inner_output = self._inner_dropout_layer(inner_output)
     layer_output = self._output_dense(inner_output)
-    layer_output = self._output_dropout(layer_output)
+    layer_output = self._output_dropout(layer_output)  # pyrefly: ignore[not-callable]
 
     if self._norm_first:
-      return source_attention_output + layer_output, attention_scores
+      return source_attention_output + layer_output, attention_scores  # pyrefly: ignore[unbound-name]
 
     # During mixed precision training, layer norm output is always fp32 for now.
     # Casts fp32 for the subsequent add.

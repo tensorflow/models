@@ -280,7 +280,7 @@ def build_and_export_saved_model(
 
   export_saved_model(
       model=model,
-      input_shape=input_shape,
+      input_shape=input_shape,  # pyrefly: ignore[bad-argument-type]
       export_path=export_path,
       causal=causal,
       bundle_input_init_states_fn=bundle_input_init_states_fn,

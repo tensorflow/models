@@ -41,7 +41,7 @@ def build_weighted_sampling_combine_fn(
     return tf.data.Dataset.sample_from_datasets(
         ds, ws, stop_on_empty_dataset=stop_on_empty_dataset)
 
-  return combine_fn
+  return combine_fn  # pyrefly: ignore[bad-return]
 
 
 def create_combine_fn(

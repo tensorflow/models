@@ -260,7 +260,7 @@ class RandomFeatureGaussianProcess(tf_keras.layers.Layer):
     # Assembles model output.
     model_output = [gp_output,]
     if self.return_gp_cov:
-      model_output.append(gp_covmat)
+      model_output.append(gp_covmat)  # pyrefly: ignore[unbound-name]
     if self.return_random_features:
       model_output.append(gp_feature)
 

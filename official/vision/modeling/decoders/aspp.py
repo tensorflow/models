@@ -185,7 +185,7 @@ def build_aspp_decoder(
                      'Need to be `aspp`.')
 
   norm_activation_config = model_config.norm_activation
-  return ASPP(
+  return ASPP(  # pyrefly: ignore[bad-return]
       level=decoder_cfg.level,
       dilation_rates=decoder_cfg.dilation_rates,
       num_filters=decoder_cfg.num_filters,

@@ -307,8 +307,8 @@ def convert_examples_to_features(examples,
       if (i, j) not in g:
         break
       if g[(i, j)] == 2:
-        orig_to_chartok_index[i] = j
-        chartok_to_orig_index[j] = i
+        orig_to_chartok_index[i] = j  # pyrefly: ignore[unsupported-operation]
+        chartok_to_orig_index[j] = i  # pyrefly: ignore[unsupported-operation]
         i, j = i - 1, j - 1
       elif g[(i, j)] == 1:
         j = j - 1
@@ -466,8 +466,8 @@ def convert_examples_to_features(examples,
         doc_start = doc_span.start
         doc_end = doc_span.start + doc_span.length - 1
         out_of_span = False
-        if not (tok_start_position >= doc_start and
-                tok_end_position <= doc_end):
+        if not (tok_start_position >= doc_start and  # pyrefly: ignore[unbound-name]
+                tok_end_position <= doc_end):  # pyrefly: ignore[unbound-name]
           out_of_span = True
         if out_of_span:
           # continue
@@ -511,7 +511,7 @@ def convert_examples_to_features(examples,
         if is_training and not span_is_impossible:
           pieces = [
               tokenizer.sp_model.IdToPiece(token)
-              for token in tokens[start_position:(end_position + 1)]
+              for token in tokens[start_position:(end_position + 1)]  # pyrefly: ignore[unsupported-operation]
           ]
           answer_text = tokenizer.sp_model.DecodePieces(pieces)
           logging.info("start_position: %d", (start_position))
@@ -557,7 +557,7 @@ def convert_examples_to_features(examples,
       else:
         cnt_pos += 1
 
-  if not is_training and feature:
+  if not is_training and feature:  # pyrefly: ignore[unbound-name]
     assert batch_size
     num_padding = 0
     num_examples = unique_id - base_id

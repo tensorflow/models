@@ -125,7 +125,7 @@ class MultiScaleMaskConverHead(tf_keras.layers.Layer):
     self._convs = []
     self._norms = []
     for level in range(
-        self._config_dict['min_level'], self._config_dict['max_level'] + 1
+        self._config_dict['min_level'], self._config_dict['max_level'] + 1  # pyrefly: ignore[bad-argument-type, unsupported-operation]
     ):
       level_norms = []
       for i in range(self._config_dict['num_convs']):
@@ -170,8 +170,8 @@ class MultiScaleMaskConverHead(tf_keras.layers.Layer):
     """Forward pass of the multiscale maskconver head."""
     outputs = {}
     for i, level in enumerate(
-        range(self._config_dict['min_level'],
-              self._config_dict['max_level'] + 1)):
+        range(self._config_dict['min_level'],  # pyrefly: ignore[bad-argument-type]
+              self._config_dict['max_level'] + 1)):  # pyrefly: ignore[unsupported-operation]
       x = inputs[str(level)]
       for conv, norm in zip(self._convs, self._norms[i]):
         x = conv(x)

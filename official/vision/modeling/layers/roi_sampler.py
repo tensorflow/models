@@ -178,7 +178,7 @@ class ROISampler(tf_keras.layers.Layer):
       matched_gt_classes = tf.squeeze(matched_gt_classes, axis=-1)
       if gt_outer_boxes is None:
         return (boxes, matched_gt_boxes, matched_gt_classes, matched_gt_indices)
-      return (boxes, matched_gt_boxes, matched_gt_outer_boxes,
+      return (boxes, matched_gt_boxes, matched_gt_outer_boxes,  # pyrefly: ignore[unbound-name]
               matched_gt_classes, matched_gt_indices)
 
     sampled_indices = self._sampler(
@@ -193,7 +193,7 @@ class ROISampler(tf_keras.layers.Layer):
     if gt_outer_boxes is None:
       return (sampled_rois, sampled_gt_boxes, sampled_gt_classes,
               sampled_gt_indices)
-    sampled_gt_outer_boxes = self._target_gather(matched_gt_outer_boxes,
+    sampled_gt_outer_boxes = self._target_gather(matched_gt_outer_boxes,  # pyrefly: ignore[unbound-name]
                                                  sampled_indices)
     return (sampled_rois, sampled_gt_boxes, sampled_gt_outer_boxes,
             sampled_gt_classes, sampled_gt_indices)

@@ -195,7 +195,7 @@ class DeepMaskHeadRCNNTask(maskrcnn.MaskRCNNTask):
     model = build_maskrcnn(
         input_specs=input_specs,
         model_config=self.task_config.model,
-        l2_regularizer=l2_regularizer)
+        l2_regularizer=l2_regularizer)  # pyrefly: ignore[bad-argument-type]
 
     if self.task_config.freeze_backbone:
       model.backbone.trainable = False

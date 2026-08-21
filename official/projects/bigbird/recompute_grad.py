@@ -138,7 +138,7 @@ def _force_data_dependency(
   if not dtype.is_floating:
     raise ValueError('_force_data_dependency only supports floating dtypes.')
   zero = np.finfo(dtype.as_numpy_dtype).tiny * first_compute_sum
-  return [
+  return [  # pyrefly: ignore[bad-return]
       x + tf.cast(zero, x.dtype) if x is not None else None
       for x in then_compute
   ]

@@ -181,8 +181,8 @@ class S3D(tf_keras.Model):
               net)
     else:
       net = tf_keras.layers.MaxPool3D(
-          pool_size=filters[0],
-          strides=filters[1],
+          pool_size=filters[0],  # pyrefly: ignore[bad-index]
+          strides=filters[1],  # pyrefly: ignore[bad-index]
           padding='same',
           name=self._get_layer_naming_fn()(end_point))(
               net)
@@ -310,7 +310,7 @@ def build_s3d(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
+    l2_regularizer: tf_keras.regularizers.Regularizer = None  # pyrefly: ignore[bad-function-definition]
 ) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds S3D backbone."""
 
@@ -341,7 +341,7 @@ def build_s3d_model(
     input_specs: tf_keras.layers.InputSpec,
     model_config: cfg.S3DModel,
     num_classes: int,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None
+    l2_regularizer: tf_keras.regularizers.Regularizer = None  # pyrefly: ignore[bad-function-definition]
 ) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds S3D model with classification layer."""
   input_specs_dict = {'image': input_specs}

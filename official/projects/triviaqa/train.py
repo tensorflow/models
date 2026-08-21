@@ -318,12 +318,12 @@ def main(argv):
     _ = tf.random.get_global_generator()
     train_dataset = inputs.read_batches(
         FLAGS.data_dir,
-        tfds.Split.TRAIN,
+        tfds.Split.TRAIN,  # pyrefly: ignore[missing-attribute]
         FLAGS.batch_size,
         shuffle=True,
         drop_final_batch=True)
     validation_dataset = inputs.read_batches(FLAGS.data_dir,
-                                             tfds.Split.VALIDATION,
+                                             tfds.Split.VALIDATION,  # pyrefly: ignore[missing-attribute]
                                              FLAGS.batch_size)
 
     def train_map_fn(x, y):

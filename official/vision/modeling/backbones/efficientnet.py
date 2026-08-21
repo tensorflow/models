@@ -86,7 +86,7 @@ def block_spec_decoder(specs: List[Tuple[Any, ...]], width_scale: float,
         width_scale,
         depth_scale,
     )
-    decoded_specs.append(BlockSpec(*s))
+    decoded_specs.append(BlockSpec(*s))  # pyrefly: ignore[bad-argument-type]
   return decoded_specs
 
 
@@ -107,8 +107,8 @@ class EfficientNet(tf_keras.Model):
                se_ratio: float = 0.0,
                stochastic_depth_drop_rate: float = 0.0,
                kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
-               bias_regularizer: tf_keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
+               bias_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
                activation: str = 'relu',
                se_inner_activation: str = 'relu',
                use_sync_bn: bool = False,
@@ -306,7 +306,7 @@ def build_efficientnet(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None,
+    l2_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
     se_inner_activation: str = 'relu') -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds EfficientNet backbone from a config."""
   backbone_type = backbone_config.type

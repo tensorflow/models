@@ -493,7 +493,7 @@ class AssembleNetPlus(tf_keras.Model):
           streams.append(inputs)
         elif structure[i][0] == -2:
           inputs = asn.flow_conv_stem(
-              flow_inputs,
+              flow_inputs,  # pyrefly: ignore[unbound-name]
               stem_filters,
               temporal_dilation=structure[i][1],
               bn_decay=bn_decay,
@@ -671,7 +671,7 @@ def assemblenet_plus(assemblenet_depth: int,
       input_specs=input_specs,
       model_edge_weights=model_edge_weights,
       use_object_input=use_object_input,
-      attention_mode=attention_mode,
+      attention_mode=attention_mode,  # pyrefly: ignore[bad-argument-type]
       **kwargs)
   return AssembleNetPlusModel(
       backbone,

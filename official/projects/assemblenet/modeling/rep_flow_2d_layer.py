@@ -397,7 +397,7 @@ class RepresentationFlow(layers.Layer):
       flow = tf.ensure_shape(flow, output_shape)
       return flow
     else:
-      flow = self._bottleneck_conv2(flow)
+      flow = self._bottleneck_conv2(flow)  # pyrefly: ignore[not-callable]
 
       flow = self._batch_norm(flow)
       flow = tf.ensure_shape(flow, residual.shape)

@@ -148,7 +148,7 @@ def get_prediction_details(
   pred_class = class_names[pred_idx.item()]
   pred_prob_value = pred_prob.item()
 
-  return (pred_class, pred_prob_value)
+  return (pred_class, pred_prob_value)  # pyrefly: ignore[bad-return]
 
 
 def plot_prediction(
@@ -192,7 +192,7 @@ def show_confusion_matrix(
       matrix.shape[0], matrix.shape[1]
   )
 
-  df_cm = pd.DataFrame(cm_row_norm, index=class_names, columns=class_names)
+  df_cm = pd.DataFrame(cm_row_norm, index=class_names, columns=class_names)  # pyrefly: ignore[bad-argument-type]
 
   # Plot heatmap
   heatmap = sns.heatmap(df_cm, annot=cell_labels, fmt="", cmap="Blues")

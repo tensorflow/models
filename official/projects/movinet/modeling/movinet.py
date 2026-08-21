@@ -734,7 +734,7 @@ def build_movinet(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer,
+      kernel_regularizer=l2_regularizer,  # pyrefly: ignore[bad-argument-type]
       stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
       use_external_states=backbone_cfg.use_external_states,
       average_pooling_type=backbone_cfg.average_pooling_type)

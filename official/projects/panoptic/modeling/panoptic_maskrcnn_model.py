@@ -42,7 +42,7 @@ class PanopticMaskRCNNModel(maskrcnn_model.DeepMaskRCNNModel):
       mask_roi_aligner: Optional[tf_keras.layers.Layer] = None,
       segmentation_backbone: Optional[tf_keras.Model] = None,
       segmentation_decoder: Optional[tf_keras.Model] = None,
-      segmentation_head: tf_keras.layers.Layer = None,
+      segmentation_head: tf_keras.layers.Layer = None,  # pyrefly: ignore[bad-function-definition]
       class_agnostic_bbox_pred: bool = False,
       cascade_class_ensemble: bool = False,
       min_level: Optional[int] = None,

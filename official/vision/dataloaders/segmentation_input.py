@@ -319,21 +319,21 @@ class Parser(parser.Parser):
         label = tf.image.pad_to_bounding_box(
             label,
             tf.maximum(
-                (self._groundtruth_padded_size[0] - label_size[0]) // 2, 0
+                (self._groundtruth_padded_size[0] - label_size[0]) // 2, 0  # pyrefly: ignore[unsupported-operation]
             ),
             tf.maximum(
-                (self._groundtruth_padded_size[1] - label_size[1]) // 2, 0
+                (self._groundtruth_padded_size[1] - label_size[1]) // 2, 0  # pyrefly: ignore[unsupported-operation]
             ),
-            self._groundtruth_padded_size[0],
-            self._groundtruth_padded_size[1],
+            self._groundtruth_padded_size[0],  # pyrefly: ignore[unsupported-operation]
+            self._groundtruth_padded_size[1],  # pyrefly: ignore[unsupported-operation]
         )
       else:
         label = tf.image.pad_to_bounding_box(
             label,
             0,
             0,
-            self._groundtruth_padded_size[0],
-            self._groundtruth_padded_size[1],
+            self._groundtruth_padded_size[0],  # pyrefly: ignore[unsupported-operation]
+            self._groundtruth_padded_size[1],  # pyrefly: ignore[unsupported-operation]
         )
 
     label -= 1

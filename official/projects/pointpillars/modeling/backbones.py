@@ -123,7 +123,7 @@ class Backbone(tf_keras.Model):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:  # pyrefly: ignore[bad-override]
     return cls(**config)
 
   @property

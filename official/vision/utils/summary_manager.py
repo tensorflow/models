@@ -56,7 +56,7 @@ class ImageScalarSummaryManager(orbit.utils.SummaryManager):
       else:
         with self.summary_writer(relative_path).as_default():
           if name.startswith('image/'):
-            self._image_summary_fn(
+            self._image_summary_fn(  # pyrefly: ignore[not-callable]
                 name, value, self._global_step, max_outputs=self._max_outputs
             )
           else:

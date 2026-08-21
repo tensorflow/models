@@ -105,7 +105,7 @@ def main(_):
 
   export_module = maskconver.MaskConverModule(
       params=params,
-      model=model,
+      model=model,  # pyrefly: ignore[unbound-name]
       batch_size=FLAGS.batch_size,
       input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
       input_type=FLAGS.input_type,

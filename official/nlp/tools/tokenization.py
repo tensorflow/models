@@ -78,7 +78,7 @@ def validate_case_matches_checkpoint(do_lower_case, init_checkpoint):
         "should pass in `--do_lower_case=%s` so that the fine-tuning matches "
         "how the model was pre-training. If this error is wrong, please "
         "just comment out this check." %
-        (actual_flag, init_checkpoint, model_name, case_name, opposite_flag))
+        (actual_flag, init_checkpoint, model_name, case_name, opposite_flag))  # pyrefly: ignore[unbound-name]
 
 
 def convert_to_unicode(text):
@@ -92,8 +92,8 @@ def convert_to_unicode(text):
       raise ValueError("Unsupported string type: %s" % (type(text)))
   elif six.PY2:
     if isinstance(text, str):
-      return text.decode("utf-8", "ignore")
-    elif isinstance(text, unicode):
+      return text.decode("utf-8", "ignore")  # pyrefly: ignore[missing-attribute]
+    elif isinstance(text, unicode):  # pyrefly: ignore[unknown-name]
       return text
     else:
       raise ValueError("Unsupported string type: %s" % (type(text)))
@@ -116,7 +116,7 @@ def printable_text(text):
   elif six.PY2:
     if isinstance(text, str):
       return text
-    elif isinstance(text, unicode):
+    elif isinstance(text, unicode):  # pyrefly: ignore[unknown-name]
       return text.encode("utf-8")
     else:
       raise ValueError("Unsupported string type: %s" % (type(text)))

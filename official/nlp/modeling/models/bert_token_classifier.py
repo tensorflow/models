@@ -115,7 +115,7 @@ class BertTokenClassifier(tf_keras.Model):
     # the config dict attribute. TF does not track immutable attrs which
     # do not contain Trackables, so by creating a config namedtuple instead of
     # a dict we avoid tracking it.
-    config_cls = collections.namedtuple('Config', config_dict.keys())
+    config_cls = collections.namedtuple('Config', config_dict.keys())  # pyrefly: ignore[bad-class-definition]
     self._config = config_cls(**config_dict)
 
     self.classifier = classifier

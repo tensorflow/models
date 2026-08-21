@@ -276,7 +276,7 @@ class DilatedResNet(tf_keras.Model):
           block_repeats=spec[2],
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
               self._init_stochastic_depth_rate, i + 2, 4 + last_stage_repeats),
-          multigrid=multigrid if i >= 3 else None,
+          multigrid=multigrid if i >= 3 else None,  # pyrefly: ignore[bad-argument-type]
           name='block_group_l{}'.format(i + 2))
       dilation_rate *= 2
 

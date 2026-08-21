@@ -211,9 +211,9 @@ def conv3d_same_padding(inputs: tf.Tensor,
   """
   if isinstance(kernel_size, int):
     if do_2d_conv:
-      kernel_size = [1, kernel_size, kernel_size]
+      kernel_size = [1, kernel_size, kernel_size]  # pyrefly: ignore[bad-assignment]
     else:
-      kernel_size = [kernel_size, kernel_size, kernel_size]
+      kernel_size = [kernel_size, kernel_size, kernel_size]  # pyrefly: ignore[bad-assignment]
 
   return tf_keras.layers.Conv3D(
       filters=filters,
@@ -836,7 +836,7 @@ class AssembleNet(tf_keras.Model):
           streams.append(inputs)
         elif structure[i][0] == -2:
           inputs = flow_conv_stem(
-              flow_inputs,
+              flow_inputs,  # pyrefly: ignore[unbound-name]
               stem_filters,
               temporal_dilation=structure[i][1],
               bn_decay=bn_decay,
@@ -995,7 +995,7 @@ def assemblenet_v1(assemblenet_depth: int,
   params = ASSEMBLENET_SPECS[assemblenet_depth]
   backbone = AssembleNet(
       block_fn=params['block'],
-      num_blocks=params['num_blocks'],
+      num_blocks=params['num_blocks'],  # pyrefly: ignore[bad-argument-type]
       num_frames=num_frames,
       model_structure=model_structure,
       input_specs=input_specs,
@@ -1033,13 +1033,13 @@ def build_assemblenet_v1(
       backbone_cfg.blocks)
   params = ASSEMBLENET_SPECS[assemblenet_depth]
   block_fn = functools.partial(
-      params['block'],
+      params['block'],  # pyrefly: ignore[bad-argument-type]
       use_sync_bn=norm_activation_config.use_sync_bn,
       bn_decay=norm_activation_config.norm_momentum,
       bn_epsilon=norm_activation_config.norm_epsilon)
   backbone = AssembleNet(
       block_fn=block_fn,
-      num_blocks=params['num_blocks'],
+      num_blocks=params['num_blocks'],  # pyrefly: ignore[bad-argument-type]
       num_frames=backbone_cfg.num_frames,
       model_structure=model_structure,
       input_specs=input_specs,

@@ -101,7 +101,7 @@ class DetectionHead(tf_keras.layers.Layer):
         'padding': 'same',
     }
     if self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'depthwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'pointwise_initializer': tf_keras.initializers.VarianceScaling(
@@ -112,7 +112,7 @@ class DetectionHead(tf_keras.layers.Layer):
           'bias_regularizer': self._config_dict['bias_regularizer'],
       })
     else:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
@@ -294,7 +294,7 @@ class MaskHead(tf_keras.layers.Layer):
         'padding': 'same',
     }
     if self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'depthwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'pointwise_initializer': tf_keras.initializers.VarianceScaling(
@@ -305,7 +305,7 @@ class MaskHead(tf_keras.layers.Layer):
           'bias_regularizer': self._config_dict['bias_regularizer'],
       })
     else:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),
@@ -357,7 +357,7 @@ class MaskHead(tf_keras.layers.Layer):
         'padding': 'valid',
     }
     if self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'depthwise_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'pointwise_initializer': tf_keras.initializers.VarianceScaling(
@@ -368,7 +368,7 @@ class MaskHead(tf_keras.layers.Layer):
           'bias_regularizer': self._config_dict['bias_regularizer'],
       })
     else:
-      conv_kwargs.update({
+      conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
           'kernel_initializer': tf_keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           'bias_initializer': tf.zeros_initializer(),

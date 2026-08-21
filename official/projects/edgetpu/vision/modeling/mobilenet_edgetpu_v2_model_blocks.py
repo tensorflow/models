@@ -362,7 +362,7 @@ def autoseg_edgetpu_backbone_base(
       'drop_connect_rate': drop_connect_rate,
   }
   if blocks_overrides:
-    param_overrides['blocks'] = blocks_overrides
+    param_overrides['blocks'] = blocks_overrides  # pyrefly: ignore[bad-assignment]
   config = config.replace(**param_overrides)
   return config
 
@@ -660,7 +660,7 @@ def round_filters(filters: int,
   if not width_coefficient:
     return filters
 
-  filters *= width_coefficient
+  filters *= width_coefficient  # pyrefly: ignore[bad-assignment]
   min_depth = min_depth or divisor
   new_filters = max(min_depth, int(filters + divisor / 2) // divisor * divisor)
   # Make sure that round down does not go down by more than 10%.
@@ -695,10 +695,10 @@ def groupconv2d_block(conv_filters: Optional[int],
 
   name = name or ''
   # Compute the # of groups
-  if conv_filters % group_size != 0:
+  if conv_filters % group_size != 0:  # pyrefly: ignore[unsupported-operation]
     raise ValueError(f'Number of filters: {conv_filters} is not divisible by '
                      f'size of the groups: {group_size}')
-  groups = int(conv_filters / group_size)
+  groups = int(conv_filters / group_size)  # pyrefly: ignore[unsupported-operation]
   # Collect args based on what kind of groupconv2d block is desired
   init_kwargs = {
       'kernel_size': kernel_size,
@@ -761,7 +761,7 @@ def conv2d_block_as_layers(
         'kernel_initializer': kernel_initializer
     })
 
-  sequential_layers.append(conv2d(**init_kwargs))
+  sequential_layers.append(conv2d(**init_kwargs))  # pyrefly: ignore[missing-argument]
 
   if use_batch_norm:
     bn_axis = 1 if data_format == 'channels_first' else -1
@@ -877,7 +877,7 @@ class _MbConvBlock:
                 kernel_size=block.kernel_size,
                 strides=block.strides,
                 activation=activation,
-                kernel_initializer=conv_kernel_initializer,
+                kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
                 name=prefix + 'fused'))
     else:
       if block.expand_ratio != 1:
@@ -888,7 +888,7 @@ class _MbConvBlock:
                 config=config,
                 kernel_size=(1, 1),
                 activation=activation,
-                kernel_initializer=conv_kernel_initializer,
+                kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
                 name=prefix + 'expand'))
 
       # Main kernel, after the expansion (if applicable, i.e. not fused).
@@ -899,7 +899,7 @@ class _MbConvBlock:
             kernel_size=block.kernel_size,
             strides=block.strides,
             activation=activation,
-            kernel_initializer=conv_kernel_initializer,
+            kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
             depthwise=True,
             name=prefix + 'depthwise'))
       elif use_groupconv:
@@ -936,7 +936,7 @@ class _MbConvBlock:
               use_bias=True,
               use_batch_norm=False,
               activation=activation,
-              kernel_initializer=conv_kernel_initializer,
+              kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
               name=prefix + 'se_reduce'))
       self.squeeze_excitation.extend(
           conv2d_block_as_layers(
@@ -945,7 +945,7 @@ class _MbConvBlock:
               use_bias=True,
               use_batch_norm=False,
               activation='sigmoid',
-              kernel_initializer=conv_kernel_initializer,
+              kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
               name=prefix + 'se_expand'))
 
     # Output phase
@@ -954,7 +954,7 @@ class _MbConvBlock:
             conv_filters=block.output_filters,
             config=config,
             activation=None,
-            kernel_initializer=conv_kernel_initializer,
+            kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
             name=prefix + 'project'))
 
     # Add identity so that quantization-aware training can insert quantization
@@ -997,7 +997,7 @@ def mb_conv_block(inputs: tf.Tensor,
   return _MbConvBlock(block, config, prefix)(inputs)
 
 
-def mobilenet_edgetpu_v2(image_input: tf_keras.layers.Input,
+def mobilenet_edgetpu_v2(image_input: tf_keras.layers.Input,  # pyrefly: ignore[not-a-type]
                          config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
   """Creates a MobilenetEdgeTPUV2 graph given the model parameters.
 
@@ -1049,7 +1049,7 @@ def mobilenet_edgetpu_v2(image_input: tf_keras.layers.Input,
       kernel_size=[stem_kernel_size, stem_kernel_size],
       strides=[2, 2],
       activation=activation,
-      kernel_initializer=conv_kernel_initializer,
+      kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
       name='stem')
 
   # Build blocks
@@ -1100,7 +1100,7 @@ def mobilenet_edgetpu_v2(image_input: tf_keras.layers.Input,
       conv_filters=round_filters(top_base_filters, config),
       config=config,
       activation=activation,
-      kernel_initializer=conv_kernel_initializer,
+      kernel_initializer=conv_kernel_initializer,  # pyrefly: ignore[bad-argument-type]
       name='top')
 
   # Build classifier

@@ -45,7 +45,7 @@ class GroupConv2D(tf_keras.layers.Conv2D):
                batch_norm_layer: Optional[tf_keras.layers.Layer] = None,
                bn_epsilon: float = 1e-3,
                bn_momentum: float = 0.99,
-               **kwargs: Any) -> tf_keras.layers.Layer:
+               **kwargs: Any) -> tf_keras.layers.Layer:  # pyrefly: ignore[bad-return]
     """Creates a 2D group convolution keras layer.
 
     Args:
@@ -126,7 +126,7 @@ class GroupConv2D(tf_keras.layers.Conv2D):
     self.batch_norm_layer = []
     if self.use_batch_norm:
       self.batch_norm_layer = [
-          batch_norm_layer(
+          batch_norm_layer(  # pyrefly: ignore[not-callable]
               axis=-1, momentum=self.bn_momentum, epsilon=self.bn_epsilon)
           for i in range(self._groups)
       ]
@@ -160,7 +160,7 @@ class GroupConv2D(tf_keras.layers.Conv2D):
           f'by number of groups: {self._groups}.')
 
     self.group_input_channel = int(input_channel / self._groups)
-    self.group_output_channel = int(self.filters / self._groups)
+    self.group_output_channel = int(self.filters / self._groups)  # pyrefly: ignore[unsupported-operation]
     self.group_kernel_shape = self.kernel_size + (self.group_input_channel,
                                                   self.group_output_channel)
 
@@ -219,7 +219,7 @@ class GroupConv2D(tf_keras.layers.Conv2D):
 
       if self.use_bias:
         output_slice = tf.nn.bias_add(
-            output_slice, self.bias[i], data_format='NHWC')
+            output_slice, self.bias[i], data_format='NHWC')  # pyrefly: ignore[unsupported-operation]
 
       # Apply batch norm after bias addition.
       if self.use_batch_norm:
@@ -279,7 +279,7 @@ class GroupConv2DKerasModel(tf_keras.Model):
                bn_momentum: float = 0.99,
                data_format: str = 'channels_last',
                padding: str = 'valid',
-               **kwargs: Any) -> tf_keras.Model:
+               **kwargs: Any) -> tf_keras.Model:  # pyrefly: ignore[bad-return]
     """Creates a 2D group convolution layer as a keras model.
 
     Args:
@@ -343,7 +343,7 @@ class GroupConv2DKerasModel(tf_keras.Model):
     if self.use_batch_norm:
       for _ in range(self._groups):
         self.bn_layers.append(
-            self.batch_norm_layer(
+            self.batch_norm_layer(  # pyrefly: ignore[not-callable]
                 axis=-1, momentum=bn_momentum, epsilon=bn_epsilon))  # pytype: disable=bad-return-type  # typed-keras
 
   def call(self, inputs: Any) -> Any:  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
@@ -359,7 +359,7 @@ class GroupConv2DKerasModel(tf_keras.Model):
       output_slice = self.conv_layers[g](input_slices[g])
       if self.use_batch_norm:
         output_slice = self.bn_layers[g](output_slice)
-      output_slice = self.activation(output_slice)
+      output_slice = self.activation(output_slice)  # pyrefly: ignore[not-callable]
       output_slices.append(output_slice)
 
     outputs = tf.concat(output_slices, axis=-1)
@@ -453,7 +453,7 @@ class ArgmaxKerasLayer(tf_keras.layers.Layer):
                axis=-1,
                name=None,
                output_type=tf.dtypes.int32,
-               **kwargs: Any) -> tf_keras.Model:
+               **kwargs: Any) -> tf_keras.Model:  # pyrefly: ignore[bad-return]
     """Implements argmax as a keras model.
 
     Args:

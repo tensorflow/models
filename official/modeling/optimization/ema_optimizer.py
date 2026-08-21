@@ -156,7 +156,7 @@ class ExponentialMovingAverage(tf_keras.optimizers.legacy.Optimizer):
       return average
 
     # Update moving average with the latest value.
-    for average, normal in zip(self._average_weights, self._model_weights):
+    for average, normal in zip(self._average_weights, self._model_weights):  # pyrefly: ignore[bad-argument-type]
       strategy.extended.update(
           average, _apply_moving, args=(normal,), group=False
       )
@@ -206,12 +206,12 @@ class ExponentialMovingAverage(tf_keras.optimizers.legacy.Optimizer):
       maybe_merge_call(
           _swap,
           strategy,
-          zip(self._average_weights, self._model_weights),
+          zip(self._average_weights, self._model_weights),  # pyrefly: ignore[bad-argument-type]
       )
     else:
       _swap(
           strategy,
-          zip(self._average_weights, self._model_weights),
+          zip(self._average_weights, self._model_weights),  # pyrefly: ignore[bad-argument-type]
       )
 
   def assign_average_vars(self, var_list: List[tf.Variable]):

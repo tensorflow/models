@@ -148,7 +148,7 @@ class TwoTowerUpliftNetwork(base_uplift_networks.BaseTwoTowerUpliftNetwork):
     # Compute control embedding.
     if self._control_feature_encoder is not None:
       control_feature_encoding = self._control_feature_encoder(inputs)
-      control_tower_input = self._control_input_combiner(
+      control_tower_input = self._control_input_combiner(  # pyrefly: ignore[not-callable]
           [shared_embedding, control_feature_encoding]
       )
     else:
@@ -158,7 +158,7 @@ class TwoTowerUpliftNetwork(base_uplift_networks.BaseTwoTowerUpliftNetwork):
     # Compute treatment embedding.
     if self._treatment_feature_encoder is not None:
       treatment_feature_encoding = self._treatment_feature_encoder(inputs)
-      treatment_tower_input = self._treatment_input_combiner(
+      treatment_tower_input = self._treatment_input_combiner(  # pyrefly: ignore[not-callable]
           [shared_embedding, treatment_feature_encoding]
       )
     else:

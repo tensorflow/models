@@ -148,7 +148,7 @@ class MobileConv2D(tf_keras.layers.Layer):
     self._batch_norm_op = batch_norm_op
     self._activation_op = activation_op
 
-    kernel_size = normalize_tuple(kernel_size, 2, 'kernel_size')
+    kernel_size = normalize_tuple(kernel_size, 2, 'kernel_size')  # pyrefly: ignore[bad-argument-type]
 
     if self._use_temporal and kernel_size[1] > 1:
       raise ValueError('Temporal conv with spatial kernel is not supported.')
@@ -267,12 +267,12 @@ class ConvBlock(tf_keras.layers.Layer):
       depthwise: bool = False,
       causal: bool = False,
       use_bias: bool = False,
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] =
       tf_keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_batch_norm: bool = True,
       batch_norm_layer: tf_keras.layers.Layer =
-      tf_keras.layers.BatchNormalization,
+      tf_keras.layers.BatchNormalization,  # pyrefly: ignore[bad-function-definition]
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -312,8 +312,8 @@ class ConvBlock(tf_keras.layers.Layer):
 
     super(ConvBlock, self).__init__(**kwargs)
 
-    kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')
-    strides = normalize_tuple(strides, 3, 'strides')
+    kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')  # pyrefly: ignore[bad-argument-type]
+    strides = normalize_tuple(strides, 3, 'strides')  # pyrefly: ignore[bad-argument-type]
 
     self._filters = filters
     self._kernel_size = kernel_size
@@ -415,7 +415,7 @@ class ConvBlock(tf_keras.layers.Layer):
           use_depthwise=self._depthwise,
           groups=self._groups,
           use_bias=self._use_bias,
-          kernel_initializer=self._kernel_initializer,
+          kernel_initializer=self._kernel_initializer,  # pyrefly: ignore[bad-argument-type]
           kernel_regularizer=self._kernel_regularizer,
           use_buffered_input=False,
           batch_norm_op=self._batch_norm,
@@ -431,7 +431,7 @@ class ConvBlock(tf_keras.layers.Layer):
             use_depthwise=self._depthwise,
             groups=self._groups,
             use_bias=self._use_bias,
-            kernel_initializer=self._kernel_initializer,
+            kernel_initializer=self._kernel_initializer,  # pyrefly: ignore[bad-argument-type]
             kernel_regularizer=self._kernel_regularizer,
             use_buffered_input=self._use_buffered_input,
             batch_norm_op=self._batch_norm_temporal,
@@ -562,12 +562,12 @@ class StreamConvBlock(ConvBlock):
       depthwise: bool = False,
       causal: bool = False,
       use_bias: bool = False,
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_batch_norm: bool = True,
       batch_norm_layer: tf_keras.layers.Layer =
-      tf_keras.layers.BatchNormalization,
+      tf_keras.layers.BatchNormalization,  # pyrefly: ignore[bad-function-definition]
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -602,7 +602,7 @@ class StreamConvBlock(ConvBlock):
     Returns:
       A output tensor of the StreamConvBlock operation.
     """
-    kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')
+    kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')  # pyrefly: ignore[bad-argument-type]
     buffer_size = kernel_size[0] - 1
     use_buffer = buffer_size > 0 and causal
 
@@ -699,7 +699,7 @@ class StreamSqueezeExcitation(tf_keras.layers.Layer):
       gating_activation: nn_layers.Activation = 'sigmoid',
       causal: bool = False,
       conv_type: str = '3d',
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       use_positional_encoding: bool = False,
@@ -939,11 +939,11 @@ class SkipBlock(tf_keras.layers.Layer):
       out_filters: int,
       downsample: bool = False,
       conv_type: str = '3d',
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] =
       tf_keras.regularizers.L2(KERNEL_WEIGHT_DECAY),
       batch_norm_layer: tf_keras.layers.Layer =
-      tf_keras.layers.BatchNormalization,
+      tf_keras.layers.BatchNormalization,  # pyrefly: ignore[bad-function-definition]
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,  # pytype: disable=annotation-type-mismatch  # typed-keras
       use_sync_bn: bool = False,
@@ -1061,11 +1061,11 @@ class MovinetBlock(tf_keras.layers.Layer):
       conv_type: str = '3d',
       se_type: str = '3d',
       use_positional_encoding: bool = False,
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       batch_norm_layer: tf_keras.layers.Layer =
-      tf_keras.layers.BatchNormalization,
+      tf_keras.layers.BatchNormalization,  # pyrefly: ignore[bad-function-definition]
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -1104,8 +1104,8 @@ class MovinetBlock(tf_keras.layers.Layer):
     """
     super(MovinetBlock, self).__init__(**kwargs)
 
-    self._kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')
-    self._strides = normalize_tuple(strides, 3, 'strides')
+    self._kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')  # pyrefly: ignore[bad-argument-type]
+    self._strides = normalize_tuple(strides, 3, 'strides')  # pyrefly: ignore[bad-argument-type]
 
     # Use a multiplier of 2 if concatenating multiple features
     se_multiplier = 2 if se_type == '2plus3d' else 1
@@ -1270,11 +1270,11 @@ class Stem(tf_keras.layers.Layer):
       causal: bool = False,
       conv_type: str = '3d',
       activation: nn_layers.Activation = 'swish',
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       batch_norm_layer: tf_keras.layers.Layer =
-      tf_keras.layers.BatchNormalization,
+      tf_keras.layers.BatchNormalization,  # pyrefly: ignore[bad-function-definition]
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -1304,8 +1304,8 @@ class Stem(tf_keras.layers.Layer):
     super(Stem, self).__init__(**kwargs)
 
     self._out_filters = out_filters
-    self._kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')
-    self._strides = normalize_tuple(strides, 3, 'strides')
+    self._kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')  # pyrefly: ignore[bad-argument-type]
+    self._strides = normalize_tuple(strides, 3, 'strides')  # pyrefly: ignore[bad-argument-type]
     self._causal = causal
     self._conv_type = conv_type
     self._activation = activation
@@ -1383,11 +1383,11 @@ class Head(tf_keras.layers.Layer):
       project_filters: int,
       conv_type: str = '3d',
       activation: nn_layers.Activation = 'swish',
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] = tf.keras
       .regularizers.L2(KERNEL_WEIGHT_DECAY),
       batch_norm_layer: tf_keras.layers.Layer =
-      tf_keras.layers.BatchNormalization,
+      tf_keras.layers.BatchNormalization,  # pyrefly: ignore[bad-function-definition]
       batch_norm_momentum: float = 0.99,
       batch_norm_epsilon: float = 1e-3,
       use_sync_bn: bool = False,
@@ -1507,7 +1507,7 @@ class ClassifierHead(tf_keras.layers.Layer):
       activation: nn_layers.Activation = 'swish',
       output_activation: Optional[nn_layers.Activation] = None,
       max_pool_predictions: bool = False,
-      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',
+      kernel_initializer: tf_keras.initializers.Initializer = 'HeNormal',  # pyrefly: ignore[bad-function-definition]
       kernel_regularizer: Optional[tf_keras.regularizers.Regularizer] =
       tf_keras.regularizers.L2(KERNEL_WEIGHT_DECAY),  # pytype: disable=annotation-type-mismatch  # typed-keras
       **kwargs):

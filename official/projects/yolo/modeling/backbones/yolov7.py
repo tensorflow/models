@@ -371,7 +371,7 @@ class YoloV7(tf_keras.Model):
     endpoints = {}
     level = 3
     for spec in block_specs:
-      block_kwargs = dict(zip(_BLOCK_SPEC_SCHEMAS[spec[0]], spec))
+      block_kwargs = dict(zip(_BLOCK_SPEC_SCHEMAS[spec[0]], spec))  # pyrefly: ignore[bad-index]
 
       block_fn_str = block_kwargs.pop('block_fn')
       from_index = block_kwargs.pop('from')
@@ -382,10 +382,10 @@ class YoloV7(tf_keras.Model):
       elif isinstance(from_index, int):
         x = outputs[from_index]
       else:
-        x = [outputs[idx] for idx in from_index]
+        x = [outputs[idx] for idx in from_index]  # pyrefly: ignore[bad-index]
 
       if block_fn_str in ['convbn']:
-        block_kwargs.update({
+        block_kwargs.update({  # pyrefly: ignore[no-matching-overload]
             'use_sync_bn': self._use_sync_bn,
             'norm_momentum': self._norm_momentum,
             'norm_epsilon': self._norm_epsilon,
@@ -395,7 +395,7 @@ class YoloV7(tf_keras.Model):
             'bias_initializer': self._bias_initializer,
             'bias_regularizer': self._bias_regularizer,
         })
-      block_fn = _BLOCK_FNS[block_fn_str](**block_kwargs)
+      block_fn = _BLOCK_FNS[block_fn_str](**block_kwargs)  # pyrefly: ignore[bad-index]
 
       x = block_fn(x)
       outputs.append(x)
@@ -434,7 +434,7 @@ def build_yolov7(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None,
+    l2_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
 ) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
   """Builds YOLOv7."""
 

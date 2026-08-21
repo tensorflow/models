@@ -215,7 +215,7 @@ class Attention(tf_keras.layers.Layer):
         )
 
       if self.scale_ratio is not None:
-        scale_ratio = eval(self.scale_ratio)  # pylint:disable=eval-used
+        scale_ratio = eval(self.scale_ratio)  # pylint:disable=eval-used  # pyrefly: ignore[bad-argument-type]
         vocab_height = 2 * int(height / scale_ratio) - 1
         vocab_width = 2 * int(width / scale_ratio) - 1
       else:
@@ -445,9 +445,9 @@ class TransformerBlock(tf_keras.layers.Layer):
         height // self._pool_stride,
         width // self._pool_stride,
         num_heads=self._num_heads,
-        dropatt=self._dropatt,
+        dropatt=self._dropatt,  # pyrefly: ignore[bad-argument-type]
         rel_attn_type=self._rel_attn_type,
-        scale_ratio=self._scale_ratio,
+        scale_ratio=self._scale_ratio,  # pyrefly: ignore[bad-argument-type]
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
     )
@@ -461,7 +461,7 @@ class TransformerBlock(tf_keras.layers.Layer):
 
     self._ffn = FFN(
         self._hidden_size,
-        dropout=self._dropout,
+        dropout=self._dropout,  # pyrefly: ignore[bad-argument-type]
         expansion_rate=self._expansion_rate,
         activation=self._activation,
         kernel_initializer=self._kernel_initializer,

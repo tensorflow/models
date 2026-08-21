@@ -362,8 +362,8 @@ class PanopticDeeplabTask(base_task.Task):
 
     if self.task_config.model.generate_panoptic_masks:
       self.panoptic_quality_metric.update_state(
-          step_outputs[self.panoptic_quality_metric.name][0],
-          step_outputs[self.panoptic_quality_metric.name][1])
+          step_outputs[self.panoptic_quality_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+          step_outputs[self.panoptic_quality_metric.name][1])  # pyrefly: ignore[unsupported-operation]
 
     return state
 

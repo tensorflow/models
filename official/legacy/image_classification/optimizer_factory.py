@@ -324,12 +324,12 @@ def build_learning_rate(params: base_configs.LearningRateConfig,
   elif decay_type == 'cosine_with_warmup':
     lr = learning_rate.CosineDecayWithWarmup(
         batch_size=batch_size,
-        total_steps=train_epochs * train_steps,
+        total_steps=train_epochs * train_steps,  # pyrefly: ignore[unsupported-operation]
         warmup_steps=warmup_steps)
   if warmup_steps > 0:
     if decay_type not in ['cosine_with_warmup']:
       logging.info('Applying %d warmup steps to the learning rate',
                    warmup_steps)
       lr = learning_rate.WarmupDecaySchedule(
-          lr, warmup_steps, warmup_lr=base_lr)
-  return lr
+          lr, warmup_steps, warmup_lr=base_lr)  # pyrefly: ignore[unbound-name]
+  return lr  # pyrefly: ignore[unbound-name]

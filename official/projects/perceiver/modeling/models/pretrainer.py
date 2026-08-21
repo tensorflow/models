@@ -165,7 +165,7 @@ class Pretrainer(tf_keras.Model):
       if 'latent_output' in encoder_outputs:
         z = encoder_outputs['latent_output']
         decoder_inputs = {'latent_output': z, 'input_mask': input_mask}
-        decoder_output = self._decoder(decoder_inputs)
+        decoder_output = self._decoder(decoder_inputs)  # pyrefly: ignore[not-callable]
 
         outputs = dict()
         if isinstance(decoder_output, dict):

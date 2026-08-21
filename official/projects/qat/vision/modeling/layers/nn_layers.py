@@ -204,7 +204,7 @@ class SqueezeExcitationQuantized(
     x = self._reduce_mean_quantizer(
         x, training, self._reduce_mean_quantizer_vars)
     x = self._activation_layer(self._se_reduce(x))
-    x = self._apply_gating_activation_layer(self._se_expand(x), training)
+    x = self._apply_gating_activation_layer(self._se_expand(x), training)  # pyrefly: ignore[bad-argument-type]
     x = self._multiply([x, inputs])
     return x
 

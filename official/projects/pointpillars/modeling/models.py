@@ -119,7 +119,7 @@ class PointPillarsModel(tf_keras.Model):
            indices: tf.Tensor,
            image_shape: Optional[tf.Tensor] = None,
            anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
-           training: bool = None) -> Mapping[str, Any]:
+           training: bool = None) -> Mapping[str, Any]:  # pyrefly: ignore[bad-function-definition]
     """Forward pass of the model.
 
     Notation:
@@ -213,5 +213,5 @@ class PointPillarsModel(tf_keras.Model):
     return config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:  # pyrefly: ignore[bad-override]
     return cls(**config)

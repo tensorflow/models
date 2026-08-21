@@ -101,7 +101,7 @@ class MaskScoring(tf_keras.Model):
         'kernel_size': 3,
         'padding': 'same',
     }
-    conv_kwargs.update({
+    conv_kwargs.update({  # pyrefly: ignore[no-matching-overload]
         'kernel_initializer': tf_keras.initializers.VarianceScaling(
             scale=2, mode='fan_out', distribution='untruncated_normal'),
         'bias_initializer': tf.zeros_initializer(),

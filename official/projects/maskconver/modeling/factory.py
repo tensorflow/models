@@ -300,7 +300,7 @@ def build_multiscale_maskconver_model(
   model = multiscale_maskconver_model.MultiScaleMaskConverModel(
       backbone,
       decoder,
-      mask_decoder=mask_decoder,
+      mask_decoder=mask_decoder,  # pyrefly: ignore[unbound-name]
       embedding_head=mask_embedding_head,
       class_head=class_head,
       per_pixel_embeddings_head=per_pixel_embedding_head,

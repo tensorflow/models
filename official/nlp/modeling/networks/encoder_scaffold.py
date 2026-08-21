@@ -142,7 +142,7 @@ class EncoderScaffold(tf_keras.Model):
       embedding_norm_layer = None
     else:
       embedding_network = None
-      seq_length = embedding_cfg.get('seq_length', None)
+      seq_length = embedding_cfg.get('seq_length', None)  # pyrefly: ignore[missing-attribute]
       word_ids = tf_keras.layers.Input(
           shape=(seq_length,), dtype=tf.int32, name='input_word_ids')
       mask = tf_keras.layers.Input(
@@ -152,24 +152,24 @@ class EncoderScaffold(tf_keras.Model):
       inputs = [word_ids, mask, type_ids]
 
       embedding_layer = layers.OnDeviceEmbedding(
-          vocab_size=embedding_cfg['vocab_size'],
-          embedding_width=embedding_cfg['hidden_size'],
-          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),
+          vocab_size=embedding_cfg['vocab_size'],  # pyrefly: ignore[unsupported-operation]
+          embedding_width=embedding_cfg['hidden_size'],  # pyrefly: ignore[unsupported-operation]
+          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),  # pyrefly: ignore[unsupported-operation]
           name='word_embeddings')
 
       word_embeddings = embedding_layer(word_ids)
 
       # Always uses dynamic slicing for simplicity.
       position_embedding_layer = layers.PositionEmbedding(
-          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),
-          max_length=embedding_cfg['max_seq_length'],
+          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),  # pyrefly: ignore[unsupported-operation]
+          max_length=embedding_cfg['max_seq_length'],  # pyrefly: ignore[unsupported-operation]
           name='position_embedding')
       position_embeddings = position_embedding_layer(word_embeddings)
 
       type_embedding_layer = layers.OnDeviceEmbedding(
-          vocab_size=embedding_cfg['type_vocab_size'],
-          embedding_width=embedding_cfg['hidden_size'],
-          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),
+          vocab_size=embedding_cfg['type_vocab_size'],  # pyrefly: ignore[unsupported-operation]
+          embedding_width=embedding_cfg['hidden_size'],  # pyrefly: ignore[unsupported-operation]
+          initializer=tf_utils.clone_initializer(embedding_cfg['initializer']),  # pyrefly: ignore[unsupported-operation]
           use_one_hot=True,
           name='type_embeddings')
       type_embeddings = type_embedding_layer(type_ids)
@@ -186,7 +186,7 @@ class EncoderScaffold(tf_keras.Model):
 
       embeddings = (
           tf_keras.layers.Dropout(
-              rate=embedding_cfg['dropout_rate'])(embeddings))
+              rate=embedding_cfg['dropout_rate'])(embeddings))  # pyrefly: ignore[unsupported-operation]
 
       mask_cfg = {} if mask_cfg is None else mask_cfg
       if inspect.isclass(mask_cls):
@@ -296,7 +296,7 @@ class EncoderScaffold(tf_keras.Model):
     self._embedding_norm_layer = embedding_norm_layer
     self._hidden_layers = hidden_layers
     if self._layer_norm_before_pooling:
-      self._output_layer_norm = output_layer_norm
+      self._output_layer_norm = output_layer_norm  # pyrefly: ignore[unbound-name]
     self._pooler_layer = pooler_layer
     self._layer_idx_as_attention_seed = layer_idx_as_attention_seed
 
@@ -327,9 +327,9 @@ class EncoderScaffold(tf_keras.Model):
           # `self._hidden_cfg` may contain `class`, e.g., when `hidden_cfg` is
           # `TransformerScaffold`, `attention_cls` argument can be a `class`.
           if inspect.isclass(v):
-            config_dict[cfg_name][k] = tf_keras.utils.get_registered_name(v)
+            config_dict[cfg_name][k] = tf_keras.utils.get_registered_name(v)  # pyrefly: ignore[unsupported-operation]
           else:
-            config_dict[cfg_name][k] = v
+            config_dict[cfg_name][k] = v  # pyrefly: ignore[unsupported-operation]
 
     clss = {
         'hidden_cls': self._hidden_cls,
@@ -361,7 +361,7 @@ class EncoderScaffold(tf_keras.Model):
     if self._embedding_network is None:
       # In this case, we don't have a custom embedding network and can return
       # the standard embedding data.
-      return self._embedding_layer.embeddings
+      return self._embedding_layer.embeddings  # pyrefly: ignore[missing-attribute]
 
     if self._embedding_data is None:
       raise RuntimeError(('The EncoderScaffold %s does not have a reference '

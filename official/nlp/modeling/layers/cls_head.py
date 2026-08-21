@@ -284,7 +284,7 @@ class GaussianProcessClassificationHead(ClassificationHead):
           name="logits",
           **self.gp_layer_kwargs)
 
-  def call(self, features, training=False, return_covmat=False):
+  def call(self, features, training=False, return_covmat=False):  # pyrefly: ignore[bad-override]
     """Returns model output.
 
     Dring training, the model returns raw logits. During evaluation, the model

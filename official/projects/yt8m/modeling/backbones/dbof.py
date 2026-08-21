@@ -183,4 +183,4 @@ def build_dbof(
 
   # Warmup calls to build model variables.
   dbof(tf_keras.Input(input_specs.shape[1:]))
-  return dbof
+  return dbof  # pyrefly: ignore[bad-return]

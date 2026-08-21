@@ -135,7 +135,7 @@ def generate_sentence_retrevial_tf_record(processor,
     for lang_b in [lang_a, "en"]:
       if eval_data_output_path:
         eval_input_data_examples = processor.get_dev_examples(
-            data_dir, os.path.join(path_pattern.format(lang_a, lang_b)))
+            data_dir, os.path.join(path_pattern.format(lang_a, lang_b)))  # pyrefly: ignore[unbound-name]
 
         num_eval_data = len(eval_input_data_examples)
         logging.info("Processing %d dev examples of %s-en.%s", num_eval_data,

@@ -412,7 +412,7 @@ class MaxViTBlock(tf_keras.layers.Layer):
 
     # block self-attention
     shortcut = output
-    output = self.block_attn_branch(output, training, attn_mask)
+    output = self.block_attn_branch(output, training, attn_mask)  # pyrefly: ignore[bad-argument-type]
     if self._dropout:
       output = tf_keras.layers.Dropout(
           self._dropout, name='after_block_attn_drop'
@@ -429,7 +429,7 @@ class MaxViTBlock(tf_keras.layers.Layer):
 
     # grid self-attention
     shortcut = output
-    output = self.grid_attn_branch(output, training, attn_mask)
+    output = self.grid_attn_branch(output, training, attn_mask)  # pyrefly: ignore[bad-argument-type]
     if self._dropout:
       output = tf_keras.layers.Dropout(
           self._dropout, name='after_grid_attn_drop'
@@ -764,7 +764,7 @@ class MaxViT(tf_keras.Model):
     return output
 
   def call(  # pytype: disable=annotation-type-mismatch
-      self, inputs: tf.Tensor, mask: Optional[Any] = None, training: bool = None
+      self, inputs: tf.Tensor, mask: Optional[Any] = None, training: bool = None  # pyrefly: ignore[bad-function-definition]
   ) -> Mapping[str, tf.Tensor]:
     logging.info(
         'MaxViT inputs: shape %s, dtype %s.', inputs.shape, inputs.dtype

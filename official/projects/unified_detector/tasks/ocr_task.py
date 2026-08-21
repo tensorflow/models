@@ -42,7 +42,7 @@ class OcrTask(base_task.Task):
                params: cfg.TaskConfig,
                logging_dir: Optional[str] = None,
                name: Optional[str] = None,
-               model_fn: Callable[..., ModelType] = gin.REQUIRED):
+               model_fn: Callable[..., ModelType] = gin.REQUIRED):  # pyrefly: ignore[bad-function-definition]
     super().__init__(params, logging_dir, name)
     self._modef_fn = model_fn
 

@@ -152,7 +152,7 @@ class LongformerEncoder(tf_keras.layers.Layer):
           num_attention_heads=num_attention_heads,
           inner_dim=inner_dim,
           inner_activation=inner_activation,
-          attention_window=attention_window[i],
+          attention_window=attention_window[i],  # pyrefly: ignore[bad-index]
           layer_id=i,
           output_dropout=output_dropout,
           attention_dropout=attention_dropout,
@@ -318,7 +318,7 @@ class LongformerEncoder(tf_keras.layers.Layer):
       pad_token_id,
   ):
     # padding
-    attention_window = max(self._attention_window)
+    attention_window = max(self._attention_window)  # pyrefly: ignore[bad-argument-type]
 
     assert (attention_window %
             2 == 0), ('`attention_window` should be an even value.'

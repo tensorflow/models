@@ -149,7 +149,7 @@ def visualize_tracking_results(
   """
   groups = tracking_features.groupby('image_name')
   for name, group in groups:
-    img = tracking_images[name].copy()
+    img = tracking_images[name].copy()  # pyrefly: ignore[bad-index]
     for k in range(len(group)):
       x, y = int(group.iloc[k]['x']), int(group.iloc[k]['y'])
       cv2.circle(img, (x, y), CIRCLE_RADIUS, CIRCLE_COLOR, -1)

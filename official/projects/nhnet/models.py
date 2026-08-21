@@ -207,7 +207,7 @@ class Bert2Bert(tf_keras.Model):
       }
     return cache
 
-  def call(self, inputs, mode="train"):
+  def call(self, inputs, mode="train"):  # pyrefly: ignore[bad-override]
     """Implements call().
 
     Args:

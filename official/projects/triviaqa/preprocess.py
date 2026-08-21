@@ -383,7 +383,7 @@ def _handle_exceptional_examples(
       spans = [span]
       span = AnswerSpan(i, i + pattern.find(b'A') + 1, 'Vitamin A')
       span = realign_answer_span(features, None, processor, span)
-      return spans + [span]
+      return spans + [span]  # pyrefly: ignore[bad-return]
   if features.id == 'odql_292--Colombia.txt':
     pattern = b'Colombia is the third-most populous country in Latin America'
     i = features.context.find(pattern)
@@ -469,10 +469,10 @@ def make_example(
   }
   if labels:
     answers = set((label.begin, label.end) for label in labels)
-    feature['answers'] = np.array([list(answer) for answer in answers],
+    feature['answers'] = np.array([list(answer) for answer in answers],  # pyrefly: ignore[bad-assignment]
                                   np.int64)
   else:
-    feature['answers'] = np.zeros([0, 2], np.int64)
+    feature['answers'] = np.zeros([0, 2], np.int64)  # pyrefly: ignore[bad-assignment]
   metrics.Metrics.counter('_', 'examples').inc()
   return f'{features.id}--{features.stride_index}', feature
 

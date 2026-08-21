@@ -381,7 +381,7 @@ def build_encoder(config: EncoderConfig,
     An encoder instance.
   """
   if bypass_config:
-    return encoder_cls()
+    return encoder_cls()  # pyrefly: ignore[not-callable]
   encoder_type = config.type
   encoder_cfg = config.get()
   if encoder_cls and encoder_cls.__name__ == "EncoderScaffold":

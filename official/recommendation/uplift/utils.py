@@ -50,7 +50,7 @@ def split_by_treatment(
     A tuple with control and treatment values sliced by the is_treatment tensor.
   """
   if is_treatment.shape.rank > 2 or (
-      is_treatment.shape == 2 and is_treatment.shape[1] != 1
+      is_treatment.shape == 2 and is_treatment.shape[1] != 1  # pyrefly: ignore[unsupported-operation]
   ):
     raise ValueError(
         "is_treatment tensor must be a tensor of shape (D0,) (D0, 1) but got a"

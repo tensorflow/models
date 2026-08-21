@@ -36,11 +36,11 @@ class UNet3D(tf_keras.Model):
   def __init__(
       self,
       model_id: int,
-      input_specs: layers = layers.InputSpec(shape=[None, None, None, None, 3]),
+      input_specs: layers = layers.InputSpec(shape=[None, None, None, None, 3]),  # pyrefly: ignore[not-a-type]
       pool_size: Sequence[int] = (2, 2, 2),
       kernel_size: Sequence[int] = (3, 3, 3),
       base_filters: int = 32,
-      kernel_regularizer: tf_keras.regularizers.Regularizer = None,
+      kernel_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
       activation: str = 'relu',
       norm_momentum: float = 0.99,
       norm_epsilon: float = 0.001,

@@ -280,5 +280,5 @@ class EvaluationMetrics(object):
     else:
       outputs = predictions
 
-    labels = labels * 1
+    labels = labels * 1  # pyrefly: ignore[unsupported-operation]
     return outputs, labels

@@ -105,7 +105,7 @@ def basnet_duts() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       task=BASNetTask(
           model=BASNetModel(
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               use_bias=True,
               norm_activation=common.NormActivation(
                   activation='relu',

@@ -205,7 +205,7 @@ class ResNet3D(tf_keras.Model):
           block_repeats=resnet_spec[2],
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
               self._init_stochastic_depth_rate, i + 2, 5),
-          use_self_gating=use_self_gating,
+          use_self_gating=use_self_gating,  # pyrefly: ignore[bad-argument-type]
           name='block_group_l{}'.format(i + 2))
       endpoints[str(i + 2)] = x
 

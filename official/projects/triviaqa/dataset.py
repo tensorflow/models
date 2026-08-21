@@ -282,9 +282,9 @@ class TriviaQA(tfds.core.BeamBasedBuilder):
     """Returns SplitGenerators."""
     cfg = self.builder_config
     download_urls = dict()
-    if not (cfg.unfiltered and cfg.exclude_context):
+    if not (cfg.unfiltered and cfg.exclude_context):  # pyrefly: ignore[missing-attribute]
       download_urls["rc"] = _DOWNLOAD_URL_TMPL.format("rc")
-    if cfg.unfiltered:
+    if cfg.unfiltered:  # pyrefly: ignore[missing-attribute]
       download_urls["unfiltered"] = _DOWNLOAD_URL_TMPL.format("unfiltered")
     file_paths = dl_manager.download_and_extract(download_urls)
 
@@ -297,7 +297,7 @@ class TriviaQA(tfds.core.BeamBasedBuilder):
         os.path.join(qa_dir, _VALIDATION_FILE_FORMAT))
     test_files = tf.io.gfile.glob(os.path.join(qa_dir, _TEST_FILE_FORMAT))
 
-    if cfg.exclude_context:
+    if cfg.exclude_context:  # pyrefly: ignore[missing-attribute]
       web_evidence_dir = None
       wiki_evidence_dir = None
     else:
@@ -311,19 +311,19 @@ class TriviaQA(tfds.core.BeamBasedBuilder):
 
     return [
         tfds.core.SplitGenerator(
-            name=tfds.Split.TRAIN,
+            name=tfds.Split.TRAIN,  # pyrefly: ignore[missing-attribute]
             gen_kwargs={"files": train_files,
                         "web_dir": web_evidence_dir,
                         "wiki_dir": wiki_evidence_dir,
                         "answer": True}),
         tfds.core.SplitGenerator(
-            name=tfds.Split.VALIDATION,
+            name=tfds.Split.VALIDATION,  # pyrefly: ignore[missing-attribute]
             gen_kwargs={"files": valid_files,
                         "web_dir": web_evidence_dir,
                         "wiki_dir": wiki_evidence_dir,
                         "answer": True}),
         tfds.core.SplitGenerator(
-            name=tfds.Split.TEST,
+            name=tfds.Split.TEST,  # pyrefly: ignore[missing-attribute]
             gen_kwargs={"files": test_files,
                         "web_dir": web_evidence_dir,
                         "wiki_dir": wiki_evidence_dir,
@@ -346,7 +346,7 @@ class TriviaQA(tfds.core.BeamBasedBuilder):
           web_dir=web_dir)
 
     parse_example_fn = functools.partial(parse_example,
-                                         self.builder_config.exclude_context,
+                                         self.builder_config.exclude_context,  # pyrefly: ignore[missing-attribute]
                                          web_dir, wiki_dir)
     return (pipeline
             | beam.Create(files)

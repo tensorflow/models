@@ -48,7 +48,7 @@ class TpuBatchNormalization(tf_keras.layers.BatchNormalization):
     return tf1.tpu.cross_replica_sum(t, group_assignment) / tf.cast(
         num_shards_per_group, t.dtype)
 
-  def _moments(self, inputs: tf.Tensor, reduction_axes: int, keep_dims: int):
+  def _moments(self, inputs: tf.Tensor, reduction_axes: int, keep_dims: int):  # pyrefly: ignore[bad-override]
     """Compute the mean and variance: it overrides the original _moments."""
     shard_mean, shard_variance = super(TpuBatchNormalization, self)._moments(
         inputs, reduction_axes, keep_dims=keep_dims)

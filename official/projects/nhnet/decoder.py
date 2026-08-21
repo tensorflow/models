@@ -352,7 +352,7 @@ class Decoder(tf_keras.layers.Layer):
     if not isinstance(all_encoder_outputs, list):
       all_encoder_outputs = [all_encoder_outputs]
 
-    target_embeds = self.embedding_lookup(target_ids)
+    target_embeds = self.embedding_lookup(target_ids)  # pyrefly: ignore[not-callable]
     if decode_loop_step is None:
       target_embeds = self.embedding_postprocessor(target_embeds)
     else:

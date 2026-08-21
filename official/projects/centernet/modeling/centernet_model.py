@@ -43,7 +43,7 @@ class CenterNetModel(tf_keras.Model):
 
   def call(self,  # pytype: disable=annotation-type-mismatch,signature-mismatch
            inputs: tf.Tensor,
-           training: bool = None,
+           training: bool = None,  # pyrefly: ignore[bad-function-definition]
            **kwargs) -> Mapping[str, tf.Tensor]:
     features = self._backbone(inputs)
     raw_outputs = self._head(features)

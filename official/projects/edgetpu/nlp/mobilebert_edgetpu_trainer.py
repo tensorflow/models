@@ -357,13 +357,13 @@ class MobileBERTEdgeTPUDistillationTrainer(orbit.StandardTrainer,
 
     if self.mode == DistillationMode.LAYER_WISE:
       self.train_metrics['feature_transfer_mse'].update_state(
-          feature_transfer_loss)
-      self.train_metrics['beta_transfer_loss'].update_state(beta_loss)
-      self.train_metrics['gamma_transfer_loss'].update_state(gamma_loss)
-      self.train_metrics['attention_transfer_loss'].update_state(attention_loss)
+          feature_transfer_loss)  # pyrefly: ignore[unbound-name]
+      self.train_metrics['beta_transfer_loss'].update_state(beta_loss)  # pyrefly: ignore[unbound-name]
+      self.train_metrics['gamma_transfer_loss'].update_state(gamma_loss)  # pyrefly: ignore[unbound-name]
+      self.train_metrics['attention_transfer_loss'].update_state(attention_loss)  # pyrefly: ignore[unbound-name]
     elif self.mode == DistillationMode.END2END:
-      self.train_metrics['lm_example_loss'].update_state(mlm_loss)
-      self.train_metrics['next_sentence_loss'].update_state(sentence_loss)
+      self.train_metrics['lm_example_loss'].update_state(mlm_loss)  # pyrefly: ignore[unbound-name]
+      self.train_metrics['next_sentence_loss'].update_state(sentence_loss)  # pyrefly: ignore[unbound-name]
     self.train_metrics['total_loss'].update_state(total_loss)
 
     return total_loss
@@ -467,7 +467,7 @@ class MobileBERTEdgeTPUDistillationTrainer(orbit.StandardTrainer,
       # e2e distillation training stage.
       if self.exported_ckpt_manager is None:
         self.build_exported_ckpt_manager()
-      self.exported_ckpt_manager.save(
+      self.exported_ckpt_manager.save(  # pyrefly: ignore[missing-attribute]
           checkpoint_number=self.current_step.numpy(),
           check_interval=True)
 
@@ -512,7 +512,7 @@ class MobileBERTEdgeTPUDistillationTrainer(orbit.StandardTrainer,
 
     self.strategy.run(step_fn, args=(next(iterator),))
 
-  def eval_end(self):
+  def eval_end(self):  # pyrefly: ignore[bad-override]
     return {'masked_lm_accuracy':
                 self.eval_metrics['masked_lm_accuracy'].result(),
             'next_sentence_accuracy':

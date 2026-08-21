@@ -129,5 +129,5 @@ class DenseBN(tf_keras.layers.Layer):
     if self._use_normalization:
       x = self._norm0(x)
     if self._activation:
-      x = self._activation_fn(x)
+      x = self._activation_fn(x)  # pyrefly: ignore[not-callable]
     return x

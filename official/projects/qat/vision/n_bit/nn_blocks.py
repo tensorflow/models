@@ -73,8 +73,8 @@ class BottleneckBlockNBitQuantized(tf_keras.layers.Layer):
                resnetd_shortcut: bool = False,
                stochastic_depth_drop_rate: Optional[float] = None,
                kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf_keras.regularizers.Regularizer = None,
-               bias_regularizer: tf_keras.regularizers.Regularizer = None,
+               kernel_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
+               bias_regularizer: tf_keras.regularizers.Regularizer = None,  # pyrefly: ignore[bad-function-definition]
                activation: str = 'relu',
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,

@@ -78,7 +78,7 @@ class Decoder(tf_keras.Model):
     feats = []
     for level in range(min_level, max_level + 1):
       x = layers.ConvBlock(
-          filters=num_filters,
+          filters=num_filters,  # pyrefly: ignore[unbound-name]
           kernel_size=3,
           strides=int(2 ** (level - output_level)),
           use_transpose_conv=True,
@@ -97,7 +97,7 @@ class Decoder(tf_keras.Model):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:
+  def from_config(cls, config: Mapping[str, Any]) -> tf_keras.Model:  # pyrefly: ignore[bad-override]
     return cls(**config)
 
   @property

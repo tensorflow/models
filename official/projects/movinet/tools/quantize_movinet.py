@@ -224,7 +224,7 @@ def stateful_representative_dataset_generator(
               predictions=predictions,
               output_states=output_states,
               groundtruth_label_id=groundtruth_label_id,
-              output_dataset_dir=output_dataset_dir,
+              output_dataset_dir=output_dataset_dir,  # pyrefly: ignore[bad-argument-type]
               file_index=counter)
         yield {'image': frame, **input_states}
         counter += 1

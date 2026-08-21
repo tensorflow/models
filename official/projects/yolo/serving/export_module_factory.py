@@ -232,7 +232,7 @@ def create_yolo_export_module(
 
   export_module = ExportModule(
       params,
-      model=model,
+      model=model,  # pyrefly: ignore[unbound-name]
       input_signature=input_signature,
       preprocessor=preprocess_fn,
       inference_step=inference_steps)
@@ -250,12 +250,12 @@ def get_export_module(params: cfg.ExperimentConfig,
   if isinstance(params.task,
                 darknet_classification.ImageClassificationTask):
     export_module = create_classification_export_module(params, input_type,
-                                                        batch_size,
+                                                        batch_size,  # pyrefly: ignore[bad-argument-type]
                                                         input_image_size,
                                                         num_channels,
                                                         input_name)
   elif isinstance(params.task, (yolo.YoloTask, yolov7.YoloV7Task)):
-    export_module = create_yolo_export_module(params, input_type, batch_size,
+    export_module = create_yolo_export_module(params, input_type, batch_size,  # pyrefly: ignore[bad-argument-type]
                                               input_image_size, num_channels,
                                               input_name)
   else:

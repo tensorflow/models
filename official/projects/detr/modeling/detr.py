@@ -209,7 +209,7 @@ class DETR(tf_keras.Model):
     }
 
   @classmethod
-  def from_config(cls, config):
+  def from_config(cls, config):  # pyrefly: ignore[bad-override]
     return cls(**config)
 
   def _generate_image_mask(self, inputs: tf.Tensor,

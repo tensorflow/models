@@ -436,7 +436,7 @@ class TransformerDecoderBlock(tf_keras.layers.Layer):
 
     attention_output = self.encdec_attention_dropout(attention_output)
     if self._norm_first:
-      attention_output = source_self_attention_output + attention_output
+      attention_output = source_self_attention_output + attention_output  # pyrefly: ignore[unbound-name]
     else:
       attention_output = self.encdec_attention_layer_norm(
           self_attention_output + attention_output)
@@ -451,7 +451,7 @@ class TransformerDecoderBlock(tf_keras.layers.Layer):
     layer_output = self.output_dense(intermediate_output)
     layer_output = self.output_dropout(layer_output)
     if self._norm_first:
-      layer_output = source_attention_output + layer_output
+      layer_output = source_attention_output + layer_output  # pyrefly: ignore[unbound-name]
     else:
       layer_output = self.output_layer_norm(layer_output + attention_output)
     return layer_output, cache

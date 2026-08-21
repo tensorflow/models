@@ -461,16 +461,16 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
     metrics = dict([(metric.name, metric) for metric in metrics])
 
     if not last_stage:
-      metrics['feature_transfer_mse'].update_state(feature_transfer_loss)
-      metrics['beta_transfer_loss'].update_state(beta_loss)
-      metrics['gamma_transfer_loss'].update_state(gamma_loss)
+      metrics['feature_transfer_mse'].update_state(feature_transfer_loss)  # pyrefly: ignore[unbound-name]
+      metrics['beta_transfer_loss'].update_state(beta_loss)  # pyrefly: ignore[unbound-name]
+      metrics['gamma_transfer_loss'].update_state(gamma_loss)  # pyrefly: ignore[unbound-name]
       layer_wise_config = self._progressive_config.layer_wise_distill_config
       if layer_wise_config.if_transfer_attention:
-        metrics['attention_transfer_loss'].update_state(attention_loss)
+        metrics['attention_transfer_loss'].update_state(attention_loss)  # pyrefly: ignore[unbound-name]
     else:
-      metrics['lm_example_loss'].update_state(mlm_loss)
+      metrics['lm_example_loss'].update_state(mlm_loss)  # pyrefly: ignore[unbound-name]
       if 'next_sentence_labels' in labels:
-        metrics['next_sentence_loss'].update_state(sentence_loss)
+        metrics['next_sentence_loss'].update_state(sentence_loss)  # pyrefly: ignore[unbound-name]
     metrics['total_loss'].update_state(total_loss)
 
     return total_loss

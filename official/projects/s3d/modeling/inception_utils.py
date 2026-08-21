@@ -71,7 +71,7 @@ def inception_v1_stem_cells(
     kernel_regularizer: Union[Text, regularizers.Regularizer] = 'l2',
     parameterized_conv_layer: Type[
         net_utils.ParameterizedConvLayer] = net_utils.ParameterizedConvLayer,
-    layer_naming_fn: Callable[[Text], Text] = lambda end_point: None,
+    layer_naming_fn: Callable[[Text], Text] = lambda end_point: None,  # pyrefly: ignore[bad-function-definition]
 ) -> Tuple[tf.Tensor, Dict[Text, tf.Tensor]]:
   """Stem cells used in the original I3D/S3D model.
 

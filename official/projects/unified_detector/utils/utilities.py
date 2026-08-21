@@ -141,8 +141,8 @@ def normalize_image_to_range(image: tf.Tensor,
   if image.dtype is not tf.float32:
     image = tf.cast(image, dtype=tf.float32)
 
-  original_minval = float(original_minval)
-  original_maxval = float(original_maxval)
+  original_minval = float(original_minval)  # pyrefly: ignore[bad-assignment]
+  original_maxval = float(original_maxval)  # pyrefly: ignore[bad-assignment]
   target_minval = float(target_minval)
   target_maxval = float(target_maxval)
   image = tf.cast(image, dtype=tf.float32)

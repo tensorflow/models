@@ -56,7 +56,7 @@ def build_block_specs(
   if not block_specs:
     block_specs = NASFPN_BLOCK_SPECS
   logging.info('Building NAS-FPN block specs: %s', block_specs)
-  return [BlockSpec(*b) for b in block_specs]
+  return [BlockSpec(*b) for b in block_specs]  # pyrefly: ignore[bad-argument-type]
 
 
 @tf_keras.utils.register_keras_serializable(package='Vision')
@@ -168,11 +168,11 @@ class NASFPN(tf_keras.Model):
                for level in range(self._min_level, self._max_level + 1)]
 
     self._output_specs = {
-        str(level): output_feats[level].get_shape()
+        str(level): output_feats[level].get_shape()  # pyrefly: ignore[unbound-name]
         for level in range(min_level, max_level + 1)
     }
     output_feats = {str(level): output_feats[level]
-                    for level in output_feats.keys()}
+                    for level in output_feats.keys()}  # pyrefly: ignore[unbound-name]
     super(NASFPN, self).__init__(inputs=inputs, outputs=output_feats, **kwargs)
 
   def _build_input_pyramid(self, input_specs: Mapping[str, tf.TensorShape],

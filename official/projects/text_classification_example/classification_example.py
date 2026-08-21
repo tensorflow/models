@@ -146,8 +146,8 @@ class ClassificationExampleTask(base_task.Task):
 
     # Convert id to class names, because `seqeval_metrics` relies on the class
     # name to decide IOB tags.
-    state['predict_class'].extend(id_to_class_name(step_outputs['predict_ids']))
-    state['label_class'].extend(id_to_class_name(step_outputs['label_ids']))
+    state['predict_class'].extend(id_to_class_name(step_outputs['predict_ids']))  # pyrefly: ignore[unsupported-operation]
+    state['label_class'].extend(id_to_class_name(step_outputs['label_ids']))  # pyrefly: ignore[unsupported-operation]
     return state
 
   def reduce_aggregated_logs(self,

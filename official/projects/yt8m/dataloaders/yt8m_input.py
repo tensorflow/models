@@ -240,7 +240,7 @@ def _concat_features(
     feature_matrices[i] = feature_matrix
 
   for i in range(num_features):
-    feature_matrices[i] = feature_matrices[i][:num_common_frames]
+    feature_matrices[i] = feature_matrices[i][:num_common_frames]  # pyrefly: ignore[unsupported-operation]
 
   # Concatenate different features.
   video_matrix = tf.concat(feature_matrices, 1)
@@ -501,7 +501,7 @@ class TransformBatcher():
         "num_frames": 0,
     }
     if self._include_video_id:
-      pad_values["video_ids"] = None
+      pad_values["video_ids"] = None  # pyrefly: ignore[bad-assignment]
     if self._segment_labels:
       pad_values["label_weights"] = 0.0
     dataset = dataset.padded_batch(

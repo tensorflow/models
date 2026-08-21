@@ -85,7 +85,7 @@ class PanopticSegmentationModule(
                 parallel_iterations=32))
 
     outputs = self.model.call(
-        inputs=images, image_info=image_info, training=False)
+        inputs=images, image_info=image_info, training=False)  # pyrefly: ignore[unbound-name]
 
     masks = outputs['segmentation_outputs']
     masks = tf.image.resize(masks, self._input_image_size, method='bilinear')

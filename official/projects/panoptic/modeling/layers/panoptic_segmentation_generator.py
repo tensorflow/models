@@ -300,7 +300,7 @@ class PanopticSegmentationGenerator(tf_keras.layers.Layer):
 
     if self._rescale_predictions:
       scale = tf.tile(
-          tf.cast(image_info[:, 2:3, :], dtype=batched_boxes.dtype),
+          tf.cast(image_info[:, 2:3, :], dtype=batched_boxes.dtype),  # pyrefly: ignore[unsupported-operation]
           multiples=[1, 1, 2])
       batched_boxes /= scale
 
@@ -434,10 +434,10 @@ class PanopticSegmentationGeneratorV2(tf_keras.layers.Layer):
 
     if self._rescale_predictions:
       # (batch_size, 2)
-      original_size = tf.cast(image_info[:, 0, :], tf.float32)
-      desired_size = tf.cast(image_info[:, 1, :], tf.float32)
-      image_scale = tf.cast(image_info[:, 2, :], tf.float32)
-      offset = tf.cast(image_info[:, 3, :], tf.float32)
+      original_size = tf.cast(image_info[:, 0, :], tf.float32)  # pyrefly: ignore[unsupported-operation]
+      desired_size = tf.cast(image_info[:, 1, :], tf.float32)  # pyrefly: ignore[unsupported-operation]
+      image_scale = tf.cast(image_info[:, 2, :], tf.float32)  # pyrefly: ignore[unsupported-operation]
+      offset = tf.cast(image_info[:, 3, :], tf.float32)  # pyrefly: ignore[unsupported-operation]
       rescale_size = tf.math.ceil(desired_size / image_scale)
       # (batch_size, output_height, output_width, num_semantic_classes)
       segmentation_outputs = (

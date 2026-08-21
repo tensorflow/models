@@ -94,15 +94,15 @@ class AddSeparablePositionEmbs(tf_keras.layers.Layer):
     if inputs.shape[1] != pos_embedding_time.shape[1]:
       pos_embedding_time = self._interpolate(
           pos_embedding_time,
-          from_shape=(1, self.posemb_origin_shape[0]),
-          to_shape=(1, self.posemb_target_shape[0]))
+          from_shape=(1, self.posemb_origin_shape[0]),  # pyrefly: ignore[unsupported-operation]
+          to_shape=(1, self.posemb_target_shape[0]))  # pyrefly: ignore[unsupported-operation]
 
     pos_embedding_space = self._pos_embedding_space
     if inputs.shape[2] != pos_embedding_space.shape[1]:
       pos_embedding_space = self._interpolate(
           pos_embedding_space,
-          from_shape=(1, self.posemb_origin_shape[1]),
-          to_shape=(1, self.posemb_target_shape[1]))
+          from_shape=(1, self.posemb_origin_shape[1]),  # pyrefly: ignore[unsupported-operation]
+          to_shape=(1, self.posemb_target_shape[1]))  # pyrefly: ignore[unsupported-operation]
 
     pos_embedding_time = tf.cast(pos_embedding_time[:, :, None, :],
                                  inputs.dtype)
@@ -307,8 +307,8 @@ class VisionTransformer3D(tf_keras.Model):
     x = tf.reshape(x, [-1, nt, nh * nw, nc])
     pos_embed_target_shape = (nt, nh * nw)
     x = AddSeparablePositionEmbs(
-        posemb_init=self._original_init,
-        posemb_origin_shape=self._pos_embed_shape,
+        posemb_init=self._original_init,  # pyrefly: ignore[bad-argument-type]
+        posemb_origin_shape=self._pos_embed_shape,  # pyrefly: ignore[bad-argument-type]
         posemb_target_shape=pos_embed_target_shape)(x)
     x = tf.reshape(x, [-1, nt * nh * nw, nc])
     return x

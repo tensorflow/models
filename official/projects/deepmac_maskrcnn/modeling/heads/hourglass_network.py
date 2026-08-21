@@ -357,7 +357,7 @@ class EncoderDecoderBlock(tf_keras.layers.Layer):
     upsampled_outputs = self.upsample(decoded_outputs)
 
     if self.encoder_decoder_shortcut:
-      return self.merge_features([encoded_outputs, upsampled_outputs])
+      return self.merge_features([encoded_outputs, upsampled_outputs])  # pyrefly: ignore[unbound-name]
     else:
       return upsampled_outputs
 

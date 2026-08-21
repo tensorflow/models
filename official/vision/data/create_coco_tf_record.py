@@ -151,8 +151,8 @@ def generate_coco_panoptics_masks(segments_info, mask_path,
     semantic_segmentation_mask[segment_mask] = encoded_category_id
 
     if include_panoptic_masks:
-      category_mask[segment_mask] = category_id
-      instance_mask[segment_mask] = instance_id
+      category_mask[segment_mask] = category_id  # pyrefly: ignore[unbound-name]
+      instance_mask[segment_mask] = instance_id  # pyrefly: ignore[unbound-name]
 
   outputs = {
       'semantic_segmentation_mask': tfrecord_lib.encode_mask_as_png(
@@ -161,8 +161,8 @@ def generate_coco_panoptics_masks(segments_info, mask_path,
 
   if include_panoptic_masks:
     outputs.update({
-        'category_mask': tfrecord_lib.encode_mask_as_png(category_mask),
-        'instance_mask': tfrecord_lib.encode_mask_as_png(instance_mask)
+        'category_mask': tfrecord_lib.encode_mask_as_png(category_mask),  # pyrefly: ignore[unbound-name]
+        'instance_mask': tfrecord_lib.encode_mask_as_png(instance_mask)  # pyrefly: ignore[unbound-name]
         })
   return outputs
 
@@ -339,7 +339,7 @@ def create_tf_example(image,
 
   if panoptic_annotation:
     segments_info = panoptic_annotation['segments_info']
-    panoptic_mask_filename = os.path.join(
+    panoptic_mask_filename = os.path.join(  # pyrefly: ignore[no-matching-overload]
         panoptic_masks_dir,
         panoptic_annotation['file_name'])
     encoded_panoptic_masks = generate_coco_panoptics_masks(

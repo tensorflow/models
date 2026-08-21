@@ -87,7 +87,7 @@ class TwoTowerPredictionOutputs(TwoTowerNetworkOutputs):
   # predictions are of the same dtype and shape as the control and treatment
   # logits. Also add validation tests.
 
-  class Spec:
+  class Spec:  # pyrefly: ignore[bad-override]
     shape = property(lambda self: tf.TensorShape(None))
 
 
@@ -117,5 +117,5 @@ class TwoTowerTrainingOutputs(TwoTowerPredictionOutputs):
   # of the same rank as the control and treatment logits, and that the
   # is_treatment tensor is a boolean tensor. Also add validation tests.
 
-  class Spec:
+  class Spec:  # pyrefly: ignore[bad-override]
     shape = property(lambda self: tf.TensorShape(None))

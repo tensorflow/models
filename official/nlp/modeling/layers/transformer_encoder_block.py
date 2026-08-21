@@ -705,7 +705,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       # `self._use_query_residual` into one if clause because else is only for
       # `_norm_first == False`.
       if self._use_query_residual:
-        attention_output = source_tensor + attention_output
+        attention_output = source_tensor + attention_output  # pyrefly: ignore[unbound-name]
     else:
       if self._use_query_residual:
         attention_output = target_tensor + attention_output
@@ -721,7 +721,7 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
     layer_output = self._output_dropout(layer_output)
 
     if self._norm_first:
-      layer_output = source_attention_output + layer_output
+      layer_output = source_attention_output + layer_output  # pyrefly: ignore[unbound-name]
     else:
       # During mixed precision training, layer norm output is always fp32 for
       # now. Casts fp32 for the subsequent add.
@@ -729,6 +729,6 @@ class TransformerEncoderBlock(tf_keras.layers.Layer):
       layer_output = self._output_layer_norm(layer_output + attention_output)
 
     if self._return_attention_scores:
-      return layer_output, attention_scores
+      return layer_output, attention_scores  # pyrefly: ignore[unbound-name]
     else:
       return layer_output

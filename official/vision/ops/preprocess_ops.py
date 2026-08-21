@@ -17,7 +17,7 @@
 import math
 from typing import Optional, Sequence, Tuple, Union
 
-from six.moves import range
+from six.moves import range  # pyrefly: ignore[missing-source-for-stubs]
 import tensorflow as tf, tf_keras
 
 from official.vision.ops import augment
@@ -956,9 +956,9 @@ def color_jitter(
     tf.Tensor: The augmented `image` of type uint8.
   """
   image = tf.cast(image, dtype=tf.uint8)
-  image = random_brightness(image, brightness, seed=seed)
-  image = random_contrast(image, contrast, seed=seed)
-  image = random_saturation(image, saturation, seed=seed)
+  image = random_brightness(image, brightness, seed=seed)  # pyrefly: ignore[bad-argument-type]
+  image = random_contrast(image, contrast, seed=seed)  # pyrefly: ignore[bad-argument-type]
+  image = random_saturation(image, saturation, seed=seed)  # pyrefly: ignore[bad-argument-type]
   return image
 
 

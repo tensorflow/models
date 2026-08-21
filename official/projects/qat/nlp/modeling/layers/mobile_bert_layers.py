@@ -475,7 +475,7 @@ class MobileBertTransformerQuantized(tf_keras.layers.Layer):
     bottleneck = self.block_layers['bottleneck_output'][0]
     dropout_layer = self.block_layers['bottleneck_output'][1]
     layer_norm = self.block_layers['bottleneck_output'][2]
-    layer_output = bottleneck(layer_output)
+    layer_output = bottleneck(layer_output)  # pyrefly: ignore[unbound-name]
     layer_output = dropout_layer(layer_output)
     layer_output = layer_norm(self.output_add([layer_output, prev_output]))
 

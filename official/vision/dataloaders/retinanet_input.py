@@ -338,7 +338,7 @@ class Parser(parser.Parser):
         'anchor_boxes': anchor_boxes,
         'cls_weights': cls_weights,
         'box_weights': box_weights,
-        'image_info': image_info,
+        'image_info': image_info,  # pyrefly: ignore[unbound-name]
     }
     if att_targets:
       labels['attribute_targets'] = att_targets

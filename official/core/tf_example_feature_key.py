@@ -22,7 +22,7 @@ import functools
 from typing import Optional
 
 # Disable init function to use the one defined in base class.
-dataclass = functools.partial(dataclasses.dataclass(init=False))
+dataclass = functools.partial(dataclasses.dataclass(init=False))  # pyrefly: ignore[bad-argument-type]
 
 
 @dataclass

@@ -91,7 +91,7 @@ class MultiScaleMaskConverModel(tf_keras.Model):
            image_info: Optional[tf.Tensor] = None,
            box_indices: Optional[tf.Tensor] = None,
            classes: Optional[tf.Tensor] = None,
-           training: bool = None
+           training: bool = None  # pyrefly: ignore[bad-function-definition]
            ) -> Dict[str, Optional[Any]]:
     batch_size = tf.shape(inputs)[0]
     backbone_features = self.backbone(inputs, training=training)
@@ -137,7 +137,7 @@ class MultiScaleMaskConverModel(tf_keras.Model):
     dense_mask_embeddings = tf.concat(dense_mask_embeddings, axis=1)
 
     per_pixel_embeddings = self.per_pixel_embeddings_head(
-        (backbone_features, decoder_features2), training=training
+        (backbone_features, decoder_features2), training=training  # pyrefly: ignore[unbound-name]
     )
 
     if not training:
@@ -165,7 +165,7 @@ class MultiScaleMaskConverModel(tf_keras.Model):
     if not training:
       outputs = {
           'classes': classes,
-          'confidence': confidence,
+          'confidence': confidence,  # pyrefly: ignore[unbound-name]
           'mask_embeddings': mask_embeddings,
           'mask_proposal_logits': mask_proposal_logits,
           'class_heatmaps': class_heatmaps,

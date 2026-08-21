@@ -36,7 +36,7 @@ def _maybe_downsample(x: tf.Tensor, out_filter: int, strides: int,
                       axis: int) -> tf.Tensor:
   """Downsamples feature map and 0-pads tensor if in_filter != out_filter."""
   data_format = 'NCHW' if axis == 1 else 'NHWC'
-  strides = _pad_strides(strides, axis=axis)
+  strides = _pad_strides(strides, axis=axis)  # pyrefly: ignore[bad-assignment]
 
   x = tf.nn.avg_pool(x, strides, strides, 'VALID', data_format=data_format)
 
@@ -2119,7 +2119,7 @@ class ReversibleLayer(tf_keras.layers.Layer):
         """Given dy calculate (dy/dx)|_{x_{input}} using f/g."""
         if irreversible or not self._manual_grads:
           grads_combined = fwdtape.gradient(
-              y, [x] + variables, output_gradients=dy)
+              y, [x] + variables, output_gradients=dy)  # pyrefly: ignore[unsupported-operation]
           dx = grads_combined[0]
           grad_vars = grads_combined[1:]
         else:
@@ -2133,7 +2133,7 @@ class ReversibleLayer(tf_keras.layers.Layer):
           f_var_refs = [v.ref() for v in self._f.trainable_variables]
           g_var_refs = [v.ref() for v in self._g.trainable_variables]
           fg_var_refs = f_var_refs + g_var_refs
-          self_to_var_index = [fg_var_refs.index(v.ref()) for v in variables]
+          self_to_var_index = [fg_var_refs.index(v.ref()) for v in variables]  # pyrefly: ignore[not-iterable]
 
           # Algorithm 1 in paper (line # documented in-line)
           z1 = y1_nograd  # line 2
@@ -2682,7 +2682,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
       # `self._use_query_residual` into one if clause because else is only for
       # `_norm_first == False`.
       if self._use_query_residual:
-        attention_output = source_tensor + self._stochastic_depth(
+        attention_output = source_tensor + self._stochastic_depth(  # pyrefly: ignore[unbound-name]
             attention_output, training=training)
       source_attention_output = attention_output
       attention_output = self._output_layer_norm(attention_output)
@@ -2702,7 +2702,7 @@ class TransformerEncoderBlock(nlp_modeling.layers.TransformerEncoderBlock):
     layer_output = self._layer_scale_mlp(layer_output)
 
     if self._norm_first:
-      layer_output = source_attention_output + self._stochastic_depth(
+      layer_output = source_attention_output + self._stochastic_depth(  # pyrefly: ignore[unbound-name]
           layer_output, training=training)
     else:
       # During mixed precision training, layer norm output is always fp32 for
@@ -2819,7 +2819,7 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
         attention_output, training=training)
 
     if self._norm_first:
-      source_attention_output = source_tensor + self._stochastic_depth(
+      source_attention_output = source_tensor + self._stochastic_depth(  # pyrefly: ignore[unbound-name]
           attention_output, training=training)
       attention_output = self._output_layer_norm(
           source_attention_output)
@@ -2844,7 +2844,7 @@ class TransformerScaffold(nlp_modeling.layers.TransformerScaffold):
             'In the case of `norm_first`, the residual connection should be'
             "done in the TransformerScaffold call function, not FFN's"
             'call function.')
-      output = source_attention_output + self._stochastic_depth(
+      output = source_attention_output + self._stochastic_depth(  # pyrefly: ignore[unbound-name]
           layer_output, training=training)
     else:
       # During mixed precision training, layer norm output is always fp32 for

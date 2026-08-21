@@ -1216,7 +1216,7 @@ class MultilevelDetectionGenerator(tf_keras.layers.Layer):
       self._config_dict['nms_v3_refinements'] = nms_v3_refinements
 
     if tflite_post_processing_config is not None:
-      self._config_dict.update(
+      self._config_dict.update(  # pyrefly: ignore[no-matching-overload]
           {'tflite_post_processing_config': tflite_post_processing_config}
       )
     super().__init__(**kwargs)
@@ -1327,7 +1327,7 @@ class MultilevelDetectionGenerator(tf_keras.layers.Layer):
       image_shape: tf.Tensor,
   ) -> Tuple[tf.Tensor, tf.Tensor]:
     """Collects dict of multilevel boxes, scores into lists."""
-    boxes = None
+    boxes = None  # pyrefly: ignore[bad-assignment]
     scores = None
 
     pre_nms_top_k = self._config_dict['pre_nms_top_k']
@@ -1575,7 +1575,7 @@ class MultilevelDetectionGenerator(tf_keras.layers.Layer):
                 ],
                 nms_iou_threshold=self._config_dict['nms_iou_threshold'],
                 max_num_detections=self._config_dict['max_num_detections'],
-                refinements=self._config_dict.get('nms_v3_refinements', 2),
+                refinements=self._config_dict.get('nms_v3_refinements', 2),  # pyrefly: ignore[bad-argument-type]
             )
         )
         # Set `nmsed_attributes` to None for v3.

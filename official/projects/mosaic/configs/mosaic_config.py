@@ -139,7 +139,7 @@ def mosaic_mnv35_cityscapes() -> cfg.ExperimentConfig:
               # Cityscapes uses only 19 semantic classes for train/evaluation.
               # The void (background) class is ignored in train and evaluation.
               num_classes=19,
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               backbone=backbones.Backbone(
                   type='mobilenet',
                   mobilenet=backbones.MobileNet(
@@ -262,7 +262,7 @@ def mosaic_mnv4_cityscapes() -> cfg.ExperimentConfig:
               # Cityscapes uses only 19 semantic classes for train/evaluation.
               # The void (background) class is ignored in train and evaluation.
               num_classes=19,
-              input_size=[None, None, 3],
+              input_size=[None, None, 3],  # pyrefly: ignore[bad-argument-type]
               backbone=backbones.Backbone(
                   type='mobilenet',
                   mobilenet=backbones.MobileNet(

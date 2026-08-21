@@ -94,11 +94,11 @@ class SegmentationModule(export_base.ExportModule):
       if logits.shape[0] != 1:
         raise ValueError('Batch size cannot be more than 1.')
 
-      image_shape = tf.cast(image_info[0, 0, :], tf.int32)
+      image_shape = tf.cast(image_info[0, 0, :], tf.int32)  # pyrefly: ignore[unsupported-operation]
       if self.params.task.train_data.preserve_aspect_ratio:
         rescale_size = tf.cast(
-            tf.math.ceil(image_info[0, 1, :] / image_info[0, 2, :]), tf.int32)
-        offsets = tf.cast(image_info[0, 3, :], tf.int32)
+            tf.math.ceil(image_info[0, 1, :] / image_info[0, 2, :]), tf.int32)  # pyrefly: ignore[unsupported-operation]
+        offsets = tf.cast(image_info[0, 3, :], tf.int32)  # pyrefly: ignore[unsupported-operation]
         logits = tf.image.resize(logits, rescale_size, method='bilinear')
         outputs['logits'] = tf.image.crop_to_bounding_box(
             logits, offsets[0], offsets[1], image_shape[0], image_shape[1])

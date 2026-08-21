@@ -292,7 +292,7 @@ class ImageClassificationTask(base_task.Task):
                 num_labels=self.task_config.model.num_classes,
                 from_logits=True),
         ]
-    return metrics
+    return metrics  # pyrefly: ignore[bad-return]
 
   def train_step(self,
                  inputs: Tuple[Any, Any],

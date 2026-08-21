@@ -242,7 +242,7 @@ class FFFNerEncoder(tf_keras.layers.Layer):
     if dense_inputs is not None:
       mask = tf.concat([mask, dense_mask], axis=1)
 
-    embeddings = self._get_embeddings(word_ids, type_ids, word_embeddings,
+    embeddings = self._get_embeddings(word_ids, type_ids, word_embeddings,  # pyrefly: ignore[bad-argument-type]
                                       dense_inputs, dense_type_ids)
     embeddings = self._embedding_norm_layer(embeddings)
     embeddings = self._embedding_dropout(embeddings)

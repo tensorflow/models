@@ -744,7 +744,7 @@ class KernelAttention(tf_keras.layers.MultiHeadAttention):
           name="attention_output_softmax")
       self._dropout_softmax = tf_keras.layers.Dropout(rate=self._dropout)
 
-  def call(self, query, value, key=None, attention_mask=None, cache=None,
+  def call(self, query, value, key=None, attention_mask=None, cache=None,  # pyrefly: ignore[bad-override]
            training=False):
     """Compute attention with kernel mechanism.
 

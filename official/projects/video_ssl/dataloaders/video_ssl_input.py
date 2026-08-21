@@ -120,8 +120,8 @@ def _process_image(image: tf.Tensor,
 
   # Cast the frames in float32, normalizing according to zero_centering_image.
   if is_training and is_ssl:
-    image_1 = preprocess_ops_3d.normalize_image(image_1, zero_centering_image)
-    image_2 = preprocess_ops_3d.normalize_image(image_2, zero_centering_image)
+    image_1 = preprocess_ops_3d.normalize_image(image_1, zero_centering_image)  # pyrefly: ignore[unbound-name]
+    image_2 = preprocess_ops_3d.normalize_image(image_2, zero_centering_image)  # pyrefly: ignore[unbound-name]
 
   else:
     image = preprocess_ops_3d.normalize_image(image, zero_centering_image)
@@ -129,11 +129,11 @@ def _process_image(image: tf.Tensor,
   # Self-supervised pre-training augmentations.
   if is_training and is_ssl:
     if zero_centering_image:
-      image_1 = 0.5 * (image_1 + 1.0)
-      image_2 = 0.5 * (image_2 + 1.0)
+      image_1 = 0.5 * (image_1 + 1.0)  # pyrefly: ignore[unbound-name]
+      image_2 = 0.5 * (image_2 + 1.0)  # pyrefly: ignore[unbound-name]
     # Temporally consistent color jittering.
-    image_1 = video_ssl_preprocess_ops.random_color_jitter_3d(image_1)
-    image_2 = video_ssl_preprocess_ops.random_color_jitter_3d(image_2)
+    image_1 = video_ssl_preprocess_ops.random_color_jitter_3d(image_1)  # pyrefly: ignore[unbound-name]
+    image_2 = video_ssl_preprocess_ops.random_color_jitter_3d(image_2)  # pyrefly: ignore[unbound-name]
     # Temporally consistent gaussian blurring.
     image_1 = video_ssl_preprocess_ops.random_blur(image_1, crop_size,
                                                    crop_size, 1.0)

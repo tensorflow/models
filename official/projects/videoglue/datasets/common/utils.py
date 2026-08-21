@@ -376,10 +376,10 @@ def add_image(parser_builder: builders.BaseParserBuilder,
   # Image crop, resize or pad.
   if is_training:
     if augmentation_type.lower() == 'inception':
-      min_aspect_ratio = augmentation_params['min_aspect_ratio']
-      max_aspect_ratio = augmentation_params['max_aspect_ratio']
-      min_area_ratio = augmentation_params['min_area_ratio']
-      max_area_ratio = augmentation_params['max_area_ratio']
+      min_aspect_ratio = augmentation_params['min_aspect_ratio']  # pyrefly: ignore[unsupported-operation]
+      max_aspect_ratio = augmentation_params['max_aspect_ratio']  # pyrefly: ignore[unsupported-operation]
+      min_area_ratio = augmentation_params['min_area_ratio']  # pyrefly: ignore[unsupported-operation]
+      max_area_ratio = augmentation_params['max_area_ratio']  # pyrefly: ignore[unsupported-operation]
       # Inception-style image crop: random crop -> resize.
       def random_crop_resize_fn(x, state=None):
         return processors.random_crop_resize(
@@ -411,8 +411,8 @@ def add_image(parser_builder: builders.BaseParserBuilder,
       def random_square_crop_by_scale_fn(x, state=None):
         return processors.random_square_crop_by_scale(
             image=x,
-            scale_min=augmentation_params['scale_min'],
-            scale_max=augmentation_params['scale_max'],
+            scale_min=augmentation_params['scale_min'],  # pyrefly: ignore[unsupported-operation]
+            scale_max=augmentation_params['scale_max'],  # pyrefly: ignore[unsupported-operation]
             state=state)
       preprocessor_builder.add_fn(
           fn=random_square_crop_by_scale_fn,

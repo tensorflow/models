@@ -165,7 +165,7 @@ class RecoveryCondition:
             % self.recover_counter)
       return True
     if (self.global_step >= self.recovery_begin_steps and
-        loss_value > self.loss_upper_bound):
+        loss_value > self.loss_upper_bound):  # pyrefly: ignore[unsupported-operation]
       self.recover_counter += 1
       if self.recover_counter > self.recovery_max_trials:
         raise RuntimeError(

@@ -286,9 +286,9 @@ class RoformerEncoderBlock(tf_keras.layers.Layer):
       key_value = input_tensor
     attention_output = self._attention_layer(
         query=target_tensor, value=key_value, attention_mask=attention_mask)
-    attention_output = self._attention_dropout(attention_output)
+    attention_output = self._attention_dropout(attention_output)  # pyrefly: ignore[not-callable]
     if self._norm_first:
-      attention_output = source_tensor + attention_output
+      attention_output = source_tensor + attention_output  # pyrefly: ignore[unbound-name]
     else:
       attention_output = self._attention_layer_norm(target_tensor +
                                                     attention_output)
@@ -299,10 +299,10 @@ class RoformerEncoderBlock(tf_keras.layers.Layer):
     inner_output = self._intermediate_activation_layer(inner_output)
     inner_output = self._inner_dropout_layer(inner_output)
     layer_output = self._output_dense(inner_output)
-    layer_output = self._output_dropout(layer_output)
+    layer_output = self._output_dropout(layer_output)  # pyrefly: ignore[not-callable]
 
     if self._norm_first:
-      return source_attention_output + layer_output
+      return source_attention_output + layer_output  # pyrefly: ignore[unbound-name]
 
     # During mixed precision training, layer norm output is always fp32 for now.
     # Casts fp32 for the subsequent add.

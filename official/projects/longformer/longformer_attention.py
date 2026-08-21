@@ -227,7 +227,7 @@ class LongformerAttention(tf_keras.layers.MultiHeadAttention):
     self._output_dense = tf_keras.layers.Dense(
         units=self._num_heads * self._key_dim, name="dense", **common_kwargs)
 
-  def call(self,
+  def call(self,  # pyrefly: ignore[bad-override]
            hidden_states,
            attention_mask=None,
            is_index_masked=None,
@@ -332,13 +332,13 @@ class LongformerAttention(tf_keras.layers.MultiHeadAttention):
     # self.one_sided_attn_window_size * 2 + 1]
     if self.global_attention_size > 0:
       masked_index = tf.tile(
-          is_index_masked[:, :, None, None],
+          is_index_masked[:, :, None, None],  # pyrefly: ignore[unsupported-operation]
           (1, 1, self._num_heads, self._one_sided_attn_window_size * 2 +
            max_num_global_attn_indices + 1),
       )
     else:
       masked_index = tf.tile(
-          is_index_masked[:, :, None, None],
+          is_index_masked[:, :, None, None],  # pyrefly: ignore[unsupported-operation]
           (1, 1, self._num_heads, self._one_sided_attn_window_size * 2 + 1),
       )
 
@@ -412,13 +412,13 @@ class LongformerAttention(tf_keras.layers.MultiHeadAttention):
     # global attn
     if self.global_attention_size > 0:
       masked_global_attn_index = tf.tile(
-          is_index_global_attn[:, :, None, None],
+          is_index_global_attn[:, :, None, None],  # pyrefly: ignore[unsupported-operation]
           (1, 1, self._num_heads, self._one_sided_attn_window_size * 2 +
            max_num_global_attn_indices + 1),
       )
     else:
       masked_global_attn_index = tf.tile(
-          is_index_global_attn[:, :, None, None],
+          is_index_global_attn[:, :, None, None],  # pyrefly: ignore[unsupported-operation]
           (1, 1, self._num_heads, self._one_sided_attn_window_size * 2 + 1),
       )
 

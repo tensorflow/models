@@ -445,7 +445,7 @@ class FFN(Module):
           b_init=bias_initializer,
           dtype=self.dtype,
           name="wo")
-      self.dropout = Dropout(rate=dropout_rate)
+      self.dropout = Dropout(rate=dropout_rate)  # pyrefly: ignore[bad-argument-type]
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -628,7 +628,7 @@ class MultiHeadAttention(Module):
           b_init=bias_initializer,
           dtype=self.dtype,
           name="o")
-      self.dropout = Dropout(dropout_rate)
+      self.dropout = Dropout(dropout_rate)  # pyrefly: ignore[bad-argument-type]
 
   def _update_cache(self, key, value, cache, decode_position):
     """Updates cache states and gets full-length key/value tensors."""
@@ -754,10 +754,10 @@ class SelfAttention(Module):
           name="attention")
       self.layer_norm = RMSNorm(
           hidden_size=d_model,
-          epsilon=layer_norm_epsilon,
+          epsilon=layer_norm_epsilon,  # pyrefly: ignore[bad-argument-type]
           dtype=self.dtype,
           name="layer_norm")
-      self.dropout = Dropout(dropout_rate)
+      self.dropout = Dropout(dropout_rate)  # pyrefly: ignore[bad-argument-type]
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -811,10 +811,10 @@ class CrossAttention(Module):
           name="attention")
       self.layer_norm = RMSNorm(
           hidden_size=d_model,
-          epsilon=layer_norm_epsilon,
+          epsilon=layer_norm_epsilon,  # pyrefly: ignore[bad-argument-type]
           dtype=self.dtype,
           name="layer_norm")
-      self.dropout = Dropout(dropout_rate)
+      self.dropout = Dropout(dropout_rate)  # pyrefly: ignore[bad-argument-type]
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -871,7 +871,7 @@ class EncoderBlock(Module):
           name="self_attention")
       self.ffn_layer_norm = RMSNorm(
           hidden_size=d_model,
-          epsilon=layer_norm_epsilon,
+          epsilon=layer_norm_epsilon,  # pyrefly: ignore[bad-argument-type]
           dtype=self.dtype,
           name="ffn_layer_norm")
       self.ffn = FFN(
@@ -883,7 +883,7 @@ class EncoderBlock(Module):
           bias_initializer=bias_initializer,
           dtype=self.dtype,
           name="ffn")
-      self.ffn_output_dropout = Dropout(dropout_rate)
+      self.ffn_output_dropout = Dropout(dropout_rate)  # pyrefly: ignore[bad-argument-type]
       self.return_attention_scores = return_attention_scores
 
   @tf.Module.with_name_scope
@@ -950,7 +950,7 @@ class EncDecoderBlock(Module):
           name="cross_attention")
       self.ffn_layer_norm = RMSNorm(
           hidden_size=d_model,
-          epsilon=layer_norm_epsilon,
+          epsilon=layer_norm_epsilon,  # pyrefly: ignore[bad-argument-type]
           dtype=self.dtype,
           name="ffn_layer_norm")
       self.ffn = FFN(
@@ -962,7 +962,7 @@ class EncDecoderBlock(Module):
           bias_initializer=bias_initializer,
           dtype=self.dtype,
           name="ffn")
-      self.ffn_output_dropout = Dropout(dropout_rate,)
+      self.ffn_output_dropout = Dropout(dropout_rate,)  # pyrefly: ignore[bad-argument-type]
 
   @tf.Module.with_name_scope
   def __call__(self,
@@ -1123,7 +1123,7 @@ class Encoder(Module):
     if self.config.use_shared_relative_position_bias:
       position_bias = self.relative_embedding(input_length, input_length)
     else:
-      position_bias = self.relative_embeddings[layer_idx](input_length,
+      position_bias = self.relative_embeddings[layer_idx](input_length,  # pyrefly: ignore[bad-index]
                                                           input_length)
     if dense_inputs is not None:
       # Here we ignore relative position bias for dense embeddings.
@@ -1160,7 +1160,7 @@ class Encoder(Module):
     inputs_array = []
     if inputs is not None:
       inputs_array.append(
-          self.input_embed(inputs, one_hot=cfg.one_hot_embedding))
+          self.input_embed(inputs, one_hot=cfg.one_hot_embedding))  # pyrefly: ignore[not-callable]
     if dense_inputs is not None:
       inputs_array.append(dense_inputs)
     if not inputs_array:
@@ -1332,12 +1332,12 @@ class Decoder(Module):
       decoder_mask = tf.cast(decoder_mask, self.compute_dtype)
     if encoder_decoder_mask is not None:
       encoder_decoder_mask = tf.cast(encoder_decoder_mask, self.compute_dtype)
-    x = self.target_embed(decoder_input_tokens, one_hot=cfg.one_hot_embedding)
+    x = self.target_embed(decoder_input_tokens, one_hot=cfg.one_hot_embedding)  # pyrefly: ignore[not-callable]
     tensor_shape = tf_utils.get_shape_list(x)
     tensor_shape[-2] = 1
     x = self.target_dropout(x, noise_shape=tensor_shape, training=training)
 
-    for i in range(cfg.num_decoder_layers):
+    for i in range(cfg.num_decoder_layers):  # pyrefly: ignore[bad-argument-type]
       if cache is not None:
         position_bias = self.get_relpos_bias(max_decode_len, i)
       else:
@@ -1405,12 +1405,12 @@ class T5Transformer(Module):
         self.shared_embedding = None
       self.encoder = Encoder(
           self.encoder_cfg,
-          self.shared_embedding,
+          self.shared_embedding,  # pyrefly: ignore[bad-argument-type]
           dtype=self.dtype,
           compute_dtype=self.compute_dtype)
       self.decoder = Decoder(
           self.decoder_cfg,
-          self.shared_embedding,
+          self.shared_embedding,  # pyrefly: ignore[bad-argument-type]
           dtype=self.dtype,
           compute_dtype=self.compute_dtype)
 
@@ -1585,7 +1585,7 @@ class T5Transformer(Module):
         training=training)
     outputs["encoded"] = encoded
     if self.config.return_attention_scores:
-      outputs["attention_scores"] = attn_scores
+      outputs["attention_scores"] = attn_scores  # pyrefly: ignore[unbound-name]
     return outputs
 
   @property

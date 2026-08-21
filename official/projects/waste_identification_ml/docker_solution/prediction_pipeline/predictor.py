@@ -69,7 +69,7 @@ def send_image_for_prediction(
 
 if __name__ == '__main__':
   results, status_code = send_image_for_prediction(
-      _IMAGE_PATH.value, _PORT.value
+      _IMAGE_PATH.value, _PORT.value  # pyrefly: ignore[bad-argument-type]
   )
   print(f'HTTP Status Code: {status_code}')
   print('Predictions from material model:', results[0]['num_detections'][0])

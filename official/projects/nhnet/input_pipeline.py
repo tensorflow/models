@@ -247,4 +247,4 @@ def get_input_dataset(input_file_pattern,
   if use_dataset_fn:
     return strategy.distribute_datasets_from_function(_dataset_fn)
   else:
-    return strategy.experimental_distribute_dataset(_dataset_fn())
+    return strategy.experimental_distribute_dataset(_dataset_fn())  # pyrefly: ignore[missing-attribute]

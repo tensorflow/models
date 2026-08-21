@@ -37,7 +37,7 @@ class SlicedMetricConfig(base_config.Config):
   slicing_spec: Mapping[str, int] | None = None
   slicing_feature_dtype: str | None = None
 
-  def __post_init__(
+  def __post_init__(  # pyrefly: ignore[bad-function-definition]
       self, default_params: dict[str, Any], restrictions: list[str]
   ):
     if not restrictions:

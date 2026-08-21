@@ -299,7 +299,7 @@ class YoloLayer(tf_keras.layers.Layer):
         'bbox': boxes,
         'classes': class_scores,
         'confidence': object_scores,
-        'num_detections': num_detections,
+        'num_detections': num_detections,  # pyrefly: ignore[unbound-name]
     }
 
   def get_losses(self):

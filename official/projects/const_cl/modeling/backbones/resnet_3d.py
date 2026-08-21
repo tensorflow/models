@@ -165,7 +165,7 @@ class ResNet3DY(tf_keras.Model):
           block_repeats=resnet_spec[2],
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
               self._init_stochastic_depth_rate, i + 2, 5),
-          use_self_gating=use_self_gating,
+          use_self_gating=use_self_gating,  # pyrefly: ignore[bad-argument-type]
           name='res_{}'.format(i + 2))
 
     # Duplicate res5 block.
@@ -191,7 +191,7 @@ class ResNet3DY(tf_keras.Model):
         block_repeats=resnet_spec[2],
         stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
             self._init_stochastic_depth_rate, i + 2, 5),
-        use_self_gating=use_self_gating,
+        use_self_gating=use_self_gating,  # pyrefly: ignore[bad-argument-type]
         name='res_{}_1'.format(i + 2))
     self._res_5_1_layers = block_layers
 

@@ -290,7 +290,7 @@ class Pix2Seq(tf_keras.Model):
 
   @property
   def transformer(self) -> tf_keras.Model:
-    return self._transformer
+    return self._transformer  # pyrefly: ignore[bad-return]
 
   def get_config(self):
     config = {
@@ -316,7 +316,7 @@ class Pix2Seq(tf_keras.Model):
     return config
 
   @classmethod
-  def from_config(cls, config):
+  def from_config(cls, config):  # pyrefly: ignore[bad-override]
     return cls(**config)
 
   @property
@@ -359,7 +359,7 @@ class Pix2Seq(tf_keras.Model):
       self,
       inputs: tf.Tensor,
       targets: Optional[tf.Tensor] = None,
-      training: bool = None,
+      training: bool = None,  # pyrefly: ignore[bad-function-definition]
       use_teacher_forcing_for_eval: bool = False,
       use_input_as_backbone_features=False,
   ) -> List[Any]:
@@ -401,7 +401,7 @@ class Pix2Seq(tf_keras.Model):
       logits = self._transformer(transformer_inputs, training=False)
     else:
       tokens, logits = self._transformer.infer(
-          transformer_inputs,
+          transformer_inputs,  # pyrefly: ignore[bad-argument-type]
           temperature=self._temperature,
           top_k=self._top_k,
           top_p=self._top_p,
@@ -582,7 +582,7 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     return tf.concat(encoded_sources, axis=1)
 
   def call(self, inputs: dict[str, tf.Tensor], training: bool = None):  # pytype: disable=annotation-type-mismatch
-    encoded = self.encode_sources(inputs["inputs"], inputs["pos_emb"], training)
+    encoded = self.encode_sources(inputs["inputs"], inputs["pos_emb"], training)  # pyrefly: ignore[bad-argument-type]
 
     targets = inputs["tokens"]
     seq_len = tf.shape(targets)[1]

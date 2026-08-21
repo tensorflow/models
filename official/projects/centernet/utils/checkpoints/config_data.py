@@ -41,54 +41,54 @@ class BackboneConfigData:
       return [
           # Downsampling Layers
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['downsample_input']['conv_block']),
+              weights_dict=self.weights_dict['downsample_input']['conv_block']),  # pyrefly: ignore[unsupported-operation]
           ResidualBlockCFG(
-              weights_dict=self.weights_dict['downsample_input'][
+              weights_dict=self.weights_dict['downsample_input'][  # pyrefly: ignore[unsupported-operation]
                   'residual_block']),
           # Hourglass
           HourglassCFG(
-              weights_dict=self.weights_dict['hourglass_network']['0']),
+              weights_dict=self.weights_dict['hourglass_network']['0']),  # pyrefly: ignore[unsupported-operation]
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['output_conv']['0']),
+              weights_dict=self.weights_dict['output_conv']['0']),  # pyrefly: ignore[unsupported-operation]
           # Intermediate
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['intermediate_conv1']['0']),
+              weights_dict=self.weights_dict['intermediate_conv1']['0']),  # pyrefly: ignore[unsupported-operation]
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['intermediate_conv2']['0']),
+              weights_dict=self.weights_dict['intermediate_conv2']['0']),  # pyrefly: ignore[unsupported-operation]
           ResidualBlockCFG(
-              weights_dict=self.weights_dict['intermediate_residual']['0']),
+              weights_dict=self.weights_dict['intermediate_residual']['0']),  # pyrefly: ignore[unsupported-operation]
           # Hourglass
           HourglassCFG(
-              weights_dict=self.weights_dict['hourglass_network']['1']),
+              weights_dict=self.weights_dict['hourglass_network']['1']),  # pyrefly: ignore[unsupported-operation]
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['output_conv']['1']),
+              weights_dict=self.weights_dict['output_conv']['1']),  # pyrefly: ignore[unsupported-operation]
       ]
 
     elif name == 'extremenet':
       return [
           # Downsampling Layers
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['downsample_input']['conv_block']),
+              weights_dict=self.weights_dict['downsample_input']['conv_block']),  # pyrefly: ignore[unsupported-operation]
           ResidualBlockCFG(
-              weights_dict=self.weights_dict['downsample_input'][
+              weights_dict=self.weights_dict['downsample_input'][  # pyrefly: ignore[unsupported-operation]
                   'residual_block']),
           # Hourglass
           HourglassCFG(
-              weights_dict=self.weights_dict['hourglass_network']['0']),
+              weights_dict=self.weights_dict['hourglass_network']['0']),  # pyrefly: ignore[unsupported-operation]
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['output_conv']['0']),
+              weights_dict=self.weights_dict['output_conv']['0']),  # pyrefly: ignore[unsupported-operation]
           # Intermediate
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['intermediate_conv1']['0']),
+              weights_dict=self.weights_dict['intermediate_conv1']['0']),  # pyrefly: ignore[unsupported-operation]
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['intermediate_conv2']['0']),
+              weights_dict=self.weights_dict['intermediate_conv2']['0']),  # pyrefly: ignore[unsupported-operation]
           ResidualBlockCFG(
-              weights_dict=self.weights_dict['intermediate_residual']['0']),
+              weights_dict=self.weights_dict['intermediate_residual']['0']),  # pyrefly: ignore[unsupported-operation]
           # Hourglass
           HourglassCFG(
-              weights_dict=self.weights_dict['hourglass_network']['1']),
+              weights_dict=self.weights_dict['hourglass_network']['1']),  # pyrefly: ignore[unsupported-operation]
           Conv2DBNCFG(
-              weights_dict=self.weights_dict['output_conv']['1']),
+              weights_dict=self.weights_dict['output_conv']['1']),  # pyrefly: ignore[unsupported-operation]
       ]
 
 
@@ -102,10 +102,10 @@ class HeadConfigData:
   def get_cfg_list(self, name):
     if name == 'detection_2d':
       return [
-          HeadConvCFG(weights_dict=self.weights_dict['object_center']['0']),
-          HeadConvCFG(weights_dict=self.weights_dict['object_center']['1']),
-          HeadConvCFG(weights_dict=self.weights_dict['box.Soffset']['0']),
-          HeadConvCFG(weights_dict=self.weights_dict['box.Soffset']['1']),
-          HeadConvCFG(weights_dict=self.weights_dict['box.Sscale']['0']),
-          HeadConvCFG(weights_dict=self.weights_dict['box.Sscale']['1'])
+          HeadConvCFG(weights_dict=self.weights_dict['object_center']['0']),  # pyrefly: ignore[unsupported-operation]
+          HeadConvCFG(weights_dict=self.weights_dict['object_center']['1']),  # pyrefly: ignore[unsupported-operation]
+          HeadConvCFG(weights_dict=self.weights_dict['box.Soffset']['0']),  # pyrefly: ignore[unsupported-operation]
+          HeadConvCFG(weights_dict=self.weights_dict['box.Soffset']['1']),  # pyrefly: ignore[unsupported-operation]
+          HeadConvCFG(weights_dict=self.weights_dict['box.Sscale']['0']),  # pyrefly: ignore[unsupported-operation]
+          HeadConvCFG(weights_dict=self.weights_dict['box.Sscale']['1'])  # pyrefly: ignore[unsupported-operation]
       ]

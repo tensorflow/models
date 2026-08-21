@@ -235,7 +235,7 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     else:
       boundary = None
 
-    input_mask = self._online_sample_mask(inputs=inputs, boundary=boundary)
+    input_mask = self._online_sample_mask(inputs=inputs, boundary=boundary)  # pyrefly: ignore[bad-argument-type]
 
     if self._reuse_length > 0:
       if self._permutation_size > self._reuse_length:

@@ -180,7 +180,7 @@ def filter_masks(
   for element in elements:
     if (
         area_lower_bound <= element['area'] <= area_upper_bound
-        and _aspect_ratio(element['bbox']) <= 2
+        and _aspect_ratio(element['bbox']) <= 2  # pyrefly: ignore[bad-argument-type]
         and element['area'] <= threshold
     ):
       filtered_elements.append(element)
@@ -300,7 +300,7 @@ def generate_coco_json(
     try:
       # Export imantics_Image as COCO JSON
       coco_json = imantics_image.export(style='coco')
-    except imantics.ExportError as exc:
+    except imantics.ExportError as exc:  # pyrefly: ignore[missing-attribute]
       print('Error:', exc)
       continue
 

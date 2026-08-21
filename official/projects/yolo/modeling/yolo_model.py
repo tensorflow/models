@@ -55,7 +55,7 @@ class Yolo(tf_keras.Model):
 
   def call(self,  # pytype: disable=annotation-type-mismatch
            inputs: tf.Tensor,
-           training: bool = None,
+           training: bool = None,  # pyrefly: ignore[bad-function-definition]
            mask: Any = None) -> Dict[str, tf.Tensor]:
     maps = self.backbone(inputs)
     decoded_maps = self.decoder(maps)
@@ -88,7 +88,7 @@ class Yolo(tf_keras.Model):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config):
+  def from_config(cls, config):  # pyrefly: ignore[bad-override]
     return cls(**config)
 
   @property

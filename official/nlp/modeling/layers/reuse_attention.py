@@ -450,7 +450,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
       else:
         output_shape = self._output_shape
     else:
-      output_shape = [self._query_shape[-1]]
+      output_shape = [self._query_shape[-1]]  # pyrefly: ignore[unsupported-operation]
     einsum_equation, bias_axes, output_rank = _build_proj_equation(
         free_dims, bound_dims=2, output_dims=len(output_shape))
     return tf_keras.layers.EinsumDense(
@@ -475,7 +475,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
     if self._attention_axes is None:
       self._attention_axes = tuple(range(1, rank - 2))
     else:
-      self._attention_axes = tuple(self._attention_axes)
+      self._attention_axes = tuple(self._attention_axes)  # pyrefly: ignore[bad-argument-type]
     self._dot_product_equation, self._combine_equation, attn_scores_rank = (
         _build_attention_equation(rank, attn_axes=self._attention_axes))
     norm_axes = tuple(
@@ -489,7 +489,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
     if attention_mask is not None:
       # The expand dim happens starting from the `num_heads` dimension,
       # (<batch_dims>, num_heads, <query_attention_dims, key_attention_dims>)
-      mask_expansion_axes = [-len(self._attention_axes) * 2 - 1]
+      mask_expansion_axes = [-len(self._attention_axes) * 2 - 1]  # pyrefly: ignore[bad-argument-type]
       for _ in range(len(attention_scores.shape) - len(attention_mask.shape)):
         attention_mask = tf.expand_dims(
             attention_mask, axis=mask_expansion_axes)
@@ -543,7 +543,7 @@ class ReuseMultiHeadAttention(tf_keras.layers.Layer):
             tf.shape(query)[1], tf.shape(key)[1])
       new_scores = self._masked_softmax(new_scores, attention_mask)
       if self._reuse_heads > 0:  # Partial reuse
-        reuse_scores = reuse_scores[:, :self._reuse_heads, :, :]
+        reuse_scores = reuse_scores[:, :self._reuse_heads, :, :]  # pyrefly: ignore[unsupported-operation]
         attention_scores = tf.concat([new_scores, reuse_scores], 1)
       else:  # No reuse
         attention_scores = new_scores

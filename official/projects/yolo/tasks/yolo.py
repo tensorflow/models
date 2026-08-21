@@ -249,7 +249,7 @@ class YoloTask(base_task.Task):
 
   def build_losses(self, outputs, labels, aux_losses=None):
     """Build YOLO losses."""
-    return self._loss_fn(labels, outputs)
+    return self._loss_fn(labels, outputs)  # pyrefly: ignore[not-callable]
 
   def train_step(self, inputs, model, optimizer, metrics=None):
     """Train Step.
@@ -360,7 +360,7 @@ class YoloTask(base_task.Task):
     # Compute all metrics
     if metrics:
       logs.update(
-          {self.coco_metric.name: (label['groundtruths'], coco_model_outputs)})
+          {self.coco_metric.name: (label['groundtruths'], coco_model_outputs)})  # pyrefly: ignore[missing-attribute]
       for m in metrics:
         m.update_state(loss_metrics[m.name])
         logs.update({m.name: m.result()})
@@ -369,15 +369,15 @@ class YoloTask(base_task.Task):
   def aggregate_logs(self, state=None, step_outputs=None):
     """Get Metric Results."""
     if not state:
-      self.coco_metric.reset_states()
+      self.coco_metric.reset_states()  # pyrefly: ignore[missing-attribute]
       state = self.coco_metric
-    self.coco_metric.update_state(step_outputs[self.coco_metric.name][0],
-                                  step_outputs[self.coco_metric.name][1])
+    self.coco_metric.update_state(step_outputs[self.coco_metric.name][0],  # pyrefly: ignore[missing-attribute, unsupported-operation]
+                                  step_outputs[self.coco_metric.name][1])  # pyrefly: ignore[unsupported-operation]
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     """Reduce logs and remove unneeded items. Update with COCO results."""
-    res = self.coco_metric.result()
+    res = self.coco_metric.result()  # pyrefly: ignore[missing-attribute]
     return res
 
   def initialize(self, model: tf_keras.Model):
@@ -432,7 +432,7 @@ class YoloTask(base_task.Task):
       optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       optimizer.set_bias_lr(
           opt_factory.get_bias_lr_schedule(self._task_config.smart_bias_lr))
-      optimizer.search_and_set_variable_groups(self._model.trainable_variables)
+      optimizer.search_and_set_variable_groups(self._model.trainable_variables)  # pyrefly: ignore[missing-attribute]
     else:
       optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
     opt_factory._use_ema = ema

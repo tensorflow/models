@@ -324,7 +324,7 @@ def panoptic_deeplab_resnet_coco() -> cfg.ExperimentConfig:
               ignored_label=ignore_label,
               max_instances_per_category=256,
               offset=256*256*256,
-              is_thing=is_thing,
+              is_thing=is_thing,  # pyrefly: ignore[bad-argument-type]
               rescale_predictions=True,
               report_per_class_pq=False,
               report_per_class_iou=False,
@@ -486,7 +486,7 @@ def panoptic_deeplab_mobilenetv3_large_coco() -> cfg.ExperimentConfig:
               ignored_label=ignore_label,
               max_instances_per_category=256,
               offset=256*256*256,
-              is_thing=is_thing,
+              is_thing=is_thing,  # pyrefly: ignore[bad-argument-type]
               rescale_predictions=True,
               report_per_class_pq=False,
               report_per_class_iou=False,
@@ -648,7 +648,7 @@ def panoptic_deeplab_mobilenetv3_small_coco() -> cfg.ExperimentConfig:
               ignored_label=ignore_label,
               max_instances_per_category=256,
               offset=256*256*256,
-              is_thing=is_thing,
+              is_thing=is_thing,  # pyrefly: ignore[bad-argument-type]
               rescale_predictions=True,
               report_per_class_pq=False,
               report_per_class_iou=False,

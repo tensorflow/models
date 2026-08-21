@@ -96,7 +96,7 @@ class TokenDropMaskedLMTask(masked_lm.MaskedLMTask):
         scaled_loss = loss / tf.distribute.get_strategy().num_replicas_in_sync
     tvars = model.trainable_variables
     if self.task_config.scale_loss:
-      grads = tape.gradient(scaled_loss, tvars)
+      grads = tape.gradient(scaled_loss, tvars)  # pyrefly: ignore[unbound-name]
     else:
       grads = tape.gradient(loss, tvars)
     optimizer.apply_gradients(list(zip(grads, tvars)))

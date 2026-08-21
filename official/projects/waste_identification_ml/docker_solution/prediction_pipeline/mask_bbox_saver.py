@@ -31,7 +31,7 @@ import cv2
 import numpy as np
 
 sys.path.append('models/research/')
-from object_detection.utils import visualization_utils as viz_utils  # pylint: disable=g-import-not-at-top,g-bad-import-order
+from object_detection.utils import visualization_utils as viz_utils  # pylint: disable=g-import-not-at-top,g-bad-import-order  # pyrefly: ignore[missing-import]
 
 
 def save_bbox_masks_labels(

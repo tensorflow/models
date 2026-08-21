@@ -23,7 +23,7 @@ import os
 from typing import Any, Callable, List, Optional, Sequence, Union
 
 import gin
-from six.moves import map
+from six.moves import map  # pyrefly: ignore[missing-source-for-stubs]
 import tensorflow as tf, tf_keras
 
 from official.common import dataset_fn
@@ -47,7 +47,7 @@ class InputFn(object):
                is_training: bool,
                batch_size: Optional[int] = None,
                data_root: str = '',
-               input_paths: List[str] = gin.REQUIRED,
+               input_paths: List[str] = gin.REQUIRED,  # pyrefly: ignore[bad-function-definition]
                dataset_type: str = 'tfrecord',
                use_sampling: bool = False,
                sampling_weights: Optional[Sequence[Union[int, float]]] = None,
@@ -195,10 +195,10 @@ class InputFn(object):
           values=tf.constant(self._lookup_int_values, dtype=tf.int32))
       name_to_id_table = tf.lookup.StaticHashTable(
           initializer=lookup_initializer, default_value=0)
-      parser_fn = self._parser_fn(
+      parser_fn = self._parser_fn(  # pyrefly: ignore[not-callable]
           is_training=self._is_training, label_lookup_table=name_to_id_table)
     else:
-      parser_fn = self._parser_fn(is_training=self._is_training)
+      parser_fn = self._parser_fn(is_training=self._is_training)  # pyrefly: ignore[not-callable]
 
     return parser_fn
 
@@ -220,9 +220,9 @@ class InputFn(object):
       for file_pattern in self._input_paths:
         all_file_patterns.append([file_pattern])
       # Normalize sampling probabilities.
-      total_weight = sum(self._sampling_weights)
+      total_weight = sum(self._sampling_weights)  # pyrefly: ignore[no-matching-overload]
       sampling_probabilities = [
-          float(w) / total_weight for w in self._sampling_weights
+          float(w) / total_weight for w in self._sampling_weights  # pyrefly: ignore[not-iterable]
       ]
     else:
       all_file_patterns.append(self._input_paths)
@@ -261,7 +261,7 @@ class InputFn(object):
       datasets.append(dataset)
 
     if self._use_sampling:
-      assert len(datasets) == len(sampling_probabilities)
+      assert len(datasets) == len(sampling_probabilities)  # pyrefly: ignore[unbound-name]
       dataset = tf.data.experimental.sample_from_datasets(
           datasets, sampling_probabilities)
     else:

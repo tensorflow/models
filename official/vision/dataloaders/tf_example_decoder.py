@@ -204,7 +204,7 @@ class TfExampleDecoder(decoder.Decoder):
       decoded_tensors.update({'groundtruth_attributes': attributes})
     if self._include_mask:
       decoded_tensors.update({
-          'groundtruth_instance_masks': masks,
+          'groundtruth_instance_masks': masks,  # pyrefly: ignore[unbound-name]
           'groundtruth_instance_masks_png': parsed_tensors['image/object/mask'],
       })
     return decoded_tensors

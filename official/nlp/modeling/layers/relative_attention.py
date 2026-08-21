@@ -364,7 +364,7 @@ class TwoStreamRelativeAttention(MultiHeadRelativeAttention):
       prevents attention to certain position for query attention computation.
   """
 
-  def call(self,
+  def call(self,  # pyrefly: ignore[bad-override]
            content_stream,
            content_attention_bias,
            positional_attention_bias,

@@ -63,7 +63,7 @@ class PanopticDeeplabModel(tf_keras.Model):
   def call(  # pytype: disable=annotation-type-mismatch,signature-mismatch
       self, inputs: tf.Tensor,
       image_info: tf.Tensor,
-      training: bool = None):
+      training: bool = None):  # pyrefly: ignore[bad-function-definition]
     if training is None:
       training = tf_keras.backend.learning_phase()
 

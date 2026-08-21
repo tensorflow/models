@@ -84,7 +84,7 @@ def get_scalar_from_tensor(t: tf.Tensor) -> int:
   """Utility function to convert a Tensor to a scalar."""
   t = tf_keras.backend.get_value(t)
   if callable(t):
-    return t()
+    return t()  # pyrefly: ignore[bad-return]
   else:
     return t
 

@@ -301,8 +301,8 @@ class SemanticSegmentation3DTask(base_task.Task):
       state = self.metrics
 
     for metric in self.metrics:
-      labels = step_outputs[metric.name][0]
-      predictions = step_outputs[metric.name][1]
+      labels = step_outputs[metric.name][0]  # pyrefly: ignore[unsupported-operation]
+      predictions = step_outputs[metric.name][1]  # pyrefly: ignore[unsupported-operation]
 
       # If `step_output` is distributed, it contains a tuple of Tensors instead
       # of a single Tensor, so we need to concatenate them along the batch

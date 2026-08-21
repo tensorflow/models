@@ -348,8 +348,8 @@ class Parser(maskrcnn_input.Parser):
       else:
         mask = tf.image.pad_to_bounding_box(
             mask, 0, 0,
-            self._segmentation_groundtruth_padded_size[0],
-            self._segmentation_groundtruth_padded_size[1])
+            self._segmentation_groundtruth_padded_size[0],  # pyrefly: ignore[unsupported-operation]
+            self._segmentation_groundtruth_padded_size[1])  # pyrefly: ignore[unsupported-operation]
       mask -= 1
       # Assign ignore label to the padded region.
       mask = tf.where(

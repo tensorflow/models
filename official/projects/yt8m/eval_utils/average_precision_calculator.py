@@ -114,7 +114,7 @@ class AveragePrecisionCalculator(object):
       raise ValueError("the shape of predictions and actuals does not match.")
 
     if num_positives is not None:
-      if not isinstance(num_positives, numbers.Number) or num_positives < 0:
+      if not isinstance(num_positives, numbers.Number) or num_positives < 0:  # pyrefly: ignore[unsupported-operation]
         raise ValueError(
             "'num_positives' was provided but it was a negative number.")
 

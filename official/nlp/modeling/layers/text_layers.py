@@ -120,7 +120,7 @@ class BertTokenizer(tf_keras.layers.Layer):
     tokenizer_kwargs = dict(tokenizer_kwargs or {})
     if lower_case is not None:
       tokenizer_kwargs["lower_case"] = lower_case
-    self._bert_tokenizer = text.BertTokenizer(self._vocab_table,
+    self._bert_tokenizer = text.BertTokenizer(self._vocab_table,  # pyrefly: ignore[missing-attribute]
                                               **tokenizer_kwargs)
 
   @property
@@ -317,7 +317,7 @@ class SentencepieceTokenizer(tf_keras.layers.Layer):
     self._special_tokens_dict = self._create_special_tokens_dict()
 
   def _create_tokenizer(self):
-    return text.SentencepieceTokenizer(
+    return text.SentencepieceTokenizer(  # pyrefly: ignore[missing-attribute]
         model=self._model_serialized_proto,
         out_type=tf.int32,
         nbest_size=self._nbest_size,
@@ -347,11 +347,11 @@ class SentencepieceTokenizer(tf_keras.layers.Layer):
       if self.tokenize_with_offsets:
         raise ValueError("`tokenize_with_offsets` is not supported yet when "
                          "`strip_diacritics` is set to True (b/181866850).")
-      inputs = text.normalize_utf8(inputs, "NFD")
+      inputs = text.normalize_utf8(inputs, "NFD")  # pyrefly: ignore[missing-attribute]
       inputs = tf.strings.regex_replace(inputs, r"\p{Mn}", "")
 
     if self._lower_case:
-      inputs = text.case_fold_utf8(inputs)
+      inputs = text.case_fold_utf8(inputs)  # pyrefly: ignore[missing-attribute]
 
     # Prepare to reshape the result to work around broken shape inference.
     batch_size = tf.shape(inputs)[0]
@@ -573,22 +573,22 @@ class BertPackInputs(tf_keras.layers.Layer):
     # fall back to some ad-hoc truncation.
     num_special_tokens = len(inputs) + 1
     if truncator == "round_robin":
-      trimmed_segments = text.RoundRobinTrimmer(seq_length -
+      trimmed_segments = text.RoundRobinTrimmer(seq_length -  # pyrefly: ignore[missing-attribute]
                                                 num_special_tokens).trim(inputs)
     elif truncator == "waterfall":
-      trimmed_segments = text.WaterfallTrimmer(
+      trimmed_segments = text.WaterfallTrimmer(  # pyrefly: ignore[missing-attribute]
           seq_length - num_special_tokens).trim(inputs)
     else:
       raise ValueError("Unsupported truncator: %s" % truncator)
     # Combine segments.
-    segments_combined, segment_ids = text.combine_segments(
+    segments_combined, segment_ids = text.combine_segments(  # pyrefly: ignore[missing-attribute]
         trimmed_segments,
         start_of_sequence_id=start_of_sequence_id,
         end_of_segment_id=end_of_segment_id)
     # Pad to dense Tensors.
-    input_word_ids, _ = text.pad_model_inputs(segments_combined, seq_length,
+    input_word_ids, _ = text.pad_model_inputs(segments_combined, seq_length,  # pyrefly: ignore[missing-attribute]
                                               pad_value=padding_id)
-    input_type_ids, input_mask = text.pad_model_inputs(segment_ids, seq_length,
+    input_type_ids, input_mask = text.pad_model_inputs(segment_ids, seq_length,  # pyrefly: ignore[missing-attribute]
                                                        pad_value=0)
     # Work around broken shape inference.
     output_shape = tf.stack([
@@ -633,11 +633,11 @@ class FastWordpieceBertTokenizer(tf_keras.layers.Layer):
     super().__init__(**kwargs)
     logging.info("Initialize a FastWordpieceBertTokenizer.")
     self.tokenize_with_offsets = tokenize_with_offsets
-    self._basic_tokenizer = bert_tokenizer.BasicTokenizer(lower_case=lower_case)
+    self._basic_tokenizer = bert_tokenizer.BasicTokenizer(lower_case=lower_case)  # pyrefly: ignore[missing-attribute]
 
     # Read the vocab file into a list of tokens to create `fast_wp_tokenizer`.
     self._vocab = [line.rstrip() for line in tf.io.gfile.GFile(vocab_file)]
-    self._fast_wp_tokenizer = text.FastWordpieceTokenizer(
+    self._fast_wp_tokenizer = text.FastWordpieceTokenizer(  # pyrefly: ignore[missing-attribute]
         vocab=self._vocab, token_out_type=tf.int32, no_pretokenization=True)
     self._special_tokens_dict = self._create_special_tokens_dict()
 

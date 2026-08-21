@@ -261,14 +261,14 @@ class BASNetTask(base_task.Task):
       self.relaxf_metric.reset_states()
       state = self.mae_metric
     self.mae_metric.update_state(
-        step_outputs[self.mae_metric.name][0],
-        step_outputs[self.mae_metric.name][1])
+        step_outputs[self.mae_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+        step_outputs[self.mae_metric.name][1])  # pyrefly: ignore[unsupported-operation]
     self.maxf_metric.update_state(
-        step_outputs[self.maxf_metric.name][0],
-        step_outputs[self.maxf_metric.name][1])
+        step_outputs[self.maxf_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+        step_outputs[self.maxf_metric.name][1])  # pyrefly: ignore[unsupported-operation]
     self.relaxf_metric.update_state(
-        step_outputs[self.relaxf_metric.name][0],
-        step_outputs[self.relaxf_metric.name][1])
+        step_outputs[self.relaxf_metric.name][0],  # pyrefly: ignore[unsupported-operation]
+        step_outputs[self.relaxf_metric.name][1])  # pyrefly: ignore[unsupported-operation]
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):

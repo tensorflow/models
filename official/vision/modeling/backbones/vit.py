@@ -84,8 +84,8 @@ class AddPositionEmbs(layers.Layer):
     if inputs.shape[1] != pos_embedding.shape[1]:
       pos_embedding = self._interpolate(
           pos_embedding,
-          from_shape=self.posemb_origin_shape,
-          to_shape=self.posemb_target_shape)
+          from_shape=self.posemb_origin_shape,  # pyrefly: ignore[bad-argument-type]
+          to_shape=self.posemb_target_shape)  # pyrefly: ignore[bad-argument-type]
     pos_embedding = tf.cast(pos_embedding, inputs.dtype)
 
     return inputs + pos_embedding

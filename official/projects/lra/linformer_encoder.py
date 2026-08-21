@@ -223,16 +223,16 @@ class LinformerEncoder(tf_keras.layers.Layer):
       raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
     if type_ids is None:
-      type_ids = tf.zeros_like(mask)
+      type_ids = tf.zeros_like(mask)  # pyrefly: ignore[unbound-name]
 
     if word_embeddings is None:
-      word_embeddings = self._embedding_layer(word_ids)
+      word_embeddings = self._embedding_layer(word_ids)  # pyrefly: ignore[unbound-name]
 
     if dense_inputs is not None:
       mask = tf.concat([mask, dense_mask], axis=1)
 
     embeddings = self._get_embeddings(
-        word_ids, type_ids, word_embeddings, dense_inputs, dense_type_ids
+        word_ids, type_ids, word_embeddings, dense_inputs, dense_type_ids  # pyrefly: ignore[bad-argument-type]
     )
     embeddings = self._embedding_norm_layer(embeddings)
     embeddings = self._embedding_dropout(embeddings)
