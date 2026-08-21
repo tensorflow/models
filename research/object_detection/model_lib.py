@@ -672,6 +672,10 @@ def create_model_fn(detection_model_fn,
         eval_dict[fields.InputDataFields.image_additional_channels] = features[
             fields.InputDataFields.image_additional_channels]
 
+      if fields.InputDataFields.source_id in features:
+        eval_dict[fields.InputDataFields.source_id] = features[
+            fields.InputDataFields.source_id]
+
       if class_agnostic:
         category_index = label_map_util.create_class_agnostic_category_index()
       else:
@@ -688,7 +692,10 @@ def create_model_fn(detection_model_fn,
             max_boxes_to_draw=eval_config.max_num_boxes_to_visualize,
             min_score_thresh=eval_config.min_score_threshold,
             use_normalized_coordinates=False,
-            keypoint_edges=keypoint_edges or None)
+            keypoint_edges=keypoint_edges or None,
+            viz_export_dir=eval_config.visualization_export_dir,
+            keep_img_id_for_viz_export=
+              eval_config.keep_image_id_for_visualization_export)
         vis_metric_ops = eval_metric_op_vis.get_estimator_eval_metric_ops(
             eval_dict)
 
