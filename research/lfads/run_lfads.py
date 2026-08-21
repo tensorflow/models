@@ -136,7 +136,7 @@ flags.DEFINE_integer("max_ckpt_to_keep_lve", MAX_CKPT_TO_KEEP_LVE,
 flags.DEFINE_integer("ext_input_dim", EXT_INPUT_DIM, "Dimension of external \
 inputs")
 flags.DEFINE_integer("num_steps_for_gen_ic", NUM_STEPS_FOR_GEN_IC,
-                     "Number of steps to train the generator initial conditon.")
+                     "Number of steps to train the generator initial condition.")
 
 
 # If there are observed inputs, there are two ways to add that observed
@@ -193,7 +193,7 @@ flags.DEFINE_float("gen_cell_rec_weight_scale", GEN_CELL_REC_WEIGHT_SCALE,
                      "Input scaling for rec weights in generator.")
 
 # KL DISTRIBUTIONS
-# If you don't know what you are donig here, please leave alone, the
+# If you don't know what you are doing here, please leave alone, the
 # defaults should be fine for most cases, irregardless of other parameters.
 #
 # If you don't want the prior variance to be learned, set the
@@ -379,7 +379,7 @@ flags.DEFINE_float("co_mean_corr_scale", CO_MEAN_CORR_SCALE,
 # what those LL lower bounds mean anymore, and they cannot be compared
 # (AFAIK).
 flags.DEFINE_float("kl_ic_weight", KL_IC_WEIGHT,
-                   "Strength of KL weight on initial conditions KL penatly.")
+                   "Strength of KL weight on initial conditions KL penalty.")
 flags.DEFINE_float("kl_co_weight", KL_CO_WEIGHT,
                    "Strength of KL weight on controller output KL penalty.")
 
