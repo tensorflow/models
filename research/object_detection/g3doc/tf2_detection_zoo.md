@@ -9,7 +9,7 @@ We provide a collection of detection models pre-trained on the
 [COCO 2017 dataset](http://cocodataset.org). These models can be useful for
 out-of-the-box inference if you are interested in categories already in those
 datasets. You can try it in our inference
-[colab](../colab_tutorials/inference_tf2_colab.ipynb)
+[colab](../colab_tutorials/inference_tf2_colab.ipynb).
 
 They are also useful for initializing your models when training on novel
 datasets. You can try this out on our few-shot training
