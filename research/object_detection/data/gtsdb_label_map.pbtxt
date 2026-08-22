@@ -1,0 +1,168 @@
+item {
+  name: "speed limit 20 (prohibitory)"
+  id: 1
+}
+item {
+  name: "speed limit 30 (prohibitory)"
+  id: 2
+}
+item {
+  name: "speed limit 50 (prohibitory)"
+  id: 3
+}
+item {
+  name: "speed limit 60 (prohibitory)"
+  id: 4
+}
+item {
+  name: "speed limit 70 (prohibitory)"
+  id: 5
+}
+item {
+  name: "speed limit 80 (prohibitory)"
+  id: 6
+}
+item {
+  name: "restriction ends 80 (other)"
+  id: 7
+}
+item {
+  name: "speed limit 100 (prohibitory)"
+  id: 8
+}
+item {
+  name: "speed limit 120 (prohibitory)"
+  id: 9
+}
+item {
+  name: "no overtaking (prohibitory)"
+  id: 10
+}
+item {
+  name: "no overtaking (trucks) (prohibitory)"
+  id: 11
+}
+item {
+  name: "priority at next intersection (danger)"
+  id: 12
+}
+item {
+  name: "priority road (other)"
+  id: 13
+}
+item {
+  name: "give way (other)"
+  id: 14
+}
+item {
+  name: "stop (other)"
+  id: 15
+}
+item {
+  name: "no traffic both ways (prohibitory)"
+  id: 16
+}
+item {
+  name: "no trucks (prohibitory)"
+  id: 17
+}
+item {
+  name: "no entry (other)"
+  id: 18
+}
+item {
+  name: "bend left (danger)"
+  id: 19
+}
+item {
+  name: "bend right (danger)"
+  id: 21
+}
+item {
+  name: "bend (danger)"
+  id: 22
+}
+item {
+  name: "uneven road (danger)"
+  id: 23
+}
+item {
+  name: "slippery road (danger)"
+  id: 24
+}
+item {
+  name: "road narrows (danger)"
+  id: 25
+}
+item {
+  name: "construction (danger)"
+  id: 26
+}
+item {
+  name: "traffic signal (danger)"
+  id: 27
+}
+item {
+  name: "pedestrian crossing (danger)"
+  id: 28
+}
+item {
+  name: "school crossing (danger)"
+  id: 29
+}
+item {
+  name: "cycles crossing (danger)"
+  id: 30
+}
+item {
+  name: "snow (danger)"
+  id: 31
+}
+item {
+  name: "animals (danger)"
+  id: 32
+}
+item {
+  name: "restriction ends (other)"
+  id: 33
+}
+item {
+  name: "go right (mandatory)"
+  id: 34
+}
+item {
+  name: "go left (mandatory)"
+  id: 35
+}
+item {
+  name: "go straight (mandatory)"
+  id: 36
+}
+item {
+  name: "go right or straight (mandatory)"
+  id: 37
+}
+item {
+  name: "go left or straight (mandatory)"
+  id: 38
+}
+item {
+  name: "keep right (mandatory)"
+  id: 39
+}
+item {
+  name: "keep left (mandatory)"
+  id: 40
+}
+item {
+  name: "roundabout (mandatory)"
+  id: 41
+}
+item {
+  name: "restriction ends (overtaking) (other)"
+  id: 42
+}
+item {
+  name: "restriction ends (overtaking (trucks)) (other)"
+  id: 43
+}
