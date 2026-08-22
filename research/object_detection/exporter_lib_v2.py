@@ -28,6 +28,14 @@ INPUT_BUILDER_UTIL_MAP = {
     'model_build': model_builder.build,
 }
 
+#Class to set Export Options
+class ExportOptions:
+	# Flag to skip preprocessing
+    skip_preprocess = False
+    # Input image width/height (considered to be fixed when set) 
+    width = None
+    height = None
+
 
 def _decode_image(encoded_image_string_tensor):
   image_tensor = tf.image.decode_image(encoded_image_string_tensor,
@@ -149,7 +157,7 @@ class DetectionFromImageModule(DetectionInferenceModule):
     """
     if zipped_side_inputs is None:
       zipped_side_inputs = []
-    sig = [tf.TensorSpec(shape=[1, None, None, 3],
+    sig = [tf.TensorSpec(shape=[1, ExportOptions.height, ExportOptions.width, 3],
                          dtype=tf.uint8,
                          name='input_tensor')]
     if use_side_inputs:
@@ -158,7 +166,13 @@ class DetectionFromImageModule(DetectionInferenceModule):
 
     def call_func(input_tensor, *side_inputs):
       kwargs = dict(zip(self._side_input_names, side_inputs))
-      images, true_shapes = self._preprocess_input(input_tensor, lambda x: x)
+      if ExportOptions.skip_preprocess:
+          images = input_tensor
+          input_shape = tf.shape(input_tensor)
+          input_shape_slice = tf.slice(input_shape, [1], [3])
+          true_shapes = tf.expand_dims(input_shape_slice, axis=0)
+      else:
+          images, true_shapes = self._preprocess_input(input_tensor, lambda x: x)
       return self._run_inference_on_images(images, true_shapes, **kwargs)
 
     self.__call__ = tf.function(call_func, input_signature=sig)
