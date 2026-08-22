@@ -25,6 +25,7 @@ import time
 
 import numpy as np
 import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection import eval_util
 from object_detection import inputs
@@ -211,6 +212,7 @@ def eager_train_step(detection_model,
                      labels,
                      unpad_groundtruth_tensors,
                      optimizer,
+                     train_config,
                      training_step,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
@@ -284,6 +286,7 @@ def eager_train_step(detection_model,
           float32 tensor containing the weights of the keypoint depth feature.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
+    train_config: The train_pb2.TrainConfig protobuf.
     training_step: int, the training step number.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
@@ -313,7 +316,17 @@ def eager_train_step(detection_model,
 
     losses_dict = normalize_dict(losses_dict, num_replicas)
 
-  trainable_variables = detection_model.trainable_variables
+  # Optionally freeze some layers
+  include_variables = (
+      train_config.update_trainable_variables
+      if train_config.update_trainable_variables else None)
+  exclude_variables = (
+      train_config.freeze_variables
+      if train_config.freeze_variables else None)
+  trainable_variables = slim.filter_variables(
+      detection_model.trainable_variables,
+      include_patterns=include_variables,
+      exclude_patterns=exclude_variables)
 
   total_loss = losses_dict['Loss/total_loss']
   gradients = tape.gradient(total_loss, trainable_variables)
@@ -638,6 +651,7 @@ def train_loop(
               labels,
               unpad_groundtruth_tensors,
               optimizer,
+              train_config,
               training_step=global_step,
               add_regularization_loss=add_regularization_loss,
               clip_gradients_value=clip_gradients_value,
