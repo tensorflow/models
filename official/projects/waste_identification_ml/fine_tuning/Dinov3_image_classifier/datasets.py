@@ -30,6 +30,7 @@
 
 from collections.abc import Sequence
 import logging
+import os
 import pathlib
 from typing import TypeAlias
 
@@ -53,31 +54,7 @@ def _get_train_transform(
     image_mean: Sequence[float],
     image_std: Sequence[float],
 ) -> v2.Compose:
-  """Builds the training image transform pipeline.
-
-  Uses the `torchvision.transforms.v2` API, matching the DINOv3
-  reference preprocessing: resize the uint8 image, convert to float32
-  scaled to [0, 1], then normalize with the given statistics.
-
-  Note: Unlike typical supervised training, this fine-tuning setup intentionally
-  omits strong data augmentations like `RandomResizedCrop` and
-  `RandomHorizontalFlip`. This aligns with common practices when fine-tuning
-  models pre-trained with self-supervised methods like DINOv3, where the
-  pre-training itself involves extensive augmentations. The focus during
-  fine-tuning is often on adapting the pre-trained features to the new
-  dataset with minimal disruption from further aggressive augmentations.
-
-  Args:
-      image_size: Target side length in pixels for the square resize.
-      image_mean: Per-channel mean for normalization, as a 3-tuple of floats in
-        `(R, G, B)` order.
-      image_std: Per-channel standard deviation for normalization, as a 3-tuple
-        of floats in `(R, G, B)` order.
-
-  Returns:
-      A pipeline that resizes, converts to a float32 tensor in `[0, 1]`, and
-      normalizes with the given statistics. No augmentation is applied.
-  """
+  """Builds the training image transform pipeline."""
   return v2.Compose([
       v2.ToImage(),
       v2.Resize((image_size, image_size), antialias=True),
@@ -91,22 +68,7 @@ def _get_valid_transform(
     image_mean: Sequence[float],
     image_std: Sequence[float],
 ) -> v2.Compose:
-  """Builds the validation image transform pipeline.
-
-  Identical to the training transform: resize, float conversion, and
-  normalization, with no augmentation.
-
-  Args:
-      image_size: Target side length in pixels for the square resize.
-      image_mean: Per-channel mean for normalization, as a 3-tuple of floats in
-        `(R, G, B)` order.
-      image_std: Per-channel standard deviation for normalization, as a 3-tuple
-        of floats in `(R, G, B)` order.
-
-  Returns:
-      A pipeline that resizes, converts to a float32 tensor in `[0, 1]`, and
-      normalizes with the given statistics.
-  """
+  """Builds the validation image transform pipeline."""
   return v2.Compose([
       v2.ToImage(),
       v2.Resize((image_size, image_size), antialias=True),
@@ -116,8 +78,8 @@ def _get_valid_transform(
 
 
 def get_datasets(
-    train_dir: str,
-    valid_dir: str,
+    train_dir: str | pathlib.Path,
+    valid_dir: str | pathlib.Path,
     image_size: int,
     image_mean: Sequence[float],
     image_std: Sequence[float],
@@ -125,27 +87,22 @@ def get_datasets(
   """Builds the training and validation datasets.
 
   Args:
-      train_dir: Path to the training directory in PyTorch ImageFolder format
-        (one subdirectory per class).
-      valid_dir: Path to the validation directory in PyTorch ImageFolder format
-        (one subdirectory per class).
-      image_size: Target side length in pixels for the square resize applied to
-        both training and validation images.
-      image_mean: Per-channel mean for normalization, as a 3-tuple of floats in
-        `(R, G, B)` order.
-      image_std: Per-channel standard deviation for normalization, as a 3-tuple
-        of floats in `(R, G, B)` order.
+      train_dir: Path to the training directory in PyTorch ImageFolder format.
+      valid_dir: Path to the validation directory in PyTorch ImageFolder format.
+      image_size: Target side length in pixels for the square resize.
+      image_mean: Per-channel mean for normalization in (R, G, B) order.
+      image_std: Per-channel standard deviation for normalization in (R, G, B)
+        order.
 
   Returns:
-      The `(dataset_train, dataset_valid, class_names)` tuple, where
-      `class_names` is ordered alphabetically.
+      The (dataset_train, dataset_valid, class_names) tuple.
   """
   dataset_train = datasets.ImageFolder(
-      train_dir,
+      os.fspath(train_dir),
       transform=_get_train_transform(image_size, image_mean, image_std),
   )
   dataset_valid = datasets.ImageFolder(
-      valid_dir,
+      os.fspath(valid_dir),
       transform=_get_valid_transform(image_size, image_mean, image_std),
   )
   return dataset_train, dataset_valid, dataset_train.classes
@@ -157,22 +114,7 @@ def get_data_loaders(
     batch_size: int,
     num_workers: int,
 ) -> DataLoadersTuple:
-  """Builds the training and validation data loaders.
-
-  Loaders use pinned memory, persistent workers, and prefetching to keep
-  the GPU fed during training on CUDA hardware.
-
-  Args:
-      dataset_train: The training dataset.
-      dataset_valid: The validation dataset.
-      batch_size: Number of samples per batch for both loaders.
-      num_workers: Number of parallel worker processes for data loading. Used
-        for both loaders.
-
-  Returns:
-      The `(train_loader, valid_loader)` tuple. The training loader shuffles
-      each epoch; the validation loader does not.
-  """
+  """Builds the training and validation data loaders."""
   persistent_workers = num_workers > 0
   prefetch_factor = 4 if num_workers > 0 else None
   train_loader = torch_data.DataLoader(
@@ -197,28 +139,10 @@ def get_data_loaders(
 
 
 def compute_balanced_class_weights(
-    train_directory: pathlib.Path,
+    train_directory: str | pathlib.Path,
 ) -> torch.Tensor:
-  """Computes sklearn-style balanced class weights from a directory tree.
-
-  Counts the number of image files in each class subdirectory of
-  `train_directory` and returns weights using the formula
-  `n_samples / (n_classes * class_count)`. Classes are ordered alphabetically
-  to match `torchvision.datasets.ImageFolder` ordering.
-
-  Args:
-      train_directory: Path to the training directory. Expected to contain
-        one subdirectory per class, in PyTorch ImageFolder format.
-
-  Returns:
-      A 1D `torch.Tensor` of dtype `float32` and shape `(number_of_classes,)`
-      containing the class weight for each class, ordered alphabetically by
-      class name.
-
-  Raises:
-      ValueError: If `train_directory` contains no class subdirectories or if
-        any class subdirectory contains no files.
-  """
+  """Computes sklearn-style balanced class weights from a directory tree."""
+  train_directory = pathlib.Path(train_directory)
   class_names = sorted(
       entry.name for entry in train_directory.iterdir() if entry.is_dir()
   )

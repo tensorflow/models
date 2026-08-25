@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for train_classifier_v1.py."""
+"""Unit tests for training.py."""
 
 import contextlib
 import logging
@@ -29,7 +29,7 @@ from torch import nn
 from torch import optim
 from torch.utils import data as torch_data
 
-from official.projects.waste_identification_ml.fine_tuning.Dinov3_image_classifier import train_classifier_v1
+from official.projects.waste_identification_ml.fine_tuning.Dinov3_image_classifier import train_classifier_v1 as training
 
 
 class _TinyClassifier(nn.Module):
@@ -75,31 +75,31 @@ class SeedEverythingTest(absltest.TestCase):
 
   def test_seeds_produce_reproducible_python_random(self):
     """Verifies Python's `random` module is seeded."""
-    train_classifier_v1.seed_everything(123)
+    training.seed_everything(123)
     first_value = random.random()
-    train_classifier_v1.seed_everything(123)
+    training.seed_everything(123)
     second_value = random.random()
     self.assertEqual(first_value, second_value)
 
   def test_seeds_produce_reproducible_numpy_random(self):
     """Verifies NumPy's global RNG is seeded."""
-    train_classifier_v1.seed_everything(123)
+    training.seed_everything(123)
     first_array = np.random.rand(4)
-    train_classifier_v1.seed_everything(123)
+    training.seed_everything(123)
     second_array = np.random.rand(4)
     np.testing.assert_array_equal(first_array, second_array)
 
   def test_seeds_produce_reproducible_torch_random(self):
     """Verifies PyTorch's CPU RNG is seeded."""
-    train_classifier_v1.seed_everything(123)
+    training.seed_everything(123)
     first_tensor = torch.rand(4)
-    train_classifier_v1.seed_everything(123)
+    training.seed_everything(123)
     second_tensor = torch.rand(4)
     torch.testing.assert_close(first_tensor, second_tensor)
 
   def test_sets_cudnn_and_matmul_flags_for_throughput(self):
     """Verifies cuDNN benchmark/deterministic and TF32 flags are configured."""
-    train_classifier_v1.seed_everything(42)
+    training.seed_everything(42)
     self.assertFalse(torch.backends.cudnn.deterministic)
     self.assertTrue(torch.backends.cudnn.benchmark)
     self.assertEqual(torch.get_float32_matmul_precision(), "high")
@@ -111,7 +111,7 @@ class CollectTrainableParametersTest(absltest.TestCase):
   def test_returns_only_trainable_parameters(self):
     """Verifies parameters with requires_grad=False are excluded."""
     classifier_model = _TinyClassifier()
-    trainable_parameters = train_classifier_v1.collect_trainable_parameters(
+    trainable_parameters = training.collect_trainable_parameters(
         classifier_model
     )
     # _TinyClassifier freezes the backbone (weight + bias) and leaves the
@@ -123,7 +123,7 @@ class CollectTrainableParametersTest(absltest.TestCase):
   def test_returns_all_parameters_when_nothing_is_frozen(self):
     """Verifies a fully trainable model yields every parameter tensor."""
     classifier_model = nn.Linear(in_features=4, out_features=2)
-    trainable_parameters = train_classifier_v1.collect_trainable_parameters(
+    trainable_parameters = training.collect_trainable_parameters(
         classifier_model
     )
     # Linear layer has exactly two tensors: weight and bias.
@@ -134,7 +134,7 @@ class CollectTrainableParametersTest(absltest.TestCase):
     classifier_model = nn.Linear(in_features=4, out_features=2)
     for parameter in classifier_model.parameters():
       parameter.requires_grad = False
-    trainable_parameters = train_classifier_v1.collect_trainable_parameters(
+    trainable_parameters = training.collect_trainable_parameters(
         classifier_model
     )
     self.assertEmpty(trainable_parameters)
@@ -151,7 +151,7 @@ class BuildCosineSchedulerTest(absltest.TestCase):
   def test_returns_cosine_annealing_scheduler(self):
     """Verifies the returned object is a CosineAnnealingLR instance."""
     optimizer = self._make_optimizer(learning_rate=1e-3)
-    scheduler = train_classifier_v1.build_cosine_scheduler(
+    scheduler = training.build_cosine_scheduler(
         optimizer=optimizer,
         total_epochs=10,
         cosine_minimum_learning_rate=1e-6,
@@ -161,7 +161,7 @@ class BuildCosineSchedulerTest(absltest.TestCase):
   def test_configures_t_max_and_eta_min(self):
     """Verifies T_max and eta_min are forwarded correctly."""
     optimizer = self._make_optimizer(learning_rate=1e-3)
-    scheduler = train_classifier_v1.build_cosine_scheduler(
+    scheduler = training.build_cosine_scheduler(
         optimizer=optimizer,
         total_epochs=25,
         cosine_minimum_learning_rate=5e-7,
@@ -172,7 +172,7 @@ class BuildCosineSchedulerTest(absltest.TestCase):
   def test_starts_at_optimizer_learning_rate_and_decays(self):
     """Verifies the LR starts at the optimizer's LR and decreases over time."""
     optimizer = self._make_optimizer(learning_rate=1e-3)
-    scheduler = train_classifier_v1.build_cosine_scheduler(
+    scheduler = training.build_cosine_scheduler(
         optimizer=optimizer,
         total_epochs=10,
         cosine_minimum_learning_rate=1e-6,
@@ -210,12 +210,12 @@ class TrainOneEpochTest(parameterized.TestCase):
     dataset = _make_random_dataset(number_of_samples=8, number_of_classes=3)
     train_loader = torch_data.DataLoader(dataset, batch_size=4)
     optimizer = optim.SGD(
-        train_classifier_v1.collect_trainable_parameters(classifier_model),
+        training.collect_trainable_parameters(classifier_model),
         lr=1e-2,
     )
     criterion = nn.CrossEntropyLoss()
 
-    return train_classifier_v1.train_one_epoch(
+    return training.train_one_epoch(
         classifier_model=classifier_model,
         train_loader=train_loader,
         optimizer=optimizer,
@@ -239,12 +239,12 @@ class TrainOneEpochTest(parameterized.TestCase):
     dataset = _make_random_dataset(number_of_samples=4, number_of_classes=3)
     train_loader = torch_data.DataLoader(dataset, batch_size=2)
     optimizer = optim.SGD(
-        train_classifier_v1.collect_trainable_parameters(classifier_model),
+        training.collect_trainable_parameters(classifier_model),
         lr=1e-2,
     )
     criterion = nn.CrossEntropyLoss()
 
-    train_classifier_v1.train_one_epoch(
+    training.train_one_epoch(
         classifier_model=classifier_model,
         train_loader=train_loader,
         optimizer=optimizer,
@@ -263,12 +263,12 @@ class TrainOneEpochTest(parameterized.TestCase):
     dataset = _make_random_dataset(number_of_samples=8, number_of_classes=3)
     train_loader = torch_data.DataLoader(dataset, batch_size=4)
     optimizer = optim.SGD(
-        train_classifier_v1.collect_trainable_parameters(classifier_model),
+        training.collect_trainable_parameters(classifier_model),
         lr=1e-1,
     )
     criterion = nn.CrossEntropyLoss()
 
-    train_classifier_v1.train_one_epoch(
+    training.train_one_epoch(
         classifier_model=classifier_model,
         train_loader=train_loader,
         optimizer=optimizer,
@@ -291,12 +291,12 @@ class TrainOneEpochTest(parameterized.TestCase):
     dataset = _make_random_dataset(number_of_samples=8, number_of_classes=3)
     train_loader = torch_data.DataLoader(dataset, batch_size=4)
     optimizer = optim.SGD(
-        train_classifier_v1.collect_trainable_parameters(classifier_model),
+        training.collect_trainable_parameters(classifier_model),
         lr=1e-1,
     )
     criterion = nn.CrossEntropyLoss()
 
-    train_classifier_v1.train_one_epoch(
+    training.train_one_epoch(
         classifier_model=classifier_model,
         train_loader=train_loader,
         optimizer=optimizer,
@@ -343,7 +343,7 @@ class ValidateTest(absltest.TestCase):
     validation_loader = torch_data.DataLoader(dataset, batch_size=4)
     criterion = nn.CrossEntropyLoss()
 
-    return train_classifier_v1.validate(
+    return training.validate(
         classifier_model=classifier_model,
         validation_loader=validation_loader,
         criterion=criterion,
@@ -366,7 +366,7 @@ class ValidateTest(absltest.TestCase):
     validation_loader = torch_data.DataLoader(dataset, batch_size=2)
     criterion = nn.CrossEntropyLoss()
 
-    train_classifier_v1.validate(
+    training.validate(
         classifier_model=classifier_model,
         validation_loader=validation_loader,
         criterion=criterion,
@@ -384,7 +384,7 @@ class ValidateTest(absltest.TestCase):
     validation_loader = torch_data.DataLoader(dataset, batch_size=4)
     criterion = nn.CrossEntropyLoss()
 
-    train_classifier_v1.validate(
+    training.validate(
         classifier_model=classifier_model,
         validation_loader=validation_loader,
         criterion=criterion,
@@ -421,13 +421,13 @@ class ConfigureLoggingTest(absltest.TestCase):
 
   def test_creates_log_file_in_output_directory(self):
     """Verifies a log file is created at the expected path."""
-    train_classifier_v1.configure_logging(self.output_directory)
-    log_path = self.output_directory / train_classifier_v1.LOG_FILENAME
+    training.configure_logging(self.output_directory)
+    log_path = self.output_directory / training.LOG_FILENAME
     self.assertTrue(log_path.exists())
 
   def test_attaches_console_and_file_handlers(self):
     """Verifies exactly one StreamHandler and one FileHandler are attached."""
-    train_classifier_v1.configure_logging(self.output_directory)
+    training.configure_logging(self.output_directory)
     handlers = logging.getLogger().handlers
     file_handlers = [h for h in handlers if isinstance(h, logging.FileHandler)]
     # StreamHandler is the base class of FileHandler, so filter it out
@@ -443,8 +443,8 @@ class ConfigureLoggingTest(absltest.TestCase):
 
   def test_second_call_does_not_duplicate_handlers(self):
     """Verifies handlers.clear() prevents duplicate handlers on re-init."""
-    train_classifier_v1.configure_logging(self.output_directory)
-    train_classifier_v1.configure_logging(self.output_directory)
+    training.configure_logging(self.output_directory)
+    training.configure_logging(self.output_directory)
     handlers = logging.getLogger().handlers
     file_handlers = [h for h in handlers if isinstance(h, logging.FileHandler)]
     self.assertLen(file_handlers, 1)

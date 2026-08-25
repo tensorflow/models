@@ -16,6 +16,7 @@
 
 from collections.abc import Sequence
 import logging
+import math
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -33,29 +34,15 @@ _VALIDATION_COLOR = "tab:red"
 
 
 class SaveBestModel:
-  """Saves the best model to disk when validation loss improves.
+  """Saves the best model to disk when validation loss improves."""
 
-  Two checkpoint files are written each time an improvement is observed:
-    1. The full model's state dict, at `<output_directory>/best_<name>.pth`.
-    2. The model's head-only state dict, at
-       `<output_directory>/best_head_<name>.pth`.
-
-  The head-only checkpoint assumes the model exposes a `.head` submodule
-  (as `Dinov3Classification` does). Passing a model without a `.head`
-  attribute will raise `AttributeError` at save time.
-
-  Attributes:
-    best_validation_loss: Lowest validation loss observed so far.
-  """
-
-  def __init__(self, best_validation_loss: float = float("inf")):
-    """Initializes the best-loss tracker.
-
-    Args:
-      best_validation_loss: Starting value for the best validation loss.
-        Defaults to infinity so the first epoch always saves.
-    """
+  def __init__(
+      self,
+      best_validation_loss: float = float("inf"),
+      minimum_delta: float = 1e-4,
+  ):
     self.best_validation_loss = best_validation_loss
+    self.minimum_delta = minimum_delta
 
   def __call__(
       self,
@@ -65,22 +52,24 @@ class SaveBestModel:
       output_directory: pathlib.Path,
       checkpoint_name: str,
   ) -> None:
-    """Saves the model if validation loss improved this epoch.
+    if not math.isfinite(current_validation_loss):
+      _LOGGER.warning(
+          "[SaveBestModel] Non-finite validation loss (%s). Skipping checkpoint"
+          " save.",
+          current_validation_loss,
+      )
+      return
 
-    Args:
-      current_validation_loss: Validation loss for the current epoch.
-      epoch: Zero-based epoch index.
-      model: Model whose state should be saved. Must expose a `.head` submodule
-        for the head-only checkpoint.
-      output_directory: Directory to write the checkpoint files into.
-      checkpoint_name: Base file name for the saved checkpoints (no extension).
-    """
-    if current_validation_loss >= self.best_validation_loss:
+    # Requires a meaningful improvement exceeding minimum_delta
+    if current_validation_loss > (
+        self.best_validation_loss - self.minimum_delta
+    ):
       return
 
     self.best_validation_loss = current_validation_loss
     _LOGGER.info(
-        "Best validation loss: %s. Saving best model for epoch %d.",
+        "Best validation loss improved to %.5f. Saving best model for"
+        " epoch %d.",
         self.best_validation_loss,
         epoch + 1,
     )
@@ -104,34 +93,9 @@ class SaveBestModel:
 
 
 class EarlyStopping:
-  """Signals when training should stop after a plateau in validation loss.
+  """Signals when training should stop after a plateau in validation loss."""
 
-  Tracks the best validation loss and counts how many epochs have passed
-  without meaningful improvement. When the count reaches `patience`,
-  further calls return True.
-
-  Once the stop signal has been raised, subsequent calls continue to
-  return True. Reuse of a triggered instance across separate training
-  runs is not recommended; construct a fresh instance instead.
-
-  Attributes:
-    patience: Number of epochs without improvement after which stopping is
-      signaled.
-    minimum_delta: Minimum validation loss improvement that counts as progress.
-    best_loss: Lowest validation loss observed so far.
-    counter: Number of consecutive epochs without improvement.
-    should_stop: Whether stopping has been signaled.
-  """
-
-  def __init__(self, patience: int = 7, minimum_delta: float = 0.0):
-    """Initializes the early-stopping tracker.
-
-    Args:
-      patience: Number of epochs without improvement after which training will
-        be stopped.
-      minimum_delta: Minimum validation loss improvement that counts as
-        progress.
-    """
+  def __init__(self, patience: int = 5, minimum_delta: float = 1e-4):
     self.patience = patience
     self.minimum_delta = minimum_delta
     self.best_loss = float("inf")
@@ -139,22 +103,23 @@ class EarlyStopping:
     self.should_stop = False
 
   def __call__(self, current_validation_loss: float) -> bool:
-    """Updates the counter and returns whether training should stop.
+    if not math.isfinite(current_validation_loss):
+      _LOGGER.warning(
+          "[EarlyStopping] Non-finite validation loss encountered. Stopping"
+          " training."
+      )
+      self.should_stop = True
+      return True
 
-    Args:
-      current_validation_loss: Validation loss for the current epoch.
-
-    Returns:
-      True if training should stop, False otherwise.
-    """
-    if current_validation_loss < self.best_loss - self.minimum_delta:
+    if current_validation_loss <= (self.best_loss - self.minimum_delta):
       self.best_loss = current_validation_loss
       self.counter = 0
       return self.should_stop
 
     self.counter += 1
     _LOGGER.info(
-        "[EarlyStopping] No improvement. Counter: %d/%d",
+        "[EarlyStopping] No improvement (delta < %.5f). Counter: %d/%d",
+        self.minimum_delta,
         self.counter,
         self.patience,
     )
@@ -174,26 +139,7 @@ def save_model(
     output_directory: pathlib.Path,
     checkpoint_name: str,
 ) -> None:
-  """Saves the final trained model and optimizer state to disk.
-
-  Two checkpoints are written:
-    1. The full model (backbone + head) and optimizer state, at
-       `<output_directory>/<checkpoint_name>.pth`.
-    2. The classifier head only plus optimizer state, at
-       `<output_directory>/head_<checkpoint_name>.pth`.
-
-  The head-only checkpoint assumes the model exposes a `.head` submodule
-  (as `Dinov3Classification` does). Passing a model without a `.head`
-  attribute will raise `AttributeError`.
-
-  Args:
-    epochs: Total number of epochs the model was trained for.
-    model: Model whose state should be saved. Must expose a `.head` submodule
-      for the head-only checkpoint.
-    optimizer: Optimizer whose state should be saved.
-    output_directory: Directory to write the checkpoint files into.
-    checkpoint_name: Base file name for the saved checkpoints (no extension).
-  """
+  """Saves the final trained model and optimizer state to disk."""
   output_directory.mkdir(parents=True, exist_ok=True)
   full_checkpoint_path = output_directory / (
       f"{checkpoint_name}{_CHECKPOINT_EXTENSION}"
@@ -227,18 +173,7 @@ def save_plots(
     validation_loss: Sequence[float],
     output_directory: pathlib.Path,
 ) -> None:
-  """Saves accuracy and loss curves as PNGs.
-
-  The ggplot matplotlib style is applied only within this function so that
-  importing this module does not mutate matplotlib's global style state.
-
-  Args:
-    train_accuracy: Per-epoch training accuracy values.
-    validation_accuracy: Per-epoch validation accuracy values.
-    train_loss: Per-epoch training loss values.
-    validation_loss: Per-epoch validation loss values.
-    output_directory: Directory to write the plot files into.
-  """
+  """Saves accuracy and loss curves as PNGs."""
   output_directory.mkdir(parents=True, exist_ok=True)
   with plt.style.context(_MATPLOTLIB_STYLE):
     _save_curve_pair(
@@ -267,16 +202,7 @@ def _save_curve_pair(
     validation_label: str,
     output_path: pathlib.Path,
 ) -> None:
-  """Plots one train/validation pair to a PNG and closes the figure.
-
-  Args:
-    train_series: Per-epoch training values.
-    validation_series: Per-epoch validation values.
-    y_axis_label: Label for the y-axis (e.g. 'Accuracy', 'Loss').
-    train_label: Legend label for the training curve.
-    validation_label: Legend label for the validation curve.
-    output_path: PNG path to write.
-  """
+  """Plots one train/validation pair to a PNG and closes the figure."""
   figure = plt.figure(figsize=_PLOT_FIGURE_SIZE)
   try:
     plt.plot(train_series, color=_TRAIN_COLOR, linestyle="-", label=train_label)

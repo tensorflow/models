@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Unit tests for training_callbacks.py."""
+
 import pathlib
 from unittest import mock
 
@@ -55,7 +57,7 @@ class SaveBestModelTest(absltest.TestCase):
     self.assertIn("/tmp/ckpt/best_head_run1.pth", saved_paths)
 
   def test_skips_saving_when_loss_did_not_improve(self):
-    """Verifies no checkpoints are written when loss is not strictly lower."""
+    """Verifies no checkpoints are written when loss is not lower."""
     save_best = training_callbacks.SaveBestModel(best_validation_loss=0.3)
     save_best(
         current_validation_loss=0.5,
@@ -67,8 +69,8 @@ class SaveBestModelTest(absltest.TestCase):
     self.assertEqual(save_best.best_validation_loss, 0.3)
     self.mock_torch_save.assert_not_called()
 
-  def test_saves_only_when_loss_strictly_improves(self):
-    """Verifies equal loss does not trigger a save (strict less-than)."""
+  def test_does_not_save_on_equal_loss(self):
+    """Verifies equal loss does not trigger a save (no improvement)."""
     save_best = training_callbacks.SaveBestModel(best_validation_loss=0.3)
     save_best(
         current_validation_loss=0.3,
@@ -78,6 +80,50 @@ class SaveBestModelTest(absltest.TestCase):
         checkpoint_name="run1",
     )
     self.mock_torch_save.assert_not_called()
+
+  def test_skips_saving_on_non_finite_loss(self):
+    """Verifies a NaN/inf validation loss skips saving and keeps best loss."""
+    save_best = training_callbacks.SaveBestModel(best_validation_loss=0.4)
+    save_best(
+        current_validation_loss=float("nan"),
+        epoch=2,
+        model=_make_model_with_head(),
+        output_directory=pathlib.Path("/tmp/ckpt"),
+        checkpoint_name="run1",
+    )
+    self.assertEqual(save_best.best_validation_loss, 0.4)
+    self.mock_torch_save.assert_not_called()
+
+  def test_respects_minimum_delta_for_saving(self):
+    """Verifies an improvement smaller than minimum_delta does not save."""
+    save_best = training_callbacks.SaveBestModel(
+        best_validation_loss=0.5, minimum_delta=0.1
+    )
+    # 0.45 improves on 0.5 but does not clear the 0.1 delta threshold.
+    save_best(
+        current_validation_loss=0.45,
+        epoch=1,
+        model=_make_model_with_head(),
+        output_directory=pathlib.Path("/tmp/ckpt"),
+        checkpoint_name="run1",
+    )
+    self.assertEqual(save_best.best_validation_loss, 0.5)
+    self.mock_torch_save.assert_not_called()
+
+  def test_saves_when_improvement_exceeds_minimum_delta(self):
+    """Verifies an improvement larger than minimum_delta triggers a save."""
+    save_best = training_callbacks.SaveBestModel(
+        best_validation_loss=0.5, minimum_delta=0.1
+    )
+    save_best(
+        current_validation_loss=0.3,
+        epoch=1,
+        model=_make_model_with_head(),
+        output_directory=pathlib.Path("/tmp/ckpt"),
+        checkpoint_name="run1",
+    )
+    self.assertEqual(save_best.best_validation_loss, 0.3)
+    self.assertEqual(self.mock_torch_save.call_count, 2)
 
   def test_epoch_in_saved_checkpoint_is_one_based(self):
     """Verifies the saved 'epoch' value is the given zero-based epoch + 1."""
@@ -140,6 +186,12 @@ class EarlyStoppingTest(absltest.TestCase):
     self.assertTrue(stopper(0.6))
     # Even a subsequent improvement does not reset should_stop.
     self.assertTrue(stopper(0.1))
+
+  def test_stops_immediately_on_non_finite_loss(self):
+    """Verifies a NaN/inf validation loss signals stop right away."""
+    stopper = training_callbacks.EarlyStopping(patience=5)
+    self.assertTrue(stopper(float("inf")))
+    self.assertTrue(stopper.should_stop)
 
 
 class SaveModelTest(absltest.TestCase):

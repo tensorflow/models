@@ -27,14 +27,14 @@
 # limitations under the License.
 
 """Training entry point for the DINOv3 image classifier.
- 
+
 This script fine-tunes a DINOv3 ViT-L/16 backbone with a fresh linear
 classification head on your own image dataset. Point it at a folder laid
 out in PyTorch's `ImageFolder` format (one subdirectory per class), and
 it handles the rest: loading the pretrained backbone from a local clone
 of the Facebook DINOv3 repository, sizing the head to the classes it
 discovers, and training end-to-end on a single GPU.
- 
+
 How training works
 ------------------
 The optimizer is AdamW, and it treats the model as one thing: the same
@@ -44,7 +44,7 @@ alike. There's no split-LR setup, no per-parameter-group weight decay,
 and no warmup phase. The learning rate follows a plain cosine curve
 that decays smoothly from its peak on epoch 0 to its floor on the final
 epoch.
- 
+
 The peak learning rate is deliberately small. DINOv3's pretrained
 features are already strong, and a low LR keeps updates gentle so the
 backbone doesn't drift far from its self-supervised optimum while the
@@ -52,7 +52,7 @@ head has time to fit. Training uses bf16 autocast on CUDA for speed and
 memory headroom, with gradient clipping (max L2 norm 1.0) as a safety
 net. Each epoch, the script reports training and validation loss along
 with top-1 accuracy.
- 
+
 Reproducibility and performance
 -------------------------------
 Python, NumPy, and PyTorch RNGs are seeded from a fixed constant so runs
@@ -61,7 +61,7 @@ and TF32 matmul is enabled — both trade a little run-to-run determinism
 for meaningful throughput gains on Ampere+ GPUs. If you need bit-exact
 reproducibility more than you need speed, flip the flags in
 `seed_everything`.
- 
+
 Callbacks and outputs
 ---------------------
 Two callbacks run alongside the loop: `SaveBestModel` writes a
@@ -70,11 +70,11 @@ training if validation loss stops improving for a configurable number of
 consecutive epochs. When training ends (either by finishing the schedule
 or by hitting early stopping), a final checkpoint and accuracy/loss
 plots are written to `OUTPUT_DIRECTORY`.
- 
+
 If your classes are imbalanced, set `USE_CLASS_WEIGHTS = True`. The
 script will count files per class folder, compute sklearn-style balanced
 weights, and pass them to `CrossEntropyLoss`.
- 
+
 Configuration
 -------------
 All configuration lives as module-level constants at the top of this
@@ -86,7 +86,6 @@ training log all land in `OUTPUT_DIRECTORY`.
 import logging
 import os
 
-# Must be set before importing torch so CUDA picks up the right device.
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 # pylint: disable=g-import-not-at-top,wrong-import-position
@@ -103,20 +102,15 @@ from tqdm import auto as tqdm_auto
 from official.projects.waste_identification_ml.fine_tuning.Dinov3_image_classifier import datasets
 from official.projects.waste_identification_ml.fine_tuning.Dinov3_image_classifier import models as model_module
 from official.projects.waste_identification_ml.fine_tuning.Dinov3_image_classifier import training_callbacks
+
 # pylint: enable=wrong-import-position
 
 _LOGGER = logging.getLogger(__name__)
 
 EpochMetrics: TypeAlias = tuple[float, float]
 
-# ---------------------------------------------------------------------------
-# Reproducibility.
-# ---------------------------------------------------------------------------
 SEED = 42
 
-# ---------------------------------------------------------------------------
-# Dataset paths (PyTorch ImageFolder format: one subdirectory per class).
-# ---------------------------------------------------------------------------
 TRAIN_DIRECTORY = pathlib.Path(
     "/home/umairsabir/saahas/accepted_rejected/accepted_rejected_data/train/"
 )
@@ -124,19 +118,6 @@ VALIDATION_DIRECTORY = pathlib.Path(
     "/home/umairsabir/saahas/accepted_rejected/accepted_rejected_data/val/"
 )
 
-# ---------------------------------------------------------------------------
-# Backbone configuration.
-#
-# DINOV3_REPO_DIRECTORY is the path to the cloned DINOv3 repository. It is
-# used by torch.hub.load with source='local' to load the model architecture
-# without hitting the internet.
-#
-# DINOV3_WEIGHTS_PATH is the full path to the pretrained backbone weights
-# (.pth file).
-#
-# MODEL_NAME must match an entry in the DINOv3 hub:
-#   https://github.com/facebookresearch/dinov3
-# ---------------------------------------------------------------------------
 DINOV3_REPO_DIRECTORY = pathlib.Path("/home/umairsabir/dinov3")
 DINOV3_WEIGHTS_PATH = pathlib.Path(
     "/home/umairsabir/dinov3_original_weight/"
@@ -144,106 +125,38 @@ DINOV3_WEIGHTS_PATH = pathlib.Path(
 )
 MODEL_NAME = "dinov3_vitl16"
 
-# ---------------------------------------------------------------------------
-# Output directory. Saved checkpoints and plots are written here. Use a
-# different directory than v1/v2 so the runs don't overwrite each other.
-# ---------------------------------------------------------------------------
 OUTPUT_DIRECTORY = pathlib.Path(
     "/home/umairsabir/saahas/accepted_rejected/model_output/version_3/"
 )
 CHECKPOINT_NAME = "model"
 
-# ---------------------------------------------------------------------------
-# Training schedule.
-# ---------------------------------------------------------------------------
 EPOCHS = 30
 BATCH_SIZE = 64
 IMAGE_SIZE = 256
-
-# ---------------------------------------------------------------------------
-# Data loading.
-#
-# NUMBER_OF_WORKERS is the number of parallel worker processes used by the
-# DataLoader. Set this based on the number of CPU cores available on the
-# training machine.
-# ---------------------------------------------------------------------------
 NUMBER_OF_WORKERS = 12
 
-# ---------------------------------------------------------------------------
-# Image normalization statistics.
-#
-# DINOv3 backbones expect ImageNet-style normalization. These values are
-# tied to the pretrained backbone and should not be changed unless the
-# backbone itself is retrained with different statistics.
-# ---------------------------------------------------------------------------
 IMAGE_MEAN = (0.485, 0.456, 0.406)
 IMAGE_STD = (0.229, 0.224, 0.225)
 
-# ---------------------------------------------------------------------------
-# Model head configuration.
-#
-# POOLING_STRATEGY controls how features feed the classifier head.
-#   - POOLING_CLS: use only the final CLS token.
-#   - POOLING_CLS_MEAN_PATCH: concatenate CLS token with the mean of final
-#     patch tokens, doubling the head input dimension.
-#
-# FINE_TUNE=True trains the full backbone; False trains only the head.
-# ---------------------------------------------------------------------------
 POOLING_STRATEGY = model_module.POOLING_CLS
 FINE_TUNE = True
 
-# ---------------------------------------------------------------------------
-# Class imbalance handling. When True, sklearn-style balanced class weights
-# are computed from file counts per class folder in TRAIN_DIRECTORY.
-# ---------------------------------------------------------------------------
 USE_CLASS_WEIGHTS = False
 
-# ---------------------------------------------------------------------------
-# Early stopping. Set EARLY_STOPPING_PATIENCE to 0 to disable.
-# ---------------------------------------------------------------------------
 EARLY_STOPPING_PATIENCE = 5
-EARLY_STOPPING_MINIMUM_DELTA = 0.0
+EARLY_STOPPING_MINIMUM_DELTA = 1e-4
 
-# ---------------------------------------------------------------------------
-# Optimizer / scheduler hyperparameters.
-#
-# v3 uses a pure cosine annealing schedule with no warmup. The LR starts at
-# LEARNING_RATE on the very first epoch and decays smoothly to
-# COSINE_MINIMUM_LEARNING_RATE by the final epoch.
-# ---------------------------------------------------------------------------
+# Fixed Cosine Scheduler Floor
 LEARNING_RATE = 1e-6
 WEIGHT_DECAY = 0.02
-COSINE_MINIMUM_LEARNING_RATE = 1e-6
+COSINE_MINIMUM_LEARNING_RATE = 1e-8
 
-# ---------------------------------------------------------------------------
-# Gradient clipping. The max L2 norm allowed for gradients in each step;
-# gradients are scaled down if their norm exceeds this value. The standard
-# value for supervised ViT fine-tuning is 1.0.
-# ---------------------------------------------------------------------------
 GRADIENT_CLIP_MAX_NORM = 1.0
-
-# ---------------------------------------------------------------------------
-# Logging. The log file is written inside OUTPUT_DIRECTORY alongside the
-# saved checkpoints and plots.
-# ---------------------------------------------------------------------------
 LOG_FILENAME = "training.log"
-
-# ---------------------------------------------------------------------------
-# Percent conversion factor for accuracy reporting.
-# ---------------------------------------------------------------------------
 _PERCENT = 100.0
 
 
 def seed_everything(seed: int) -> None:
-  """Seeds Python, NumPy, and PyTorch RNGs and configures cuDNN for speed.
-
-  Sets `cudnn.deterministic = False` and `cudnn.benchmark = True` for
-  throughput; flip these if strict reproducibility is required. Also
-  enables TF32 matmul on Ampere+ GPUs.
-
-  Args:
-    seed: Integer seed applied to all RNGs.
-  """
   random.seed(seed)
   np.random.seed(seed)
   torch.manual_seed(seed)
@@ -268,11 +181,8 @@ def configure_logging(output_directory: pathlib.Path) -> None:
       exist.
   """
   log_path = output_directory / LOG_FILENAME
-
   root_logger = logging.getLogger()
   root_logger.setLevel(logging.INFO)
-  # Prevent duplicate handlers if this function is called more than once
-  # (e.g., from an interactive session).
   root_logger.handlers.clear()
 
   console_handler = logging.StreamHandler()
@@ -284,7 +194,6 @@ def configure_logging(output_directory: pathlib.Path) -> None:
       logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
   )
   root_logger.addHandler(file_handler)
-
   _LOGGER.info("Logging to: %s", log_path)
 
 
@@ -322,20 +231,6 @@ def build_cosine_scheduler(
     total_epochs: int,
     cosine_minimum_learning_rate: float,
 ) -> optim.lr_scheduler.CosineAnnealingLR:
-  """Builds a pure cosine-annealing LR scheduler with no warmup.
-
-  The learning rate starts at the optimizer's configured LR on epoch 0 and
-  decays following a cosine curve down to `cosine_minimum_learning_rate`
-  by `total_epochs - 1`.
-
-  Args:
-    optimizer: The optimizer whose LR will be scheduled.
-    total_epochs: Total number of training epochs. Used as `T_max`.
-    cosine_minimum_learning_rate: Floor value for the cosine annealing.
-
-  Returns:
-    A `torch.optim.lr_scheduler.CosineAnnealingLR` instance.
-  """
   return optim.lr_scheduler.CosineAnnealingLR(
       optimizer,
       T_max=total_epochs,
@@ -359,9 +254,9 @@ def train_one_epoch(
     optimizer: Optimizer used to update model parameters.
     criterion: Loss function.
     device: Torch device to run computation on.
-    gradient_clip_max_norm: Maximum L2 norm for gradient clipping. The
-      gradients of all trainable parameters are rescaled in-place so that
-      their combined L2 norm does not exceed this value.
+    gradient_clip_max_norm: Maximum L2 norm for gradient clipping. The gradients
+      of all trainable parameters are rescaled in-place so that their combined
+      L2 norm does not exceed this value.
 
   Returns:
     An `(epoch_loss, epoch_accuracy)` tuple where `epoch_loss` is the mean
@@ -450,7 +345,6 @@ def validate(
 
 
 def main() -> None:
-  """Runs the full training and validation loop."""
   seed_everything(SEED)
   model_module.validate_image_size(IMAGE_SIZE, model_module.DINOV3_PATCH_SIZE)
 
@@ -458,8 +352,8 @@ def main() -> None:
   configure_logging(OUTPUT_DIRECTORY)
 
   dataset_train, dataset_valid, class_names = datasets.get_datasets(
-      train_dir=str(TRAIN_DIRECTORY),
-      valid_dir=str(VALIDATION_DIRECTORY),
+      train_dir=TRAIN_DIRECTORY,
+      valid_dir=VALIDATION_DIRECTORY,
       image_size=IMAGE_SIZE,
       image_mean=IMAGE_MEAN,
       image_std=IMAGE_STD,
@@ -481,6 +375,7 @@ def main() -> None:
   _LOGGER.info("Pooling: %s", POOLING_STRATEGY)
   _LOGGER.info("Learning rate: %s", LEARNING_RATE)
   _LOGGER.info("Weight decay: %s", WEIGHT_DECAY)
+  _LOGGER.info("Cosine min LR: %s", COSINE_MINIMUM_LEARNING_RATE)
   _LOGGER.info("Schedule: pure cosine annealing (no warmup)")
   _LOGGER.info("Epochs to train for: %d", EPOCHS)
 
@@ -509,14 +404,16 @@ def main() -> None:
   )
 
   if USE_CLASS_WEIGHTS:
-    class_weights = datasets.compute_balanced_class_weights(
-        TRAIN_DIRECTORY
-    ).to(device)
+    class_weights = datasets.compute_balanced_class_weights(TRAIN_DIRECTORY).to(
+        device
+    )
     criterion = nn.CrossEntropyLoss(weight=class_weights)
   else:
     criterion = nn.CrossEntropyLoss()
 
-  save_best_model = training_callbacks.SaveBestModel()
+  save_best_model = training_callbacks.SaveBestModel(
+      minimum_delta=EARLY_STOPPING_MINIMUM_DELTA
+  )
 
   early_stopping = None
   if EARLY_STOPPING_PATIENCE > 0:
