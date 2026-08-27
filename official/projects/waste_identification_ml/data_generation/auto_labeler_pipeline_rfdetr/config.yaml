@@ -1,0 +1,136 @@
+# ============================================================================
+# Pipeline configuration.
+#
+# This file is safe to edit by hand. Every value below is a knob you are
+# expected to change between runs or between datasets. If you make a mistake
+# (a typo, a missing field, a value out of range), the pipeline stops
+# immediately at startup with a message telling you exactly what is wrong and
+# how to fix it -- it will NOT fail partway through a long GPU run.
+#
+# What you may NOT do from this file: invent new augmentation names or new
+# crop variants. Those are fixed in code. This file only selects and tunes
+# among the options the code already supports.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Paths and hardware.
+# ----------------------------------------------------------------------------
+
+# Parent directory containing one subfolder per dataset. No trailing slash.
+root_dir: "/home/umairsabir/new_data/test_data/saahas_milk_packet/exp"
+
+# Absolute path to the RFDETR model checkpoint.
+rfdetr_checkpoint_path: "/home/umairsabir/auto_labeler_pipeline_rfdetr_2/checkpoint_best_total.pth"
+
+# GPU device index made visible to the process (sets CUDA_VISIBLE_DEVICES).
+cuda_visible_devices: "0"
+
+# ----------------------------------------------------------------------------
+# Folder layout.
+#
+# These name the standard subfolders the pipeline reads and writes. Each name
+# has exactly one allowed value in code; they are listed here so the layout
+# is self-documenting rather than hidden.
+# ----------------------------------------------------------------------------
+
+# Subfolder inside each dataset that holds the raw input images.
+input_images_folder_name: "images"
+
+# Subfolder inside each dataset written by split_train_val.py.
+train_val_folder_name: "train_val_images"
+
+# Split names under train_val_folder_name and under the classifier dataset.
+train_split_name: "train"
+val_split_name: "val"
+
+# ----------------------------------------------------------------------------
+# Stage-level run knobs.
+# ----------------------------------------------------------------------------
+
+# split_train_val.py: keep every Nth image (1 keeps all, 3 keeps 0,3,6,...).
+keep_every_nth: 3
+
+# split_train_val.py: fraction assigned to the train split.
+# NOTE: the current pipeline uses 0.10, which puts 10% in train and 90% in
+# val. This is preserved deliberately. Change it only if you intend to.
+train_ratio: 0.15
+
+# filter_sparse_images.py: images with fewer than this many post-filter
+# detections are moved out to the sibling `<root_dir>_empty` directory.
+min_detections: 2
+
+# segmentation.py: which crop variants to write.
+# Allowed values: raw, black_background, imagenet_mean_background.
+# One variant -> flat layout under each class folder; multiple variants ->
+# one subdirectory per variant.
+crop_variants: ["raw"]
+
+# segmentation.py: CPU thread pool sizing for crop saving.
+# max_cpu_workers is the pool size; queue_maxsize is how many CPU jobs are
+# allowed to be in flight before the GPU loop blocks on one completing.
+max_cpu_workers: 16
+queue_maxsize: 32
+
+# augment_train_split.py: RGB fill color used to pad rotated images. The
+# default matches the ImageNet-mean background produced by segmentation.py so
+# rotated crops blend into their background.
+# rotation_fill_color: [0, 0, 0]
+rotation_fill_color: [124, 116, 104]
+
+# ----------------------------------------------------------------------------
+# Detection settings.
+#
+# These control RFDETR inference and the post-processing that runs on its
+# output. Detection thresholds run in this order:
+#
+#   1. predict_threshold           -- applied by RFDETR itself; detections
+#                                     below it never reach the pipeline.
+#   2. contained-sub-mask filter   -- uses containment_threshold.
+#   3. contained-box merge         -- uses merge_containment_threshold.
+#   4. edge-visibility filter      -- fixed thresholds in code.
+#   5. score_threshold             -- final cutoff on remaining detections.
+# ----------------------------------------------------------------------------
+
+# RFDETR `predict()` threshold: minimum confidence for a detection to be
+# returned by the model at all. Detections below this never enter the
+# pipeline.
+predict_threshold: 0.3
+
+# Final score cutoff applied after all post-processing filters. Set to 0.0
+# to keep every detection that survived the earlier filters.
+score_threshold: 0.0
+
+# Mask-level containment cutoff. If mask A's intersection with mask B covers
+# more than this fraction of the smaller mask's area, the smaller mask is
+# dropped.
+containment_threshold: 0.98
+
+# Box-level containment cutoff for the merge step. If box A's intersection
+# with box B covers more than this fraction of the smaller box's area, they
+# are merged into a single detection.
+merge_containment_threshold: 0.7
+
+# Maximum length of the shorter image side at inference time. Preserves
+# aspect ratio; images already within the limit are left unchanged.
+max_short_side: 1024
+
+# Output crop size after letterboxing, as [height, width].
+crop_size: [256, 256]
+
+# ----------------------------------------------------------------------------
+# Augmentations.
+#
+# The list of augmentations to apply to the train split. Names must come
+# from the canonical set defined in config_loader.py. Order in this list
+# does not matter -- output filenames follow the canonical order regardless.
+# ----------------------------------------------------------------------------
+augmentations:
+- vflip
+- hflip
+- rot45
+- rot65
+- rot90
+- blur
+- noise03
+- noise06
+- cjitter
