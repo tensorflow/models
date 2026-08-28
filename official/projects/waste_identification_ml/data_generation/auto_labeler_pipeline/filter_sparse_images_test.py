@@ -12,10 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Unit tests for filter_sparse_images.py."""
 
+import logging
 import os
-import sys
 from unittest import mock
 
 from absl.testing import absltest
@@ -24,13 +38,19 @@ import numpy as np
 from PIL import Image
 import torch
 
-from official.projects.waste_identification_ml.data_generation.auto_labeler_pipeline import config_loader  # pylint: disable=g-bad-import-order
-from official.projects.waste_identification_ml.data_generation.auto_labeler_pipeline import sam3_inference_utils
+from official.projects.waste_identification_ml.data_generation.auto_labeler_pipeline import config_loader
+from official.projects.waste_identification_ml.data_generation.auto_labeler_pipeline import filter_sparse_images
 
-sys.modules["config_loader"] = config_loader
-sys.modules["sam3_inference_utils"] = sam3_inference_utils
 
-from official.projects.waste_identification_ml.data_generation.auto_labeler_pipeline import filter_sparse_images  # pylint: disable=g-import-not-at-top,g-bad-import-order
+def _make_detection_config() -> config_loader.DetectionConfig:
+  """Returns a small, valid DetectionConfig for tests."""
+  return config_loader.DetectionConfig(
+      confidence_threshold=0.3,
+      score_threshold=0.0,
+      containment_threshold=0.98,
+      max_short_side=1024,
+      crop_size=(256, 256),
+  )
 
 
 class FilterSparseImagesTest(parameterized.TestCase):
@@ -56,7 +76,6 @@ class FilterSparseImagesTest(parameterized.TestCase):
     temp_root = self.create_tempdir().full_path
     os.makedirs(os.path.join(temp_root, "dataset_b"))
     os.makedirs(os.path.join(temp_root, "dataset_a"))
-    # Also create a file to verify it ignores non-directories
     open(os.path.join(temp_root, "some_file.txt"), "w").close()
 
     discovered = filter_sparse_images.discover_dataset_directories(temp_root)
@@ -73,13 +92,7 @@ class FilterSparseImagesTest(parameterized.TestCase):
     ds_path = os.path.join(temp_root, "ds1")
     os.makedirs(ds_path)
     with self.assertRaises(FileNotFoundError):
-      filter_sparse_images.validate_dataset_paths(
-          [(
-              "ds1",
-              ds_path,
-          )],
-          "images",
-      )
+      filter_sparse_images.validate_dataset_paths([("ds1", ds_path)], "images")
 
   def test_validate_dataset_paths_success(self):
     temp_root = self.create_tempdir().full_path
@@ -87,11 +100,7 @@ class FilterSparseImagesTest(parameterized.TestCase):
     images_path = os.path.join(ds_path, "images")
     os.makedirs(images_path)
     validated = filter_sparse_images.validate_dataset_paths(
-        [(
-            "ds1",
-            ds_path,
-        )],
-        "images",
+        [("ds1", ds_path)], "images"
     )
     self.assertEqual(validated, [("ds1", images_path)])
 
@@ -99,7 +108,6 @@ class FilterSparseImagesTest(parameterized.TestCase):
     temp_dir = self.create_tempdir().full_path
     with self.assertRaises(FileExistsError):
       filter_sparse_images.validate_rejected_dir(temp_dir)
-    # Should not raise when path does not exist
     filter_sparse_images.validate_rejected_dir(
         os.path.join(temp_dir, "non_existent")
     )
@@ -147,113 +155,11 @@ class FilterSparseImagesTest(parameterized.TestCase):
         "original_height": 50,
         "original_width": 50,
     }
-    det_config = config_loader.DetectionConfig(
-        confidence_threshold=0.3,
-        score_threshold=0.0,
-        containment_threshold=0.98,
-        max_short_side=1024,
-        crop_size=(256, 256),
-    )
     img = Image.new("RGB", (50, 50))
     count = filter_sparse_images.count_detections(
-        img, mock.Mock(), det_config, "packets"
+        img, mock.Mock(), _make_detection_config(), "packets"
     )
     self.assertEqual(count, 2)
-
-  @mock.patch.object(filter_sparse_images, "count_detections")
-  def test_filter_dataset_images(self, mock_count_detections):
-    root_dir = self.create_tempdir().full_path
-    images_dir = os.path.join(root_dir, "ds", "images")
-    rejected_dir = os.path.join(root_dir, "rejected")
-    os.makedirs(images_dir)
-
-    img_keep = os.path.join(images_dir, "keep.jpg")
-    img_reject = os.path.join(images_dir, "reject.jpg")
-    img_corrupt = os.path.join(images_dir, "corrupt.jpg")
-
-    # Save valid PIL images for keep and reject
-    Image.new("RGB", (64, 64)).save(img_keep)
-    Image.new("RGB", (64, 64)).save(img_reject)
-    # Write invalid bytes for corrupt image
-    with open(img_corrupt, "wb") as f:
-      f.write(b"not an image")
-
-    # count_detections returns 3 for keep.jpg,
-    # 1 for reject.jpg (below min_detections=2).
-    def side_effect(unused_img, *unused_args):
-      del unused_img, unused_args
-      return 3 if mock_count_detections.call_count == 1 else 1
-
-    mock_count_detections.side_effect = side_effect
-
-    det_config = config_loader.DetectionConfig(
-        confidence_threshold=0.3,
-        score_threshold=0.0,
-        containment_threshold=0.98,
-        max_short_side=1024,
-        crop_size=(256, 256),
-    )
-
-    rejected_count, skipped_count, total = (
-        filter_sparse_images.filter_dataset_images(
-            "ds",
-            images_dir,
-            root_dir,
-            rejected_dir,
-            mock.Mock(),
-            det_config,
-            "packets",
-            min_detections=2,
-        )
-    )
-
-    self.assertEqual(total, 3)
-    self.assertEqual(rejected_count, 1)
-    self.assertEqual(skipped_count, 1)  # corrupt.jpg skipped
-    self.assertTrue(os.path.exists(img_keep))
-    self.assertFalse(os.path.exists(img_reject))
-    expected_rejected_path = os.path.join(
-        rejected_dir, "ds", "images", "reject.jpg"
-    )
-    self.assertTrue(os.path.exists(expected_rejected_path))
-
-  @mock.patch.object(filter_sparse_images, "sam3_model_builder", create=True)
-  @mock.patch.object(filter_sparse_images, "sam3_image_processor", create=True)
-  def test_build_sam3_processor_success(
-      self, mock_image_processor, mock_model_builder
-  ):
-    mock_model = mock.Mock()
-    mock_proc = mock.Mock()
-    mock_model_builder.build_sam3_image_model.return_value = mock_model
-    mock_image_processor.Sam3Processor.return_value = mock_proc
-
-    det_config = config_loader.DetectionConfig(
-        confidence_threshold=0.3,
-        score_threshold=0.0,
-        containment_threshold=0.98,
-        max_short_side=1024,
-        crop_size=(256, 256),
-    )
-    model, proc = filter_sparse_images.build_sam3_processor(
-        det_config, "/path/to/chkpt"
-    )
-    self.assertIs(model, mock_model)
-    self.assertIs(proc, mock_proc)
-    mock_model.to.assert_called_once()
-
-  @mock.patch.object(
-      filter_sparse_images, "sam3_model_builder", None, create=True
-  )
-  def test_build_sam3_processor_missing_sam3(self):
-    det_config = config_loader.DetectionConfig(
-        confidence_threshold=0.3,
-        score_threshold=0.0,
-        containment_threshold=0.98,
-        max_short_side=1024,
-        crop_size=(256, 256),
-    )
-    with self.assertRaises(ImportError):
-      filter_sparse_images.build_sam3_processor(det_config, "/path/to/chkpt")
 
   @mock.patch.object(
       filter_sparse_images.sam3_inference_utils, "merge_contained_boxes"
@@ -272,19 +178,57 @@ class FilterSparseImagesTest(parameterized.TestCase):
         "original_height": 50,
         "original_width": 50,
     }
-    det_config = config_loader.DetectionConfig(
-        confidence_threshold=0.3,
-        score_threshold=0.0,
-        containment_threshold=0.98,
-        max_short_side=1024,
-        crop_size=(256, 256),
-    )
     img = Image.new("RGB", (50, 50))
     count = filter_sparse_images.count_detections(
-        img, mock.Mock(), det_config, "bottles"
+        img, mock.Mock(), _make_detection_config(), "bottles"
     )
     self.assertEqual(count, 1)
     mock_merge.assert_not_called()
+
+  @mock.patch.object(filter_sparse_images, "count_detections")
+  def test_filter_dataset_images(self, mock_count_detections):
+    root_dir = self.create_tempdir().full_path
+    images_dir = os.path.join(root_dir, "ds", "images")
+    rejected_dir = os.path.join(root_dir, "rejected")
+    os.makedirs(images_dir)
+
+    img_keep = os.path.join(images_dir, "keep.jpg")
+    img_reject = os.path.join(images_dir, "reject.jpg")
+    img_corrupt = os.path.join(images_dir, "corrupt.jpg")
+
+    Image.new("RGB", (64, 64)).save(img_keep)
+    Image.new("RGB", (64, 64)).save(img_reject)
+    with open(img_corrupt, "wb") as f:
+      f.write(b"not an image")
+
+    def side_effect(unused_img, *unused_args):
+      del unused_img, unused_args
+      return 3 if mock_count_detections.call_count == 1 else 1
+
+    mock_count_detections.side_effect = side_effect
+
+    rejected_count, skipped_count, total = (
+        filter_sparse_images.filter_dataset_images(
+            "ds",
+            images_dir,
+            root_dir,
+            rejected_dir,
+            mock.Mock(),
+            _make_detection_config(),
+            "packets",
+            min_detections=2,
+        )
+    )
+
+    self.assertEqual(total, 3)
+    self.assertEqual(rejected_count, 1)
+    self.assertEqual(skipped_count, 1)
+    self.assertTrue(os.path.exists(img_keep))
+    self.assertFalse(os.path.exists(img_reject))
+    expected_rejected_path = os.path.join(
+        rejected_dir, "ds", "images", "reject.jpg"
+    )
+    self.assertTrue(os.path.exists(expected_rejected_path))
 
   @mock.patch.object(filter_sparse_images, "count_detections")
   def test_filter_dataset_images_inference_failure(self, mock_count_detections):
@@ -297,13 +241,6 @@ class FilterSparseImagesTest(parameterized.TestCase):
     Image.new("RGB", (64, 64)).save(img_fail)
 
     mock_count_detections.side_effect = RuntimeError("GPU OOM test")
-    det_config = config_loader.DetectionConfig(
-        confidence_threshold=0.3,
-        score_threshold=0.0,
-        containment_threshold=0.98,
-        max_short_side=1024,
-        crop_size=(256, 256),
-    )
 
     rejected, skipped, total = filter_sparse_images.filter_dataset_images(
         "ds",
@@ -311,13 +248,52 @@ class FilterSparseImagesTest(parameterized.TestCase):
         root_dir,
         rejected_dir,
         mock.Mock(),
-        det_config,
+        _make_detection_config(),
         "packets",
         min_detections=2,
     )
     self.assertEqual(total, 1)
     self.assertEqual(rejected, 0)
     self.assertEqual(skipped, 1)
+
+  @mock.patch.object(filter_sparse_images, "sam3_model_builder", create=True)
+  @mock.patch.object(filter_sparse_images, "sam3_image_processor", create=True)
+  def test_build_sam3_processor_success(
+      self, mock_image_processor, mock_model_builder
+  ):
+    mock_model = mock.Mock()
+    mock_proc = mock.Mock()
+    mock_model_builder.build_sam3_image_model.return_value = mock_model
+    mock_image_processor.Sam3Processor.return_value = mock_proc
+
+    model, proc = filter_sparse_images.build_sam3_processor(
+        _make_detection_config(), "/path/to/chkpt"
+    )
+    self.assertIs(model, mock_model)
+    self.assertIs(proc, mock_proc)
+    mock_model.to.assert_called_once()
+
+  @mock.patch.object(
+      filter_sparse_images, "sam3_model_builder", None, create=True
+  )
+  def test_build_sam3_processor_missing_sam3(self):
+    with self.assertRaises(ImportError):
+      filter_sparse_images.build_sam3_processor(
+          _make_detection_config(), "/path/to/chkpt"
+      )
+
+  def test_warning_suppression_env_var_set_on_import(self):
+    # The suppression block near the top of the module must set the
+    # albumentations opt-out env var before any third-party import.
+    self.assertEqual(os.environ.get("NO_ALBUMENTATIONS_UPDATE"), "1")
+
+  def test_warning_suppression_transformers_logger_at_error(self):
+    # And the transformers logger must have been raised to ERROR so its
+    # WARNING lines are silenced.
+    filter_sparse_images._silence_third_party_logger("transformers")
+    self.assertGreaterEqual(
+        logging.getLogger("transformers").level, logging.ERROR
+    )
 
   @mock.patch.object(filter_sparse_images, "filter_dataset_images")
   @mock.patch.object(filter_sparse_images, "build_sam3_processor")
@@ -334,13 +310,7 @@ class FilterSparseImagesTest(parameterized.TestCase):
       mock_build_proc,
       mock_filter_ds,
   ):
-    detection_config = config_loader.DetectionConfig(
-        confidence_threshold=0.3,
-        score_threshold=0.0,
-        containment_threshold=0.98,
-        max_short_side=1024,
-        crop_size=(256, 256),
-    )
+    detection_config = _make_detection_config()
     mock_config = mock.Mock()
     mock_config.cuda_visible_devices = "0"
     mock_config.rejected_dir = "/tmp/rejected"

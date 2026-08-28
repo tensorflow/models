@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Unit tests for sam3_inference_utils.py."""
 
 from unittest import mock
@@ -95,7 +109,7 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
 
     # Mask 2 is disjoint (area 4)
     mask2 = torch.zeros((10, 10), dtype=torch.bool)
-    mask2[7:9, 7:9] = True  # area 4, disjoint
+    mask2[7:9, 7:9] = True
 
     # Mask 3 is empty / area 0
     mask3 = torch.zeros((10, 10), dtype=torch.bool)
@@ -130,18 +144,15 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
     self.assertIs(res, empty_state)
 
   def test_get_valid_bottle_indices(self):
-    # Mask 0 is an inner detection (not touching border margin=5 in 100x100)
+    # Mask 0 is an inner detection.
     mask0 = np.zeros((100, 100), dtype=bool)
     mask0[40:60, 40:60] = True  # area 400
 
-    # Mask 1 is an edge detection touching x_min <= 5,
-    # exact minimum area (200 == 0.5 * 400).
-    # This boundary test kills mutant #24 (+ 1 threshold offset).
+    # Mask 1 is an edge detection touching x_min <= 5, exact minimum area.
     mask1 = np.zeros((100, 100), dtype=bool)
     mask1[0:20, 10:20] = True  # area 200
 
-    # Mask 2 is an edge detection touching x_min <= 5,
-    # too small (100 < 0.5 * 400).
+    # Mask 2 is an edge detection touching x_min <= 5, too small.
     mask2 = np.zeros((100, 100), dtype=bool)
     mask2[0:10, 0:10] = True  # area 100
 
@@ -150,7 +161,7 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
             torch.tensor(
                 np.stack([mask0, mask1, mask2]), dtype=torch.bool
             ).unsqueeze(1)
-        ),  # Test 4D masks tensor
+        ),
         "masks_logits": torch.randn(3, 100, 100),
         "boxes": torch.tensor(
             [
@@ -186,9 +197,6 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
     self.assertIs(res, state)
 
   def test_merge_contained_boxes(self):
-    # Box 0: [10, 10, 50, 50] (area 1600)
-    # Box 1: [12, 12, 48, 48] (area 1296, contained in Box 0)
-    # Box 2: [70, 70, 90, 90] (area 400, disjoint)
     mask0 = torch.zeros((1, 100, 100), dtype=torch.bool)
     mask0[0, 10:50, 10:50] = True
     mask1 = torch.zeros((1, 100, 100), dtype=torch.bool)
@@ -211,7 +219,6 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
     )
     self.assertLen(merged["boxes"], 2)
     self.assertLen(merged["scores"], 2)
-    # Combined score of Box 0 and Box 1 is min(0.6 + 0.3, 1.0) = 0.9
     self.assertAlmostEqual(merged["scores"][0].item(), 0.9)
     self.assertAlmostEqual(merged["scores"][1].item(), 0.8)
 
@@ -221,11 +228,32 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
         img, size=(200, 200), color=(0, 0, 0)
     )
     self.assertEqual(canvas.shape, (200, 200, 3))
-    # Resized image should have height 200 and width 100, centered horizontally
-    # Center columns [50:150] should be 255, left/right margins should be 0
     self.assertTrue(np.all(canvas[:, 50:150] == 255))
     self.assertTrue(np.all(canvas[:, 0:50] == 0))
     self.assertTrue(np.all(canvas[:, 150:200] == 0))
+
+  def test_letterbox_single_channel_pads_with_fill_value(self):
+    # A 2:1 tall single-channel image should be centered on a square canvas
+    # with the padding equal to fill_value.
+    single_channel = np.full((100, 50), 255, dtype=np.uint8)
+    canvas = sam3_inference_utils.letterbox_single_channel(
+        single_channel, size=(200, 200), fill_value=0
+    )
+    self.assertEqual(canvas.shape, (200, 200))
+    self.assertTrue(np.all(canvas[:, 50:150] == 255))
+    self.assertTrue(np.all(canvas[:, 0:50] == 0))
+    self.assertTrue(np.all(canvas[:, 150:200] == 0))
+
+  def test_letterbox_single_channel_is_strictly_binary(self):
+    # Nearest-neighbor interpolation must not introduce intermediate values,
+    # so a binary input must produce a binary output regardless of scaling.
+    binary_input = np.zeros((30, 40), dtype=np.uint8)
+    binary_input[5:20, 10:35] = 255
+    canvas = sam3_inference_utils.letterbox_single_channel(
+        binary_input, size=(200, 200), fill_value=0
+    )
+    unique_values = np.unique(canvas)
+    self.assertTrue(set(unique_values.tolist()).issubset({0, 255}))
 
   def test_get_padded_box(self):
     box = [10.2, 5.8, 95.1, 98.9]
@@ -237,7 +265,6 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
 
   def test_fill_mask_holes(self):
     mask = np.zeros((20, 20), dtype=bool)
-    # Create a 10x10 square ring of True with an interior 4x4 hole of False
     mask[5:15, 5:15] = True
     mask[8:12, 8:12] = False
 
@@ -268,6 +295,41 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
     self.assertIsInstance(blended_crop, Image.Image)
     self.assertEqual(blended_crop.size, (64, 64))
 
+  def test_crop_masked_image_uses_background_color(self):
+    # crop_masked_image now accepts a background_color; when it is set,
+    # pixels outside the mask AND letterbox padding pixels must be exactly
+    # that color.
+    image_array = np.full((50, 50, 3), 200, dtype=np.uint8)
+    mask = np.zeros((50, 50), dtype=bool)
+    mask[15:35, 15:35] = True
+    background_color = (10, 20, 30)
+
+    crop = sam3_inference_utils.crop_masked_image(
+        image_array,
+        mask,
+        [15, 15, 35, 35],
+        size=(64, 64),
+        background_color=background_color,
+    )
+    crop_array = np.array(crop)
+    # The four corners of the letterboxed canvas are guaranteed to be
+    # padding — they must match the background color exactly.
+    self.assertEqual(tuple(crop_array[0, 0].tolist()), background_color)
+    self.assertEqual(tuple(crop_array[-1, -1].tolist()), background_color)
+
+  def test_crop_masked_image_default_background_is_black(self):
+    # Without a background_color argument, behavior must match the previous
+    # black-background contract so existing callers keep working.
+    image_array = np.full((50, 50, 3), 200, dtype=np.uint8)
+    mask = np.zeros((50, 50), dtype=bool)
+    mask[15:35, 15:35] = True
+
+    crop = sam3_inference_utils.crop_masked_image(
+        image_array, mask, [15, 15, 35, 35], size=(64, 64)
+    )
+    crop_array = np.array(crop)
+    self.assertEqual(tuple(crop_array[0, 0].tolist()), (0, 0, 0))
+
   def test_crop_raw_masked_image_degenerate(self):
     img = np.full((50, 50, 3), 100, dtype=np.uint8)
     mask = np.zeros((50, 50), dtype=bool)
@@ -275,6 +337,47 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
         img, mask, [20, 20, 20, 30]
     )
     self.assertIsNone(res)
+
+  def test_build_raw_variant_mask_matches_raw_crop_shape(self):
+    # The mask returned by build_raw_variant_mask must have the same shape
+    # as the crop returned by crop_raw_masked_image, so augmentations can
+    # composite them directly without any re-alignment.
+    image_array = np.full((50, 50, 3), 200, dtype=np.uint8)
+    mask = np.zeros((50, 50), dtype=bool)
+    mask[15:35, 15:35] = True
+    box = [15, 15, 35, 35]
+
+    raw_crop = sam3_inference_utils.crop_raw_masked_image(
+        image_array, mask, box
+    )
+    raw_mask = sam3_inference_utils.build_raw_variant_mask(mask, box)
+
+    self.assertEqual(raw_mask.shape, (raw_crop.size[1], raw_crop.size[0]))
+    self.assertTrue(set(np.unique(raw_mask).tolist()).issubset({0, 255}))
+
+  def test_build_raw_variant_mask_degenerate_returns_none(self):
+    mask = np.zeros((50, 50), dtype=bool)
+    res = sam3_inference_utils.build_raw_variant_mask(mask, [20, 20, 20, 30])
+    self.assertIsNone(res)
+
+  def test_build_letterboxed_variant_mask_matches_letterboxed_crop_shape(self):
+    # Same alignment guarantee for the letterboxed variants: the mask must
+    # be exactly crop_size and binary-valued.
+    image_array = np.full((50, 50, 3), 200, dtype=np.uint8)
+    mask = np.zeros((50, 50), dtype=bool)
+    mask[15:35, 15:35] = True
+    box = [15, 15, 35, 35]
+    crop_size = (64, 64)
+
+    crop = sam3_inference_utils.crop_masked_image(
+        image_array, mask, box, size=crop_size
+    )
+    aligned_mask = sam3_inference_utils.build_letterboxed_variant_mask(
+        mask, box, size=crop_size
+    )
+
+    self.assertEqual(aligned_mask.shape, (crop.size[1], crop.size[0]))
+    self.assertTrue(set(np.unique(aligned_mask).tolist()).issubset({0, 255}))
 
   def test_process_detections(self):
     img = Image.new("RGB", (50, 50), color=(100, 100, 100))
@@ -289,7 +392,6 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
         "scores": torch.tensor([0.85, 0.10]),
     }
 
-    # Only detection 0 (score 0.85 >= 0.5) should be yielded
     results = list(
         sam3_inference_utils.process_detections(
             img, state, score_threshold=0.5, crop_size=(64, 64)
@@ -340,7 +442,6 @@ class Sam3InferenceUtilsTest(parameterized.TestCase):
     )
 
     img = Image.new("RGB", (32, 32))
-    # 2 valid crops in a grid of 3 axes (1 extra empty cell to cover off axis)
     crop_pairs = [(0, img, img, img), (1, img, img, img)]
     state = {"scores": torch.tensor([0.9, 0.8])}
     sam3_inference_utils.display_crop_thumbnails(

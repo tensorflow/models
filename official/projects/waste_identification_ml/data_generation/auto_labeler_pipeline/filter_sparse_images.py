@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """SAM3 sparse-image filter: move images with fewer than ``min_detections``.
 
 For each dataset under ``config.root_dir``, walks its input images folder
@@ -70,10 +84,12 @@ previous run's output.
 """
 
 import gc
+import logging
 import os
 import shutil
 import time
 from typing import Any
+import warnings
 
 import natsort
 from PIL import Image
@@ -83,6 +99,18 @@ import tqdm
 from official.projects.waste_identification_ml.data_generation.auto_labeler_pipeline import config_loader
 from official.projects.waste_identification_ml.data_generation.auto_labeler_pipeline import sam3_inference_utils
 
+# ── Warning suppression ─────────────────────────────────────────────────────
+# NO_ALBUMENTATIONS_UPDATE must be set BEFORE the albumentations package is
+# imported (some third-party detectors import it transitively), otherwise
+# the update-check UserWarning has already fired by the time we could
+# filter it.
+os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
+
+# torch.jit TracerWarning: raised by any traced/scripted model path some
+# third-party detectors take. Only relevant when the traced model must
+# handle different input shapes than the trace saw; not our case.
+warnings.filterwarnings("ignore", category=torch.jit.TracerWarning)
+
 try:
   # pylint: disable=g-import-not-at-top
   from sam3 import model_builder as sam3_model_builder  # type: ignore[import-error]
@@ -91,6 +119,30 @@ try:
 except ImportError:
   sam3_model_builder = None
   sam3_image_processor = None
+
+
+def _silence_third_party_logger(logger_name: str) -> None:
+  """Raises a third-party logger and every attached handler to ERROR.
+
+  Setting the logger level alone is not enough for libraries that add
+  their own StreamHandler with an independent level. We lift both so
+  nothing below ERROR gets through, regardless of which side of the
+  logging plumbing is doing the filtering.
+
+  Args:
+      logger_name: Name of the third-party logger, e.g. ``'transformers'``.
+  """
+  target_logger = logging.getLogger(logger_name)
+  target_logger.setLevel(logging.ERROR)
+  for attached_handler in target_logger.handlers:
+    attached_handler.setLevel(logging.ERROR)
+
+
+# ── Warning suppression (part 3: after third-party imports) ─────────────────
+# Silence the "loss_type=None" config notice and any other WARNING-level
+# lines from the ``transformers`` logger. Errors from the same logger are
+# still shown.
+_silence_third_party_logger("transformers")
 
 
 # Resolve config.yaml relative to this script file so the script runs
@@ -289,7 +341,7 @@ def count_detections(
   )
   if prompt == PACKETS_PROMPT_NAME:
     state = sam3_inference_utils.merge_contained_boxes(state)
-  state = sam3_inference_utils.get_valid_bottle_indices(state)
+  # state = sam3_inference_utils.get_valid_bottle_indices(state)
 
   return int(state["scores"].shape[0])
 

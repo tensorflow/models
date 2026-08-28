@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Utility functions for preprocessing, SAM3 inference, and postprocessing.
 
 Pure helpers with no dependence on ``config.yaml`` -- callers pass the
@@ -22,6 +36,8 @@ relevant thresholds and sizes in explicitly. Grouped roughly into:
     contained-box merge)
   * Cropping (raw, black background, ImageNet-mean blended background)
   * Mask hole filling
+  * Mask geometry alignment (produce a mask that matches the geometry of
+    each crop variant, for the augmentation stage)
   * Convenience iterator that yields all three crop variants per detection
   * A matplotlib-based thumbnail viewer for interactive debugging
 """
@@ -429,6 +445,53 @@ def letterbox_image(
   return canvas
 
 
+def letterbox_single_channel(
+    single_channel_image: np.ndarray,
+    size: tuple[int, int],
+    fill_value: int = 0,
+) -> np.ndarray:
+  """Letterboxes a single-channel image (e.g. a mask) onto a fixed canvas.
+
+  Mirrors :func:`letterbox_image` but for 2D arrays and uses nearest-
+  neighbor interpolation so the output stays strictly binary when the
+  input is binary.
+
+  Args:
+      single_channel_image: Input array of shape ``(H, W)``.
+      size: Target canvas size as ``(height, width)``.
+      fill_value: Value used for the canvas padding.
+
+  Returns:
+      A letterboxed array of shape ``(size[0], size[1])`` with the same
+      dtype as ``single_channel_image``.
+  """
+  image_height, image_width = single_channel_image.shape[:2]
+  target_height, target_width = size
+
+  scale = min(target_width / image_width, target_height / image_height)
+  new_width = int(image_width * scale)
+  new_height = int(image_height * scale)
+
+  resized = cv2.resize(
+      single_channel_image,
+      (new_width, new_height),
+      interpolation=cv2.INTER_NEAREST,
+  )
+
+  canvas = np.full(
+      (target_height, target_width),
+      fill_value,
+      dtype=single_channel_image.dtype,
+  )
+  offset_x = (target_width - new_width) // 2
+  offset_y = (target_height - new_height) // 2
+  canvas[offset_y : offset_y + new_height, offset_x : offset_x + new_width] = (
+      resized
+  )
+
+  return canvas
+
+
 def get_padded_box(
     box: list[float],
     mask_shape: tuple[int, ...],
@@ -504,25 +567,31 @@ def crop_masked_image(
     mask: np.ndarray,
     box: list[float],
     size: tuple[int, int],
+    background_color: tuple[int, int, int] = (0, 0, 0),
 ) -> Image.Image:
-  """Returns a hard-masked letterboxed crop with black background.
+  """Returns a hard-masked letterboxed crop with a solid background color.
 
   Args:
       image_array: RGB image as a numpy array of shape ``(H, W, 3)``.
       mask: Binary mask of shape ``(H, W)``.
       box: Bounding box as ``[x_min, y_min, x_max, y_max]``.
       size: Output size after letterboxing.
+      background_color: RGB tuple used for the background outside the mask and
+        for the letterbox padding. Defaults to black to preserve the previous
+        behavior for any other caller.
 
   Returns:
-      A letterboxed PIL image with black background outside the mask.
+      A letterboxed PIL image with the given solid background outside the
+      mask.
   """
   x_min, y_min, x_max, y_max = get_padded_box(box, mask.shape)
 
+  background_array = np.array(background_color, dtype=np.uint8)
   mask_three_channel = mask[:, :, None]
-  masked_image = np.where(mask_three_channel, image_array, 0)
+  masked_image = np.where(mask_three_channel, image_array, background_array)
   crop = masked_image[y_min:y_max, x_min:x_max]
 
-  letterboxed = letterbox_image(crop, size=size)
+  letterboxed = letterbox_image(crop, size=size, color=background_color)
   return Image.fromarray(letterboxed)
 
 
@@ -532,6 +601,9 @@ def crop_raw_masked_image(
     box: list[float],
 ) -> Optional[Image.Image]:
   """Returns a hard-masked crop at exact box size with no letterboxing.
+
+  The background outside the mask is always black, matching the historical
+  behavior of the ``raw`` crop variant.
 
   Args:
       image_array: RGB image as a numpy array of shape ``(H, W, 3)``.
@@ -557,6 +629,66 @@ def crop_raw_masked_image(
   crop = masked_image[y_min:y_max, x_min:x_max]
 
   return Image.fromarray(crop)
+
+
+# ── Mask geometry alignment ──────────────────────────────────────────────────
+
+
+def build_raw_variant_mask(
+    mask: np.ndarray,
+    box: list[float],
+) -> Optional[np.ndarray]:
+  """Returns the mask cropped to the same box the ``raw`` crop uses.
+
+  Mirrors :func:`crop_raw_masked_image` exactly so the returned mask aligns
+  pixel-for-pixel with the saved raw crop.
+
+  Args:
+      mask: Binary mask of shape ``(H, W)``.
+      box: Bounding box as ``[x_min, y_min, x_max, y_max]``.
+
+  Returns:
+      A binary mask of shape ``(crop_h, crop_w)`` as ``uint8`` with values
+      in ``{0, 255}``, or ``None`` if the box is degenerate.
+  """
+  x_min, y_min, x_max, y_max = map(round, box)
+
+  x_min = max(0, x_min)
+  y_min = max(0, y_min)
+  x_max = min(mask.shape[1], x_max)
+  y_max = min(mask.shape[0], y_max)
+
+  if x_max <= x_min or y_max <= y_min:
+    return None
+
+  cropped_mask = mask[y_min:y_max, x_min:x_max].astype(np.uint8) * 255
+  return cropped_mask
+
+
+def build_letterboxed_variant_mask(
+    mask: np.ndarray,
+    box: list[float],
+    size: tuple[int, int],
+) -> np.ndarray:
+  """Returns the mask cropped and letterboxed to match a letterboxed crop.
+
+  Mirrors :func:`crop_masked_image` and
+  :func:`crop_with_mean_background_blend` exactly so the returned mask
+  aligns pixel-for-pixel with the saved crop. The letterbox padding is
+  filled with ``0`` (background).
+
+  Args:
+      mask: Binary mask of shape ``(H, W)``.
+      box: Bounding box as ``[x_min, y_min, x_max, y_max]``.
+      size: Output size after letterboxing, as ``(height, width)``.
+
+  Returns:
+      A binary mask of shape ``size`` as ``uint8`` with values in
+      ``{0, 255}``.
+  """
+  x_min, y_min, x_max, y_max = get_padded_box(box, mask.shape)
+  cropped_mask = mask[y_min:y_max, x_min:x_max].astype(np.uint8) * 255
+  return letterbox_single_channel(cropped_mask, size=size, fill_value=0)
 
 
 # ── Mask hole filling ────────────────────────────────────────────────────────
