@@ -13,6 +13,18 @@
 set -e
 
 echo "===================================="
+echo "Download RF-DETR model checkpoint"
+echo "===================================="
+# The CircularNet team publishes an RF-DETR-Seg-Medium checkpoint fine-tuned
+# on waste imagery. This gives you waste-specific classes (bottles, pouches,
+# wrappers, sachets, etc.) instead of the 80 generic COCO classes that the
+# default RFDETRSegMedium() weights would provide.
+CHECKPOINT_URL="https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/CN-ModelCheckpoints/July2026_checkpoint/checkpoint_best_total.pth"
+CHECKPOINT_PATH="./checkpoint_best_total.pth"
+
+wget -nc -O "${CHECKPOINT_PATH}" "${CHECKPOINT_URL}"
+
+echo "===================================="
 echo "Stage 1/4: Filter sparse images"
 echo "===================================="
 # Moves images with fewer than `min_detections` detected objects out to a
