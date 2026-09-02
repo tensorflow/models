@@ -1,0 +1,242 @@
+# ---------------------------------------------------------
+# PET Bottle Grade Detection Pipeline Configuration
+# ---------------------------------------------------------
+paths:
+  # Local file-system source. Exactly one of `local.enable` / `gcs.enable`
+  # must be true (validated at config-load time).
+  #
+  # For BOTH sources, the input location must be the PARENT directory, not a
+  # folder of images. Its IMMEDIATE subfolders are each processed as an
+  # independent capture session; loose images placed directly in the parent
+  # are ignored.
+  #
+  # For accuracy reporting, name each subfolder EXACTLY after one of the class
+  # names listed under `classes` below (e.g. 'brown_bottles_grade3'). Matching
+  # is exact and case-insensitive, so a name that only contains a class as a
+  # substring (e.g. 'brown_bottles_grade3_batch1') is NOT treated as ground
+  # truth. When collapsed categories are enabled, the ground-truth CATEGORY
+  # (e.g. 'grade3') is derived from the matched class via the mapping below --
+  # the subfolder is NOT matched against category names. A subfolder whose
+  # name is not exactly a class name is reported with counts only (no class or
+  # category accuracy).
+  #
+  # Expected layout:
+  #   <input parent>/
+  #   |-- brown_bottles_grade3/   -> images...
+  #   |-- clean_jars_grade1/      -> images...
+  #   `-- <other_name>/           -> images...   (counts only, no accuracy)
+  #
+  # A run-wide 'summary.txt' collecting every subfolder's summary block is
+  # written to the active output root. In GCS mode it is written into
+  # temp_output_directory and uploaded to output_uri with the rest of the
+  # output; in local mode it is written into output_root_directory.
+  local:
+    enable: true
+    input_image_directory: "/home/umairsabir/new_data/test_data/ecosattva_pet_bottles_2026-07-28/2026-07-28_output"  # TODO
+    output_root_directory: "/home/umairsabir/new_data/test_data/ecosattva_pet_bottles_2026-07-28/2026-07-28_output_model_output"  # TODO
+  # Google Cloud Storage source. When enabled, input is downloaded from
+  # `input_uri` into `temp_input_directory`, the pipeline runs against the
+  # temp directories, and output is later uploaded to `output_uri`. The temp
+  # directories are pipeline-owned scratch space, kept separate from the
+  # local directories so real local data is never deleted or overwritten.
+  gcs:
+    enable: false
+    input_uri: "gs://recykal/latest_data/brown_bottles_grade3/images/"  # TODO
+    output_uri: "gs://recykal/exp_output/"  # TODO
+    temp_input_directory: "/home/umairsabir/bottle_grade/gcs_temp/input/"  # TODO
+    temp_output_directory: "/home/umairsabir/bottle_grade/gcs_temp/output/"  # TODO
+  # Output subfolders below are created INSIDE each per-subfolder result
+  # directory. They are shared across both sources.
+  output_frame_subfolder: "tracked_frames"
+  output_video_filename: "tracked_output.mp4"
+  track_grid_subfolder: "track_grids_by_category"
+
+
+# ---------------------------------------------------------
+# BigQuery result ingestion. Independent of the input/output source: results
+# can be written to BigQuery whether the pipeline runs in local or GCS mode.
+# When enable is true, project_id / dataset_id / table_id must be non-empty
+# (validated at config-load time).
+# ---------------------------------------------------------
+bigquery:
+  enable: false
+  project_id: "waste-identification-ml-330916"
+  dataset_id: "umair_packet_dataset"
+  table_id: "umair_bottle_table"
+  # When true, the table's existing rows are replaced by this run's rows.
+  # When false, this run's rows are appended.
+  overwrite: true
+
+
+models:
+  # RFDETR segmentation model. RFDETR replaces the previous SAM3 detector
+  # and is used purely as an object finder: its class predictions are
+  # discarded, and every detection contributes a mask + box + score to the
+  # tracking and DINOv3 grading stages downstream. Use the CircularNet
+  # fine-tuned checkpoint for waste-specific object recall.
+  #
+  # This block holds everything the model itself needs: checkpoint,
+  # device, its own confidence gate, and the file extensions that decide
+  # which images get fed into it.
+  rfdetr:
+    checkpoint_path: "/home/umairsabir/rfdetr_weights/checkpoint_best_total.pth"  # TODO
+    device: "cuda"  # Will fallback to 'cpu' automatically if unavailable
+    # File extensions used to discover the images that get fed to RFDETR.
+    image_file_extensions: ["*.png", "*.jpg", "*.jpeg"]
+    # RFDETR's own confidence gate: detections below this never reach
+    # the pipeline. Passed as `RFDETR.predict(threshold=...)`.
+    predict_threshold: 0.2
+  dinov3:
+    repo_dir: "/home/umairsabir/dinov3"  # TODO
+    checkpoint_path: "/home/umairsabir/tracking/dinov3_21_classes_model/best_model.pth"  # TODO
+    model_name: "dinov3_vitl16"
+    inference_image_size: 256
+    classification_batch_size: 32
+    # Standard ImageNet normalization means and standard deviations
+    image_mean: [0.485, 0.456, 0.406]
+    image_std: [0.229, 0.224, 0.225]
+
+
+# The complete list of target classes in exact label-index order.
+# To get per-subfolder class accuracy, name each input subfolder EXACTLY after
+# one of these names (see the note under `paths` above).
+classes:
+- 'brown_bottles_grade3'
+- 'clean_PET_cold_drink_bottles_with_label_cap_ring_grade1'
+- 'clean_PET_cold_drink_bottles_without_label_cap_ring_grade1'
+- 'clean_PET_mango_juice_bottles_without_label_cap_ring_grade1'
+- 'clean_PET_water_bottles_with_label_cap_ring_grade1'
+- 'clean_PET_water_bottles_without_label_cap_ring_grade1'
+- 'clean_jars_grade1'
+- 'clean_liquor_bottles_without_label_cap_ring_grade1'
+- 'coloured_PET_bottles_grade3'
+- 'dirt_PET_cold_drink_bottles_with_label_cap_ring_grade3'
+- 'dirt_PET_cold_drink_bottles_without_label_cap_ring_grade3'
+- 'dirt_PET_mango_juice_bottles_without_label_cap_ring_grade3'
+- 'dirt_PET_water_bottles_with_label_cap_ring_grade3'
+- 'dirt_PET_water_bottles_without_label_cap_ring_grade3'
+- 'dirt_jars_grade3'
+- 'dirt_liquor_bottles_without_label_cap_ring_grade3'
+- 'full_sleeved_bottles_grade3'
+- 'green_bottles_grade3'
+- 'liquor_bottles_with_label_cap_ring_grade3'
+- 'non_food_bottles_grade3'
+- 'partially_sleeved_mango_juice_bottles_with_label_cap_ring_grade3'
+
+
+# ---------------------------------------------------------
+# Optional grouping of fine-grained classes into broader categories.
+# When enable=true, every class above MUST appear in exactly one category
+# (validated at config-load time). When enable=false, the 'mapping' is
+# ignored and per-category reporting / nested folders are skipped.
+# Classes are grouped by their grade suffix.
+#
+# When enabled, per-subfolder CATEGORY accuracy is derived from the matched
+# ground-truth class via this mapping (e.g. a subfolder named exactly
+# 'brown_bottles_grade3' has category ground truth 'grade3'). Subfolders are
+# not matched against these category names directly.
+# ---------------------------------------------------------
+collapsed_categories:
+  enable: true
+  mapping:
+    grade1:
+    - 'clean_PET_cold_drink_bottles_with_label_cap_ring_grade1'
+    - 'clean_PET_cold_drink_bottles_without_label_cap_ring_grade1'
+    - 'clean_PET_mango_juice_bottles_without_label_cap_ring_grade1'
+    - 'clean_PET_water_bottles_with_label_cap_ring_grade1'
+    - 'clean_PET_water_bottles_without_label_cap_ring_grade1'
+    - 'clean_jars_grade1'
+    - 'clean_liquor_bottles_without_label_cap_ring_grade1'
+    grade3:
+    - 'brown_bottles_grade3'
+    - 'coloured_PET_bottles_grade3'
+    - 'dirt_PET_cold_drink_bottles_with_label_cap_ring_grade3'
+    - 'dirt_PET_cold_drink_bottles_without_label_cap_ring_grade3'
+    - 'dirt_PET_mango_juice_bottles_without_label_cap_ring_grade3'
+    - 'dirt_PET_water_bottles_with_label_cap_ring_grade3'
+    - 'dirt_PET_water_bottles_without_label_cap_ring_grade3'
+    - 'dirt_jars_grade3'
+    - 'dirt_liquor_bottles_without_label_cap_ring_grade3'
+    - 'full_sleeved_bottles_grade3'
+    - 'green_bottles_grade3'
+    - 'liquor_bottles_with_label_cap_ring_grade3'
+    - 'non_food_bottles_grade3'
+    - 'partially_sleeved_mango_juice_bottles_with_label_cap_ring_grade3'
+
+
+# ---------------------------------------------------------
+# Image preprocessing applied BEFORE any model sees the image. Detector
+# independent -- swapping RFDETR for another detector would still need
+# this stage.
+# ---------------------------------------------------------
+preprocessing:
+  # Maximum length of the shorter image side. Images larger than this are
+  # downscaled preserving aspect ratio; smaller images are left unchanged.
+  max_short_side: 1024
+
+
+# ---------------------------------------------------------
+# Filters applied to RFDETR's raw output before tracking. Order:
+#   1. containment_threshold       -- mask-in-mask filter.
+#   2. merge_containment_threshold -- box-in-box merge (unconditional).
+#   3. score_threshold             -- final cutoff before tracking.
+# ---------------------------------------------------------
+post_processing:
+  # Ratio above which a smaller mask is removed when contained inside a
+  # larger mask (intersection / smaller_mask_area).
+  containment_threshold: 0.98
+  # Ratio above which a smaller box is merged into a larger one
+  # (intersection_area / smaller_box_area).
+  merge_containment_threshold: 0.7
+  # Final score cutoff applied when handing detections to the tracker.
+  # Set to 0.0 to keep every detection that survived the earlier filters.
+  score_threshold: 0.20
+
+
+# ---------------------------------------------------------
+# Per-track crop geometry. These crops are what feed DINOv3, not RFDETR --
+# RFDETR sees the resized input image directly.
+# ---------------------------------------------------------
+cropping:
+  # Output letterbox size for track crops as [height, width].
+  crop_size: [256, 256]
+  # Pixel buffer added around tight bounding boxes before cropping (guards
+  # against edge clipping).
+  crop_buffer_pixels: 5
+
+
+tracking:
+  # Set to false when input images are independent (not consecutive video
+  # frames). When false, ByteTrack is bypassed entirely and every detection
+  # in every frame is assigned a fresh sequential ID. The two ByteTrack
+  # parameters below are ignored in that mode, and the per-subfolder summary
+  # block is skipped.
+  enable: true
+  bytetrack_minimum_iou_threshold: 0.1
+  bytetrack_minimum_consecutive_frames: 2
+
+
+visualization:
+  # ---------------------------------------------------------------------------
+  # Output Toggles
+  # Disable these to save disk space and drastically speed up processing time.
+  # ---------------------------------------------------------------------------
+  # If true, creates the folder specified in `output_frame_subfolder` (e.g., "tracked_frames/")
+  # inside each per-subfolder result directory and saves individual annotated PNGs.
+  save_frames: true
+  # If true, creates the MP4 file specified in `output_video_filename`
+  # (e.g., "tracked_output.mp4") inside each per-subfolder result directory.
+  save_video: false
+  # If true, creates the folder specified in `track_grid_subfolder` inside each
+  # per-subfolder result directory, with nested subfolders by category and class.
+  save_track_grids: true
+  # ---------------------------------------------------------------------------
+  # Render Settings
+  # ---------------------------------------------------------------------------
+  output_video_fps: 1
+  show_confidence_in_labels: true
+  # ImageNet mean used for crop backgrounds to match DINOv3 expectations
+  background_blend_color_rgb: [124, 116, 104]
+  track_grid_columns_per_row: 5
+  track_grid_thumbnail_size_inches: 3
+  track_grid_dpi: 150
