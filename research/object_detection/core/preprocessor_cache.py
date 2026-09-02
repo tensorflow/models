@@ -47,6 +47,8 @@ class PreprocessorCache(object):
   CROP_TO_ASPECT_RATIO = 'crop_to_aspect_ratio'
   RESIZE_METHOD = 'resize_method'
   PAD_TO_ASPECT_RATIO = 'pad_to_aspect_ratio'
+  PAD_TO_ASPECT_RATIO_X_OFFSET = 'pad_to_aspect_ratio_x_offset'
+  PAD_TO_ASPECT_RATIO_Y_OFFSET = 'pad_to_aspect_ratio_y_offset'
   BLACK_PATCHES = 'black_patches'
   ADD_BLACK_PATCH = 'add_black_patch'
   SELECTOR = 'selector'
@@ -64,7 +66,8 @@ class PreprocessorCache(object):
                 IMAGE_SCALE, RGB_TO_GRAY, ADJUST_BRIGHTNESS, ADJUST_CONTRAST,
                 ADJUST_HUE, ADJUST_SATURATION, DISTORT_COLOR, STRICT_CROP_IMAGE,
                 CROP_IMAGE, PAD_IMAGE, CROP_TO_ASPECT_RATIO, RESIZE_METHOD,
-                PAD_TO_ASPECT_RATIO, BLACK_PATCHES, ADD_BLACK_PATCH, SELECTOR,
+                PAD_TO_ASPECT_RATIO, PAD_TO_ASPECT_RATIO_X_OFFSET, PAD_TO_ASPECT_RATIO_Y_OFFSET, 
+                BLACK_PATCHES, ADD_BLACK_PATCH, SELECTOR,
                 SELECTOR_TUPLES, SELF_CONCAT_IMAGE, SSD_CROP_SELECTOR_ID,
                 SSD_CROP_PAD_SELECTOR_ID, JPEG_QUALITY,
                 DOWNSCALE_TO_TARGET_PIXELS, PATCH_GAUSSIAN,
