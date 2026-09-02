@@ -622,7 +622,6 @@ def draw_bounding_boxes_on_image_tensors(images,
   images = tf.map_fn(draw_boxes, elems, dtype=tf.uint8, back_prop=False)
   return images
 
-
 def draw_side_by_side_evaluation_image(eval_dict,
                                        category_index,
                                        max_boxes_to_draw=20,
@@ -1105,6 +1104,7 @@ def visualize_boxes_and_labels_on_image_array(
     classes,
     scores,
     category_index,
+    return_coordinates=False,
     instance_masks=None,
     instance_boundaries=None,
     keypoints=None,
@@ -1184,6 +1184,9 @@ def visualize_boxes_and_labels_on_image_array(
   box_to_track_ids_map = {}
   if not max_boxes_to_draw:
     max_boxes_to_draw = boxes.shape[0]
+
+  box = ()
+  class_name = ''
   for i in range(boxes.shape[0]):
     if max_boxes_to_draw == len(box_to_color_map):
       break
@@ -1274,7 +1277,11 @@ def visualize_boxes_and_labels_on_image_array(
           keypoint_edge_color=color,
           keypoint_edge_width=line_thickness // 2)
 
+  if return_coordinates == True:
+    return box, class_name
+    
   return image
+  
 
 
 def add_cdf_image_summary(values, name):
