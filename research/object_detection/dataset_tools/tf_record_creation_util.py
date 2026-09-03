@@ -40,7 +40,7 @@ def open_sharded_output_tfrecords(exit_stack, base_path, num_shards):
   ]
 
   tfrecords = [
-      exit_stack.enter_context(tf.python_io.TFRecordWriter(file_name))
+      exit_stack.enter_context(tf.io.TFRecordWriter(file_name))
       for file_name in tf_record_output_filenames
   ]
 
