@@ -58,7 +58,7 @@ reasons:
 
 * Eager execution with new binaries makes debugging easy!
 
-Finally, if are an existing user of the Object Detection API we have retained
+Finally, if you are an existing user of the Object Detection API we have retained
 the same config language you are familiar with and ensured that the
 TF2 training/eval binary takes the same arguments as our TF1 binaries.
 
@@ -153,7 +153,7 @@ includes:
 * COCO pre-trained weights for all of the models provided as TF2 style
   object-based checkpoints.
 * Access to [Distribution Strategies](https://www.tensorflow.org/guide/distributed_training)
-  for distributed training --- our model are designed to be trainable using sync
+  for distributed training --- our models are designed to be trainable using sync
   multi-GPU and TPU platforms.
 * Colabs demo’ing eager mode training and inference.
 
@@ -172,7 +172,7 @@ Yixin Shi, Yu-hui Chen, Zhichao Lu.
 ### MobileDet GPU
 
 We have released SSDLite with MobileDet GPU backbone, which achieves 17% mAP
-higher than the MobileNetV2 SSDLite (27.5 mAP vs 23.5 mAP) on a NVIDIA Jetson
+higher than the MobileNetV2 SSDLite (27.5 mAP vs 23.5 mAP) on an NVIDIA Jetson
 Xavier at comparable latency (3.2ms vs 3.3ms).
 
 Along with the model definition, we are also releasing model checkpoints trained
