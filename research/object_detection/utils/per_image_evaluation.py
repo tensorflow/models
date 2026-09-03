@@ -80,22 +80,22 @@ class PerImageEvaluation(object):
       detected_boxes: A float numpy array of shape [N, 4], representing N
         regions of detected object regions. Each row is of the format [y_min,
         x_min, y_max, x_max]
-      detected_scores: A float numpy array of shape [N, 1], representing the
+      detected_scores: A float numpy array of shape [N], representing the
         confidence scores of the detected N object instances.
-      detected_class_labels: A integer numpy array of shape [N, 1], repreneting
+      detected_class_labels: A integer numpy array of shape [N], representing
         the class labels of the detected N object instances.
       groundtruth_boxes: A float numpy array of shape [M, 4], representing M
         regions of object instances in ground truth
-      groundtruth_class_labels: An integer numpy array of shape [M, 1],
+      groundtruth_class_labels: An integer numpy array of shape [M],
         representing M class labels of object instances in ground truth
-      groundtruth_is_difficult_list: A boolean numpy array of length M denoting
+      groundtruth_is_difficult_list: A boolean numpy array of shape [M] denoting
         whether a ground truth box is a difficult instance or not
-      groundtruth_is_group_of_list: A boolean numpy array of length M denoting
+      groundtruth_is_group_of_list: A boolean numpy array of shape [M] denoting
         whether a ground truth box has group-of tag
       detected_masks: (optional) A uint8 numpy array of shape [N, height,
         width]. If not None, the metrics will be computed based on masks.
       groundtruth_masks: (optional) A uint8 numpy array of shape [M, height,
-        width]. Can have empty masks, i.e. where all values are 0.
+        width]. Can have empty masks, i.e., where all values are 0.
 
     Returns:
       scores: A list of C float numpy arrays. Each numpy array is of
@@ -105,7 +105,7 @@ class PerImageEvaluation(object):
           is of shape [K, 1], representing K True/False positive label of
           object instances detected with class label c
       is_class_correctly_detected_in_image: a numpy integer array of
-          shape [C, 1], indicating whether the correponding class has a least
+          shape [C], indicating whether the correponding class has a least
           one instance being correctly detected in the image
     """
     detected_boxes, detected_scores, detected_class_labels, detected_masks = (
@@ -147,13 +147,13 @@ class PerImageEvaluation(object):
       detected_boxes: A float numpy array of shape [N, 4], representing N
         regions of detected object regions. Each row is of the format [y_min,
         x_min, y_max, x_max]
-      detected_scores: A float numpy array of shape [N, 1], representing the
+      detected_scores: A float numpy array of shape [N], representing the
         confidence scores of the detected N object instances.
-      detected_class_labels: A integer numpy array of shape [N, 1], repreneting
-        the class labels of the detected N object instances.
+      detected_class_labels: An integer numpy array of shape [N],
+        representing the class labels of the detected N object instances.
       groundtruth_boxes: A float numpy array of shape [M, 4], representing M
         regions of object instances in ground truth
-      groundtruth_class_labels: An integer numpy array of shape [M, 1],
+      groundtruth_class_labels: An integer numpy array of shape [M],
         representing M class labels of object instances in ground truth
       detected_masks: (optional) A uint8 numpy array of shape [N, height,
         width]. If not None, the scores will be computed based on masks.
@@ -162,7 +162,7 @@ class PerImageEvaluation(object):
 
     Returns:
       is_class_correctly_detected_in_image: a numpy integer array of
-          shape [C, 1], indicating whether the correponding class has a least
+          shape [C], indicating whether the correponding class has a least
           one instance being correctly detected in the image
 
     Raises:
@@ -206,7 +206,7 @@ class PerImageEvaluation(object):
     Args:
       detected_boxes: A numpy array of shape [N, 4] representing detected box
         coordinates
-      detected_scores: A 1-d numpy array of length N representing classification
+      detected_scores: A numpy array of shape [N] representing classification
         score
       groundtruth_boxes: A numpy array of shape [M, 4] representing ground truth
         box coordinates
@@ -257,13 +257,13 @@ class PerImageEvaluation(object):
       detected_boxes: A float numpy array of shape [N, 4], representing N
         regions of detected object regions. Each row is of the format [y_min,
         x_min, y_max, x_max]
-      detected_scores: A float numpy array of shape [N, 1], representing the
+      detected_scores: A float numpy array of shape [N], representing the
         confidence scores of the detected N object instances.
-      detected_class_labels: A integer numpy array of shape [N, 1], repreneting
+      detected_class_labels: A integer numpy array of shape [N], representing
         the class labels of the detected N object instances.
       groundtruth_boxes: A float numpy array of shape [M, 4], representing M
         regions of object instances in ground truth
-      groundtruth_class_labels: An integer numpy array of shape [M, 1],
+      groundtruth_class_labels: An integer numpy array of shape [M],
         representing M class labels of object instances in ground truth
       groundtruth_is_difficult_list: A boolean numpy array of length M denoting
         whether a ground truth box is a difficult instance or not
@@ -327,7 +327,7 @@ class PerImageEvaluation(object):
     Args:
       detected_boxes: A numpy array of shape [N, 4] representing detected box
         coordinates
-      detected_scores: A 1-d numpy array of length N representing classification
+      detected_scores: A numpy array of shape [N] representing classification
         score
       detected_masks: A uint8 numpy array of shape [N, height, width]. If not
         None, the scores will be computed based on masks.
@@ -339,9 +339,9 @@ class PerImageEvaluation(object):
         group-of box, every detection matching this box is ignored.
 
     Returns:
-      iou: A float numpy array of size [num_detected_boxes, num_gt_boxes]. If
+      iou: A float numpy array of size [N, M]. If
           gt_non_group_of_boxlist.num_boxes() == 0 it will be None.
-      ioa: A float numpy array of size [num_detected_boxes, num_gt_boxes]. If
+      ioa: A float numpy array of size [N, M]. If
           gt_group_of_boxlist.num_boxes() == 0 it will be None.
       scores: The score of the detected boxlist.
       num_boxes: Number of non-maximum suppressed detected boxes.
@@ -372,18 +372,18 @@ class PerImageEvaluation(object):
     Args:
       detected_boxes: A numpy array of shape [N, 4] representing detected box
         coordinates
-      detected_scores: A 1-d numpy array of length N representing classification
+      detected_scores: A numpy array of shape [N] representing classification
         score
       groundtruth_boxes: A numpy array of shape [M, 4] representing ground truth
         box coordinates
-      groundtruth_is_group_of_list: A boolean numpy array of length M denoting
+      groundtruth_is_group_of_list: A boolean numpy array of shape [M] denoting
         whether a ground truth box has group-of tag. If a groundtruth box is
         group-of box, every detection matching this box is ignored.
 
     Returns:
-      iou: A float numpy array of size [num_detected_boxes, num_gt_boxes]. If
+      iou: A float numpy array of shape [N, M]. If
           gt_non_group_of_boxlist.num_boxes() == 0 it will be None.
-      ioa: A float numpy array of size [num_detected_boxes, num_gt_boxes]. If
+      ioa: A float numpy array of shape [N, M]. If
           gt_group_of_boxlist.num_boxes() == 0 it will be None.
       scores: The score of the detected boxlist.
       num_boxes: Number of non-maximum suppressed detected boxes.
@@ -416,7 +416,7 @@ class PerImageEvaluation(object):
     Args:
       detected_boxes: A numpy array of shape [N, 4] representing detected box
         coordinates
-      detected_scores: A 1-d numpy array of length N representing classification
+      detected_scores: A numpy array of shape [N] representing classification
         score
       groundtruth_boxes: A numpy array of shape [M, 4] representing ground truth
         box coordinates
