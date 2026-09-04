@@ -30,22 +30,22 @@ from absl import flags
 import tensorflow.compat.v2 as tf
 from object_detection import model_lib_v2
 
-flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
+flags.DEFINE_string('pipeline_config_path', '/content/models/research/deploy/pipeline_file.config', 'Path to pipeline config '
                     'file.')
-flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
-flags.DEFINE_bool('eval_on_train_data', False, 'Enable evaluating on train '
+flags.DEFINE_integer('num_train_steps',40000, 'Number of train steps.')
+flags.DEFINE_bool('eval_on_train_data',True, 'Enable evaluating on train '
                   'data (only supported in distributed training).')
-flags.DEFINE_integer('sample_1_of_n_eval_examples', None, 'Will sample one of '
+flags.DEFINE_integer('sample_1_of_n_eval_examples',1, 'Will sample one of '
                      'every n eval input examples, where n is provided.')
-flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 5, 'Will sample '
+flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 1, 'Will sample '
                      'one of every n train input examples for evaluation, '
                      'where n is provided. This is only used if '
                      '`eval_training_data` is True.')
 flags.DEFINE_string(
-    'model_dir', None, 'Path to output model directory '
+    'model_dir','/content/training/', 'Path to output model directory '
                        'where event and checkpoint files will be written.')
 flags.DEFINE_string(
-    'checkpoint_dir', None, 'Path to directory holding a checkpoint.  If '
+    'checkpoint_dir',/content/training/, 'Path to directory holding a checkpoint.  If '
     '`checkpoint_dir` is provided, this binary operates in eval-only mode, '
     'writing resulting metrics to `model_dir`.')
 
