@@ -37,7 +37,7 @@ import tensorflow.compat.v1 as tf
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.utils import ops
-from object_detection.utils import shape_utils
+from object_detection.core import iou_utils
 
 
 class Loss(six.with_metaclass(abc.ABCMeta, object)):
@@ -183,65 +183,33 @@ class WeightedSmoothL1LocalizationLoss(Loss):
     ), axis=2)
 
 
-class WeightedIOULocalizationLoss(Loss):
-  """IOU localization loss function.
+# class WeightedIOULocalizationLoss(Loss):
+  # """IOU localization loss function.
 
-  Sums the IOU for corresponding pairs of predicted/groundtruth boxes
-  and for each pair assign a loss of 1 - IOU.  We then compute a weighted
-  sum over all pairs which is returned as the total loss.
-  """
+  # Sums the IOU for corresponding pairs of predicted/groundtruth boxes
+  # and for each pair assign a loss of 1 - IOU.  We then compute a weighted
+  # sum over all pairs which is returned as the total loss.
+  # """
 
-  def _compute_loss(self, prediction_tensor, target_tensor, weights):
-    """Compute loss function.
+  # def _compute_loss(self, prediction_tensor, target_tensor, weights):
+    # """Compute loss function.
 
-    Args:
-      prediction_tensor: A float tensor of shape [batch_size, num_anchors, 4]
-        representing the decoded predicted boxes
-      target_tensor: A float tensor of shape [batch_size, num_anchors, 4]
-        representing the decoded target boxes
-      weights: a float tensor of shape [batch_size, num_anchors]
+    # Args:
+      # prediction_tensor: A float tensor of shape [batch_size, num_anchors, 4]
+        # representing the decoded predicted boxes
+      # target_tensor: A float tensor of shape [batch_size, num_anchors, 4]
+        # representing the decoded target boxes
+      # weights: a float tensor of shape [batch_size, num_anchors]
 
-    Returns:
-      loss: a float tensor of shape [batch_size, num_anchors] tensor
-        representing the value of the loss function.
-    """
-    predicted_boxes = box_list.BoxList(tf.reshape(prediction_tensor, [-1, 4]))
-    target_boxes = box_list.BoxList(tf.reshape(target_tensor, [-1, 4]))
-    per_anchor_iou_loss = 1.0 - box_list_ops.matched_iou(predicted_boxes,
-                                                         target_boxes)
-    return tf.reshape(weights, [-1]) * per_anchor_iou_loss
-
-
-class WeightedGIOULocalizationLoss(Loss):
-  """GIOU localization loss function.
-
-  Sums the GIOU loss for corresponding pairs of predicted/groundtruth boxes
-  and for each pair assign a loss of 1 - GIOU.  We then compute a weighted
-  sum over all pairs which is returned as the total loss.
-  """
-
-  def _compute_loss(self, prediction_tensor, target_tensor, weights):
-    """Compute loss function.
-
-    Args:
-      prediction_tensor: A float tensor of shape [batch_size, num_anchors, 4]
-        representing the decoded predicted boxes
-      target_tensor: A float tensor of shape [batch_size, num_anchors, 4]
-        representing the decoded target boxes
-      weights: a float tensor of shape [batch_size, num_anchors]
-
-    Returns:
-      loss: a float tensor of shape [batch_size, num_anchors] tensor
-        representing the value of the loss function.
-    """
-    batch_size, num_anchors, _ = shape_utils.combined_static_and_dynamic_shape(
-        prediction_tensor)
-    predicted_boxes = tf.reshape(prediction_tensor, [-1, 4])
-    target_boxes = tf.reshape(target_tensor, [-1, 4])
-
-    per_anchor_iou_loss = 1 - ops.giou(predicted_boxes, target_boxes)
-    return tf.reshape(tf.reshape(weights, [-1]) * per_anchor_iou_loss,
-                      [batch_size, num_anchors])
+    # Returns:
+      # loss: a float tensor of shape [batch_size, num_anchors] tensor
+        # representing the value of the loss function.
+    # """
+    # predicted_boxes = box_list.BoxList(tf.reshape(prediction_tensor, [-1, 4]))
+    # target_boxes = box_list.BoxList(tf.reshape(target_tensor, [-1, 4]))
+    # per_anchor_iou_loss = 1.0 - box_list_ops.matched_iou(predicted_boxes,
+                                                         # target_boxes)
+    # return tf.reshape(weights, [-1]) * per_anchor_iou_loss
 
 
 class WeightedSigmoidClassificationLoss(Loss):
@@ -887,3 +855,34 @@ class L1LocalizationLoss(Loss):
         loss_collection=None,
         reduction=tf.losses.Reduction.NONE
     )
+
+class WeightedIOULocalizationLoss(Loss):
+  """IOU localization loss function.
+
+  Sums the IOU for corresponding pairs of predicted/groundtruth boxes
+  and for each pair assign a loss of 1 - IOU.  We then compute a weighted
+  sum over all pairs which is returned as the total loss.
+  """
+  def __init__(self, iou_type = 'iou'):
+
+    self.iou_type = iou_type
+    super(WeightedIOULocalizationLoss, self).__init__()
+
+  def _compute_loss(self, prediction_tensor, target_tensor, weights):
+    """Compute loss function.
+
+    Args:
+      prediction_tensor: A float tensor of shape [batch_size, num_anchors, 4]
+        representing the decoded predicted boxes
+      target_tensor: A float tensor of shape [batch_size, num_anchors, 4]
+        representing the decoded target boxes
+      weights: a float tensor of shape [batch_size, num_anchors]
+
+    Returns:
+      loss: a float tensor of shape [batch_size, num_anchors] tensor
+        representing the value of the loss function.
+    """
+
+    per_anchor_iou_loss = iou_utils.iou_loss(tf.reshape(prediction_tensor, [-1, 4]), tf.reshape(target_tensor, [-1, 4]), self.iou_type)
+
+    return tf.reshape(weights, [-1]) * per_anchor_iou_loss
