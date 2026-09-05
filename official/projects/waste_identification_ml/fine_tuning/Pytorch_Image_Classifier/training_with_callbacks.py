@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Contains functions for training PyTorch models with callbacks."""
 
 from collections.abc import Mapping
@@ -48,7 +62,13 @@ def train_step(
 
   train_loss, train_acc = 0, 0
 
-  for _, (inputs, labels) in enumerate(dataloader):
+  # leave=False so the per-batch bar is erased once the epoch finishes and
+  # only the epoch-level bar and the summary line remain on screen.
+  batch_progress = tqdm.tqdm(
+      dataloader, desc="  train", leave=False, unit="batch"
+  )
+
+  for inputs, labels in batch_progress:
     inputs, labels = inputs.to(device), labels.to(device)
 
     y_pred = model(inputs)
@@ -64,6 +84,8 @@ def train_step(
 
     y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
     train_acc += (y_pred_class == labels).sum().item() / len(y_pred)
+
+    batch_progress.set_postfix(loss=f"{loss.item():.4f}")
 
   train_loss = train_loss / len(dataloader)
   train_acc = train_acc / len(dataloader)
@@ -97,7 +119,11 @@ def test_step(
   test_loss, test_acc = 0, 0
 
   with torch.inference_mode():
-    for _, (inputs, y) in enumerate(dataloader):
+    batch_progress = tqdm.tqdm(
+        dataloader, desc="  val  ", leave=False, unit="batch"
+    )
+
+    for inputs, y in batch_progress:
       inputs, y = inputs.to(device), y.to(device)
 
       test_pred_logits = model(inputs)
@@ -130,13 +156,16 @@ def train(
 
   model.to(device)
 
-  for epoch in tqdm.tqdm(range(epochs)):
+  epoch_progress = tqdm.tqdm(range(epochs), desc="epochs", unit="epoch")
+
+  for epoch in epoch_progress:
     train_loss, train_acc = train_step(
         model, train_dataloader, loss_fn, optimizer, device
     )
     test_loss, test_acc = test_step(model, test_dataloader, loss_fn, device)
 
-    print(
+    # tqdm.write keeps the summary lines from colliding with the active bars.
+    tqdm.tqdm.write(
         f"Epoch: {epoch+1} | "
         f"train_loss: {train_loss:.4f} | "
         f"train_acc: {train_acc:.4f} | "
@@ -155,7 +184,7 @@ def train(
     if early_stopping:
       early_stopping.check(val_loss=test_loss, model=model, epoch=epoch)
       if early_stopping.stop_training:
-        print(f"EarlyStopping Triggered at epoch {epoch+1}.")
+        tqdm.tqdm.write(f"EarlyStopping Triggered at epoch {epoch+1}.")
         break
 
   return results
@@ -201,7 +230,7 @@ class EarlyStopping:
       if self.no_improvement_count >= self.patience:
         self.stop_training = True
         if self.verbose:
-          print(
+          tqdm.tqdm.write(
               f"EarlyStopping No improvement for {self.patience} epochs."
               " Stopping early."
           )
@@ -210,7 +239,7 @@ class EarlyStopping:
     checkpoint_path = f"{self.base_path}_epoch_{epoch+1}.pt"
     torch.save(model.state_dict(), checkpoint_path)
     if self.verbose:
-      print(
+      tqdm.tqdm.write(
           "EarlyStopping Validation loss improved. Saving model at:"
           f" {checkpoint_path}"
       )
