@@ -22,7 +22,11 @@ echo "===================================="
 CHECKPOINT_URL="https://storage.googleapis.com/tf_model_garden/vision/waste_identification_ml/CN-ModelCheckpoints/July2026_checkpoint/checkpoint_best_total.pth"
 CHECKPOINT_PATH="./checkpoint_best_total.pth"
 
-wget -nc -O "${CHECKPOINT_PATH}" "${CHECKPOINT_URL}"
+if [ -f "${CHECKPOINT_PATH}" ]; then
+  echo "Checkpoint already present at ${CHECKPOINT_PATH}, skipping download."
+else
+  wget -O "${CHECKPOINT_PATH}" "${CHECKPOINT_URL}"
+fi
 
 echo "===================================="
 echo "Stage 1/4: Filter sparse images"

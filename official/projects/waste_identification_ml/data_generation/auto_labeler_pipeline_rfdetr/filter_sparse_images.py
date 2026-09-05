@@ -424,7 +424,9 @@ def main() -> None:
 
   os.makedirs(config.rejected_dir, exist_ok=True)
 
-  model = build_rfdetr_model(config.rfdetr_checkpoint_path)
+  model = build_rfdetr_model(
+      os.path.join(os.getcwd(), config.rfdetr_checkpoint_path)
+  )
 
   overall_rejected = 0
   overall_skipped = 0

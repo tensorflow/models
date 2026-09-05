@@ -20,7 +20,7 @@
 root_dir: "/home/umairsabir/new_data/test_data/saahas_milk_packet/exp"
 
 # Absolute path to the RFDETR model checkpoint.
-rfdetr_checkpoint_path: "/home/umairsabir/auto_labeler_pipeline_rfdetr_2/checkpoint_best_total.pth"
+rfdetr_checkpoint_path: "checkpoint_best_total.pth"
 
 # GPU device index made visible to the process (sets CUDA_VISIBLE_DEVICES).
 cuda_visible_devices: "0"

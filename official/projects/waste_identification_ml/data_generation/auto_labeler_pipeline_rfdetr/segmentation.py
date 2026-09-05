@@ -839,7 +839,9 @@ def main() -> None:
   print(f"Predict threshold:    {config.predict_threshold}")
   print(f"Rotation fill color:  {list(config.rotation_fill_color)}")
 
-  model = build_rfdetr_model(config.rfdetr_checkpoint_path)
+  model = build_rfdetr_model(
+      os.path.join(os.getcwd(), config.rfdetr_checkpoint_path)
+  )
 
   total_start = time.perf_counter()
 
