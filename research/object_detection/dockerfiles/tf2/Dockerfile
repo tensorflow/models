@@ -2,6 +2,10 @@ FROM tensorflow/tensorflow:2.2.0-gpu
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Fix nvidia gpg
+RUN apt-key del 7fa2af80 && \
+    apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/3bf863cc.pub
+    
 # Install apt dependencies
 RUN apt-get update && apt-get install -y \
     git \
