@@ -281,6 +281,20 @@ class ExportSavedModelTest(tf.test.TestCase):
     path = export_saved_model.safe_normpath('gs://foo//bar')
     self.assertEqual(path, 'gs://foo/bar')
 
+  def test_export_file_manager_negative_max_to_keep(self):
+    directory = self.create_tempdir()
+    base_name = os.path.join(directory.full_path, 'basename')
+
+    file_manager = export_saved_model.ExportFileManager(base_name, max_to_keep=-1)
+
+    tf.io.gfile.makedirs(f"{base_name}-10")
+    tf.io.gfile.makedirs(f"{base_name}-20")
+
+    self.assertLen(file_manager.managed_files, 2)
+
+    file_manager.clean_up()
+
+    self.assertLen(file_manager.managed_files, 2)
 
 if __name__ == '__main__':
   tf.test.main()
