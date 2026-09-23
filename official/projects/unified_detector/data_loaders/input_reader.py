@@ -47,7 +47,7 @@ class InputFn(object):
                is_training: bool,
                batch_size: Optional[int] = None,
                data_root: str = '',
-               input_paths: List[str] = gin.REQUIRED,  # pyrefly: ignore[bad-function-definition]
+               input_paths: List[str] = gin.REQUIRED,
                dataset_type: str = 'tfrecord',
                use_sampling: bool = False,
                sampling_weights: Optional[Sequence[Union[int, float]]] = None,

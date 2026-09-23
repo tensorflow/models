@@ -656,7 +656,7 @@ def _semantic_loss(
 def _entity_mask_loss(loss_dict: Dict[str, tf.Tensor],
                       labels: tf.Tensor,
                       outputs: tf.Tensor,
-                      alpha: float = gin.REQUIRED):  # pyrefly: ignore[bad-function-definition]
+                      alpha: float = gin.REQUIRED):
   """PQ loss for entity-mask training.
 
   This method adds the PQ loss term to loss_dict directly. The match result will
@@ -722,7 +722,7 @@ def _entity_mask_loss(loss_dict: Dict[str, tf.Tensor],
 def _instance_discrimination_loss(loss_dict: Dict[str, Any],
                                   labels: Dict[str, Any],
                                   outputs: Dict[str, Any],
-                                  tau: float = gin.REQUIRED):  # pyrefly: ignore[bad-function-definition]
+                                  tau: float = gin.REQUIRED):
   """Instance discrimination loss.
 
   This method adds the ID loss term to loss_dict directly.
@@ -770,7 +770,7 @@ def _paragraph_grouping_loss(
     loss_dict: Dict[str, Any],
     labels: Dict[str, Any],
     outputs: Dict[str, Any],
-    tau: float = gin.REQUIRED,  # pyrefly: ignore[bad-function-definition]
+    tau: float = gin.REQUIRED,
     loss_mode="vanilla",
     fl_alpha: float = 0.25,
     fl_gamma: float = 2.,
