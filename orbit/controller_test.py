@@ -827,6 +827,30 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
       self.assertIn("eval_loss", output)
       self.assertGreaterEqual(output["eval_loss"], 0)
 
+  def test_train_until_exhaustion(self):
+      test_runner = TestRunner()
+
+      # Create a finite dataset with only 10 elements (batch size 10) -> 1 step.
+      def finite_dataset_fn(ctx):
+          del ctx
+          inputs = np.zeros((10, 3), dtype=np.float32)
+          targets = np.ones((10, 4), dtype=np.float32)
+          dataset = tf.data.Dataset.from_tensor_slices((inputs, targets))
+          dataset = dataset.batch(1)
+          return dataset
+
+      test_runner.train_dataset = (
+          test_runner.strategy.distribute_datasets_from_function(finite_dataset_fn))
+
+      test_controller = controller.Controller(
+          trainer=test_runner,
+          global_step=test_runner.global_step,
+          steps_per_loop=1)
+
+      # Passing -1 should run until the dataset is exhausted (1 step).
+      test_controller.train(steps=-1)
+      self.assertEqual(test_runner.global_step.numpy(), 11)
+
   def test_step_per_loop_callable(self):
     test_runner = TestRunner()
 
