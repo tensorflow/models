@@ -49,7 +49,7 @@ mkdir -p "${BBOX_DIR}"
 cd "${OUTDIR}"
 
 # Download and process all of the ImageNet bounding boxes.
-BASE_URL="http://www.image-net.org/challenges/LSVRC/2012/nnoupb"
+BASE_URL="http://www.image-net.org/data/ILSVRC/2012"
 
 # See here for details: http://www.image-net.org/download-bboxes
 BOUNDING_BOX_ANNOTATIONS="${BASE_URL}/ILSVRC2012_bbox_train_v2.tar.gz"
