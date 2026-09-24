@@ -59,7 +59,7 @@ The Oxford-IIIT Pets dataset, the COCO pre-trained SSD + MobileNet (v1)
 checkpoint, and example
 trained model are all available in `/tmp` in their respective folders.
 
-This container also has the `gsutil` and `gcloud` utilities, the `bazel` build
+This container also has the `gcloud` utilities, the `bazel` build
 tool, and all dependencies necessary to use the Object Detection API, and
 compile and install the TensorFlow Lite Android demo app.
 

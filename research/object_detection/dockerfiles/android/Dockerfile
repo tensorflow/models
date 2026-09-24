@@ -22,7 +22,7 @@ RUN git clone --depth 1 https://github.com/tensorflow/models.git && \
     mv models /tensorflow/models
 
 
-# Install gcloud and gsutil commands
+# Install gcloud commands
 # https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu
 RUN apt-get -y update && apt-get install -y gpg-agent && \
     export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
