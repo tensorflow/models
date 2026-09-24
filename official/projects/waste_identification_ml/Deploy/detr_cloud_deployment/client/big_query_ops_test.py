@@ -198,7 +198,7 @@ class BigQueryManagerTest(unittest.TestCase):
 
     self.mock_subprocess_run.assert_called_once()
     args, _ = self.mock_subprocess_run.call_args
-    self.assertIn(f"gsutil -m cp -r {pred_dir} {output_dir}", args[0])
+    self.assertIn(f"gcloud storage cp --recursive {pred_dir} {output_dir}", args[0])
 
   def test_upload_image_results_to_storage_bucket_failure(self):
     input_dir = "/tmp/input"

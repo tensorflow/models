@@ -29,14 +29,14 @@ def copy(path: str) -> None:
   Args:
     path: path of the video in GCS bucket.
   """
-  gsutil_command = f"gsutil cp -r {path} ."
+  gsutil_command = f"gcloud storage cp --recursive {path} ."
   subprocess.run(gsutil_command, shell=True, check=True)
 
 
 def move(file_path: str, destination_bucket_path: str) -> None:
   """Moves a video file or directory of image files.
 
-  This function uses the 'gsutil' command-line utility to move a file or
+  This function uses the 'gcloud' command-line utility to move a file or
   directory to a GCS bucket. If the given file path is a directory, it moves
   all contents recursively. The function executes the appropriate 'gsutil'
   command based on whether the provided file path is a file or a directory.
@@ -48,9 +48,10 @@ def move(file_path: str, destination_bucket_path: str) -> None:
       will be moved to. This path should be in the format
       'gs://bucket-name/path/to/destination'.
   """
+  destination_bucket_path = destination_bucket_path.rstrip('/') + '/'
   if os.path.isdir(file_path):
-    gsutil_command = f"gsutil -m mv -r {file_path} {destination_bucket_path}"
+    gsutil_command = f"gcloud storage mv {file_path} {destination_bucket_path}"
   else:
-    gsutil_command = f"gsutil mv {file_path} {destination_bucket_path}"
+    gsutil_command = f"gcloud storage mv {file_path} {destination_bucket_path}"
 
   subprocess.run(gsutil_command, shell=True, check=True)
