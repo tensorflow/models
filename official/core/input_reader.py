@@ -479,8 +479,8 @@ class InputReader:
       dataset = self._combine_fn(dataset)  # pyrefly: ignore[not-callable]
 
     if self._sample_fn is not None:
-      dataset = dataset.apply(self._sample_fn)
-    dataset = _maybe_map_fn(dataset, self._parser_fn)
+      dataset = dataset.apply(self._sample_fn)  # pyrefly: ignore[missing-attribute]
+    dataset = _maybe_map_fn(dataset, self._parser_fn)  # pyrefly: ignore[bad-argument-type]
 
     if self._filter_fn is not None:
       dataset = dataset.filter(self._filter_fn)

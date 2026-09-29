@@ -56,7 +56,7 @@ def zero_out_disallowed_class_ids(batch_class_ids: tf.Tensor,
                                   dtype=batch_class_ids.dtype)
 
   match_ids = (batch_class_ids[:, :, tf.newaxis] ==
-               allowed_class_ids[tf.newaxis, tf.newaxis, :])
+               allowed_class_ids[tf.newaxis, tf.newaxis, :])  # pyrefly: ignore[bad-index]
 
   match_ids = tf.reduce_any(match_ids, axis=2)
   return tf.where(match_ids, batch_class_ids, tf.zeros_like(batch_class_ids))

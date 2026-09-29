@@ -150,7 +150,7 @@ class MobileConv2D(tf_keras.layers.Layer):
 
     kernel_size = normalize_tuple(kernel_size, 2, 'kernel_size')  # pyrefly: ignore[bad-argument-type]
 
-    if self._use_temporal and kernel_size[1] > 1:
+    if self._use_temporal and kernel_size[1] > 1:  # pyrefly: ignore[bad-index]
       raise ValueError('Temporal conv with spatial kernel is not supported.')
 
     if use_depthwise:
@@ -375,7 +375,7 @@ class ConvBlock(tf_keras.layers.Layer):
           epsilon=self._batch_norm_epsilon,
           synchronized=self._use_sync_bn,
           name='bn')
-      if self._conv_type != '3d' and self._kernel_size[0] > 1:
+      if self._conv_type != '3d' and self._kernel_size[0] > 1:  # pyrefly: ignore[bad-index]
         self._batch_norm_temporal = self._batch_norm_layer(
             momentum=self._batch_norm_momentum,
             epsilon=self._batch_norm_epsilon,
@@ -383,11 +383,11 @@ class ConvBlock(tf_keras.layers.Layer):
             name='bn_temporal')
 
     self._conv_temporal = None
-    if self._conv_type == '3d_2plus1d' and self._kernel_size[0] > 1:
+    if self._conv_type == '3d_2plus1d' and self._kernel_size[0] > 1:  # pyrefly: ignore[bad-index]
       self._conv = nn_layers.Conv3D(
           self._filters,
-          (1, self._kernel_size[1], self._kernel_size[2]),
-          strides=(1, self._strides[1], self._strides[2]),
+          (1, self._kernel_size[1], self._kernel_size[2]),  # pyrefly: ignore[bad-index]
+          strides=(1, self._strides[1], self._strides[2]),  # pyrefly: ignore[bad-index]
           padding='same',
           groups=self._groups,
           use_bias=self._use_bias,
@@ -397,8 +397,8 @@ class ConvBlock(tf_keras.layers.Layer):
           name='conv3d')
       self._conv_temporal = nn_layers.Conv3D(
           self._filters,
-          (self._kernel_size[0], 1, 1),
-          strides=(self._strides[0], 1, 1),
+          (self._kernel_size[0], 1, 1),  # pyrefly: ignore[bad-index]
+          strides=(self._strides[0], 1, 1),  # pyrefly: ignore[bad-index]
           padding=padding,
           groups=self._groups,
           use_bias=self._use_bias,
@@ -409,8 +409,8 @@ class ConvBlock(tf_keras.layers.Layer):
     elif self._conv_type == '2plus1d':
       self._conv = MobileConv2D(
           self._filters,
-          (self._kernel_size[1], self._kernel_size[2]),
-          strides=(self._strides[1], self._strides[2]),
+          (self._kernel_size[1], self._kernel_size[2]),  # pyrefly: ignore[bad-index]
+          strides=(self._strides[1], self._strides[2]),  # pyrefly: ignore[bad-index]
           padding='same',
           use_depthwise=self._depthwise,
           groups=self._groups,
@@ -421,11 +421,11 @@ class ConvBlock(tf_keras.layers.Layer):
           batch_norm_op=self._batch_norm,
           activation_op=self._activation_layer,
           name='conv2d')
-      if self._kernel_size[0] > 1:
+      if self._kernel_size[0] > 1:  # pyrefly: ignore[bad-index]
         self._conv_temporal = MobileConv2D(
             self._filters,
-            (self._kernel_size[0], 1),
-            strides=(self._strides[0], 1),
+            (self._kernel_size[0], 1),  # pyrefly: ignore[bad-index]
+            strides=(self._strides[0], 1),  # pyrefly: ignore[bad-index]
             padding=padding,
             use_temporal=True,
             use_depthwise=self._depthwise,
@@ -603,7 +603,7 @@ class StreamConvBlock(ConvBlock):
       A output tensor of the StreamConvBlock operation.
     """
     kernel_size = normalize_tuple(kernel_size, 3, 'kernel_size')  # pyrefly: ignore[bad-argument-type]
-    buffer_size = kernel_size[0] - 1
+    buffer_size = kernel_size[0] - 1  # pyrefly: ignore[bad-index]
     use_buffer = buffer_size > 0 and causal
 
     self._state_prefix = state_prefix

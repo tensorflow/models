@@ -86,7 +86,7 @@ def get_scalar_from_tensor(t: tf.Tensor) -> int:
   if callable(t):
     return t()  # pyrefly: ignore[bad-return]
   else:
-    return t
+    return t  # pyrefly: ignore[bad-return]
 
 
 class CustomTensorBoard(tf_keras.callbacks.TensorBoard):

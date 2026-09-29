@@ -104,7 +104,7 @@ def stateless_dropout(x: tf.Tensor,
       return x
 
     rate = tf.convert_to_tensor(rate, dtype=x.dtype, name='rate')
-    rate.shape.assert_has_rank(0)
+    rate.shape.assert_has_rank(0)  # pyrefly: ignore[missing-attribute]
     noise_shape = _get_noise_shape(x, noise_shape)
     # Sample a uniform distribution on [0.0, 1.0) and select values larger than
     # rate.

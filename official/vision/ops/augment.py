@@ -252,10 +252,10 @@ def gaussian_filter2d(
     filter_shape = _normalize_tuple(filter_shape, 2, 'filter_shape')
 
     sigma = tf.cast(sigma, image.dtype)
-    gaussian_kernel_x = _get_gaussian_kernel(sigma[1], filter_shape[1])
+    gaussian_kernel_x = _get_gaussian_kernel(sigma[1], filter_shape[1])  # pyrefly: ignore[bad-index]
     gaussian_kernel_x = gaussian_kernel_x[tf.newaxis, :]
 
-    gaussian_kernel_y = _get_gaussian_kernel(sigma[0], filter_shape[0])
+    gaussian_kernel_y = _get_gaussian_kernel(sigma[0], filter_shape[0])  # pyrefly: ignore[bad-index]
     gaussian_kernel_y = gaussian_kernel_y[:, tf.newaxis]
 
     gaussian_kernel_2d = _get_gaussian_kernel_2d(
@@ -265,7 +265,7 @@ def gaussian_filter2d(
     gaussian_kernel_2d = tf.tile(gaussian_kernel_2d, [1, 1, channels, 1])
 
     image = _pad(
-        image, filter_shape, mode=padding, constant_values=constant_values
+        image, filter_shape, mode=padding, constant_values=constant_values  # pyrefly: ignore[bad-argument-type]
     )
 
     output = tf.nn.depthwise_conv2d(
