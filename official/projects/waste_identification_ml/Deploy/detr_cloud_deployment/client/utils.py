@@ -97,10 +97,10 @@ def setup_logger_and_directories(input_dir):
 
   input_directory = (input_dir).rstrip('/\\')
   local_dir = os.path.basename(input_directory)
-  # A failed previous run can leave a file where gsutil needs a directory.
+  # A failed previous run can leave a file where gcloud needs a directory.
   if os.path.isfile(local_dir):
     os.remove(local_dir)
-  command = f'gsutil -m cp -r {input_directory} .'
+  command = f'gcloud storage cp --recursive {input_directory} .'
   subprocess.run(command, shell=True, check=True)
   prediction_folder = os.path.basename(input_directory) + '_prediction'
   os.makedirs(prediction_folder, exist_ok=True)
