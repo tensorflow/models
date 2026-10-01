@@ -17,6 +17,8 @@
 from absl import logging
 from orbit.utils import tpu_summaries
 
+from typing import Any, Callable, Optional, Iterator
+
 import tensorflow as tf, tf_keras
 
 # pylint: disable=g-direct-tensorflow-import
@@ -24,7 +26,7 @@ from tensorflow.python.tpu import embedding_context_utils as ecu
 # pylint: enable=g-direct-tensorflow-import
 
 
-def create_loop_fn(step_fn):
+def create_loop_fn(step_fn: Callable[[Any], Any]) -> Callable:
   """Creates a loop function driven by a Python `while` loop.
 
   Args:
@@ -40,7 +42,11 @@ def create_loop_fn(step_fn):
     additional details.
   """
 
-  def loop_fn(iterator, num_steps, state=None, reduce_fn=None):
+  def loop_fn(iterator: Any,
+              num_steps: int,
+              state=None,
+              reduce_fn: Optional[Callable[[Any, Any], Any]] = None
+              ) -> Any:
     """Makes `num_steps` calls to `step_fn(iterator)`.
 
     Additionally, state may be accumulated across iterations of the loop.
@@ -89,7 +95,7 @@ def create_loop_fn(step_fn):
   return loop_fn
 
 
-def create_tf_while_loop_fn(step_fn):
+def create_tf_while_loop_fn(step_fn: Callable[[Any], Any]) -> Callable:
   """Creates a loop function compatible with TF's AutoGraph loop conversion.
 
   Args:
@@ -103,7 +109,7 @@ def create_tf_while_loop_fn(step_fn):
     additional details.
   """
 
-  def loop_fn(iterator, num_steps):
+  def loop_fn(iterator: Any, num_steps: tf.Tensor):
     """Makes `num_steps` calls to `step_fn(iterator)`.
 
     Args:
