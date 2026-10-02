@@ -30,7 +30,7 @@ This script will include every image found in the input_images_directory in the
 output TFRecord, even if the image has no corresponding bounding box annotations
 in the input_annotations_csv. If input_image_label_annotations_csv is specified,
 it will add image-level labels as well. Note that the information of whether a
-label is positivelly or negativelly verified is NOT added to tfrecord.
+label is positively or negatively verified is NOT added to tfrecord.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -103,7 +103,7 @@ def main(_):
       image_id, image_annotations = image_data
       # In OID image file names are formed by appending ".jpg" to the image ID.
       image_path = os.path.join(FLAGS.input_images_directory, image_id + '.jpg')
-      with tf.gfile.Open(image_path) as image_file:
+      with tf.gfile.Open(image_path, 'rb') as image_file:
         encoded_image = image_file.read()
 
       tf_example = oid_tfrecord_creation.tf_example_from_annotations_data_frame(
