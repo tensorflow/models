@@ -77,4 +77,4 @@ enableMissingTranslationPlaceholders = false
     algolia_search_enable = true
     algolia_indexName = "hugo-demo-techdoc"
     algolia_appId = "7W4SAN4PLK"
-    algolia_apiKey = "cbf12a63ff72d9c5dc0c10c195cf9128" # Search-Only API Key
+    algolia_apiKey = "" # Search-Only API Key (set via HUGO_PARAMS_ALGOLIA_APIKEY env var)
