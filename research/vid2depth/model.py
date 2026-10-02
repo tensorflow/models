@@ -183,7 +183,7 @@ class Model(object):
             if i > j:
               # Need to inverse egomotion when going back in sequence.
               egomotion_mult *= -1
-            # For compatiblity with SfMLearner, interpret all egomotion vectors
+            # For compatibility with SfMLearner, interpret all egomotion vectors
             # as pointing toward the middle frame.  Note that unlike SfMLearner,
             # each vector captures the motion to/from its next frame, and not
             # the center frame.  Although with seq_length == 3, there is no
