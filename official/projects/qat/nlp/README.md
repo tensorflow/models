@@ -42,7 +42,7 @@ training, using mobilebert as an exmaple:
 ```shell
 
 # First, Download the pre-trained floating point model as QAT needs to finetune it.
-gsutil cp gs://tf_model_garden/nlp/qat/mobilebert/mobilebert_fp32_ckpt.tar.gz /tmp/qat/
+gcloud storage cp gs://tf_model_garden/nlp/qat/mobilebert/mobilebert_fp32_ckpt.tar.gz /tmp/qat/
 
 # Extract the checkpoint.
 tar -xvzf /tmp/qat/mobilebert_fp32_ckpt.tar.gz
