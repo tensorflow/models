@@ -361,8 +361,12 @@ def main(_) -> None:
 
       # Move the tracking visualization to the output directory.
       commands = [
-          f"gcloud storage cp --recursive {output_folder} {OUTPUT_DIRECTORY.value}",
-          f"rm -r {output_folder}",
+        (
+            "gcloud storage cp --recursive "
+            f"{output_folder} "
+            f"{OUTPUT_DIRECTORY.value}"
+        ),
+        f"rm -r {output_folder}",
       ]
       combined_command_1 = " && ".join(commands)
       subprocess.run(combined_command_1, shell=True, check=True)
