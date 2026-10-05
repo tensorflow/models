@@ -6,7 +6,7 @@
     BERT, which stands for Bidirectional Encoder Representations from
     Transformers.
     [BERT FineTuning with Cloud TPU](https://cloud.google.com/ai-platform/training/docs/algorithms/bert-start) provides step by step instructions on Cloud TPU training. You can look [Bert MNLI Tensorboard.dev metrics](https://tensorboard.dev/experiment/LijZ1IrERxKALQfr76gndA) for MNLI fine tuning task.
-*   [transformer](nlp/transformer): A transformer model to translate the WMT
+*   [transformer](legacy/transformer): A transformer model to translate the WMT
     English to German dataset.
         [Training transformer on Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/transformer-2.x) for step by step instructions on Cloud TPU training.
 
