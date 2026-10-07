@@ -63,7 +63,7 @@ def deep_mask_head_rcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
           annotation_file=os.path.join(maskrcnn_config.COCO_INPUT_PATH_BASE,  # pyrefly: ignore[unexpected-keyword]
                                        'instances_val2017.json'),
           model=DeepMaskHeadRCNN(
-              num_classes=91, input_size=[1024, 1024, 3], include_mask=True),  # pytype: disable=wrong-keyword-args
+              num_classes=91, input_size=[1024, 1024, 3], include_mask=True),  # pyrefly: ignore[unexpected-keyword]
           losses=maskrcnn_config.Losses(l2_weight_decay=0.00004),  # pyrefly: ignore[unexpected-keyword]
           train_data=maskrcnn_config.DataConfig(  # pyrefly: ignore[unexpected-keyword]
               input_path=os.path.join(maskrcnn_config.COCO_INPUT_PATH_BASE,
@@ -76,7 +76,7 @@ def deep_mask_head_rcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
               input_path=os.path.join(maskrcnn_config.COCO_INPUT_PATH_BASE,
                                       'val*'),
               is_training=False,
-              global_batch_size=8)),  # pytype: disable=wrong-keyword-args
+              global_batch_size=8)),
       trainer=cfg.TrainerConfig(
           train_steps=22500,
           validation_steps=coco_val_samples // 8,
@@ -126,7 +126,7 @@ def deep_mask_head_rcnn_spinenet_coco() -> cfg.ExperimentConfig:
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
       task=DeepMaskHeadRCNNTask(
           annotation_file=os.path.join(maskrcnn_config.COCO_INPUT_PATH_BASE,  # pyrefly: ignore[unexpected-keyword]
-                                       'instances_val2017.json'),  # pytype: disable=wrong-keyword-args
+                                       'instances_val2017.json'),
           model=DeepMaskHeadRCNN(
               backbone=backbones.Backbone(  # pyrefly: ignore[unexpected-keyword]
                   type='spinenet',
@@ -143,7 +143,7 @@ def deep_mask_head_rcnn_spinenet_coco() -> cfg.ExperimentConfig:
               input_size=[640, 640, 3],  # pyrefly: ignore[unexpected-keyword]
               min_level=3,  # pyrefly: ignore[unexpected-keyword]
               max_level=7,  # pyrefly: ignore[unexpected-keyword]
-              include_mask=True),   # pytype: disable=wrong-keyword-args
+              include_mask=True),  # pyrefly: ignore[unexpected-keyword]
           losses=maskrcnn_config.Losses(l2_weight_decay=0.00004),  # pyrefly: ignore[unexpected-keyword]
           train_data=maskrcnn_config.DataConfig(  # pyrefly: ignore[unexpected-keyword]
               input_path=os.path.join(maskrcnn_config.COCO_INPUT_PATH_BASE,
@@ -157,7 +157,7 @@ def deep_mask_head_rcnn_spinenet_coco() -> cfg.ExperimentConfig:
                                       'val*'),
               is_training=False,
               global_batch_size=eval_batch_size,
-              drop_remainder=False)),   # pytype: disable=wrong-keyword-args
+              drop_remainder=False)),
       trainer=cfg.TrainerConfig(
           train_steps=steps_per_epoch * 350,
           validation_steps=coco_val_samples // eval_batch_size,

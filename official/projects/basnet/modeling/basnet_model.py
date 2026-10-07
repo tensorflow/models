@@ -88,7 +88,7 @@ class BASNetModel(tf_keras.Model):
     self.decoder = decoder
     self.refinement = refinement
 
-  def call(self, inputs, training=None):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs, training=None):  # pyrefly: ignore[bad-override]
     features = self.backbone(inputs)
 
     if self.decoder:
@@ -265,7 +265,7 @@ class BASNetEncoder(tf_keras.Model):
 def build_basnet_encoder(
     input_specs: tf_keras.layers.InputSpec,
     model_config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pyrefly: ignore[bad-function-definition]
   """Builds BASNet Encoder backbone from a config."""
   backbone_type = model_config.backbone.type
   norm_activation_config = model_config.norm_activation

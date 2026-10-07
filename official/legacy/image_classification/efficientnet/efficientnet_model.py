@@ -323,7 +323,7 @@ def mb_conv_block(inputs: tf.Tensor,
   return x
 
 
-def efficientnet(image_input: tf_keras.layers.Input, config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
+def efficientnet(image_input: tf_keras.layers.Input, config: ModelConfig):  # pyrefly: ignore[not-a-type]
   """Creates an EfficientNet graph given the model parameters.
 
   This function is wrapped by the `EfficientNet` class to make a tf_keras.Model.

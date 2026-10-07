@@ -41,7 +41,7 @@ class CenterNetModel(tf_keras.Model):
     self._detection_generator = detection_generator
     self._head = head
 
-  def call(self,  # pytype: disable=annotation-type-mismatch,signature-mismatch
+  def call(self,  # pyrefly: ignore[bad-override]
            inputs: tf.Tensor,
            training: bool = None,  # pyrefly: ignore[bad-function-definition]
            **kwargs) -> Mapping[str, tf.Tensor]:
