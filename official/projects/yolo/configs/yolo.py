@@ -28,8 +28,6 @@ from official.projects.yolo.configs import decoders
 from official.vision.configs import common
 
 
-# pytype: disable=annotation-type-mismatch
-
 MIN_LEVEL = 1
 MAX_LEVEL = 7
 GLOBAL_SEED = 1000
@@ -213,7 +211,7 @@ class AnchorBoxes(hyperparams.Config):
         level under anchor free conditions.
     """
     if self.level_limits is None:
-      boxes = [box.box for box in self.boxes]
+      boxes = [box.box for box in self.boxes]  # pyrefly: ignore[not-iterable]
     else:
       boxes = [[1.0, 1.0]] * ((max_level - min_level) + 1)
       self.anchors_per_scale = 1

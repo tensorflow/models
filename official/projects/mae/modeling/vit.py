@@ -43,7 +43,7 @@ class ViTClassifier(tf_keras.Model):
         num_classes,
         kernel_initializer=tf_keras.initializers.TruncatedNormal(stddev=2e-5))
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     encoded = self.encoder({'images': inputs})
     return self.linear(encoded[:, 0])
 
@@ -64,7 +64,7 @@ class ViTLinearClassifier(tf_keras.Model):
     self.batch_norm = self._norm(
         axis=-1, epsilon=1e-6, center=False, scale=False, momentum=0.9)
 
-  def call(self, inputs, training=False):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs, training=False):  # pyrefly: ignore[bad-override]
     encoded = self.encoder({'images': inputs})
     features = self.batch_norm(encoded[:, 0], training=training)
     return self.linear(features)
@@ -108,7 +108,7 @@ class VisionTransformer(tf_keras.Model):
     return patch_embeds + utils.position_embedding_sine(
         tf.ones_like(patch_embeds[..., 0]), 1024, normalize=False)
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     if isinstance(inputs, dict):
       images = inputs.get('images', None)
       patch_embeds = inputs.get('embeddings', None)

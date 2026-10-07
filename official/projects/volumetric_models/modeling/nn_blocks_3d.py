@@ -37,7 +37,7 @@ class BasicBlock3DVolume(tf_keras.layers.Layer):
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
-               use_batch_normalization: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
+               use_batch_normalization: bool = False,
                **kwargs):
     """Creates a basic 3d convolution block applying one or more convolutions.
 
@@ -131,7 +131,7 @@ class BasicBlock3DVolume(tf_keras.layers.Layer):
     base_config = super(BasicBlock3DVolume, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:  # pytype: disable=annotation-type-mismatch
+  def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:  # pyrefly: ignore[bad-function-definition]
     """Runs forward pass on the input tensor."""
     x = inputs
     for conv, norm in zip(self._convs, self._norms):

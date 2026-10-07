@@ -121,7 +121,7 @@ def create_labse_model(bert_tfhub_module: Text,
       max_seq_length=None,
       normalize=normalize,
       output="predictions")
-  return labse_model, encoder_network  # pytype: disable=bad-return-type  # typed-keras
+  return labse_model, encoder_network  # pyrefly: ignore[bad-return]
 
 
 def export_labse_model(bert_tfhub_module: Text, bert_config: configs.BertConfig,

@@ -355,7 +355,7 @@ class Pix2Seq(tf_keras.Model):
     )
     return mask
 
-  def call(  # pytype: disable=annotation-type-mismatch
+  def call(  # pyrefly: ignore[bad-override]
       self,
       inputs: tf.Tensor,
       targets: Optional[tf.Tensor] = None,
@@ -581,7 +581,7 @@ class Pix2SeqTransformer(tf_keras.layers.Layer):
     # before passing to decoder.
     return tf.concat(encoded_sources, axis=1)
 
-  def call(self, inputs: dict[str, tf.Tensor], training: bool = None):  # pytype: disable=annotation-type-mismatch
+  def call(self, inputs: dict[str, tf.Tensor], training: bool = None):  # pyrefly: ignore[bad-function-definition]
     encoded = self.encode_sources(inputs["inputs"], inputs["pos_emb"], training)  # pyrefly: ignore[bad-argument-type]
 
     targets = inputs["tokens"]

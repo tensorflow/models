@@ -126,7 +126,7 @@ def main(_) -> None:
 
   # Copy the images folder from GCP to the present directory.
   input_directory = (INPUT_DIRECTORY.value).rstrip("/\\")
-  command = f"gcloud storage cp --recursive {input_directory} ."
+  command = f"gsutil -m cp -r {input_directory} ."
   subprocess.run(command, shell=True, check=True)
 
   # Create a folder to store the predictions.
@@ -361,7 +361,7 @@ def main(_) -> None:
 
       # Move the tracking visualization to the output directory.
       commands = [
-          f"gcloud storage cp --recursive {output_folder} {OUTPUT_DIRECTORY.value}",
+          f"gsutil -m cp -r {output_folder} {OUTPUT_DIRECTORY.value}",
           f"rm -r {output_folder}",
       ]
       combined_command_1 = " && ".join(commands)
@@ -383,7 +383,7 @@ def main(_) -> None:
 
       # Move the cropped objects to the output directory.
       commands = [
-          f"gcloud storage cp --recursive {cropped_obj_folder} {OUTPUT_DIRECTORY.value}",
+          f"gsutil -m cp -r {cropped_obj_folder} {OUTPUT_DIRECTORY.value}",
           f"rm -r {cropped_obj_folder}",
       ]
 
@@ -423,11 +423,11 @@ def main(_) -> None:
       # Move the folders to the destination bucket.
       commands = [
           (
-              "gcloud storage cp --recursive"
+              "gsutil -m cp -r"
               f" {os.path.basename(input_directory)} {OUTPUT_DIRECTORY.value}"
           ),
           f"rm -r {os.path.basename(input_directory)}",
-          f"gcloud storage cp --recursive {prediction_folder} {OUTPUT_DIRECTORY.value}",
+          f"gsutil -m cp -r {prediction_folder} {OUTPUT_DIRECTORY.value}",
           f"rm -r {prediction_folder}",
       ]
 

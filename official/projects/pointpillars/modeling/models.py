@@ -114,7 +114,7 @@ class PointPillarsModel(tf_keras.Model):
     })
     return outputs
 
-  def call(self,  # pytype: disable=annotation-type-mismatch,signature-mismatch
+  def call(self,  # pyrefly: ignore[bad-override]
            pillars: tf.Tensor,
            indices: tf.Tensor,
            image_shape: Optional[tf.Tensor] = None,

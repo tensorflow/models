@@ -45,7 +45,7 @@ class UNet3DDecoder(tf_keras.Model):
                norm_epsilon: float = 0.001,
                use_sync_bn: bool = False,
                use_batch_normalization: bool = False,
-               use_deconvolution: bool = False,  # pytype: disable=annotation-type-mismatch  # typed-keras
+               use_deconvolution: bool = False,
                **kwargs):
     """3D UNet decoder initialization function.
 
@@ -95,7 +95,7 @@ class UNet3DDecoder(tf_keras.Model):
       channel_dim = 1
 
     # Build 3D UNet.
-    inputs = self._build_input_pyramid(input_specs, model_id)  # pytype: disable=wrong-arg-types  # dynamic-method-lookup
+    inputs = self._build_input_pyramid(input_specs, model_id)  # pyrefly: ignore[bad-argument-type]
 
     # Add levels with up-convolution or up-sampling.
     x = inputs[str(model_id)]
@@ -184,7 +184,7 @@ def build_unet_3d_decoder(
       model_id=decoder_cfg.model_id,
       input_specs=input_specs,
       pool_size=decoder_cfg.pool_size,
-      kernel_regularizer=l2_regularizer,  # pyrefly: ignore[bad-argument-type]
+      kernel_regularizer=l2_regularizer,
       activation=norm_activation_config.activation,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,

@@ -37,7 +37,6 @@ _COCO_INPUT_PATH_BASE = 'coco/tfrecords'
 _COCO_TRAIN_EXAMPLES = 118287
 _COCO_VAL_EXAMPLES = 5000
 
-# pytype: disable=wrong-keyword-args
 # pylint: disable=unexpected-keyword-arg
 
 
@@ -114,7 +113,7 @@ class Backbone(backbones.Backbone):
 class PanopticMaskRCNN(deepmac_maskrcnn.DeepMaskHeadRCNN):
   """Panoptic Mask R-CNN model config."""
   backbone: Backbone = dataclasses.field(
-      default_factory=lambda: Backbone(type='resnet', resnet=backbones.ResNet())
+      default_factory=lambda: Backbone(type='resnet', resnet=backbones.ResNet())  # pyrefly: ignore[unexpected-keyword]
   )
   segmentation_model: SEGMENTATION_MODEL = dataclasses.field(
       default_factory=lambda: SEGMENTATION_MODEL(num_classes=2)
@@ -164,11 +163,11 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
   """Panoptic Mask R-CNN task config."""
   model: PanopticMaskRCNN = dataclasses.field(default_factory=PanopticMaskRCNN)
   train_data: DataConfig = dataclasses.field(
-      default_factory=lambda: DataConfig(is_training=True)
+      default_factory=lambda: DataConfig(is_training=True)  # pyrefly: ignore[unexpected-keyword]
   )
   validation_data: DataConfig = dataclasses.field(
       default_factory=lambda: DataConfig(  # pylint: disable=g-long-lambda
-          is_training=False, drop_remainder=False
+          is_training=False, drop_remainder=False  # pyrefly: ignore[unexpected-keyword]
       )
   )
   segmentation_evaluation: semantic_segmentation.Evaluation = dataclasses.field(
@@ -223,7 +222,7 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',  # pylint: disable=line-too-long
           init_checkpoint_modules=['backbone'],
           model=PanopticMaskRCNN(
-              num_classes=91, input_size=[1024, 1024, 3],
+              num_classes=91, input_size=[1024, 1024, 3],  # pyrefly: ignore[unexpected-keyword]
               panoptic_segmentation_generator=PanopticSegmentationGenerator(
                   output_size=[640, 640], rescale_predictions=True),
               stuff_classes_offset=90,
@@ -236,29 +235,29 @@ def panoptic_fpn_coco() -> cfg.ExperimentConfig:
                       decoder_min_level=2,
                       decoder_max_level=6,
                       feature_fusion='panoptic_fpn_fusion'))),
-          losses=Losses(l2_weight_decay=0.00004),
+          losses=Losses(l2_weight_decay=0.00004),  # pyrefly: ignore[unexpected-keyword]
           train_data=DataConfig(
-              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'train*'),
-              is_training=True,
-              global_batch_size=train_batch_size,
+              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'train*'),  # pyrefly: ignore[unexpected-keyword]
+              is_training=True,  # pyrefly: ignore[unexpected-keyword]
+              global_batch_size=train_batch_size,  # pyrefly: ignore[unexpected-keyword]
               parser=Parser(
-                  aug_rand_hflip=True, aug_scale_min=0.8, aug_scale_max=1.25)),
+                  aug_rand_hflip=True, aug_scale_min=0.8, aug_scale_max=1.25)),  # pyrefly: ignore[unexpected-keyword]
           validation_data=DataConfig(
-              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'val*'),
-              is_training=False,
-              global_batch_size=eval_batch_size,
+              input_path=os.path.join(_COCO_INPUT_PATH_BASE, 'val*'),  # pyrefly: ignore[unexpected-keyword]
+              is_training=False,  # pyrefly: ignore[unexpected-keyword]
+              global_batch_size=eval_batch_size,  # pyrefly: ignore[unexpected-keyword]
               parser=Parser(
                   segmentation_resize_eval_groundtruth=False,
                   segmentation_groundtruth_padded_size=[640, 640]),
-              drop_remainder=False),
-          annotation_file=os.path.join(_COCO_INPUT_PATH_BASE,
+              drop_remainder=False),  # pyrefly: ignore[unexpected-keyword]
+          annotation_file=os.path.join(_COCO_INPUT_PATH_BASE,  # pyrefly: ignore[unexpected-keyword]
                                        'instances_val2017.json'),
           segmentation_evaluation=semantic_segmentation.Evaluation(
               report_per_class_iou=False, report_train_mean_iou=False),
           panoptic_quality_evaluator=PanopticQualityEvaluator(
               num_categories=num_panoptic_categories,
               ignored_label=0,
-              is_thing=is_thing,
+              is_thing=is_thing,  # pyrefly: ignore[bad-argument-type]
               rescale_predictions=True)),
       trainer=cfg.TrainerConfig(
           train_steps=22500,

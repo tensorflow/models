@@ -155,7 +155,7 @@ def build_unet3d(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pyrefly: ignore[bad-function-definition]
   """Builds 3D UNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
