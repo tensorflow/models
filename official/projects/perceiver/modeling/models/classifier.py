@@ -151,7 +151,7 @@ class Classifier(tf_keras.Model):
     self._name = name
     self.classifier = classifier
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     """Return perceiver classifier model output tensors in a dict.
 
     Accepts inputs as dictionary of tensors.

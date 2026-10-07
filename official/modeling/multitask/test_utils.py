@@ -31,7 +31,7 @@ class MockFooModel(tf_keras.Model):
     self.inputs = {"foo": tf_keras.Input(shape=(2,), dtype=tf.float32),
                    "bar": tf_keras.Input(shape=(2,), dtype=tf.float32)}
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     self.add_loss(tf.zeros((1,), dtype=tf.float32))
     if "foo" in inputs:
       input_tensor = inputs["foo"]
@@ -49,7 +49,7 @@ class MockBarModel(tf_keras.Model):
     self._bar_specific_layer = tf_keras.layers.Dense(1)
     self.inputs = {"bar": tf_keras.Input(shape=(2,), dtype=tf.float32)}
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     self.add_loss(tf.zeros((2,), dtype=tf.float32))
     return self._bar_specific_layer(self._share_layer(inputs["bar"]))
 

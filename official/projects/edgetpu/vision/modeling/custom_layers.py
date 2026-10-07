@@ -148,7 +148,7 @@ class GroupConv2D(tf_keras.layers.Conv2D):
         kernel_constraint=kernel_constraint,
         bias_constraint=bias_constraint,
         groups=1,
-        **kwargs)  # pytype: disable=bad-return-type  # typed-keras
+        **kwargs)
 
   def build(self, input_shape: tuple[int, ...]) -> None:
     """Builds GroupConv2D layer as a collection of smaller Conv2D layers."""
@@ -317,7 +317,7 @@ class GroupConv2DKerasModel(tf_keras.Model):
     self.batch_norm_layer = batch_norm_layer
     self.use_batch_norm = False
     if self.batch_norm_layer is not None:
-      if not inspect.isclass(self.batch_norm_layer):  # pytype: disable=not-supported-yet
+      if not inspect.isclass(self.batch_norm_layer):
         raise ValueError('batch_norm_layer is not a class.')
       self.use_batch_norm = True
 
@@ -344,9 +344,9 @@ class GroupConv2DKerasModel(tf_keras.Model):
       for _ in range(self._groups):
         self.bn_layers.append(
             self.batch_norm_layer(  # pyrefly: ignore[not-callable]
-                axis=-1, momentum=bn_momentum, epsilon=bn_epsilon))  # pytype: disable=bad-return-type  # typed-keras
+                axis=-1, momentum=bn_momentum, epsilon=bn_epsilon))  # pyrefly: ignore[unexpected-keyword]
 
-  def call(self, inputs: Any) -> Any:  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs: Any) -> Any:  # pyrefly: ignore[bad-override]
     """Applies 2d group convolution on the inputs."""
     input_shape = inputs.get_shape().as_list()
     if input_shape[-1] % self._groups != 0:
@@ -469,7 +469,7 @@ class ArgmaxKerasLayer(tf_keras.layers.Layer):
     """
     super().__init__(name=name, **kwargs)
     self.axis = axis
-    self.output_type = output_type  # pytype: disable=bad-return-type  # typed-keras
+    self.output_type = output_type
 
   def call(self, inputs: Any) -> Any:
     """Applies argmax on the inputs."""

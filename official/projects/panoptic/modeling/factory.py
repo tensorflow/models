@@ -33,7 +33,7 @@ from official.vision.modeling.heads import segmentation_heads
 def build_panoptic_maskrcnn(
     input_specs: tf_keras.layers.InputSpec,
     model_config: panoptic_maskrcnn_cfg.PanopticMaskRCNN,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pyrefly: ignore[bad-function-definition]
   """Builds Panoptic Mask R-CNN model.
 
   This factory function builds the mask rcnn first, builds the non-shared

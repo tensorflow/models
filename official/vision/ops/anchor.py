@@ -340,7 +340,7 @@ class RpnAnchorLabeler(AnchorLabeler):
         negative_labels,
     )
 
-  def label_anchors(  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def label_anchors(  # pyrefly: ignore[bad-override]
       self,
       anchor_boxes: Dict[str, tf.Tensor],
       gt_boxes: tf.Tensor,

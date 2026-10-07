@@ -710,7 +710,7 @@ def build_movinet(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pyrefly: ignore[bad-function-definition]
   """Builds MoViNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
@@ -734,7 +734,7 @@ def build_movinet(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer,  # pyrefly: ignore[bad-argument-type]
+      kernel_regularizer=l2_regularizer,
       stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
       use_external_states=backbone_cfg.use_external_states,
       average_pooling_type=backbone_cfg.average_pooling_type)

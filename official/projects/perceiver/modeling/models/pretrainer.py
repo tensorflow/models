@@ -132,7 +132,7 @@ class Pretrainer(tf_keras.Model):
       raise ValueError(f'Unexpected inputs type to {self.__class__}.')
     self.inputs = inputs
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     """Return perceiver pretrainer model output tensors in a dict.
 
     Accepts inputs as dictionary of tensors.

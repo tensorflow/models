@@ -151,7 +151,7 @@ class MovinetClassifier(tf_keras.Model):
       backbone: tf_keras.Model,
       input_specs: Mapping[str, tf_keras.layers.InputSpec],
       state_specs: Optional[Mapping[str, tf_keras.layers.InputSpec]] = None,
-  ) -> Tuple[Mapping[str, tf_keras.Input], Union[Tuple[Mapping[  # pytype: disable=invalid-annotation  # typed-keras
+  ) -> Tuple[Mapping[str, tf_keras.Input], Union[Tuple[Mapping[  # pyrefly: ignore[not-a-type]
       str, tf.Tensor], Mapping[str, tf.Tensor]], Mapping[str, tf.Tensor]]]:
     """Builds the model network.
 
@@ -252,7 +252,7 @@ def build_movinet_model(
       backbone,
       num_classes=num_classes,
       kernel_regularizer=l2_regularizer,
-      input_specs=input_specs_dict,  # pyrefly: ignore[bad-argument-type]
+      input_specs=input_specs_dict,
       activation=model_config.activation,
       dropout_rate=model_config.dropout_rate,
       output_states=model_config.output_states)

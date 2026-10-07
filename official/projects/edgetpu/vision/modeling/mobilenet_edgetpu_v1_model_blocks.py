@@ -305,7 +305,7 @@ def mb_conv_block(inputs: tf.Tensor,
   return x
 
 
-def mobilenet_edgetpu(image_input: tf_keras.layers.Input, config: ModelConfig):  # pytype: disable=invalid-annotation  # typed-keras
+def mobilenet_edgetpu(image_input: tf_keras.layers.Input, config: ModelConfig):  # pyrefly: ignore[not-a-type]
   """Creates a MobilenetEdgeTPU graph given the model parameters.
 
   This function is wrapped by the `MobilenetEdgeTPU` class to make a

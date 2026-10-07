@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Multitask training driver library."""
-# pytype: disable=attribute-error
 import os
 from typing import Any, List, Mapping, Optional, Tuple, Union, Callable
 from absl import logging
@@ -87,7 +86,7 @@ def run_experiment(
           model=model,
           eval_steps=eval_steps,
           global_step=trainer.global_step if is_training else None,
-          checkpoint_exporter=best_ckpt_exporter_creator(params, model_dir))
+          checkpoint_exporter=best_ckpt_exporter_creator(params, model_dir))  # pyrefly: ignore[not-callable]
     else:
       evaluator = None
 
@@ -95,8 +94,8 @@ def run_experiment(
     checkpoint = trainer.checkpoint
     global_step = trainer.global_step
   else:
-    checkpoint = evaluator.checkpoint
-    global_step = evaluator.global_step
+    checkpoint = evaluator.checkpoint  # pyrefly: ignore[missing-attribute]
+    global_step = evaluator.global_step  # pyrefly: ignore[missing-attribute]
 
   checkpoint_manager = tf.train.CheckpointManager(
       checkpoint,
@@ -132,7 +131,7 @@ def run_experiment(
     elif mode == 'continuous_eval':
 
       def timeout_fn():
-        if evaluator.global_step.numpy() >= params.trainer.train_steps:
+        if evaluator.global_step.numpy() >= params.trainer.train_steps:  # pyrefly: ignore[missing-attribute]
           return True
         return False
 
@@ -144,8 +143,8 @@ def run_experiment(
       raise NotImplementedError('The mode is not implemented: %s' % mode)
 
     if run_post_eval:
-      return model, evaluator.evaluate(
-          tf.convert_to_tensor(params.trainer.validation_steps))  # pytype: disable=bad-return-type  # typed-keras
+      return model, evaluator.evaluate(  # pyrefly: ignore[missing-attribute]
+          tf.convert_to_tensor(params.trainer.validation_steps))
     else:
       return model
 
@@ -280,9 +279,9 @@ def run_experiment_with_multitask_eval(
       evaluator = evaluator_lib.MultiTaskEvaluator(
           eval_tasks=eval_tasks,
           model=model,
-          global_step=trainer.global_step if is_training else None,
+          global_step=trainer.global_step if is_training else None,  # pyrefly: ignore[missing-attribute]
           eval_steps=eval_steps,
-          checkpoint_exporter=best_ckpt_exporter_creator(params, model_dir))
+          checkpoint_exporter=best_ckpt_exporter_creator(params, model_dir))  # pyrefly: ignore[not-callable]
     else:
       evaluator = None
 
@@ -290,8 +289,8 @@ def run_experiment_with_multitask_eval(
     checkpoint = trainer.checkpoint
     global_step = trainer.global_step
   else:
-    checkpoint = evaluator.checkpoint
-    global_step = evaluator.global_step
+    checkpoint = evaluator.checkpoint  # pyrefly: ignore[missing-attribute]
+    global_step = evaluator.global_step  # pyrefly: ignore[missing-attribute]
 
   checkpoint_manager = tf.train.CheckpointManager(
       checkpoint,
@@ -302,14 +301,12 @@ def run_experiment_with_multitask_eval(
       init_fn=trainer.initialize if trainer else None)
 
   if trainer and train_actions_factory:
-    # pytype: disable=wrong-keyword-args
     train_actions = train_actions_factory(
-        params=params,
-        trainer=trainer,
-        model_dir=model_dir,
-        checkpoint_manager=checkpoint_manager,
+        params=params,  # pyrefly: ignore[bad-argument-count, unexpected-keyword]
+        trainer=trainer,  # pyrefly: ignore[unexpected-keyword]
+        model_dir=model_dir,  # pyrefly: ignore[unexpected-keyword]
+        checkpoint_manager=checkpoint_manager,  # pyrefly: ignore[unexpected-keyword]
     )
-    # pytype: enable=wrong-keyword-args
   else:
     train_actions = None
 
@@ -349,7 +346,7 @@ def run_experiment_with_multitask_eval(
     elif mode == 'continuous_eval':
 
       def timeout_fn():
-        if evaluator.global_step.numpy() >= params.trainer.train_steps:
+        if evaluator.global_step.numpy() >= params.trainer.train_steps:  # pyrefly: ignore[missing-attribute]
           return True
         return False
 
@@ -361,7 +358,7 @@ def run_experiment_with_multitask_eval(
       raise NotImplementedError('The mode is not implemented: %s' % mode)
 
     if run_post_eval:
-      return model, evaluator.evaluate(
-          tf.convert_to_tensor(params.trainer.validation_steps))  # pytype: disable=bad-return-type  # typed-keras
+      return model, evaluator.evaluate(  # pyrefly: ignore[missing-attribute]
+          tf.convert_to_tensor(params.trainer.validation_steps))
     else:
-      return model, {}  # pytype: disable=bad-return-type  # typed-keras
+      return model, {}

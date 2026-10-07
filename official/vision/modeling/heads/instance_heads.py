@@ -173,7 +173,7 @@ class DetectionHead(tf_keras.layers.Layer):
 
     super(DetectionHead, self).build(input_shape)
 
-  def call(self, inputs: tf.Tensor, training: bool = None):  # pytype: disable=annotation-type-mismatch
+  def call(self, inputs: tf.Tensor, training: bool = None):  # pyrefly: ignore[bad-function-definition]
     """Forward pass of box and class branches for the Mask-RCNN model.
 
     Args:
@@ -379,7 +379,7 @@ class MaskHead(tf_keras.layers.Layer):
 
     super(MaskHead, self).build(input_shape)
 
-  def call(self, inputs: List[tf.Tensor], training: bool = None):  # pytype: disable=annotation-type-mismatch
+  def call(self, inputs: List[tf.Tensor], training: bool = None):  # pyrefly: ignore[bad-function-definition]
     """Forward pass of mask branch for the Mask-RCNN model.
 
     Args:

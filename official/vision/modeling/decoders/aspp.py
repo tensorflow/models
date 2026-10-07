@@ -101,7 +101,7 @@ class ASPP(tf_keras.layers.Layer):
     if self._config_dict['pool_kernel_size']:
       pool_kernel_size = [
           int(p_size // 2**self._config_dict['level'])
-          for p_size in self._config_dict['pool_kernel_size']  # pytype: disable=attribute-error  # trace-all-classes
+          for p_size in self._config_dict['pool_kernel_size']  # pyrefly: ignore[not-iterable]
       ]
 
     self.aspp = self._aspp_layer(

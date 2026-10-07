@@ -60,7 +60,7 @@ class PanopticDeeplabModel(tf_keras.Model):
     self.instance_head = instance_head
     self.post_processor = post_processor
 
-  def call(  # pytype: disable=annotation-type-mismatch,signature-mismatch
+  def call(  # pyrefly: ignore[bad-override]
       self, inputs: tf.Tensor,
       image_info: tf.Tensor,
       training: bool = None):  # pyrefly: ignore[bad-function-definition]
