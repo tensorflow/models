@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import logging
 import os
+import pathlib
+import tempfile
 
 import numpy as np
 import PIL.Image as Image
@@ -590,6 +592,149 @@ class VisualizationUtilsTest(test_case.TestCase):
       self.assertEqual(
           six.b(''),
           value_ops_out[metric_op_base + '/' + str(max_examples_to_draw - 1)])
+
+  def test_export_visualizations(self):
+    if self.is_tf2():
+      self.skipTest('This test is only compatible with Tensorflow 1.X, '
+                    'estimator eval ops are not supported in Tensorflow 2.')
+
+
+    def run_viz_update_metric_ops(viz_export_dir,
+                                  keep_img_id_for_viz_export,
+                                  source_id,
+                                  max_examples_to_draw):
+      category_index = {1: {'id': 1, 'name': 'dog'}, 2: {'id': 2, 'name': 'cat'}}
+      metric_op_base = 'Detections_Left_Groundtruth_Right'
+      eval_metric_ops = visualization_utils.VisualizeSingleFrameDetections(
+          category_index,
+          max_examples_to_draw=max_examples_to_draw,
+          summary_name_prefix=metric_op_base,
+          viz_export_dir=viz_export_dir,
+          keep_img_id_for_viz_export=keep_img_id_for_viz_export)
+      original_image = tf.placeholder(tf.uint8, [4, None, None, 3])
+      original_image_spatial_shape = tf.placeholder(tf.int32, [4, 2])
+      true_image_shape = tf.placeholder(tf.int32, [4, 3])
+      detection_boxes = tf.random_uniform([4, 20, 4],
+                                          minval=0.0,
+                                          maxval=1.0,
+                                          dtype=tf.float32)
+      detection_classes = tf.random_uniform([4, 20],
+                                            minval=1,
+                                            maxval=3,
+                                            dtype=tf.int64)
+      detection_scores = tf.random_uniform([4, 20],
+                                          minval=0.,
+                                          maxval=1.,
+                                          dtype=tf.float32)
+      groundtruth_boxes = tf.random_uniform([4, 8, 4],
+                                            minval=0.0,
+                                            maxval=1.0,
+                                            dtype=tf.float32)
+      num_groundtruth_boxes = tf.constant([3, 8, 0, 2], tf.int32)
+      groundtruth_classes = tf.random_uniform([4, 8],
+                                              minval=1,
+                                              maxval=3,
+                                              dtype=tf.int64)
+      eval_dict = {
+          fields.DetectionResultFields.detection_boxes:
+              detection_boxes,
+          fields.DetectionResultFields.detection_classes:
+              detection_classes,
+          fields.DetectionResultFields.detection_scores:
+              detection_scores,
+          fields.InputDataFields.original_image:
+              original_image,
+          fields.InputDataFields.original_image_spatial_shape: (
+              original_image_spatial_shape),
+          fields.InputDataFields.true_image_shape: (true_image_shape),
+          fields.InputDataFields.groundtruth_boxes:
+              groundtruth_boxes,
+          fields.InputDataFields.groundtruth_classes:
+              groundtruth_classes,
+          fields.InputDataFields.num_groundtruth_boxes:
+              num_groundtruth_boxes,
+      }
+      if not source_id is None:
+        eval_dict[fields.DetectionResultFields.source_id] = source_id
+
+      metric_ops = eval_metric_ops.get_estimator_eval_metric_ops(eval_dict)
+      _, update_op = metric_ops[next(six.iterkeys(metric_ops))]
+
+      with self.test_session() as sess:
+        sess.run(tf.global_variables_initializer())
+        value_ops = {}
+        for key, (value_op, _) in six.iteritems(metric_ops):
+          value_ops[key] = value_op
+
+        # Iterate through all the images regardless of max_examples_to_draw
+        for i in range(4):
+          # Use a unique image shape on each eval image.
+          sess.run(
+              update_op,
+              feed_dict={
+                  original_image:
+                      np.random.randint(
+                          low=0,
+                          high=256,
+                          size=(4, 6 + i, 7 + i, 3),
+                          dtype=np.uint8),
+                  original_image_spatial_shape: [[6 + i, 7 + i], [6 + i, 7 + i],
+                                                [6 + i, 7 + i], [6 + i, 7 + i]],
+                  true_image_shape: [[6 + i, 7 + i, 3], [6 + i, 7 + i, 3],
+                                    [6 + i, 7 + i, 3], [6 + i, 7 + i, 3]]
+              })
+
+    # Default, save nothing
+    run_viz_update_metric_ops(viz_export_dir=None,
+                              keep_img_id_for_viz_export=False,
+                              source_id=None,
+                              max_examples_to_draw=4)
+    self.assertEqual(0, len([f for f in os.scandir(self.get_temp_dir())]))
+
+    # Save images if viz_export_dir is set
+    folder=tempfile.mkdtemp(dir=self.get_temp_dir())
+    run_viz_update_metric_ops(viz_export_dir=folder,
+                              keep_img_id_for_viz_export=False,
+                              source_id=None,
+                              max_examples_to_draw=4)
+    self.assertEqual(4, len([f for f in os.scandir(folder)]))
+    self.assertTrue(pathlib.Path(folder, "export-0.png").is_file())
+
+    # Save images with source_id in names if viz_export_dir is set
+    # and keep_img_id_for_viz_export is True
+    folder=tempfile.mkdtemp(dir=self.get_temp_dir())
+    source_id=tf.constant([f"abcdefg{i}" for i in range(4)])
+    run_viz_update_metric_ops(viz_export_dir=folder,
+                              keep_img_id_for_viz_export=True,
+                              source_id=source_id,
+                              max_examples_to_draw=4)
+    self.assertEqual(4, len([f for f in os.scandir(folder)]))
+    self.assertTrue(pathlib.Path(folder, f"export-abcdefg0-0.png").is_file())
+
+    # Throw an error if keep_img_id_for_viz_export is True but no source_id
+    # is available
+    folder=tempfile.mkdtemp(dir=self.get_temp_dir())
+    try:
+      run_viz_update_metric_ops(viz_export_dir=folder,
+                                keep_img_id_for_viz_export=True,
+                                source_id=None,
+                                max_examples_to_draw=4)
+      self.assertFalse()
+    except LookupError:
+      pass
+    self.assertEqual(0, len([f for f in os.scandir(folder)]))
+
+    # Save images even when max_examples_to_draw == 0
+    # (translates to num_visualizations in eval_config)
+    folder=tempfile.mkdtemp(dir=self.get_temp_dir())
+    run_viz_update_metric_ops(viz_export_dir=folder,
+                              keep_img_id_for_viz_export=False,
+                              source_id=None,
+                              max_examples_to_draw=0)
+    self.assertEqual(4, len([f for f in os.scandir(folder)]))
+    self.assertTrue(pathlib.Path(folder, "export-0.png").is_file())
+
+
 
   def test_visualize_boxes_and_labels_on_image_array(self):
     ori_image = np.ones([360, 480, 3], dtype=np.int32) * 255
