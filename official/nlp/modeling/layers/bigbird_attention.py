@@ -458,7 +458,7 @@ class BigBirdAttention(tf_keras.layers.MultiHeadAttention):
         to_block_size=self._to_block_size,
         rand_attn=rand_attn)
 
-  def call(self, query, value, key=None, attention_mask=None, **kwargs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, query, value, key=None, attention_mask=None, **kwargs):  # pyrefly: ignore[bad-override]
     if not self._built_from_signature:
       self._build_from_signature(query=query, value=value, key=key)
     if key is None:

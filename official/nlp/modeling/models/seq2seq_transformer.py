@@ -146,7 +146,7 @@ class Seq2SeqTransformer(tf_keras.Model):
 
     return embedded_inputs, boolean_mask, input_shape, source_dtype
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     """Calculate target logits or inferred target sequences.
 
     Args:

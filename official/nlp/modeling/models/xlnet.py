@@ -117,7 +117,7 @@ class XLNetPretrainer(tf_keras.Model):
         hidden_size=self._hidden_size,
         initializer=self._initializer)
 
-  def call(self, inputs: Mapping[str, Any]):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs: Mapping[str, Any]):  # pyrefly: ignore[bad-override]
     input_word_ids = inputs['input_word_ids']
     input_type_ids = inputs['input_type_ids']
     masked_tokens = inputs['masked_tokens']
@@ -181,7 +181,7 @@ class XLNetClassifier(tf_keras.Model):
       initializer: tf_keras.initializers.Initializer = 'random_normal',  # pyrefly: ignore[bad-function-definition]
       summary_type: str = 'last',
       dropout_rate: float = 0.1,
-      head_name: str = 'sentence_prediction',  # pytype: disable=annotation-type-mismatch  # typed-keras
+      head_name: str = 'sentence_prediction',
       **kwargs):
     super().__init__(**kwargs)
     self._network = network
@@ -212,7 +212,7 @@ class XLNetClassifier(tf_keras.Model):
         cls_token_idx=cls_token_idx,
         name=head_name)
 
-  def call(self, inputs: Mapping[str, Any]):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs: Mapping[str, Any]):  # pyrefly: ignore[bad-override]
     input_ids = inputs['input_word_ids']
     segment_ids = inputs['input_type_ids']
     input_mask = tf.cast(inputs['input_mask'], tf.float32)
@@ -271,7 +271,7 @@ class XLNetSpanLabeler(tf_keras.Model):
       end_n_top: int = 5,
       dropout_rate: float = 0.1,
       span_labeling_activation: tf_keras.initializers.Initializer = 'tanh',  # pyrefly: ignore[bad-function-definition]
-      initializer: tf_keras.initializers.Initializer = 'glorot_uniform',  # pytype: disable=annotation-type-mismatch  # typed-keras
+      initializer: tf_keras.initializers.Initializer = 'glorot_uniform',  # pyrefly: ignore[bad-function-definition]
       **kwargs):
     super().__init__(**kwargs)
     self._config = {
@@ -305,7 +305,7 @@ class XLNetSpanLabeler(tf_keras.Model):
         dropout_rate=self._dropout_rate,
         initializer=self._initializer)
 
-  def call(self, inputs: Mapping[str, Any]):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs: Mapping[str, Any]):  # pyrefly: ignore[bad-override]
     input_word_ids = inputs['input_word_ids']
     input_type_ids = inputs['input_type_ids']
     input_mask = inputs['input_mask']

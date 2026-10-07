@@ -228,7 +228,7 @@ class MultiHeadRelativeAttention(tf_keras.layers.MultiHeadAttention):
                                  value)
     return attention_output
 
-  def call(self,  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self,  # pyrefly: ignore[bad-override]
            query,
            value,
            content_attention_bias,

@@ -226,7 +226,7 @@ class BertPretrainerV2(tf_keras.Model):
       inputs.append(masked_lm_positions)
     self.inputs = inputs
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     if isinstance(inputs, list):
       logging.warning('List inputs to BertPretrainer are discouraged.')
       inputs = dict([

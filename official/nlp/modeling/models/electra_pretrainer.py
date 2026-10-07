@@ -113,7 +113,7 @@ class ElectraPretrainer(tf_keras.Model):
         units=1,
         kernel_initializer=tf_utils.clone_initializer(mlm_initializer))
 
-  def call(self, inputs):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(self, inputs):  # pyrefly: ignore[bad-override]
     """ELECTRA forward pass.
 
     Args:

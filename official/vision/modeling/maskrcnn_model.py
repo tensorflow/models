@@ -141,7 +141,7 @@ class MaskRCNNModel(tf_keras.Model):
         [30.0, 30.0, 15.0, 15.0],
     ]
 
-  def call(  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(  # pyrefly: ignore[bad-override]
       self,
       images: tf.Tensor,
       image_shape: tf.Tensor,
@@ -184,7 +184,7 @@ class MaskRCNNModel(tf_keras.Model):
         matched_gt_classes=intermediate_outputs['matched_gt_classes'],
         gt_masks=gt_masks,  # pyrefly: ignore[bad-argument-type]
         training=training)
-    model_outputs.update(model_mask_outputs)  # pytype: disable=attribute-error  # dynamic-method-lookup
+    model_outputs.update(model_mask_outputs)  # pyrefly: ignore[missing-attribute]
     return model_outputs
 
   def _get_backbone_and_decoder_features(self, images):

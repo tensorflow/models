@@ -22,7 +22,7 @@ import functools
 from typing import Optional
 
 # Disable init function to use the one defined in base class.
-dataclass = functools.partial(dataclasses.dataclass(init=False))  # pyrefly: ignore[bad-argument-type]
+dataclass = functools.partial(dataclasses.dataclass(init=False))
 
 
 @dataclass
@@ -56,7 +56,7 @@ class TfExampleFeatureKeyBase:
         with a trailing slash '/'.
     """
     if prefix:
-      for field in dataclasses.fields(self):  # pytype: disable=wrong-arg-types  # re-none
+      for field in dataclasses.fields(self):  # pyrefly: ignore[bad-argument-type]
         key_name = field.name
         key_value = getattr(self, key_name)
         setattr(self, key_name, f'{prefix}/{key_value}')

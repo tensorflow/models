@@ -27,7 +27,7 @@ class PerDimScaleAttention(tf_keras.layers.MultiHeadAttention):
   """
 
   def _build_from_signature(self, query, value, key=None):
-    super()._build_from_signature(query=query, value=value, key=key)  # pytype: disable=attribute-error
+    super()._build_from_signature(query=query, value=value, key=key)
     self._scale_dim = self._key_dim
     with tf.init_scope():
       self.per_dim_scale = self.add_weight(
@@ -67,7 +67,7 @@ class PerDimScaleAttention(tf_keras.layers.MultiHeadAttention):
                                  attention_scores_dropout, value)
     return attention_output, attention_scores
 
-  def call(  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+  def call(  # pyrefly: ignore[bad-override]
       self,
       query,
       value,

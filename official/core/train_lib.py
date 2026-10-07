@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """TFM common training driver library."""
-# pytype: disable=attribute-error
 import os
 import tempfile
 from typing import Any, List, Mapping, Optional, Tuple
@@ -298,7 +297,7 @@ class OrbitExperimentRunner:
 
     if self._run_post_eval or mode == 'train_and_post_eval':
       with self.strategy.scope():
-        return self.trainer.model, self.controller.evaluate(  # pytype: disable=bad-return-type  # always-use-property-annotation
+        return self.trainer.model, self.controller.evaluate(  # pyrefly: ignore[bad-return]
             steps=params.trainer.validation_steps)
     else:
       return self.trainer.model, {}

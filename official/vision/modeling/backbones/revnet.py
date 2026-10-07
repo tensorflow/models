@@ -206,7 +206,7 @@ class RevNet(tf_keras.Model):
   @property
   def output_specs(self) -> Dict[int, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
-    return self._output_specs  # pytype: disable=bad-return-type  # trace-all-classes
+    return self._output_specs
 
 
 @factory.register_backbone_builder('revnet')
@@ -214,7 +214,7 @@ def build_revnet(
     input_specs: tf_keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pytype: disable=annotation-type-mismatch  # typed-keras
+    l2_regularizer: tf_keras.regularizers.Regularizer = None) -> tf_keras.Model:  # pyrefly: ignore[bad-function-definition]
   """Builds RevNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()

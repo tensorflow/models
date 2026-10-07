@@ -59,7 +59,7 @@ class SegmentationModel(tf_keras.Model):
     self.mask_scoring_head = mask_scoring_head
 
   def call(  # pyrefly: ignore[bad-override]
-      self, inputs: tf.Tensor, training: bool = None  # pytype: disable=annotation-type-mismatch,signature-mismatch
+      self, inputs: tf.Tensor, training: bool = None  # pyrefly: ignore[bad-function-definition]
   ) -> Dict[str, tf.Tensor]:
     backbone_features = self.backbone(inputs)
 
