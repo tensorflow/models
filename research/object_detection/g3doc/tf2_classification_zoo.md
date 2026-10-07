@@ -21,5 +21,5 @@ Model name |
 [Resnet V1 101](http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/resnet101_v1.tar.gz)       |
 [Resnet V1 152](http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/resnet152_v1.tar.gz)       |
 [Inception Resnet V2](http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/inception_resnet_v2.tar.gz) |
-[MobileNet V1](http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/mobilnet_v1.tar.gz)        |
-[MobileNet V2](http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/mobilnet_v2.tar.gz)        |
+[MobileNet V1](http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/mobilenet_v1.tar.gz)        |
+[MobileNet V2](http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/mobilenet_v2.tar.gz)        |
