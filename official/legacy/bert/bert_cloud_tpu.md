@@ -14,7 +14,7 @@ gcloud config set project ${PROJECT_ID}
 ```
 4. Create a Cloud Storage bucket using the following command:
 ```
-gsutil mb -p ${PROJECT_ID} -c standard -l europe-west4 -b on gs://your-bucket-name
+gcloud storage buckets create --project=${PROJECT_ID} --default-storage-class=standard --location=europe-west4 --uniform-bucket-level-access gs://your-bucket-name
 ```
 This Cloud Storage bucket stores the data you use to train your model and the training results.
 5. Launch a Compute Engine VM and Cloud TPU using the ctpu up command.
@@ -100,7 +100,7 @@ $ ctpu status --zone=your-zone
 ```
 4. Run gsutil as shown, replacing your-bucket with the name of the Cloud Storage bucket you created for this tutorial:
 ```
-$ gsutil rm -r gs://your-bucket
+$ gcloud storage rm --recursive gs://your-bucket
 ```
 
 
