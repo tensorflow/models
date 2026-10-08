@@ -88,7 +88,7 @@ configured in the meta architecture:
   `_postprocess_rpn` is run as part of the `_predict_second_stage` using
   `resized_image_shapes` to clip proposals, perform non-max suppression and
   normalize them. Subsequently, `_postprocess_box_classifier` is run as part of
-  `_predict_third_stage` using `true_image_shapes` to clip detections, peform
+  `_predict_third_stage` using `true_image_shapes` to clip detections, perform
   non-max suppression and normalize them. In this case, the `postprocess` method
   skips both `_postprocess_rpn` and `_postprocess_box_classifier`.
 """

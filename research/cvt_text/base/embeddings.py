@@ -52,7 +52,7 @@ _EXTRA_WORDS = [
     '00-00', '00-00-00', '0-00-00', '00-00-0000', '0-00-0000', '0000-00-00',
     '00-0-00-0', '00000000', '0:00.000', '00:00.000',
     '0%', '00%', '00.' '0000.', '0.0bn', '0.0m', '0-', '00-',
-    # ontonotes uses **f to represent formulas and -amp- instead of amperstands
+    # ontonotes uses **f to represent formulas and -amp- instead of ampersands
     '**f', '-amp-'
 ]
 SPECIAL_TOKENS = ['<pad>', '<unk>', '<start>', '<end>', '<missing>']
