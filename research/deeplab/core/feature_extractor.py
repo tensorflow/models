@@ -574,7 +574,7 @@ def extract_features(images,
       depthwise convolution weights.
     preprocess_images: Performs preprocessing on images or not. Defaults to
       True. Set to False if preprocessing will be done by other functions. We
-      supprot two types of preprocessing: (1) Mean pixel substraction and (2)
+      support two types of preprocessing: (1) Mean pixel subtraction and (2)
       Pixel values normalization to be [-1, 1].
     preprocessed_images_dtype: The type after the preprocessing function.
     num_classes: Number of classes for image classification task. Defaults
