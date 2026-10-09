@@ -163,5 +163,8 @@ message TrainConfig {
   // Whether to summarize gradients.
   optional bool summarize_gradients = 27 [default=false];
 
+  // Number of visualization images to generate.
+  optional uint32 num_visualizations = 29 [default = 0];
+
 }
 
