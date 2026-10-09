@@ -2423,7 +2423,8 @@ def random_pad_to_aspect_ratio(image,
                                min_padded_size_ratio=(1.0, 1.0),
                                max_padded_size_ratio=(2.0, 2.0),
                                seed=None,
-                               preprocess_vars_cache=None):
+                               preprocess_vars_cache=None,
+                               image_shape_reference=None):
   """Randomly zero pads an image to the specified aspect ratio.
 
   Pads the image so that the resulting image will have the specified aspect
@@ -2455,6 +2456,9 @@ def random_pad_to_aspect_ratio(image,
                            performed augmentations. Updated in-place. If this
                            function is called multiple times with the same
                            non-null cache, it will perform deterministically.
+    image_shape_reference:  (optional) 1-D integer tensor representing the shape of the reference image. 
+                           If specified, min_padded_size_ratio and max_padded_size_ratio will refer to this shape
+                           (used for example when image is the result of a crop operation)
 
   Returns:
     image: image which is the same rank as input image.
@@ -2488,15 +2492,21 @@ def random_pad_to_aspect_ratio(image,
         image_aspect_ratio >= new_aspect_ratio,
         lambda: image_width,
         lambda: image_height * new_aspect_ratio)
-
+    
+    if image_shape_reference is None:
+        image_shape_reference = image_shape
+    
+    image_height_reference = tf.cast(image_shape_reference[0], dtype=tf.float32)
+    image_width_reference = tf.cast(image_shape_reference[1], dtype=tf.float32)
+    	
     min_height = tf.maximum(
-        min_padded_size_ratio[0] * image_height, target_height)
+        min_padded_size_ratio[0] * image_height_reference, target_height)
     min_width = tf.maximum(
-        min_padded_size_ratio[1] * image_width, target_width)
+        min_padded_size_ratio[1] * image_width_reference, target_width)
     max_height = tf.maximum(
-        max_padded_size_ratio[0] * image_height, target_height)
+        max_padded_size_ratio[0] * image_height_reference, target_height)
     max_width = tf.maximum(
-        max_padded_size_ratio[1] * image_width, target_width)
+        max_padded_size_ratio[1] * image_width_reference, target_width)
 
     max_scale = tf.minimum(max_height / target_height, max_width / target_width)
     min_scale = tf.minimum(
@@ -2513,35 +2523,72 @@ def random_pad_to_aspect_ratio(image,
     target_height = tf.round(scale * target_height)
     target_width = tf.round(scale * target_width)
 
-    new_image = tf.image.pad_to_bounding_box(
-        image, 0, 0, tf.cast(target_height, dtype=tf.int32),
-        tf.cast(target_width, dtype=tf.int32))
+    generator_func_pad_x = functools.partial(tf.random_uniform, [],
+                                       0.0, target_width-image_width, seed=seed)
+    generator_func_pad_y = functools.partial(tf.random_uniform, [],
+                                       0.0, target_height-image_height, seed=seed)
+    
+    offset_x = _get_or_create_preprocess_rand_vars(
+        generator_func_pad_x,
+        preprocessor_cache.PreprocessorCache.PAD_TO_ASPECT_RATIO_X_OFFSET,
+        preprocess_vars_cache) 
+    
+    offset_y = _get_or_create_preprocess_rand_vars(
+        generator_func_pad_y,
+        preprocessor_cache.PreprocessorCache.PAD_TO_ASPECT_RATIO_Y_OFFSET,
+        preprocess_vars_cache)     
 
-    im_box = tf.stack([
-        0.0,
-        0.0,
+    new_image = tf.image.pad_to_bounding_box(
+        image, tf.cast(offset_y, dtype=tf.int32), tf.cast(offset_x, dtype=tf.int32), tf.cast(target_height, dtype=tf.int32),
+        tf.cast(target_width, dtype=tf.int32))
+    
+    image_ones = tf.ones_like(image)
+    image_ones_padded = tf.image.pad_to_bounding_box(
+      image_ones,
+      tf.cast(offset_y, dtype=tf.int32), 
+      tf.cast(offset_x, dtype=tf.int32), 
+      tf.cast(target_height, dtype=tf.int32),
+      tf.cast(target_width, dtype=tf.int32))
+
+    image_color_padded = (1.0 - image_ones_padded) * tf.random.uniform(tf.shape(image_ones_padded), minval=0, maxval=255, dtype=tf.dtypes.float32, seed=seed)
+    new_image += image_color_padded
+
+    im_box_scale = tf.stack([
+        0,
+        0,
         target_height / image_height,
         target_width / image_width
     ])
+    
+    im_box_translate = tf.stack([
+        -offset_y / target_height,
+        -offset_x / target_width,
+        (target_height - offset_y) / target_height,
+        (target_width - offset_x) / target_width
+    ])
+
     boxlist = box_list.BoxList(boxes)
-    new_boxlist = box_list_ops.change_coordinate_frame(boxlist, im_box)
-    new_boxes = new_boxlist.get()
+    boxlist_scaled = box_list_ops.change_coordinate_frame(boxlist, im_box_scale)
+    boxlist_translated = box_list_ops.change_coordinate_frame(boxlist_scaled, im_box_translate)
+    new_boxes = boxlist_translated.get()
 
     result = [new_image, new_boxes]
 
     if masks is not None:
       new_masks = tf.expand_dims(masks, -1)
       new_masks = tf.image.pad_to_bounding_box(
-          new_masks, 0, 0, tf.cast(target_height, dtype=tf.int32),
+          new_masks, offset_y, offset_x, tf.cast(target_height, dtype=tf.int32),
           tf.cast(target_width, dtype=tf.int32))
       new_masks = tf.squeeze(new_masks, [-1])
       result.append(new_masks)
 
     if keypoints is not None:
-      new_keypoints = keypoint_ops.change_coordinate_frame(keypoints, im_box)
-      result.append(new_keypoints)
+      keypoints_scaled = keypoint_ops.change_coordinate_frame(keypoints, im_box_scale)
+      keypoints_translated = keypoint_ops.change_coordinate_frame(keypoints_scaled, im_box_translate)
+      result.append(keypoints_translated)
 
     return tuple(result)
+
 
 
 def random_black_patches(image,
@@ -4054,7 +4101,8 @@ def ssd_random_crop_pad_fixed_aspect_ratio(
       min_padded_size_ratio=min_padded_size_ratio,
       max_padded_size_ratio=max_padded_size_ratio,
       seed=seed,
-      preprocess_vars_cache=preprocess_vars_cache)
+      preprocess_vars_cache=preprocess_vars_cache,
+      image_shape_reference=tf.shape(image))
 
   result = list(result)
   i = 3
