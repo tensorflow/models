@@ -184,7 +184,7 @@ def build_unet_3d_decoder(
       model_id=decoder_cfg.model_id,
       input_specs=input_specs,
       pool_size=decoder_cfg.pool_size,
-      kernel_regularizer=l2_regularizer,
+      kernel_regularizer=l2_regularizer,  # pyrefly: ignore[bad-argument-type]
       activation=norm_activation_config.activation,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,

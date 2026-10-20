@@ -252,7 +252,7 @@ def build_movinet_model(
       backbone,
       num_classes=num_classes,
       kernel_regularizer=l2_regularizer,
-      input_specs=input_specs_dict,
+      input_specs=input_specs_dict,  # pyrefly: ignore[bad-argument-type]
       activation=model_config.activation,
       dropout_rate=model_config.dropout_rate,
       output_states=model_config.output_states)

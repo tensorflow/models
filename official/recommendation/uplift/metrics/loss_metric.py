@@ -164,7 +164,7 @@ class LossMetric(tf_keras.metrics.Metric):
 
     is_treatment = {}
     if self._slice_by_treatment:
-      is_treatment["is_treatment"] = y_pred.is_treatment
+      is_treatment["is_treatment"] = y_pred.is_treatment  # pyrefly: ignore[missing-attribute]
 
     if isinstance(self._loss_fn, tf_keras.metrics.Metric):
       self._loss.update_state(
