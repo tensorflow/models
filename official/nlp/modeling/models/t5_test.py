@@ -44,6 +44,10 @@ class ModulesTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(("bfloat16", tf.bfloat16),
                                   ("float32", tf.float32))
   def test_embed(self, dtype):
+    tf.config.experimental.enable_tensor_float_32_execution(False)
+    self.addCleanup(
+        tf.config.experimental.enable_tensor_float_32_execution, True
+    )
     l = t5.Embed(vocab_size=5, features=4, compute_dtype=dtype, name="foo")
     inputs = np.array([[2, 3], [1, 2]], dtype=np.int32)
     inputs = tf.convert_to_tensor(inputs)

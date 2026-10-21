@@ -429,6 +429,10 @@ class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
 
   @combinations.generate(distribution_strategy_combinations())
   def test_manual_gradients_correctness(self, distribution):
+    tf.config.experimental.enable_tensor_float_32_execution(False)
+    self.addCleanup(
+        tf.config.experimental.enable_tensor_float_32_execution, True
+    )
     bsz, h, w, c = 8, 32, 32, 32
     filters = c
     strides = 1
@@ -1031,6 +1035,10 @@ class TransformerLayerTest(tf.test.TestCase, parameterized.TestCase):
       key_dim,
       value_dim,
   ):
+    tf.config.experimental.enable_tensor_float_32_execution(False)
+    self.addCleanup(
+        tf.config.experimental.enable_tensor_float_32_execution, True
+    )
     layer = nn_blocks.MultiQueryAttentionLayerV1(num_heads, key_dim, value_dim)
 
     x_inputs = tf.random.uniform([batch_size, x_size, channel_dim])
