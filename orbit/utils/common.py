@@ -16,6 +16,7 @@
 
 import inspect
 
+from typing import Any, Callable, Optional, Union
 import tensorflow as tf, tf_keras
 
 
@@ -44,7 +45,12 @@ def create_global_step() -> tf.Variable:
       aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA)
 
 
-def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
+def make_distributed_dataset(
+        strategy: Optional[tf.distribute.Strategy],
+        dataset_or_fn: Union[tf.data.Dataset, Callable],
+        *args: Any,
+        **kwargs: Any
+) -> tf.distribute.DistributedDataset:
   """A utility function to help create a `tf.distribute.DistributedDataset`.
 
   Args:
@@ -90,7 +96,7 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
   return strategy.distribute_datasets_from_function(dataset_fn, input_options)
 
 
-def get_value(x):
+def get_value(x) -> Any:
   """Returns input values, converting any TensorFlow values to NumPy values.
 
   Args:
