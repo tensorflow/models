@@ -18,11 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import json
 import os
 import tempfile
 import unittest
 import numpy as np
+import re
 import six
 import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
@@ -30,6 +32,7 @@ import tensorflow.compat.v2 as tf2
 from object_detection import exporter_lib_v2
 from object_detection import inputs
 from object_detection import model_lib_v2
+from object_detection.builders import model_builder, optimizer_builder
 from object_detection.core import model
 from object_detection.protos import train_pb2
 from object_detection.utils import config_util
@@ -75,6 +78,19 @@ def _get_config_kwarg_overrides():
   }
 
 
+def _make_iterator(dataset):
+  """Creates an iterator.
+
+  Args:
+    dataset: A `tf.data.Dataset` object.
+
+  Returns:
+    A Python iterator.
+  """
+  iterator = iter(element for element in dataset)
+  return iterator
+
+
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class ModelLibTest(tf.test.TestCase):
 
@@ -110,6 +126,74 @@ class ModelLibTest(tf.test.TestCase):
         wait_interval=1,
         timeout=10,
         **config_kwarg_overrides)
+
+  def _get_configs_for_model(self, model_name):
+    """Returns configurations for model."""
+    pipeline_config_path = get_pipeline_config_path(model_name)
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, kwargs_dict=_get_config_kwarg_overrides())
+    return configs
+
+  def _get_weights_before_and_after_train_step(self, configs):
+    """Get model weights before and after a train step."""
+    train_config = configs['train_config']
+    detection_model = model_builder.build(
+        model_config=configs['model'], is_training=True)
+    features, labels = next(_make_iterator(
+        inputs.create_train_input_fn(configs['train_config'],
+                                     configs['train_input_config'],
+                                     configs['model'])()))
+    optimizer, _ = optimizer_builder.build(config=train_config.optimizer)
+    clip_gradients_value = None
+    if train_config.gradient_clipping_by_norm > 0:
+      clip_gradients_value = train_config.gradient_clipping_by_norm
+    strategy = tf.compat.v2.distribute.get_strategy()
+    detection_model.feature_extractor.build(input_shape=(None, 300, 300, 3))
+    detection_model.predict(tf.random.uniform(tf.stack([1, 300, 300, 3])),
+                            true_image_shapes=None)
+
+    weights_before_train_step = copy.deepcopy(
+        detection_model.feature_extractor.weights)
+    model_lib_v2.eager_train_step(detection_model=detection_model,
+                                  features=features,
+                                  labels=labels,
+                                  unpad_groundtruth_tensors=\
+                                    train_config.unpad_groundtruth_tensors,
+                                  optimizer=optimizer,
+                                  train_config=train_config,
+                                  add_regularization_loss=\
+                                    train_config.add_regularization_loss,
+                                  clip_gradients_value=clip_gradients_value,
+                                  num_replicas=strategy.num_replicas_in_sync)
+    weights_after_train_step = detection_model.feature_extractor.get_weights()
+
+    for weights_before, weights_after in zip(weights_before_train_step,
+                                             weights_after_train_step):
+      if re.search('/moving_(mean|variance):0$', weights_before.name) is None:
+        yield weights_before, weights_after
+
+  def test_eager_train_step_freeze_all_variables(self):
+    """Tests eager_train_step with all variables frozen."""
+    configs = self._get_configs_for_model(MODEL_NAME_FOR_TEST)
+    configs['train_config'].freeze_variables.append('.*')
+
+    for (
+        weights_before,
+        weights_after
+    ) in self._get_weights_before_and_after_train_step(configs):
+      np.testing.assert_array_equal(weights_before, weights_after)
+
+  def test_eager_train_step_update_all_variables(self):
+    """Tests eager_train_step with all variables frozen."""
+    configs = self._get_configs_for_model(MODEL_NAME_FOR_TEST)
+    configs['train_config'].update_trainable_variables.append('.*')
+
+    for (
+        weights_before,
+        weights_after
+    ) in self._get_weights_before_and_after_train_step(configs):
+      assert not np.array_equal(weights_before, weights_after)
 
 
 class SimpleModel(model.DetectionModel):
