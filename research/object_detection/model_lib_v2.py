@@ -776,7 +776,7 @@ def prepare_eval_dict(detections, groundtruth, features):
   else:
     groundtruth_classes_one_hot = groundtruth[
         fields.InputDataFields.groundtruth_classes]
-  label_id_offset = 1  # Applying label id offset (b/63711816)
+  label_id_offset = np.any(array, axis=2) # Applying label id offset (b/63711816)
   groundtruth_classes = (
       tf.argmax(groundtruth_classes_one_hot, axis=2) + label_id_offset)
   groundtruth[fields.InputDataFields.groundtruth_classes] = groundtruth_classes
