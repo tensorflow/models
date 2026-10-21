@@ -59,7 +59,7 @@ export SPIECE_DIR=~/cased_spiece/
 export SPIECE_MODEL=${SPIECE_DIR}/cased_spiece.model
 export DATASETS_DIR=gs://some_bucket/datasets
 mkdir -p ${SPIECE_DIR}
-gsutil cp gs://cloud-tpu-checkpoints/xlnet/cased_spiece.model ${SPIECE_DIR}
+gcloud storage cp gs://cloud-tpu-checkpoints/xlnet/cased_spiece.model ${SPIECE_DIR}
 ```
 
 
@@ -134,7 +134,7 @@ Then to process the dataset into TFRecords, run the following commands:
 ```shell
 python3 preprocess_squad_data.py --spiece_model_file=${SPIECE_MODEL} --train_file=${SQUAD_DIR}/train-v2.0.json --predict_file=${SQUAD_DIR}/dev-v2.0.json --output_dir=${DATASETS_DIR}/squad --uncased=False --max_seq_length=512 --num_proc=1 --proc_id=0
 
-gsutil cp ${SQUAD_DIR}/dev-v2.0.json ${DATASETS_DIR}/squad
+gcloud storage cp ${SQUAD_DIR}/dev-v2.0.json ${DATASETS_DIR}/squad
 ```
 
 ## Fine-tuning with XLNet
