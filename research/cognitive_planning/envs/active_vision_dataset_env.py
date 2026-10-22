@@ -195,7 +195,7 @@ def read_all_poses(dataset_root, world):
     id of each view and the values are tuple of (x, z, R, scale). Where x and z
     are the first and third coordinate of translation. R is the 3x3 rotation
     matrix and scale is a float scalar that indicates the scale that needs to
-    be multipled to x and z in order to get the real world coordinates.
+    be multiplied to x and z in order to get the real world coordinates.
 
   Raises:
     ValueError: if the number of images do not match the number of poses read.
@@ -675,7 +675,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
 
     Returns:
       observation, done, info
-      observation: dictonary that contains all the observations specified in
+      observation: dictionary that contains all the observations specified in
         modality_types.
         observation[task_env.ModalityTypes.OBJECT_DETECTION]: contains the
         detection of the current view.
@@ -897,7 +897,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
       self._vertex_to_pose[self._cur_world] = {
           index: (-index,) for index in self._cur_graph.target_indexes.values()
       }
-      # Calling vetex_to_pose for each vertex results in filling out the
+      # Calling vertex_to_pose for each vertex results in filling out the
       # dictionaries that contain pose related data.
       for image_id in self._world_id_dict[self._cur_world]:
         self.vertex_to_pose(self.to_vertex(image_id))
@@ -951,7 +951,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
       v: integer, vertex index.
 
     Returns:
-      (x, z, dir_x, dir_z) where x and z are the tranlation and dir_x, dir_z are
+      (x, z, dir_x, dir_z) where x and z are the translation and dir_x, dir_z are
         a vector giving direction of the view.
     """
     if v in self._vertex_to_pose[self._cur_world]:
@@ -996,7 +996,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
     """
     obs = self._reset_env(new_world=world, new_goal=goal)
     if not obs:
-      print '{} is not availble in {}'.format(goal, world)
+      print '{} is not available in {}'.format(goal, world)
       return True
     for image_id in self._world_id_dict[self._cur_world]:
       print 'check image_id = {}'.format(image_id)

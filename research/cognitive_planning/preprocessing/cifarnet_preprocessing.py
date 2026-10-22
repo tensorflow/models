@@ -41,7 +41,7 @@ def preprocess_for_train(image,
     image: A `Tensor` representing an image of arbitrary size.
     output_height: The height of the image after preprocessing.
     output_width: The width of the image after preprocessing.
-    padding: The amound of padding before and after each dimension of the image.
+    padding: The amount of padding before and after each dimension of the image.
     add_image_summaries: Enable image summaries.
 
   Returns:
