@@ -98,7 +98,7 @@ using object detection as an example:
 ```shell
 
 # First download the pre-trained floating point model as QAT needs to finetune it.
-gsutil cp gs://tf_model_garden/vision/qat/mobilenetv2_ssd_coco/mobilenetv2_ssd_i256_ckpt.tar.gz /tmp/qat/
+gcloud storage cp gs://tf_model_garden/vision/qat/mobilenetv2_ssd_coco/mobilenetv2_ssd_i256_ckpt.tar.gz /tmp/qat/
 
 # Extract the checkpoint.
 tar -xvzf /tmp/qat/mobilenetv2_ssd_i256_ckpt.tar.gz

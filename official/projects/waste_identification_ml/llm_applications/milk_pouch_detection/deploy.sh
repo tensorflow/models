@@ -183,11 +183,11 @@ echo ""
 # ---
 
 echo "✅ Step 4: Create GCS Buckets..."
-gsutil mb \
-  -p "${PROJECT_ID}" \
-  -l "${REGION}" \
-  -c standard \
-  -b on "gs://${SOURCE_BUCKET_NAME}" \
+gcloud storage buckets create "gs://${SOURCE_BUCKET_NAME}" \
+  --project="${PROJECT_ID}" \
+  --location="${REGION}" \
+  --default-storage-class=standard \
+  --uniform-bucket-level-access \
   || echo "Source Bucket 'gs://${SOURCE_BUCKET_NAME}' already exists."
 echo "GCS Buckets are ready."
 echo ""
@@ -324,5 +324,5 @@ echo ""
 
 echo "🚀🚀🚀 Deployment complete! 🚀🚀🚀"
 echo "You can upload files to the source bucket to be processed in the next run:"
-echo "gsutil cp your-local-image.jpg gs://${SOURCE_BUCKET_NAME}/"
+echo "gcloud storage cp your-local-image.jpg gs://${SOURCE_BUCKET_NAME}/"
 echo "Check the results in the bucket's subfolders."
