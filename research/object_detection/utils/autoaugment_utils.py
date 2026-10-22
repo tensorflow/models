@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 Google Research. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,31 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
-"""AutoAugment util file."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+"""AutoAugment.
+[1] Barret, et al. Learning Data Augmentation Strategies for Object Detection.
+    Arxiv: https://arxiv.org/abs/1906.11172
+"""
 import inspect
 import math
-import six
+from absl import logging
+import numpy as np
 import tensorflow.compat.v1 as tf
 
-# pylint: disable=g-import-not-at-top
+from object_detection.utils import hparams_config
+
 try:
-  from tensorflow.contrib import image as contrib_image
-  from tensorflow.contrib import training as contrib_training
+  # addon image_ops are simpler, but they have some issues on GPU and TPU.
+  from tensorflow_addons import image as image_ops  # pylint: disable=g-import-not-at-top
 except ImportError:
-  # TF 2.0 doesn't ship with contrib.
-  pass
-# pylint: enable=g-import-not-at-top
+  from tensorflow.contrib import image as image_ops  # pylint: disable=g-import-not-at-top
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
 _MAX_LEVEL = 10.
-
 
 # Represents an invalid bounding box that is used for checking for padding
 # lists of bounding box coordinates for a few augmentation operations
@@ -158,19 +154,16 @@ def policy_v3():
 
 def blend(image1, image2, factor):
   """Blend image1 and image2 using 'factor'.
-
   Factor can be above 0.0.  A value of 0.0 means only image1 is used.
   A value of 1.0 means only image2 is used.  A value between 0.0 and
   1.0 means we linearly interpolate the pixel values between the two
   images.  A value greater than 1.0 "extrapolates" the difference
   between the two pixel values, and we clip the results to values
   between 0 and 255.
-
   Args:
     image1: An image Tensor of type uint8.
     image2: An image Tensor of type uint8.
     factor: A floating point value above 0.0.
-
   Returns:
     A blended image Tensor of type uint8.
   """
@@ -201,12 +194,10 @@ def blend(image1, image2, factor):
 
 def cutout(image, pad_size, replace=0):
   """Apply cutout (https://arxiv.org/abs/1708.04552) to image.
-
   This operation applies a (2*pad_size x 2*pad_size) mask of zeros to
   a random location within `img`. The pixel values filled in will be of the
   value `replace`. The located where the mask will be applied is randomly
   chosen uniformly over the whole image.
-
   Args:
     image: An image Tensor of type uint8.
     pad_size: Specifies how big the zero mask that will be generated is that
@@ -214,7 +205,6 @@ def cutout(image, pad_size, replace=0):
       (2*pad_size x 2*pad_size).
     replace: What pixel value to fill in the image in the area that has
       the cutout mask applied to it.
-
   Returns:
     An image Tensor that is of type uint8.
   """
@@ -304,7 +294,6 @@ def posterize(image, bits):
 
 def rotate(image, degrees, replace):
   """Rotates the image by degrees either clockwise or counterclockwise.
-
   Args:
     image: An image Tensor of type uint8.
     degrees: Float, a scalar angle in degrees to rotate all images by. If
@@ -312,7 +301,6 @@ def rotate(image, degrees, replace):
       be rotated counterclockwise.
     replace: A one or three value 1D tensor to fill empty pixels caused by
       the rotate operation.
-
   Returns:
     The rotated version of image.
   """
@@ -323,14 +311,13 @@ def rotate(image, degrees, replace):
   # In practice, we should randomize the rotation degrees by flipping
   # it negatively half the time, but that's done on 'degrees' outside
   # of the function.
-  image = contrib_image.rotate(wrap(image), radians)
+  image = image_ops.rotate(wrap(image), radians)
   return unwrap(image, replace)
 
 
 def random_shift_bbox(image, bbox, pixel_scaling, replace,
                       new_min_bbox_coords=None):
   """Move the bbox and the image content to a slightly new random location.
-
   Args:
     image: 3D uint8 Tensor.
     bbox: 1D Tensor that has 4 elements (min_y, min_x, max_y, max_x)
@@ -345,7 +332,6 @@ def random_shift_bbox(image, bbox, pixel_scaling, replace,
       (min_y, min_x) coordinates of the new bbox. Normally this is randomly
       specified, but this allows it to be manually set. The coordinates are
       the absolute coordinates between 0 and image height/width and are int32.
-
   Returns:
     The new image that will have the shifted bbox location in it along with
     the new bbox that contains the new coordinates.
@@ -444,13 +430,11 @@ def random_shift_bbox(image, bbox, pixel_scaling, replace,
 
 def _clip_bbox(min_y, min_x, max_y, max_x):
   """Clip bounding box coordinates between 0 and 1.
-
   Args:
     min_y: Normalized bbox coordinate of type float between 0 and 1.
     min_x: Normalized bbox coordinate of type float between 0 and 1.
     max_y: Normalized bbox coordinate of type float between 0 and 1.
     max_x: Normalized bbox coordinate of type float between 0 and 1.
-
   Returns:
     Clipped coordinate values between 0 and 1.
   """
@@ -463,7 +447,6 @@ def _clip_bbox(min_y, min_x, max_y, max_x):
 
 def _check_bbox_area(min_y, min_x, max_y, max_x, delta=0.05):
   """Adjusts bbox coordinates to make sure the area is > 0.
-
   Args:
     min_y: Normalized bbox coordinate of type float between 0 and 1.
     min_x: Normalized bbox coordinate of type float between 0 and 1.
@@ -472,7 +455,6 @@ def _check_bbox_area(min_y, min_x, max_y, max_x, delta=0.05):
     delta: Float, this is used to create a gap of size 2 * delta between
       bbox min/max coordinates that are the same on the boundary.
       This prevents the bbox from having an area of zero.
-
   Returns:
     Tuple of new bbox coordinates between 0 and 1 that will now have a
     guaranteed area > 0.
@@ -495,15 +477,12 @@ def _check_bbox_area(min_y, min_x, max_y, max_x, delta=0.05):
 
 def _scale_bbox_only_op_probability(prob):
   """Reduce the probability of the bbox-only operation.
-
   Probability is reduced so that we do not distort the content of too many
   bounding boxes that are close to each other. The value of 3.0 was a chosen
   hyper parameter when designing the autoaugment algorithm that we found
   empirically to work well.
-
   Args:
     prob: Float that is the probability of applying the bbox-only operation.
-
   Returns:
     Reduced probability.
   """
@@ -512,7 +491,6 @@ def _scale_bbox_only_op_probability(prob):
 
 def _apply_bbox_augmentation(image, bbox, augmentation_func, *args):
   """Applies augmentation_func to the subsection of image indicated by bbox.
-
   Args:
     image: 3D uint8 Tensor.
     bbox: 1D Tensor that has 4 elements (min_y, min_x, max_y, max_x)
@@ -521,7 +499,6 @@ def _apply_bbox_augmentation(image, bbox, augmentation_func, *args):
       subsection of image.
     *args: Additional parameters that will be passed into augmentation_func
       when it is called.
-
   Returns:
     A modified version of image, where the bbox location in the image will
     have `ugmentation_func applied to it.
@@ -566,7 +543,7 @@ def _apply_bbox_augmentation(image, bbox, augmentation_func, *args):
 
 
 def _concat_bbox(bbox, bboxes):
-  """Helper function that concates bbox to bboxes along the first dimension."""
+  """Helper function that concats bbox to bboxes along the first dimension."""
 
   # Note if all elements in bboxes are -1 (_INVALID_BOX), then this means
   # we discard bboxes and start the bboxes Tensor with the current bbox.
@@ -583,7 +560,6 @@ def _apply_bbox_augmentation_wrapper(image, bbox, new_bboxes, prob,
                                      augmentation_func, func_changes_bbox,
                                      *args):
   """Applies _apply_bbox_augmentation with probability prob.
-
   Args:
     image: 3D uint8 Tensor.
     bbox: 1D Tensor that has 4 elements (min_y, min_x, max_y, max_x)
@@ -600,7 +576,6 @@ def _apply_bbox_augmentation_wrapper(image, bbox, new_bboxes, prob,
       to image.
     *args: Additional parameters that will be passed into augmentation_func
       when it is called.
-
   Returns:
     A tuple. Fist element is a modified version of image, where the bbox
     location in the image will have augmentation_func applied to it if it is
@@ -627,7 +602,6 @@ def _apply_bbox_augmentation_wrapper(image, bbox, new_bboxes, prob,
 def _apply_multi_bbox_augmentation(image, bboxes, prob, aug_func,
                                    func_changes_bbox, *args):
   """Applies aug_func to the image for each bbox in bboxes.
-
   Args:
     image: 3D uint8 Tensor.
     bboxes: 2D Tensor that is a list of the bboxes in the image. Each bbox
@@ -640,7 +614,6 @@ def _apply_multi_bbox_augmentation(image, bboxes, prob, aug_func,
       to image.
     *args: Additional parameters that will be passed into augmentation_func
       when it is called.
-
   Returns:
     A modified version of image, where each bbox location in the image will
     have augmentation_func applied to it if it is chosen to be called with
@@ -655,7 +628,7 @@ def _apply_multi_bbox_augmentation(image, bboxes, prob, aug_func,
 
   # If the bboxes are empty, then just give it _INVALID_BOX. The result
   # will be thrown away.
-  bboxes = tf.cond(tf.equal(tf.size(bboxes), 0),
+  bboxes = tf.cond(tf.equal(tf.shape(bboxes)[0], 0),
                    lambda: tf.constant(_INVALID_BOX),
                    lambda: bboxes)
 
@@ -794,7 +767,6 @@ def cutout_only_bboxes(image, bboxes, prob, pad_size, replace):
 
 def _rotate_bbox(bbox, image_height, image_width, degrees):
   """Rotates the bbox coordinated by degrees.
-
   Args:
     bbox: 1D Tensor that has 4 elements (min_y, min_x, max_y, max_x)
       of type float that represents the normalized coordinates between 0 and 1.
@@ -803,7 +775,6 @@ def _rotate_bbox(bbox, image_height, image_width, degrees):
     degrees: Float, a scalar angle in degrees to rotate all images by. If
       degrees is positive the image will be rotated clockwise otherwise it will
       be rotated counterclockwise.
-
   Returns:
     A tensor of the same shape as bbox, but now with the rotated coordinates.
   """
@@ -847,7 +818,6 @@ def _rotate_bbox(bbox, image_height, image_width, degrees):
 
 def rotate_with_bboxes(image, bboxes, degrees, replace):
   """Equivalent of PIL Rotate that rotates the image and bbox.
-
   Args:
     image: 3D uint8 Tensor.
     bboxes: 2D Tensor that is a list of the bboxes in the image. Each bbox
@@ -856,7 +826,6 @@ def rotate_with_bboxes(image, bboxes, degrees, replace):
       degrees is positive the image will be rotated clockwise otherwise it will
       be rotated counterclockwise.
     replace: A one or three value 1D tensor to fill empty pixels.
-
   Returns:
     A tuple containing a 3D uint8 Tensor that will be the result of rotating
     image by degrees. The second element of the tuple is bboxes, where now
@@ -878,19 +847,18 @@ def rotate_with_bboxes(image, bboxes, degrees, replace):
 
 def translate_x(image, pixels, replace):
   """Equivalent of PIL Translate in X dimension."""
-  image = contrib_image.translate(wrap(image), [-pixels, 0])
+  image = image_ops.translate(wrap(image), [-pixels, 0])
   return unwrap(image, replace)
 
 
 def translate_y(image, pixels, replace):
   """Equivalent of PIL Translate in Y dimension."""
-  image = contrib_image.translate(wrap(image), [0, -pixels])
+  image = image_ops.translate(wrap(image), [0, -pixels])
   return unwrap(image, replace)
 
 
 def _shift_bbox(bbox, image_height, image_width, pixels, shift_horizontal):
   """Shifts the bbox coordinates by pixels.
-
   Args:
     bbox: 1D Tensor that has 4 elements (min_y, min_x, max_y, max_x)
       of type float that represents the normalized coordinates between 0 and 1.
@@ -899,7 +867,6 @@ def _shift_bbox(bbox, image_height, image_width, pixels, shift_horizontal):
     pixels: An int. How many pixels to shift the bbox.
     shift_horizontal: Boolean. If true then shift in X dimension else shift in
       Y dimension.
-
   Returns:
     A tensor of the same shape as bbox, but now with the shifted coordinates.
   """
@@ -931,7 +898,6 @@ def _shift_bbox(bbox, image_height, image_width, pixels, shift_horizontal):
 
 def translate_bbox(image, bboxes, pixels, replace, shift_horizontal):
   """Equivalent of PIL Translate in X/Y dimension that shifts image and bbox.
-
   Args:
     image: 3D uint8 Tensor.
     bboxes: 2D Tensor that is a list of the bboxes in the image. Each bbox
@@ -941,7 +907,6 @@ def translate_bbox(image, bboxes, pixels, replace, shift_horizontal):
     replace: A one or three value 1D tensor to fill empty pixels.
     shift_horizontal: Boolean. If true then shift in X dimension else shift in
       Y dimension.
-
   Returns:
     A tuple containing a 3D uint8 Tensor that will be the result of translating
     image by pixels. The second element of the tuple is bboxes, where now
@@ -969,7 +934,7 @@ def shear_x(image, level, replace):
   # with a matrix form of:
   # [1  level
   #  0  1].
-  image = contrib_image.transform(
+  image = image_ops.transform(
       wrap(image), [1., level, 0., 0., 1., 0., 0., 0.])
   return unwrap(image, replace)
 
@@ -980,14 +945,13 @@ def shear_y(image, level, replace):
   # with a matrix form of:
   # [1  0
   #  level  1].
-  image = contrib_image.transform(
+  image = image_ops.transform(
       wrap(image), [1., 0., 0., level, 1., 0., 0., 0.])
   return unwrap(image, replace)
 
 
 def _shear_bbox(bbox, image_height, image_width, level, shear_horizontal):
   """Shifts the bbox according to how the image was sheared.
-
   Args:
     bbox: 1D Tensor that has 4 elements (min_y, min_x, max_y, max_x)
       of type float that represents the normalized coordinates between 0 and 1.
@@ -996,7 +960,6 @@ def _shear_bbox(bbox, image_height, image_width, level, shear_horizontal):
     level: Float. How much to shear the image.
     shear_horizontal: If true then shear in X dimension else shear in
       the Y dimension.
-
   Returns:
     A tensor of the same shape as bbox, but now with the shifted coordinates.
   """
@@ -1037,7 +1000,6 @@ def _shear_bbox(bbox, image_height, image_width, level, shear_horizontal):
 
 def shear_with_bboxes(image, bboxes, level, replace, shear_horizontal):
   """Applies Shear Transformation to the image and shifts the bboxes.
-
   Args:
     image: 3D uint8 Tensor.
     bboxes: 2D Tensor that is a list of the bboxes in the image. Each bbox
@@ -1048,7 +1010,6 @@ def shear_with_bboxes(image, bboxes, level, replace, shear_horizontal):
     replace: A one or three value 1D tensor to fill empty pixels.
     shear_horizontal: Boolean. If true then shear in X dimension else shear in
       the Y dimension.
-
   Returns:
     A tuple containing a 3D uint8 Tensor that will be the result of shearing
     image by level. The second element of the tuple is bboxes, where now
@@ -1072,10 +1033,8 @@ def shear_with_bboxes(image, bboxes, level, replace, shear_horizontal):
 
 def autocontrast(image):
   """Implements Autocontrast function from PIL using TF ops.
-
   Args:
     image: A 3D uint8 tensor.
-
   Returns:
     The image after it has had autocontrast applied to it and will be of type
     uint8.
@@ -1122,8 +1081,9 @@ def sharpness(image, factor):
   # Tile across channel dimension.
   kernel = tf.tile(kernel, [1, 1, 3, 1])
   strides = [1, 1, 1, 1]
-  degenerate = tf.nn.depthwise_conv2d(
-      image, kernel, strides, padding='VALID', rate=[1, 1])
+  with tf.device('/cpu:0'):
+    degenerate = tf.nn.depthwise_conv2d(
+        image, kernel, strides, padding='VALID', rate=[1, 1])
   degenerate = tf.clip_by_value(degenerate, 0.0, 255.0)
   degenerate = tf.squeeze(tf.cast(degenerate, tf.uint8), [0])
 
@@ -1188,19 +1148,15 @@ def wrap(image):
 
 def unwrap(image, replace):
   """Unwraps an image produced by wrap.
-
   Where there is a 0 in the last channel for every spatial position,
   the rest of the three channels in that spatial dimension are grayed
   (set to 128).  Operations like translate and shear on a wrapped
   Tensor will leave 0s in empty locations.  Some transformations look
   at the intensity of values to do preprocessing, and we want these
   empty pixels to assume the 'average' value, rather than pure black.
-
-
   Args:
     image: A 3D Image Tensor with 4 channels.
     replace: A one or three value 1D tensor to fill empty pixels.
-
   Returns:
     image: A 3D image Tensor with 3 channels.
   """
@@ -1226,11 +1182,9 @@ def unwrap(image, replace):
 
 def _cutout_inside_bbox(image, bbox, pad_fraction):
   """Generates cutout mask and the mean pixel value of the bbox.
-
   First a location is randomly chosen within the image as the center where the
   cutout mask will be applied. Note this can be towards the boundaries of the
   image, so the full cutout mask may not be applied.
-
   Args:
     image: 3D uint8 Tensor.
     bbox: 1D Tensor that has 4 elements (min_y, min_x, max_y, max_x)
@@ -1239,7 +1193,6 @@ def _cutout_inside_bbox(image, bbox, pad_fraction):
       in reference to the size of the original bbox. If pad_fraction is 0.25,
       then the cutout mask will be of shape
       (0.25 * bbox height, 0.25 * bbox width).
-
   Returns:
     A tuple. Fist element is a tensor of the same shape as image where each
     element is either a 1 or 0 that is used to determine where the image
@@ -1302,10 +1255,8 @@ def _cutout_inside_bbox(image, bbox, pad_fraction):
 
 def bbox_cutout(image, bboxes, pad_fraction, replace_with_mean):
   """Applies cutout to the image according to bbox information.
-
   This is a cutout variant that using bbox information to make more informed
   decisions on where to place the cutout mask.
-
   Args:
     image: 3D uint8 Tensor.
     bboxes: 2D Tensor that is a list of the bboxes in the image. Each bbox
@@ -1321,7 +1272,6 @@ def bbox_cutout(image, bboxes, pad_fraction, replace_with_mean):
       we set the value to be 128. If replace_with_mean is True then we find
       the mean pixel values across the channel dimension and use those to fill
       in where the cutout mask is applied.
-
   Returns:
     A tuple. First element is a tensor of the same shape as image that has
     cutout applied to it. Second element is the bboxes that were passed in
@@ -1350,7 +1300,7 @@ def bbox_cutout(image, bboxes, pad_fraction, replace_with_mean):
     return image
 
   # Check to see if there are boxes, if so then apply boxcutout.
-  image = tf.cond(tf.equal(tf.size(bboxes), 0), lambda: image,
+  image = tf.cond(tf.equal(tf.shape(bboxes)[0], 0), lambda: image,
                   lambda: apply_bbox_cutout(image, bboxes, pad_fraction))
 
   return image, bboxes
@@ -1491,29 +1441,22 @@ def _parse_policy_info(name, prob, level, replace_value, augmentation_hparams):
   func = NAME_TO_FUNC[name]
   args = level_to_arg(augmentation_hparams)[name](level)
 
-  if six.PY2:
-    # pylint: disable=deprecated-method
-    arg_spec = inspect.getargspec(func)
-    # pylint: enable=deprecated-method
-  else:
-    arg_spec = inspect.getfullargspec(func)
-
   # Check to see if prob is passed into function. This is used for operations
   # where we alter bboxes independently.
   # pytype:disable=wrong-arg-types
-  if 'prob' in arg_spec[0]:
+  if 'prob' in inspect.getfullargspec(func)[0]:
     args = tuple([prob] + list(args))
   # pytype:enable=wrong-arg-types
 
   # Add in replace arg if it is required for the function that is being called.
-  if 'replace' in arg_spec[0]:
+  if 'replace' in inspect.getfullargspec(func)[0]:
     # Make sure replace is the final argument
-    assert 'replace' == arg_spec[0][-1]
+    assert 'replace' == inspect.getfullargspec(func)[0][-1]
     args = tuple(list(args) + [replace_value])
 
   # Add bboxes as the second positional argument for the function if it does
   # not already exist.
-  if 'bboxes' not in arg_spec[0]:
+  if 'bboxes' not in inspect.getfullargspec(func)[0]:
     func = bbox_wrapper(func)
   return (func, prob, args)
 
@@ -1521,17 +1464,11 @@ def _parse_policy_info(name, prob, level, replace_value, augmentation_hparams):
 def _apply_func_with_prob(func, image, args, prob, bboxes):
   """Apply `func` to image w/ `args` as input with probability `prob`."""
   assert isinstance(args, tuple)
-  if six.PY2:
-    # pylint: disable=deprecated-method
-    arg_spec = inspect.getargspec(func)
-    # pylint: enable=deprecated-method
-  else:
-    arg_spec = inspect.getfullargspec(func)
-  assert 'bboxes' == arg_spec[0][1]
+  assert 'bboxes' == inspect.getfullargspec(func)[0][1]
 
   # If prob is a function argument, then this randomness is being handled
   # inside the function, so make sure it is always called.
-  if 'prob' in arg_spec[0]:
+  if 'prob' in inspect.getfullargspec(func)[0]:
     prob = 1.0
 
   # Apply the function with probability `prob`.
@@ -1557,19 +1494,52 @@ def select_and_apply_random_policy(policies, image, bboxes):
   return (image, bboxes)
 
 
-def build_and_apply_nas_policy(policies, image, bboxes,
-                               augmentation_hparams):
-  """Build a policy from the given policies passed in and apply to image.
+def select_and_apply_random_policy_augmix(policies,
+                                          image,
+                                          bboxes,
+                                          mixture_width=3,
+                                          mixture_depth=-1,
+                                          alpha=1):
+  """Select a random policy from `policies` and apply it to `image`."""
+  policy_to_select = tf.random_uniform([], maxval=len(policies), dtype=tf.int32)
+  # Note that using tf.case instead of tf.conds would result in significantly
+  # larger graphs and would even break export for some larger policies.
+  import tensorflow_probability as tfp  # pylint: disable=g-import-not-at-top
+  ws = tfp.distributions.Dirichlet([alpha] * mixture_width).sample()
+  m = tfp.distributions.Beta(alpha, alpha).sample()
+  mix = tf.zeros_like(image, dtype=tf.float32)
+  for j in range(mixture_width):
+    aug_image = image
+    depth = mixture_depth if mixture_depth > 0 else np.random.randint(1, 4)
+    for _ in range(depth):
+      for (i, policy) in enumerate(policies):
+        aug_image, bboxes = tf.cond(
+            tf.equal(i, policy_to_select),
+            lambda policy_fn=policy, img=aug_image: policy_fn(img, bboxes),
+            lambda img=aug_image: (img, bboxes))
+    mix += ws[j] * tf.cast(aug_image, tf.float32)
+  mixed = tf.cast((1 - m) * tf.cast(image, tf.float32) + m * mix, tf.uint8)
+  return (mixed, bboxes)
 
+
+def build_and_apply_nas_policy(policies, image, bboxes,
+                               augmentation_hparams, use_augmix=False,
+                               mixture_width=3, mixture_depth=-1, alpha=1):
+  """Build a policy from the given policies passed in and apply to image.
   Args:
     policies: list of lists of tuples in the form `(func, prob, level)`, `func`
       is a string name of the augmentation function, `prob` is the probability
       of applying the `func` operation, `level` is the input argument for
       `func`.
     image: tf.Tensor that the resulting policy will be applied to.
-    bboxes:
+    bboxes: tf.Tensor of shape [N, 4] representing ground truth boxes that are
+      normalized between [0, 1].
     augmentation_hparams: Hparams associated with the NAS learned policy.
-
+    use_augmix: whether use augmix[https://arxiv.org/pdf/1912.02781.pdf]
+    mixture_width: Width of augmentation chain
+    mixture_depth: Depth of augmentation chain. -1 enables stochastic depth
+      uniformly from [1, 3].
+    alpha: Probability coefficient for Beta and Dirichlet distributions.
   Returns:
     A version of image that now has data augmentation applied to it based on
     the `policies` pass into the function. Additionally, returns bboxes if
@@ -1602,17 +1572,25 @@ def build_and_apply_nas_policy(policies, image, bboxes,
         return image_, bboxes_
       return final_policy
     tf_policies.append(make_final_policy(tf_policy))
+  if use_augmix:
+    augmented_images, augmented_bboxes = select_and_apply_random_policy_augmix(
+        tf_policies, image, bboxes, mixture_width, mixture_depth, alpha)
+  else:
+    augmented_images, augmented_bboxes = select_and_apply_random_policy(
+        tf_policies, image, bboxes)
 
-  augmented_image, augmented_bbox = select_and_apply_random_policy(
-      tf_policies, image, bboxes)
   # If no bounding boxes were specified, then just return the images.
-  return (augmented_image, augmented_bbox)
+  return (augmented_images, augmented_bboxes)
 
 
-# TODO(barretzoph): Add in ArXiv link once paper is out.
-def distort_image_with_autoaugment(image, bboxes, augmentation_name):
+def distort_image_with_autoaugment(image,
+                                   bboxes,
+                                   augmentation_name,
+                                   use_augmix=False,
+                                   mixture_width=3,
+                                   mixture_depth=-1,
+                                   alpha=1):
   """Applies the AutoAugment policy to `image` and `bboxes`.
-
   Args:
     image: `Tensor` of shape [height, width, 3] representing an image.
     bboxes: `Tensor` of shape [N, 4] representing ground truth boxes that are
@@ -1624,11 +1602,15 @@ def distort_image_with_autoaugment(image, bboxes, augmentation_name):
       found on the COCO dataset that have slight variation in what operations
       were used during the search procedure along with how many operations are
       applied in parallel to a single image (2 vs 3).
-
+    use_augmix: whether use augmix[https://arxiv.org/pdf/1912.02781.pdf]
+    mixture_width: Width of augmentation chain
+    mixture_depth: Depth of augmentation chain. -1 enables stochastic depth
+      uniformly from [1, 3].
+    alpha: Probability coefficient for Beta and Dirichlet distributions.
   Returns:
     A tuple containing the augmented versions of `image` and `bboxes`.
   """
-  image = tf.cast(image, tf.uint8)
+  logging.info('Using autoaugmention policy: %s', augmentation_name)
   available_policies = {'v0': policy_v0, 'v1': policy_v1, 'v2': policy_v2,
                         'v3': policy_v3, 'test': policy_vtest}
   if augmentation_name not in available_policies:
@@ -1636,15 +1618,14 @@ def distort_image_with_autoaugment(image, bboxes, augmentation_name):
 
   policy = available_policies[augmentation_name]()
   # Hparams that will be used for AutoAugment.
-  augmentation_hparams = contrib_training.HParams(
+  augmentation_hparams = hparams_config.Config(dict(
       cutout_max_pad_fraction=0.75,
       cutout_bbox_replace_with_mean=False,
       cutout_const=100,
       translate_const=250,
       cutout_bbox_const=50,
-      translate_bbox_const=120)
+      translate_bbox_const=120))
 
-  augmented_image, augmented_bbox = (
-      build_and_apply_nas_policy(policy, image, bboxes, augmentation_hparams))
-  augmented_image = tf.cast(augmented_image, tf.float32)
-  return augmented_image, augmented_bbox
+  return build_and_apply_nas_policy(policy, image, bboxes,
+                                    augmentation_hparams, use_augmix,
+                                    mixture_width, mixture_depth, alpha)
