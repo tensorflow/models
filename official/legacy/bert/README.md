@@ -37,7 +37,7 @@ in order to keep consistent with BERT paper.
 Pretrained checkpoints can be found in the following links:
 
 **Note: We have switched BERT implementation
-to use Keras functional-style networks in [nlp/modeling](../modeling).
+to use Keras functional-style networks in [nlp/modeling](../../nlp/modeling).
 The new checkpoints are:**
 
 *   **[`BERT-Large, Uncased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/wwm_uncased_L-24_H-1024_A-16.tar.gz)**:
@@ -126,7 +126,7 @@ pip install tf-nightly
 ### Pre-training
 
 There is no change to generate pre-training data. Please use the script
-[`../data/create_pretraining_data.py`](../data/create_pretraining_data.py)
+[`../../nlp/data/create_pretraining_data.py`](../../nlp/data/create_pretraining_data.py)
 which is essentially branched from the [BERT research repo](https://github.com/google-research/bert)
 to get processed pre-training data and it adapts to TF2 symbols and python3
 compatibility.
@@ -152,7 +152,7 @@ python models/official/nlp/data/create_pretraining_data.py \
 ### Fine-tuning
 
 To prepare the fine-tuning data for final model training, use the
-[`../data/create_finetuning_data.py`](../data/create_finetuning_data.py) script.
+[`../../nlp/data/create_finetuning_data.py`](../../nlp/data/create_finetuning_data.py) script.
 Resulting datasets in `tf_record` format and training meta data should be later
 passed to training or evaluation scripts. The task-specific arguments are
 described in the following sections:

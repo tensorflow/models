@@ -189,7 +189,7 @@ python3 data/create_finetuning_data.py \
 ```
 
 Resulting training and evaluation datasets in `tf_record` format will be later
-passed to [train.py](train.py).
+passed to [train.py](../train.py).
 
 Then you can execute the following commands to start the training and evaluation
 job.
