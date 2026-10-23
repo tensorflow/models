@@ -10,7 +10,7 @@ image feature model on the
 3.  Prepare the training data.
 4.  Run the training.
 
-The next sections will cove each of these steps in greater detail.
+The next sections will cover each of these steps in greater detail.
 
 ## Prerequisites
 
