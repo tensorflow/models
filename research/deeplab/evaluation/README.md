@@ -30,7 +30,7 @@ defined as follows:
 </p>
 
 where R and R' are groundtruth regions and predicted regions respectively,
-and |TP|, |FP|, and |FN| are the number of true positives, false postives,
+and |TP|, |FP|, and |FN| are the number of true positives, false positives,
 and false negatives. The matching is determined by a threshold of 0.5
 Intersection-Over-Union (IOU).
 

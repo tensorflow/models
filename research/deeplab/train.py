@@ -172,7 +172,7 @@ flags.DEFINE_boolean('fine_tune_batch_norm', True,
                      'Fine tune the batch norm parameters or not.')
 
 flags.DEFINE_float('min_scale_factor', 0.5,
-                   'Mininum scale factor for data augmentation.')
+                   'Minimum scale factor for data augmentation.')
 
 flags.DEFINE_float('max_scale_factor', 2.,
                    'Maximum scale factor for data augmentation.')
