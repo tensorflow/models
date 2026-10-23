@@ -164,7 +164,7 @@ def model_fn(features, labels, mode, params):
   loss = tf.reduce_mean(tf.keras.backend.ctc_batch_cost(
       labels, logits, ctc_input_length, label_length))
 
-  optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=flags_obj.learning_rate)
+  optimizer = tf.keras.optimizers.Adam(learning_rate=flags_obj.learning_rate)
   global_step = tf.compat.v1.train.get_or_create_global_step()
   minimize_op = optimizer.minimize(loss, global_step=global_step)
   update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
@@ -224,7 +224,7 @@ def per_device_batch_size(batch_size, num_gpus):
 
 def run_deep_speech(_):
   """Run deep speech training and eval loop."""
-  tf.compat.v1.set_random_seed(flags_obj.seed)
+  tf.random.set_seed(flags_obj.seed)
   # Data preprocessing
   logging.info("Data preprocessing...")
   train_speech_dataset = generate_dataset(flags_obj.train_data_dir)
@@ -414,4 +414,3 @@ if __name__ == "__main__":
   define_deep_speech_flags()
   flags_obj = flags.FLAGS
   absl_app.run(main)
-
