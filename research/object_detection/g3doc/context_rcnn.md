@@ -73,7 +73,7 @@ from a pretrained model (such as the
 [Microsoft AI for Earth MegaDetector](https://github.com/microsoft/CameraTraps/blob/master/megadetector.md))
 and match the boxes to the image-level class label.
 
-To export your pretrained detection model, run
+To export your pretrained detection model (in TF 1.x), run
 
 ```
 python object_detection/export_inference_graph.py \
@@ -83,6 +83,8 @@ python object_detection/export_inference_graph.py \
   --trained_checkpoint_prefix path/to/model.ckpt \
   --output_directory path/to/exported_model_directory
 ```
+
+If using a TF 2.x pretrained model, use the script `exporter_main_v2.py` instead.
 
 To add bounding boxes to your dataset using the above model, run
 
@@ -104,7 +106,7 @@ We next extract and store features for each image from a pretrained model. This
 model can be the same model as above, or be a class-specific detection model
 trained on data from your classes of interest.
 
-To export your pretrained detection model, run
+To export a TF 1.x pretrained detection model, run
 
 ```
 python object_detection/export_inference_graph.py \
@@ -115,6 +117,8 @@ python object_detection/export_inference_graph.py \
   --output_directory path/to/exported_model_directory \
   --additional_output_tensor_names detection_features
 ```
+
+If using a TF 2.x pretrained model, use the script `exporter_main_v2.py` instead.
 
 Make sure that you have set `output_final_box_features: true` within
 your config file before exporting. This is needed to export the features as an
@@ -129,6 +133,22 @@ python object_detection/dataset_tools/context_rcnn/generate_embedding_data.py \
   --embedding_output_tfrecord path/to/output_tfrecords \
   --embedding_model_dir path/to/exported_model_directory/saved_model
 ```
+
+To use with Dataflow, run:
+
+```
+python3 object_detection/dataset_tools/context_rcnn/generate_embedding_data.py \
+  --alsologtostderr \
+  --embedding_input_tfrecord path/to/input_tfrecords* \
+  --embedding_output_tfrecord path/to/output_tfrecords \
+  --embedding_model_dir path/to/exported_model_directory/saved_model \
+  --project google_cloud_project_name \
+  --runner DataflowRunner \
+  --temp_location path/to/temporary_directory \
+  --job_name dataflow_job_name \
+  --region us-central1
+```
+
 
 ### Building up contextual memory banks and storing them for each context group
 
@@ -146,6 +166,22 @@ python object_detection/dataset_tools/context_rcnn/add_context_to_examples.py \
 where the input_tfrecords for add_context_to_examples.py are the
 output_tfrecords from generate_embedding_data.py.
 
+To use with Dataflow, run the following command:
+
+```
+python object_detection/dataset_tools/context_rcnn/add_context_to_examples.py \
+  --alsologtostderr \
+  --input_tfrecord path/to/input_tfrecords* \
+  --output_tfrecord path/to/output_tfrecords* \
+  --sequence_key image/location \
+  --time_horizon month \
+  --project google_cloud_project_name \
+  --runner DataflowRunner \
+  --temp_location path/to/temporary_directory \
+  --job_name dataflow_job_name \
+  --region us-central1
+```
+
 For all options, see add_context_to_examples.py. By default, this code builds
 TfSequenceExamples, which are more data efficient (this allows you to store the
 context features once for each context group, as opposed to once per image). If
@@ -161,17 +197,19 @@ for an example.
 ## Training a Context R-CNN Model
 
 To train a Context R-CNN model, you must first set up your config file. See
-`test_data/context_rcnn_camera_trap.config` for an example. The important
+`test_data/context_rcnn_camera_trap.config` for an example. One important
 difference between this config and a Faster R-CNN config is the inclusion of a
 `context_config` within the model, which defines the necessary Context R-CNN
 parameters.
 
 ```
 context_config {
-      max_num_context_features: 2000
-      context_feature_length: 2057
-    }
+  max_num_context_features: 2000
+  context_feature_length: 2057
+}
 ```
+
+Additionally, within the input readers, the field `load_context_features` must be set to true.
 
 Once your config file has been updated with your local paths, you can follow
 along with documentation for running [locally](running_locally.md), or
@@ -183,6 +221,7 @@ Since Context R-CNN takes context features as well as images as input, we have
 to explicitly define the other inputs ("side_inputs") to the model when
 exporting, as below. This example is shown with default context feature shapes.
 
+TF 1.x:
 ```
 python export_inference_graph.py \
     --input_type image_tensor \
@@ -196,6 +235,18 @@ python export_inference_graph.py \
     --side_input_types float,int
 
 ```
+TF 2.x:
+```
+python object_detection/exporter_main_v2.py
+    --input_type image_tensor
+    --pipeline_config_path /path/to/context_rcnn_model/pipeline.config \  --trained_checkpoint_dir /path/to/context_rcnn_model/ \
+    --use_side_inputs True \
+    --side_input_shapes 1,2000,2057/1 \
+    --side_input_names context_features,valid_context_size
+    --side_input_types tf.float32,tf.int32
+    --output_directory /path/to/output_directory/
+```
+
 
 If you have questions about Context R-CNN, please contact
 [Sara Beery](https://beerys.github.io/).
