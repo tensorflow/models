@@ -58,7 +58,7 @@ class SSDModule(tf.Module):
   """Inference Module for TFLite-friendly SSD models."""
 
   def __init__(self, pipeline_config, detection_model, max_detections,
-               use_regular_nms):
+               use_regular_nms, add_postprocessing_op):
     """Initialization.
 
     Args:
@@ -66,12 +66,14 @@ class SSDModule(tf.Module):
       detection_model: The detection model to use for inference.
       max_detections: Max detections desired from the TFLite model.
       use_regular_nms: If True, TFLite model uses the (slower) multi-class NMS.
+      add_postprocessing_op: If True, adds a TFLite_Detection_PostProcess custom op.
     """
     self._process_config(pipeline_config)
     self._pipeline_config = pipeline_config
     self._model = detection_model
     self._max_detections = max_detections
     self._use_regular_nms = use_regular_nms
+    self._add_postprocessing_op = add_postprocessing_op
 
   def _process_config(self, pipeline_config):
     self._num_classes = pipeline_config.model.ssd.num_classes
@@ -191,11 +193,16 @@ class SSDModule(tf.Module):
         predicted_tensors['anchors'])
     anchors = tf.identity(anchors, name='anchors')
 
-    # tf.function@ seems to reverse order of inputs, so reverse them here.
-    return self._get_postprocess_fn(num_anchors,
+    if self._add_postprocessing_op:
+        model_outputs = self._get_postprocess_fn(num_anchors,
                                     self._num_classes)(box_encodings,
                                                        class_predictions,
-                                                       anchors)[::-1]
+                                                       anchors)
+    else:
+        model_outputs = (box_encodings, class_predictions, anchors)
+
+    # tf.function@ seems to reverse order of inputs, so reverse them here.
+    return model_outputs[::-1]
 
 
 class CenterNetModule(tf.Module):
@@ -308,7 +315,7 @@ class CenterNetModule(tf.Module):
 
 def export_tflite_model(pipeline_config, trained_checkpoint_dir,
                         output_directory, max_detections, use_regular_nms,
-                        include_keypoints=False, label_map_path=''):
+                        add_postprocessing_op, include_keypoints=False, label_map_path=''):
   """Exports inference SavedModel for TFLite conversion.
 
   NOTE: Only supports SSD meta-architectures for now, and the output model will
@@ -324,6 +331,8 @@ def export_tflite_model(pipeline_config, trained_checkpoint_dir,
     output_directory: Path to write outputs.
     max_detections: Max detections desired from the TFLite model.
     use_regular_nms: If True, TFLite model uses the (slower) multi-class NMS.
+      Note that this argument is only used by the SSD model.
+    add_postprocessing_op: If True, adds a TFLite_Detection_PostProcess custom op.
       Note that this argument is only used by the SSD model.
     include_keypoints: Decides whether to also output the keypoint predictions.
       Note that this argument is only used by the CenterNet model.
@@ -344,7 +353,8 @@ def export_tflite_model(pipeline_config, trained_checkpoint_dir,
     ckpt = tf.train.Checkpoint(model=detection_model)
     # The module helps build a TF SavedModel appropriate for TFLite conversion.
     detection_module = SSDModule(pipeline_config, detection_model,
-                                 max_detections, use_regular_nms)
+                                 max_detections, use_regular_nms,
+                                 add_postprocessing_op)
   elif pipeline_config.model.WhichOneof('model') == 'center_net':
     detection_module = CenterNetModule(
         pipeline_config, max_detections, include_keypoints,
