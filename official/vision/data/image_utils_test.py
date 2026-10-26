@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """Tests for image_utils."""
-import imghdr
 from unittest import mock
 from absl.testing import parameterized
+from PIL import PngImagePlugin
 import tensorflow as tf, tf_keras
 
 from official.vision.data import fake_feature_generator
@@ -75,8 +75,8 @@ class ImageUtilsTest(parameterized.TestCase, tf.test.TestCase):
       image_np = fake_feature_generator.generate_image_np(2, 2, 1)
       image_utils.encode_image(image_np, 'foo')
 
-  @mock.patch.object(imghdr, 'what', return_value='foo', autospec=True)
-  def test_decode_image_raise_error_with_invalid_image_format(self, _):
+  @mock.patch.object(PngImagePlugin.PngImageFile, 'format', 'foo')
+  def test_decode_image_raise_error_with_invalid_image_format(self):
     image_np = fake_feature_generator.generate_image_np(1, 1, 3)
     image_str = image_utils.encode_image(image_np, 'PNG')
     with self.assertRaisesRegex(ValueError, 'Image format is invalid: foo'):

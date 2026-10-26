@@ -15,7 +15,6 @@
 """Image-related utilities that are useful to prepare dataset."""
 
 import dataclasses
-import imghdr
 import io
 from typing import Optional, Tuple
 
@@ -109,5 +108,5 @@ def decode_image_metadata(image_bytes: bytes) -> Tuple[int, int, int, str]:
   image_np = decode_image(image_bytes)
   # https://pillow.readthedocs.io/en/stable/reference/Image.html#image-attributes
   height, width, num_channels = image_np.shape
-  image_format = imghdr.what(file=None, h=image_bytes)
+  image_format = Image.open(io.BytesIO(image_bytes)).format
   return height, width, num_channels, validate_image_format(image_format)
