@@ -55,37 +55,148 @@ class SavedModelCheckpointManager(tf.train.CheckpointManager):
     self._modules_to_export = modules_to_export
     self._savedmodels = self.get_existing_savedmodels()
 
-  def save(self,
-           checkpoint_number: Optional[int] = None,
-           check_interval: bool = True,
-           options: Optional[tf.train.CheckpointOptions] = None):
-    """See base class."""
+  def save(
+      self,
+      checkpoint_number: Optional[int] = None,
+      check_interval: bool = True,
+      options: Optional[tf.train.CheckpointOptions] = None,
+  ) -> Optional[str]:
+    """Creates a new checkpoint or recovers a missing SavedModel export.
+
+    Unlike the base class `tf.train.CheckpointManager.save()`, which only saves
+    new checkpoints and returns None when a checkpoint is not written (e.g. if
+    the step was already saved or the checkpoint interval has not elapsed), this
+    method also checks if the latest existing checkpoint is missing its exported
+    SavedModel (e.g. due to process preemption during export). If missing and
+    eligible, it recovers and exports the SavedModel and returns the existing
+    `latest_checkpoint` path.
+
+    Args:
+      checkpoint_number: An optional integer, or an integer-dtype `Variable` or
+        `Tensor`, used to number the checkpoint. If `None` (default),
+        checkpoints are numbered using `checkpoint.save_counter`.
+      check_interval: An optional boolean. Effective when `checkpoint_interval`
+        is passed into the manager. If `True`, only saves or recovers if the
+        interval condition is met or the step matches `latest_checkpoint`.
+      options: Optional `tf.train.CheckpointOptions` object.
+
+    Returns:
+      The path to the new checkpoint if one was saved, or the path to
+      `latest_checkpoint` if an unexported SavedModel was recovered and
+      exported.
+      Returns `None` if no checkpoint was saved and no missing SavedModel was
+      recovered (e.g. interval has not elapsed, step mismatch with
+      `check_interval=True`, SavedModel already exists, or `modules_to_export`
+      is empty / contains no exportable signatures).
+    """
     checkpoint_path = super().save(
         checkpoint_number=checkpoint_number,
         check_interval=check_interval,
-        options=options)
-    if not checkpoint_path:  # Nothing got written.
-      return
-    if not self._modules_to_export:  # No modules to export.
+        options=options,
+    )
+    if not checkpoint_path:
+      if not self._modules_to_export:
+        return None
+
+      # If no new checkpoint was written (e.g. because it was already saved
+      # prior to a preemption/restart), check if the latest checkpoint is
+      # missing its exported SavedModel.
+      checkpoint_path = self._find_unexported_checkpoint(
+          checkpoint_number=checkpoint_number, check_interval=check_interval
+      )
+      if not checkpoint_path or not any(
+          getattr(m, 'saved_model_signatures', None) is not None
+          for m in self._modules_to_export.values()
+      ):
+        return None
+
+    if not self._modules_to_export:
       logging.info('Skip saving SavedModel due to empty modules_to_export.')
       return checkpoint_path
 
-    # Save the models for the checkpoint that just got written.
-    saved_modules_directory = make_saved_modules_directory_name(checkpoint_path)
-    # Atomic export of SavedModel. Write into a temporary direcotory and then
-    # rename as the final direcotory after finishing the writing.
-    # This can avoid trying to read an unfinished savedmodel.
-    saved_modules_directory_tmp = saved_modules_directory + '_temp'
-    for model_name, model in self._modules_to_export.items():
-      signatures = getattr(model, 'saved_model_signatures', None)
-      if signatures is not None:
-        tf.saved_model.save(
-            obj=model,
-            export_dir=os.path.join(saved_modules_directory_tmp, model_name),
-            signatures=signatures)
-    if tf.io.gfile.exists(saved_modules_directory_tmp):
-      tf.io.gfile.rename(saved_modules_directory_tmp, saved_modules_directory)
+    self._export_saved_model(checkpoint_path)
+    self._prune_saved_models()
+    return checkpoint_path
 
+  def _find_unexported_checkpoint(
+      self,
+      checkpoint_number: Optional[int] = None,
+      check_interval: bool = True,
+  ) -> Optional[str]:
+    """Returns latest_checkpoint if it exists but its SavedModel is missing.
+
+    Args:
+      checkpoint_number: An optional integer specifying the step number being
+        saved. If None, falls back to `_step_counter` if available.
+      check_interval: If True, the checkpoint is only eligible for re-export if
+        `checkpoint_number` (or `_step_counter`) matches the step suffix of
+        `latest_checkpoint`. If False, step matching is bypassed.
+
+    Returns:
+      The path to `latest_checkpoint` if `latest_checkpoint` exists, step
+      matching criteria are met (or `check_interval=False`), and its SavedModel
+      directory does not exist on disk. Returns `None` if there is no latest
+      checkpoint, if `check_interval=True` and the step does not match the
+      latest checkpoint, or if the SavedModel directory already exists.
+    """
+    if not self.latest_checkpoint:
+      return None
+
+    step = checkpoint_number
+    if step is None and self._step_counter is not None:
+      step = int(self._step_counter.numpy())
+
+    step_matches = step is not None and self.latest_checkpoint.endswith(
+        f'-{step}'
+    )
+    if check_interval and not step_matches:
+      return None
+
+    target_saved_modules = make_saved_modules_directory_name(
+        self.latest_checkpoint
+    )
+    if not tf.io.gfile.exists(target_saved_modules):
+      logging.info(
+          'Checkpoint %s already exists but %s is missing. Exporting'
+          ' SavedModel.',
+          self.latest_checkpoint,
+          target_saved_modules,
+      )
+      return self.latest_checkpoint
+    return None
+
+  def _export_saved_model(self, checkpoint_path: str) -> None:
+    """Atomically exports modules for the given checkpoint."""
+    if not self._modules_to_export:
+      return
+
+    saved_modules_directory = make_saved_modules_directory_name(checkpoint_path)
+    saved_modules_directory_tmp = saved_modules_directory + '_temp'
+
+    # Clean up any leftover temporary directory from an interrupted export.
+    if tf.io.gfile.exists(saved_modules_directory_tmp):
+      tf.io.gfile.rmtree(saved_modules_directory_tmp)
+
+    try:
+      for model_name, model in self._modules_to_export.items():
+        signatures = getattr(model, 'saved_model_signatures', None)
+        if signatures is not None:
+          tf.saved_model.save(
+              obj=model,
+              export_dir=os.path.join(saved_modules_directory_tmp, model_name),
+              signatures=signatures,
+          )
+      if tf.io.gfile.exists(saved_modules_directory_tmp):
+        if tf.io.gfile.exists(saved_modules_directory):
+          tf.io.gfile.rmtree(saved_modules_directory)
+        tf.io.gfile.rename(saved_modules_directory_tmp, saved_modules_directory)
+    except Exception:
+      if tf.io.gfile.exists(saved_modules_directory_tmp):
+        tf.io.gfile.rmtree(saved_modules_directory_tmp)
+      raise
+
+  def _prune_saved_models(self) -> None:
+    """Prunes SavedModels that no longer correspond to managed checkpoints."""
     saved_modules_directories_to_keep = [
         make_saved_modules_directory_name(ckpt) for ckpt in self.checkpoints
     ]
@@ -100,8 +211,6 @@ class SavedModelCheckpointManager(tf.train.CheckpointManager):
     for existing_saved_modules_dir in existing_saved_modules_dirs:
       if existing_saved_modules_dir not in self._savedmodels:
         tf.io.gfile.rmtree(existing_saved_modules_dir)
-
-    return checkpoint_path
 
   def get_existing_savedmodels(self) -> List[str]:
     """Gets a list of all existing SavedModel paths in `directory`.
