@@ -292,6 +292,7 @@ class PanopticMaskRCNNTask(maskrcnn.MaskRCNNTask):
         self.panoptic_quality_metric = panoptic_quality.PanopticQualityV2(
             num_categories=pq_config.num_categories,
             is_thing=pq_config.is_thing,
+            max_num_instances=pq_config.max_instances_per_category,
             ignored_label=pq_config.ignored_label,
             rescale_predictions=pq_config.rescale_predictions,
         )
