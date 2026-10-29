@@ -109,4 +109,4 @@ def decode_image_metadata(image_bytes: bytes) -> Tuple[int, int, int, str]:
   # https://pillow.readthedocs.io/en/stable/reference/Image.html#image-attributes
   height, width, num_channels = image_np.shape
   image_format = Image.open(io.BytesIO(image_bytes)).format
-  return height, width, num_channels, validate_image_format(image_format)
+  return height, width, num_channels, validate_image_format(image_format)  # pyrefly: ignore[bad-argument-type]
