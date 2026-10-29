@@ -2535,6 +2535,167 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
           'argmax_postprocessing': False
       },
       {
+          'candidate_ranking_mode': 'score_distance_ratio',
+          'argmax_postprocessing': True
+      })
+  def test_postprocess_multi_class(self, candidate_ranking_mode,
+                                   argmax_postprocessing):
+    """Test the postprocess function for multiple classes."""
+    feature_extractor = DummyFeatureExtractor(
+        channel_means=(1.0, 2.0, 3.0),
+        channel_stds=(10., 20., 30.),
+        bgr_ordering=False,
+        num_feature_outputs=2,
+        stride=4)
+    image_resizer_fn = functools.partial(
+        preprocessor.resize_to_range,
+        min_dimension=128,
+        max_dimension=128,
+        pad_to_max_dimesnion=True)
+
+    kp_params_1 = cnma.KeypointEstimationParams(
+        task_name='kpt_task_1',
+        class_id=0,
+        keypoint_indices=[0, 1],
+        keypoint_std_dev=[0.00001] * 2,
+        classification_loss=losses.WeightedSigmoidClassificationLoss(),
+        localization_loss=losses.L1LocalizationLoss(),
+        keypoint_candidate_score_threshold=0.1,
+        candidate_ranking_mode=candidate_ranking_mode,
+        argmax_postprocessing=argmax_postprocessing)
+    kp_params_2 = cnma.KeypointEstimationParams(
+        task_name='kpt_task_2',
+        class_id=1,
+        keypoint_indices=[2, 3, 4],
+        keypoint_std_dev=[0.00001] * 3,
+        classification_loss=losses.WeightedSigmoidClassificationLoss(),
+        localization_loss=losses.L1LocalizationLoss(),
+        keypoint_candidate_score_threshold=0.1,
+        candidate_ranking_mode=candidate_ranking_mode,
+        argmax_postprocessing=argmax_postprocessing)
+    model = cnma.CenterNetMetaArch(
+        is_training=True,
+        add_summaries=False,
+        num_classes=2,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=get_fake_center_params(),
+        object_detection_params=get_fake_od_params(),
+        keypoint_params_dict={
+            'kpt_task_1': kp_params_1,
+            'kpt_task_2': kp_params_2,
+        })
+    max_detection = model._center_params.max_box_predictions
+    kp_params_dict = model._kp_params_dict
+    num_keypoints_task_1 = len(kp_params_dict['kpt_task_1'].keypoint_indices)
+    num_keypoints_task_2 = len(kp_params_dict['kpt_task_2'].keypoint_indices)
+    num_keypoints = num_keypoints_task_1 + num_keypoints_task_2
+
+    class_center = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    height_width = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    offset = np.zeros((1, 32, 32, 2), dtype=np.float32)
+
+    class_probs = np.zeros(2)
+    class_probs[0] = _logit(0.75)
+    class_probs[1] = _logit(0.75)
+    class_center[0, 16, 16] = class_probs
+    height_width[0, 16, 16] = [5, 10]
+    offset[0, 16, 16] = [.25, .5]
+
+    keypoint_heatmaps_task_1 = np.ones(
+        (1, 32, 32, num_keypoints_task_1), dtype=np.float32) * _logit(0.01)
+    keypoint_offsets_task_1 = np.zeros(
+        (1, 32, 32, num_keypoints_task_1 * 2), dtype=np.float32)
+    keypoint_regression_task_1 = np.random.randn(1, 32, 32,
+                                                 num_keypoints_task_1 * 2)
+
+    keypoint_regression_task_1[0, 16, 16] = [
+        -1., -1.,
+        -1., 1.]
+    keypoint_heatmaps_task_1[0, 14, 14, 0] = _logit(0.9)
+    keypoint_heatmaps_task_1[0, 14, 18, 1] = _logit(0.05)  # Note the low score.
+
+    keypoint_heatmaps_task_2 = np.ones(
+        (1, 32, 32, num_keypoints_task_2), dtype=np.float32) * _logit(0.01)
+    keypoint_offsets_task_2 = np.zeros(
+        (1, 32, 32, num_keypoints_task_2 * 2), dtype=np.float32)
+    keypoint_regression_task_2 = np.random.randn(1, 32, 32,
+                                                 num_keypoints_task_2 * 2)
+
+    keypoint_regression_task_2[0, 16, 16] = [
+        -1., -1.,
+        -1., 1.,
+        1, -1]
+    keypoint_heatmaps_task_2[0, 14, 14, 0] = _logit(0.9)
+    keypoint_heatmaps_task_2[0, 14, 18, 1] = _logit(0.9)
+    keypoint_heatmaps_task_2[0, 14, 18, 2] = _logit(0.05)  # Note the low score.
+
+    class_center = tf.constant(class_center)
+    height_width = tf.constant(height_width)
+    offset = tf.constant(offset)
+    keypoint_heatmaps_task_1 = tf.constant(
+        keypoint_heatmaps_task_1, dtype=tf.float32)
+    keypoint_offsets_task_1 = tf.constant(
+        keypoint_offsets_task_1, dtype=tf.float32)
+    keypoint_regression_task_1 = tf.constant(
+        keypoint_regression_task_1, dtype=tf.float32)
+    keypoint_heatmaps_task_2 = tf.constant(
+        keypoint_heatmaps_task_2, dtype=tf.float32)
+    keypoint_offsets_task_2 = tf.constant(
+        keypoint_offsets_task_2, dtype=tf.float32)
+    keypoint_regression_task_2 = tf.constant(
+        keypoint_regression_task_2, dtype=tf.float32)
+
+    prediction_dict = {
+        cnma.OBJECT_CENTER: [class_center],
+        cnma.BOX_SCALE: [height_width],
+        cnma.BOX_OFFSET: [offset],
+        cnma.get_keypoint_name(kp_params_1.task_name, cnma.KEYPOINT_HEATMAP):
+            [keypoint_heatmaps_task_1],
+        cnma.get_keypoint_name(kp_params_1.task_name, cnma.KEYPOINT_OFFSET):
+            [keypoint_offsets_task_1],
+        cnma.get_keypoint_name(kp_params_1.task_name, cnma.KEYPOINT_REGRESSION):
+            [keypoint_regression_task_1],
+        cnma.get_keypoint_name(kp_params_2.task_name, cnma.KEYPOINT_HEATMAP):
+            [keypoint_heatmaps_task_2],
+        cnma.get_keypoint_name(kp_params_2.task_name, cnma.KEYPOINT_OFFSET):
+            [keypoint_offsets_task_2],
+        cnma.get_keypoint_name(kp_params_2.task_name, cnma.KEYPOINT_REGRESSION):
+            [keypoint_regression_task_2]
+    }
+
+    def graph_fn():
+      detections = model.postprocess(prediction_dict,
+                                     tf.constant([[128, 128, 3]]))
+      return detections
+
+    detections = self.execute_cpu(graph_fn, [])
+
+    self.assertAllClose(detections['detection_boxes'][0, 0],
+                        np.array([55, 46, 75, 86]) / 128.0)
+    self.assertAllClose(detections['detection_scores'][0],
+                        [.75, .75, .5, .5, .5])
+
+    self.assertAllEqual(detections['detection_classes'][0], [0, 1, 0, 1, 0])
+    self.assertEqual(detections['num_detections'], [5])
+    self.assertAllEqual([1, max_detection, num_keypoints, 2],
+                        detections['detection_keypoints'].shape)
+    self.assertAllClose(
+        [[0.4375, 0.4375], [0.46875, 0.53125], [0, 0], [0, 0], [0, 0]],
+        detections['detection_keypoints'][0, 0, :, :])
+    self.assertAllClose(
+        [[0, 0], [0, 0], [0.4375, 0.4375], [0.4375, 0.5625],
+         [0.53125, 0.46875]],
+        detections['detection_keypoints'][0, 1, :, :])
+    self.assertAllEqual([1, max_detection, num_keypoints],
+                        detections['detection_keypoint_scores'].shape)
+
+  @parameterized.parameters(
+      {
+          'candidate_ranking_mode': 'min_distance',
+          'argmax_postprocessing': False
+      },
+      {
           'candidate_ranking_mode': 'gaussian_weighted_const',
           'argmax_postprocessing': True
       })
