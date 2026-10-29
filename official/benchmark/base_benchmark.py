@@ -22,10 +22,10 @@ import gin
 import tensorflow as tf, tf_keras
 
 from tensorflow.python.platform import benchmark  # pylint: disable=unused-import
-from official.common import registry_imports  # pylint: disable=unused-import
 from official.benchmark import benchmark_lib
 from official.benchmark import benchmark_definitions
 from official.benchmark import config_utils
+from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
 from official.modeling import hyperparams
 
