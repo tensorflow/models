@@ -27,7 +27,7 @@ import gc
 import tensorflow as tf
 
 #
-# Python utlities
+# Python utilities
 #
 def exp_moving_average(x, alpha=0.9):
   res = []

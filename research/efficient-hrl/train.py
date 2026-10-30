@@ -70,7 +70,7 @@ def collect_experience(tf_env, agent, meta_agent, state_preprocess,
     disable_agent_reset: A boolean that disables agent from resetting.
 
   Returns:
-    A collect_experience_op that excute an action and store into the
+    A collect_experience_op that execute an action and store into the
     replay_buffers
   """
   tf_env.start_collect()
