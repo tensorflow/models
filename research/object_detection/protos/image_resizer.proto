@@ -62,6 +62,11 @@ message FixedShapeResizer {
 
   // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
   optional bool convert_to_grayscale = 4 [default = false];
+
+  // Whether to resize the entire batch in a single op instead of per-image.
+  // When enabled, height and width must be > 0. Only batched preprocessing
+  // calls change; rank-4 batched resizing does not support masks.
+  optional bool resize_batched = 5 [default = false];
 }
 
 // Configuration proto for image resizer that resizes only if input image height

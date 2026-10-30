@@ -14,10 +14,12 @@
 # ==============================================================================
 """Builder function for image resizing operations."""
 import functools
+
 import tensorflow.compat.v1 as tf
 
 from object_detection.core import preprocessor
 from object_detection.protos import image_resizer_pb2
+from object_detection.utils import shape_utils
 
 
 def _tf_resize_method(resize_method):
@@ -57,9 +59,12 @@ def build(image_resizer_config):
       an image resizing operation.
 
   Returns:
-    image_resizer_fn: Callable for image resizing.  This callable always takes
-      a rank-3 image tensor (corresponding to a single image) and returns a
-      rank-3 image tensor, possibly with new spatial dimensions.
+    image_resizer_fn: Callable for image resizing. For rank-3 image tensors, it
+      takes a single image and returns a resized image tensor (and
+      shapes/masks).
+      When `fixed_shape_resizer.resize_batched` is enabled, the callable also
+      accepts rank-4 image tensors `[batch, height, width, channels]` and
+      returns a `(resized_images, true_image_shapes)` tuple.
 
   Raises:
     ValueError: if `image_resizer_config` is of incorrect type.
@@ -67,6 +72,8 @@ def build(image_resizer_config):
       type.
     ValueError: if min_dimension > max_dimension when keep_aspect_ratio_resizer
       is used.
+    ValueError: if height or width <= 0 when fixed_shape_resizer is used with
+      resize_batched.
   """
   if not isinstance(image_resizer_config, image_resizer_pb2.ImageResizer):
     raise ValueError('image_resizer_config not of type '
@@ -99,7 +106,51 @@ def build(image_resizer_config):
         preprocessor.resize_image,
         new_height=fixed_shape_resizer_config.height,
         new_width=fixed_shape_resizer_config.width,
-        method=method)
+        method=method,
+    )
+    if fixed_shape_resizer_config.resize_batched:
+      if (
+          fixed_shape_resizer_config.height <= 0
+          or fixed_shape_resizer_config.width <= 0
+      ):
+        raise ValueError(
+            'height and width must be > 0 for fixed_shape_resizer, got '
+            f'height={fixed_shape_resizer_config.height}, '
+            f'width={fixed_shape_resizer_config.width}.'
+        )
+
+      def batched_image_resizer_fn(image, masks=None):
+        rank = image.shape.ndims
+        if rank is None:
+          raise ValueError(
+              'Batched image resizing requires a statically known rank.'
+          )
+        if rank == 4:
+          if masks is not None:
+            raise ValueError('Batched image resizing does not support masks.')
+          resized_images, true_image_shapes = (
+              preprocessor.resize_images_batched(
+                  image,
+                  new_height=fixed_shape_resizer_config.height,
+                  new_width=fixed_shape_resizer_config.width,
+                  method=method,
+              )
+          )
+          if fixed_shape_resizer_config.convert_to_grayscale:
+            resized_images = preprocessor.rgb_to_gray(resized_images)
+            true_image_shapes = true_image_shapes * [1, 1, 0] + [0, 0, 1]
+          return resized_images, true_image_shapes
+
+        # Single image fallback (rank 3 or other)
+        if fixed_shape_resizer_config.convert_to_grayscale:
+          retval = image_resizer_fn(image, masks=masks)
+          retval[0] = preprocessor.rgb_to_gray(retval[0])
+          retval[-1] = retval[-1] * [1, 1, 0] + [0, 0, 1]
+          return retval
+        return image_resizer_fn(image, masks=masks)
+
+      setattr(batched_image_resizer_fn, shape_utils.BATCHED_RESIZER_ATTR, True)
+      return batched_image_resizer_fn
     if not fixed_shape_resizer_config.convert_to_grayscale:
       return image_resizer_fn
   elif image_resizer_oneof == 'identity_resizer':

@@ -71,6 +71,7 @@ import functools
 import inspect
 import math
 import sys
+from typing import Any, Union
 
 import six
 from six.moves import range
@@ -3359,6 +3360,65 @@ def resize_image(image,
     return result
 
 
+def resize_images_batched(
+    images: tf.Tensor,
+    new_height: Union[int, tf.Tensor] = 300,
+    new_width: Union[int, tf.Tensor] = 300,
+    method: Any = tf.image.ResizeMethod.BILINEAR,
+    align_corners: bool = False,
+) -> tuple[tf.Tensor, tf.Tensor]:
+  """Resizes a batch of images to the given height and width.
+
+  Args:
+    images: A 4D tensor of shape [batch_size, height, width, channels] with a
+      statically known rank.
+    new_height: (optional) (scalar) desired height of the image.
+    new_width: (optional) (scalar) desired width of the image.
+    method: (optional) interpolation method used in resizing. Defaults to
+      BILINEAR.
+    align_corners: bool. If true, exactly align all 4 corners of the input and
+      output. Defaults to False.
+
+  Returns:
+    A tuple containing:
+      resized_images: A tensor of size [batch_size, new_height, new_width,
+        channels].
+      true_image_shapes: A 2D tensor of shape [batch_size, 3] containing the
+        shape of each resized image in the batch.
+
+  Raises:
+    ValueError: If `images` does not have a statically known rank of 4.
+  """
+  with tf.name_scope(
+      'ResizeImagesBatched',
+      values=[images, new_height, new_width, method, align_corners],
+  ):
+    if images.shape.ndims is None:
+      raise ValueError('images must have a statically known rank.')
+    combined_shape = shape_utils.combined_static_and_dynamic_shape(images)
+    if len(combined_shape) != 4:
+      raise ValueError('images must be a rank-4 tensor.')
+    new_size = tf.stack([new_height, new_width])
+    resized_images = tf.image.resize_images(
+        images, new_size, method=method, align_corners=align_corners
+    )
+    batch_size, _, _, channels = combined_shape
+    single_image_shape = tf.cast(
+        tf.stack([new_height, new_width, channels]), dtype=tf.int32
+    )
+    true_image_shapes = tf.broadcast_to(
+        single_image_shape, tf.stack([batch_size, 3])
+    )
+    true_image_shapes.set_shape([images.shape[0], 3])
+    if isinstance(new_height, int) and isinstance(new_width, int):
+      resized_images.set_shape(
+          [images.shape[0], new_height, new_width, images.shape[3]]
+      )
+    else:
+      resized_images.set_shape([images.shape[0], None, None, images.shape[3]])
+    return resized_images, true_image_shapes
+
+
 def subtract_channel_mean(image, means=None):
   """Normalizes an image by subtracting a mean from each channel.
 
@@ -3405,14 +3465,14 @@ def one_hot_encoding(labels, num_classes=None):
 
 
 def rgb_to_gray(image):
-  """Converts a 3 channel RGB image to a 1 channel grayscale image.
+  """Converts a 3 channel RGB image (or batch of images) to grayscale.
 
   Args:
-    image: Rank 3 float32 tensor containing 1 image -> [height, width, 3]
+    image: Float32 tensor containing one or more images -> [..., 3]
            with pixel values varying between [0, 1].
 
   Returns:
-    image: A single channel grayscale image -> [image, height, 1].
+    image: A single channel grayscale image tensor -> [..., 1].
   """
   return _rgb_to_grayscale(image)
 

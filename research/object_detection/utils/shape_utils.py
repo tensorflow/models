@@ -468,6 +468,9 @@ def expand_first_dimension(inputs, dims):
   return inputs_reshaped
 
 
+BATCHED_RESIZER_ATTR = 'resize_batched'
+
+
 def resize_images_and_return_shapes(inputs, image_resizer_fn):
   """Resizes images using the given function and returns their true shapes.
 
@@ -475,7 +478,10 @@ def resize_images_and_return_shapes(inputs, image_resizer_fn):
     inputs: a float32 Tensor representing a batch of inputs of shape
       [batch_size, height, width, channels].
     image_resizer_fn: a function which takes in a single image and outputs
-      a resized image and its original shape.
+      a resized image and its original shape. If the callable has a truthy
+      `resize_batched` attribute (BATCHED_RESIZER_ATTR), it is called once on
+      the full batch of inputs and must return (resized_inputs,
+      true_image_shapes).
 
   Returns:
     resized_inputs: The inputs resized according to image_resizer_fn.
@@ -486,6 +492,9 @@ def resize_images_and_return_shapes(inputs, image_resizer_fn):
   if inputs.dtype is not tf.float32:
     raise ValueError('`resize_images_and_return_shapes` expects a'
                      ' tf.float32 tensor')
+
+  if getattr(image_resizer_fn, BATCHED_RESIZER_ATTR, False):
+    return image_resizer_fn(inputs)
 
   # TODO(jonathanhuang): revisit whether to always use batch size as
   # the number of parallel iterations vs allow for dynamic batching.
