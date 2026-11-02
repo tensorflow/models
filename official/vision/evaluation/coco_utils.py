@@ -161,8 +161,8 @@ def convert_predictions_to_coco_annotations(predictions):
         image_masks = mask_ops.paste_instance_masks(
             predictions['detection_masks'][i][j],
             mask_boxes[i][j],
-            int(predictions['image_info'][i][j, 0, 0]),
-            int(predictions['image_info'][i][j, 0, 1]),
+            int(np.squeeze(predictions['image_info'][i][j, 0, 0])),
+            int(np.squeeze(predictions['image_info'][i][j, 0, 1])),
         )
         binary_masks = (image_masks > 0.0).astype(np.uint8)
         encoded_masks = [
@@ -171,7 +171,7 @@ def convert_predictions_to_coco_annotations(predictions):
         ]
       for k in range(max_num_detections):
         ann = {}
-        ann['image_id'] = predictions['source_id'][i][j]
+        ann['image_id'] = np.squeeze(predictions['source_id'][i][j]).item()
         ann['category_id'] = predictions['detection_classes'][i][j, k]
         ann['bbox'] = predictions['detection_boxes'][i][j, k]
         ann['score'] = predictions['detection_scores'][i][j, k]
@@ -235,20 +235,20 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
     max_num_instances = groundtruths['classes'][i].shape[1]
     batch_size = groundtruths['source_id'][i].shape[0]
     for j in range(batch_size):
-      num_instances = groundtruths['num_detections'][i][j]
+      num_instances = int(np.squeeze(groundtruths['num_detections'][i][j]))
       if num_instances > max_num_instances:
         logging.warning(
             'num_groundtruths is larger than max_num_instances, %d v.s. %d',
             num_instances, max_num_instances)
         num_instances = max_num_instances
-      for k in range(int(np.squeeze(num_instances))):
+      for k in range(num_instances):
         ann = {}
-        ann['image_id'] = int(groundtruths['source_id'][i][j])
+        ann['image_id'] = int(np.squeeze(groundtruths['source_id'][i][j]))
         if 'is_crowds' in groundtruths:
-          ann['iscrowd'] = int(groundtruths['is_crowds'][i][j, k])
+          ann['iscrowd'] = int(np.squeeze(groundtruths['is_crowds'][i][j, k]))
         else:
           ann['iscrowd'] = 0
-        ann['category_id'] = int(groundtruths['classes'][i][j, k])
+        ann['category_id'] = int(np.squeeze(groundtruths['classes'][i][j, k]))
         boxes = groundtruths['boxes'][i]
         ann['bbox'] = [
             float(boxes[j, k, 1]),

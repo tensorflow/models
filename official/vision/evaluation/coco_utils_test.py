@@ -90,6 +90,27 @@ class CocoUtilsTest(tf.test.TestCase):
       expected_keypoint_ann = expected_keypoint_ann.flatten().tolist()
       self.assertAllEqual(anns[i]['keypoints'], expected_keypoint_ann)
 
+  def test_convert_groundtruths_to_coco_dataset_2d_scalars(self):
+    groundtruths = {
+        'source_id': [np.array([[7]], dtype=int)],
+        'height': [np.array([[64]], dtype=int)],
+        'width': [np.array([[64]], dtype=int)],
+        'num_detections': [np.array([[2]], dtype=int)],
+        'boxes': [
+            np.array(
+                [[[0.0, 0.0, 10.0, 10.0], [5.0, 5.0, 20.0, 20.0]]],
+                dtype=np.float32,
+            )
+        ],
+        'classes': [np.array([[1, 2]], dtype=int)],
+        'is_crowds': [np.array([[0, 1]], dtype=int)],
+    }
+    dataset = coco_utils.convert_groundtruths_to_coco_dataset(groundtruths)
+    self.assertLen(dataset['annotations'], 2)
+    self.assertEqual(dataset['annotations'][0]['image_id'], 7)
+    self.assertEqual(dataset['annotations'][0]['category_id'], 1)
+    self.assertEqual(dataset['annotations'][1]['iscrowd'], 1)
+
 
 if __name__ == '__main__':
   tf.test.main()
