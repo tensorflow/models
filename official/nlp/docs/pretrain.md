@@ -100,3 +100,33 @@ python3 train.py \
  --tpu=${TPU_NAME} \
  --params_override=$PARAMS
 ```
+
+## Pre-train ELECTRA from scratch
+
+The `electra/pretraining` experiment uses the same BERT-style TFRecord input
+format as the BERT pretraining experiment. First prepare the input files with
+the `create_pretraining_data.py` command above, then update
+`configs/experiments/wiki_books_pretrain.yaml` with the training and validation
+input paths. The default ELECTRA configuration uses a 12-layer, 768-hidden
+discriminator and generator; override the model fields when a different model
+size is required.
+
+Start a training and evaluation job with:
+
+```shell
+export OUTPUT_DIR=gs://some_bucket/my_electra_output_dir
+export PARAMS=runtime.distribution_strategy=tpu
+
+python3 train.py \
+ --experiment=electra/pretraining \
+ --mode=train_and_eval \
+ --model_dir=$OUTPUT_DIR \
+ --config_file=configs/experiments/wiki_books_pretrain.yaml \
+ --tpu=${TPU_NAME} \
+ --params_override=$PARAMS
+```
+
+The experiment trains both the generator's masked-language-model objective and
+the discriminator's replaced-token-detection objective. For GPU or CPU runs,
+omit `--tpu` and set `runtime.distribution_strategy` to the strategy supported
+by the target environment.
