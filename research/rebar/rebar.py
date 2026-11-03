@@ -864,7 +864,7 @@ class SBN(object):  # REINFORCE
     return total_grads, debug, variance_objective
 
 ###
-# Create varaints
+# Create variants
 ###
 class SBNSimpleMuProp(SBN):
   def _create_loss(self):

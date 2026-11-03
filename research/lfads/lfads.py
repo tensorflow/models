@@ -1127,7 +1127,7 @@ class LFADS(object):
       batch_size: Number of elements in batch.
 
     Returns:
-      The randomized, properly shaped indicies.
+      The randomized, properly shaped indices.
     """
     assert nexamples > batch_size, "Problems"
     bmrem = batch_size - nexamples % batch_size
@@ -1164,7 +1164,7 @@ class LFADS(object):
     max_counts = np.max(data_bxtxd)
     S_bxtxd = np.zeros([B,T,N])
 
-    # Intuitively, shuffle spike occurances, 0 or 1, but since we have counts,
+    # Intuitively, shuffle spike occurrences, 0 or 1, but since we have counts,
     # Do it over and over again up to the max count.
     for mc in range(1,max_counts+1):
       idxs = np.nonzero(data_bxtxd >= mc)

@@ -49,7 +49,7 @@ def linear(x, out_size, do_bias=True, alpha=1.0, identity_if_possible=False,
   configurations.
 
   Args:
-    x: input The tensor to tranformation.
+    x: input The tensor to transformation.
     out_size: The integer size of non-batch output dimension.
     do_bias (optional): Add a learnable bias vector to the operation.
     alpha (optional): A multiplicative scaling for the weight initialization
@@ -171,7 +171,7 @@ def write_data(data_fname, data_dict, use_json=False, compression=None):
   """Write data in HD5F format.
 
   Args:
-    data_fname: The filename of teh file in which to write the data.
+    data_fname: The filename of the file in which to write the data.
     data_dict:  The dictionary of data to write. The keys are strings
       and the values are numpy arrays.
     use_json (optional): human readable format for simple items
