@@ -7,10 +7,10 @@
 
 *Note to our users*: the Tensorflow Object Detection API is no longer being
 maintained to be compatible with new versions of external dependencies
-(from pip, apt-get etc.). Any changes that follow are meant for internal
+(from pip, apt-get , etc.). Any changes that follow are meant for internal
 maintenance. We may use the OD API to release projects in the future,
 in which case we will provide full install instructions or Docker images.
-We encourage users seeking an actively maintained detection / segmentation
+We encourage users seeking an actively maintained detection/segmentation
 codebase to consider [TF-Vision](https://github.com/tensorflow/models/tree/master/official/vision)
 or [scenic](https://github.com/google-research/scenic). We have preserved
 the original install instructions below in case anyone wants to try out old
@@ -20,7 +20,7 @@ Creating accurate machine learning models capable of localizing and identifying
 multiple objects in a single image remains a core challenge in computer vision.
 The TensorFlow Object Detection API is an open source framework built on top of
 TensorFlow that makes it easy to construct, train and deploy object detection
-models. At Google we’ve certainly found this codebase to be useful for our
+models. At Google, we’ve certainly found this codebase to be useful for our
 computer vision needs, and we hope that you will as well. <p align="center">
 <img src="g3doc/img/kites_detections_output.jpg" width=676 height=450> </p>
 If you use the TensorFlow Object
@@ -91,7 +91,7 @@ We have released SpaghettiNet models optimized for the Edge TPU in the [Google T
 
 SpaghettiNet models are derived from a TuNAS search space that incorporates
 group convolution based [Inverted Bottleneck](https://arxiv.org/abs/1801.04381) blocks.
-The backbone and detection head are connected through [MnasFPN](https://arxiv.org/abs/1912.01106)-style feature map
+The backbone and detection head is connected through [MnasFPN](https://arxiv.org/abs/1912.01106)-style feature map
 merging and searched jointly.
 
 When compared to MobileDet-EdgeTPU, SpaghettiNet models achieve +2.2% mAP
@@ -100,7 +100,7 @@ used by MobileDet-EdgeTPU to achieve the same accuracy.
 
 Sample config available [here](configs/tf1/ssd_spaghettinet_edgetpu_320x320_coco17_sync_4x4.config).
 
-<b>Thanks to contributors</b>: Marie White, Hao Xu, Hanxiao Liu and Suyog Gupta.
+<b>Thanks to contributors</b>: Marie White, Hao Xu, Hanxiao Liu , and Suyog Gupta.
 
 ### DeepMAC architecture
 
@@ -153,11 +153,11 @@ includes:
 * COCO pre-trained weights for all of the models provided as TF2 style
   object-based checkpoints.
 * Access to [Distribution Strategies](https://www.tensorflow.org/guide/distributed_training)
-  for distributed training --- our model are designed to be trainable using sync
+  for distributed training --- our models are designed to be trainable using sync
   multi-GPU and TPU platforms.
 * Colabs demo’ing eager mode training and inference.
 
-See our release blogpost [here](https://blog.tensorflow.org/2020/07/tensorflow-2-meets-object-detection-api.html).
+See our release blog post [here](https://blog.tensorflow.org/2020/07/tensorflow-2-meets-object-detection-api.html).
 If you are an existing user of the TF OD API using TF 1.x, don’t worry, we’ve
 got you covered.
 
