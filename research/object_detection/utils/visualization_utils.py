@@ -42,6 +42,14 @@ from object_detection.core import keypoint_ops
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
 
+label_array=[]
+# this label_array will store all the labels of detected items and percentage accuracies corresponding to them.
+corresponding_coordinates=[]
+#this corresponding_coordinates array will store the center coordinates of each and every box(detected) in the image.
+#for example if the model is being trained to detect image of a pen, the label_array will store "pen" and accuracy corresponding to it.
+#and at the same index as pen in the label_array, the corresponding_coordinates array will store the center coordinates of the box
+#which is created by the function "draw_bounding_box_on_image"
+
 _TITLE_LEFT_MARGIN = 10
 _TITLE_TOP_MARGIN = 10
 STANDARD_COLORS = [
@@ -196,6 +204,15 @@ def draw_bounding_box_on_image(image,
       ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
       coordinates as absolute.
   """
+  
+  label_array.append(display_str_list)
+  #this array will contain all the detected objects and their accuracies.
+  corresponding_coordinates.append([(xmin+xmax)/2, (ymin+ymax)/2])
+  #appending the center coordinates of a box to the "corresponding_coordinates" array.
+  ##both these arrays, i.e. label_array and corresponding_coordinates array can be cleared by calling the function
+  #visualization_utils.clearer(), if multiple images are being iterated in a single tensorflow session. it has to be
+  #called before switching to the next image in the same tensorflow session.
+  
   draw = ImageDraw.Draw(image)
   im_width, im_height = image.size
   if use_normalized_coordinates:
@@ -1336,6 +1353,12 @@ def add_hist_image_summary(values, bins, name):
   hist_plot = tf.py_func(hist_plot, [values, bins], tf.uint8)
   tf.summary.image(name, hist_plot)
 
+def clearer():
+  #this function clears the label_array and corresponding_coordinates array.
+  #if both of these arrays are being used for a single image, this function has to be called before
+  #switching to the next image.
+  label_array.clear()
+  corresponding_coordinates.clear()
 
 class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class responsible for visualizations during evaluation.
