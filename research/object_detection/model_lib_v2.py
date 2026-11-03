@@ -519,6 +519,7 @@ def train_loop(
   clip_gradients_value = None
   if train_config.gradient_clipping_by_norm > 0:
     clip_gradients_value = train_config.gradient_clipping_by_norm
+  num_visualizations = train_config.num_visualizations
 
   # update train_steps from config but only when non-zero value is provided
   if train_steps is None and train_config.num_steps != 0:
@@ -626,12 +627,17 @@ def train_loop(
         def train_step_fn(features, labels):
           """Single train step."""
 
-          if record_summaries:
+          if record_summaries and num_visualizations > 0:
+            # Rescale visualized images to range (0, 1)
+            image = features[fields.InputDataFields.image][:3]
+            image_min = tf.reduce_min(image)
+            image = tf.divide(tf.subtract(image, image_min), 
+                              tf.subtract(tf.reduce_max(image), image_min))
             tf.compat.v2.summary.image(
                 name='train_input_images',
                 step=global_step,
-                data=features[fields.InputDataFields.image],
-                max_outputs=3)
+                data=image,
+                max_outputs=num_visualizations)
           losses_dict = eager_train_step(
               detection_model,
               features,
