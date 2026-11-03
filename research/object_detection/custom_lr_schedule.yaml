@@ -1,0 +1,9 @@
+train_config:
+  optimizer:
+    momentum_optimizer:
+      learning_rate:
+         cosine_decay_learning_rate:
+	    learning_rate_base: 0.04
+	    total_steps:50000
+   fine_tune_checkpointL"PATH_TO_CKPT"
+   num_steps: 50000
