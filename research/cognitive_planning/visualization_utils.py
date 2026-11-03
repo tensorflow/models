@@ -334,8 +334,8 @@ def draw_bounding_boxes_on_image_tensors(images,
       with keypoints.
     max_boxes_to_draw: Maximum number of boxes to draw on an image. Default 20.
     min_score_thresh: Minimum score threshold for visualization. Default 0.2.
-    use_normalized_coordinates: Whether to assume boxes and kepoints are in
-      normalized coordinates (as opposed to absolute coordiantes).
+    use_normalized_coordinates: Whether to assume boxes and keypoints are in
+      normalized coordinates (as opposed to absolute coordinates).
       Default is True.
 
   Returns:
@@ -402,8 +402,8 @@ def draw_side_by_side_evaluation_image(eval_dict,
     category_index: A category index (dictionary) produced from a labelmap.
     max_boxes_to_draw: The maximum number of boxes to draw for detections.
     min_score_thresh: The minimum score threshold for showing detections.
-    use_normalized_coordinates: Whether to assume boxes and kepoints are in
-      normalized coordinates (as opposed to absolute coordiantes).
+    use_normalized_coordinates: Whether to assume boxes and keypoints are in
+      normalized coordinates (as opposed to absolute coordinates).
       Default is True.
 
   Returns:
