@@ -203,10 +203,13 @@ class LoopFnWithSummaries(tpu_summaries.OptionalSummariesFunction):
   """
 
   def __call__(self, iterator, num_steps):
+    if num_steps < 1:
+      # Zero steps is a no-op, same as in `create_loop_fn`.
+      return
     if tf.summary.should_record_summaries():
       with ecu.SequentialEmbeddingContext():
         output = self.with_summaries(iterator, tf.constant(1))
       num_steps -= 1
     if num_steps >= 1:
       output = self.without_summaries(iterator, num_steps)
-    return output  # pyrefly: ignore[unbound-name]
+    return output

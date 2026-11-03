@@ -27,12 +27,14 @@ class TrainFunctionWithSummaries(tpu_summaries.OptionalSummariesFunction):
   """Implements a two-program approach for summaries on TPU."""
 
   def __call__(self, num_steps):
+    if num_steps < 1:
+      return
     if tf.summary.should_record_summaries():
       output = self.with_summaries(tf.constant(1))
       num_steps -= 1
     if num_steps >= 1:
       output = self.without_summaries(num_steps)
-    return output  # pyrefly: ignore[unbound-name]
+    return output
 
 
 def train_function_with_summaries(function=None, **kwargs):
