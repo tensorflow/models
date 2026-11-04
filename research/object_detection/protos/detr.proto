@@ -1,0 +1,69 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+import "object_detection/protos/anchor_generator.proto";
+import "object_detection/protos/box_predictor.proto";
+import "object_detection/protos/hyperparams.proto";
+import "object_detection/protos/image_resizer.proto";
+import "object_detection/protos/losses.proto";
+import "object_detection/protos/post_processing.proto";
+
+// Configuration for Detection Transformer (DETR) models.
+// See meta_architectures/detr_meta_arch.py and models/model_builder.py
+message DETR {
+  // Number of classes to predict.
+  optional int32 num_classes = 1;
+
+  // Image resizer for preprocessing the input image.
+  optional ImageResizer image_resizer = 2;
+
+  // Feature extractor config.
+  optional DETRFeatureExtractor feature_extractor = 3;
+
+  // Second stage refined localization loss weight.
+  optional float giou_localization_loss_weight = 4 [default = 1.0];
+
+  // Second stage refined localization loss weight.
+  optional float l1_localization_loss_weight = 5 [default = 1.0];
+
+  // Second stage classification loss weight
+  optional float classification_loss_weight = 6 [default = 1.0];
+
+  // After peforming matching between anchors and targets, in order to pull out
+  // targets for training DETR meta architecture we perform a gather
+  // operation. This options specifies whether to use an alternate
+  // implementation of tf.gather that is faster on TPUs.
+  optional bool use_matmul_gather_in_matcher = 7 [default = false];
+
+  // Post processing to apply on the second stage box classifier predictions.
+  // Note: the `score_converter` provided to the DETRMetaArch constructor
+  // is taken from this `second_stage_post_processing` proto.
+  optional PostProcessing post_processing = 8;
+
+  // Number of object queries for the decoder to use and learn.
+  optional int32 num_queries = 9 [default = 100];
+  
+  // Size of the hidden dimension for the transformer.
+  optional int32 hidden_dimension = 10 [default = 256];
+
+  // Whether to update batch_norm inplace during training. This is required
+  // for batch norm to work correctly on TPUs. When this is false, user must add
+  // a control dependency on tf.GraphKeys.UPDATE_OPS for train/loss op in order
+  // to update the batch norm moving average parameters.
+  optional bool inplace_batchnorm_update = 11 [default = false];
+}
+
+message DETRFeatureExtractor {
+  // Type of DETR model (e.g., 'detr_resnet50_keras';
+  // See builders/model_builder.py for expected types).
+  optional string type = 1;
+
+  // Output stride of extracted feature extractor feature map.
+  optional int32 features_stride = 2 [default = 32];
+
+  // Whether to update batch norm parameters during training or not.
+  // When training with a relative large batch size (e.g. 8), it could be
+  // desirable to enable batch norm update.
+  optional bool batch_norm_trainable = 3 [default = false];
+}
