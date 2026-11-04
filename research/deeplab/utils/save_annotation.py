@@ -32,7 +32,7 @@ def save_annotation(label,
                     add_colormap=True,
                     normalize_to_unit_values=False,
                     scale_values=False,
-                    colormap_type=get_dataset_colormap.get_pascal_name()):
+                    colormap_type=get_dataset_colormap.get_rugd_name()):        #TU bolo pascal_name
   """Saves the given label to image on disk.
 
   Args:
