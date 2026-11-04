@@ -89,6 +89,17 @@ class NewBestMetricTest(tf.test.TestCase):
     actions.JSONPersistedValue(value, tempfile)
     self.assertTrue(tf.io.gfile.exists(tempfile))
 
+  def test_new_best_metric_with_min_delta(self):
+    new_best_metric = actions.NewBestMetric(
+      lambda x: x['value'], higher_is_better=True, min_delta=0.1)
+    self.assertTrue(new_best_metric.commit({'value': 0.5}))
+    self.assertFalse(new_best_metric.test({'value': 0.55}))
+    self.assertTrue(new_best_metric.test({'value': 0.61}))
+    new_best_metric_loss = actions.NewBestMetric(
+      'value', higher_is_better=False, min_delta=0.1)
+    self.assertTrue(new_best_metric_loss.commit({'value': 1.0}))
+    self.assertFalse(new_best_metric_loss.test({'value': 0.95}))
+    self.assertTrue(new_best_metric_loss.test({'value': 0.89}))
 
 if __name__ == '__main__':
   tf.test.main()
