@@ -127,7 +127,7 @@ message RandomRotation90 {
 }
 
 // Randomly scales the values of all pixels in the image by some constant value
-// between [minval, maxval], then clip the value to a range between [0, 1.0].
+// between [minval, maxval], then clip the value to a range between [0, 255.0].
 message RandomPixelValueScale {
   optional float minval = 1 [default = 0.9];
   optional float maxval = 2 [default = 1.1];
