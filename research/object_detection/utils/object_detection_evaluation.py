@@ -228,10 +228,17 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         standard_fields.InputDataFields.groundtruth_classes,
         standard_fields.InputDataFields.groundtruth_difficult,
         standard_fields.InputDataFields.groundtruth_instance_masks,
+        standard_fields.InputDataFields.num_groundtruth_boxes,
         standard_fields.DetectionResultFields.detection_boxes,
         standard_fields.DetectionResultFields.detection_scores,
         standard_fields.DetectionResultFields.detection_classes,
         standard_fields.DetectionResultFields.detection_masks
+    ])
+    self._expected_gt_keys = set([
+        standard_fields.InputDataFields.groundtruth_boxes,
+        standard_fields.InputDataFields.groundtruth_classes,
+        standard_fields.InputDataFields.groundtruth_difficult,
+        standard_fields.InputDataFields.groundtruth_instance_masks,
     ])
     self._build_metric_names()
 
@@ -505,12 +512,30 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if np.isscalar(image_id):
         single_example_dict = dict(
             zip(eval_dict_keys, eval_dict_batched_as_list))
+
+        # Cut the length of the ground truth results to the actual number
+        # of ground truth.
+        num_gt_box = single_example_dict[
+          standard_fields.InputDataFields.num_groundtruth_boxes]
+        for key, value in single_example_dict.items():
+          if key in self._expected_gt_keys:
+            single_example_dict[key] = value[:num_gt_box]
+
         self.add_single_ground_truth_image_info(image_id, single_example_dict)
         self.add_single_detected_image_info(image_id, single_example_dict)
       else:
         for unzipped_tuple in zip(*eval_dict_batched_as_list):
           single_example_dict = dict(zip(eval_dict_keys, unzipped_tuple))
           image_id = single_example_dict[standard_fields.InputDataFields.key]
+
+          # Cut the length of the ground truth results to the actual number
+          # of ground truth.
+          num_gt_box = single_example_dict[
+            standard_fields.InputDataFields.num_groundtruth_boxes]
+          for key, value in single_example_dict.items():
+            if key in self._expected_gt_keys:
+              single_example_dict[key] = value[:num_gt_box]
+
           self.add_single_ground_truth_image_info(image_id, single_example_dict)
           self.add_single_detected_image_info(image_id, single_example_dict)
 
