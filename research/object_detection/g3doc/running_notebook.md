@@ -14,5 +14,5 @@ jupyter notebook
 ```
 
 The notebook should open in your favorite web browser. Click the
-[`object_detection_tutorial.ipynb`](../object_detection_tutorial.ipynb) link to
+[`object_detection_tutorial.ipynb`](../colab_tutorials/object_detection_tutorial.ipynb) link to
 open the demo.
