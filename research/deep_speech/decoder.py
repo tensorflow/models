@@ -82,7 +82,7 @@ class DeepSpeechDecoder(object):
 
   def decode(self, logits):
     """Decode the best guess from logits using greedy algorithm."""
-    # Choose the class with maximimum probability.
+    # Choose the class with maximum probability.
     best = list(np.argmax(logits, axis=1))
     # Merge repeated chars.
     merge = [k for k, _ in itertools.groupby(best)]

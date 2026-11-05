@@ -100,7 +100,7 @@ def _build_metric(metric,
                   max_instances_per_category,
                   intersection_offset=None,
                   normalize_by_image_size=True):
-  """Creates a metric aggregator objet of the given name."""
+  """Creates a metric aggregator object of the given name."""
   if metric == 'pq':
     logging.warning('One should check Panoptic Quality results against the '
                     'official COCO API code. Small numerical differences '
@@ -299,7 +299,7 @@ def eval_coco_format(gt_json_file,
     for ann_pair in _matched_annotations(gt_json, pred_json):
       work_queue.put(ann_pair, block=True)
 
-    # Will cause each worker to return a result and terminate upon recieving a
+    # Will cause each worker to return a result and terminate upon receiving a
     # None task.
     for _ in six.moves.range(num_workers):
       work_queue.put(None, block=True)

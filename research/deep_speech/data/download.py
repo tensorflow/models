@@ -102,7 +102,7 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
   Parse the transcript file and generate a new csv file which has three columns:
   "wav_filename": the absolute path to a wav file.
   "wav_filesize": the size of the corresponding wav file.
-  "transcript": the transcript for this audio segement.
+  "transcript": the transcript for this audio segment.
 
   Args:
     input_dir: the directory which holds the input dataset.

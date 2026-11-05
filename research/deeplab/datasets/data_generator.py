@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Wrapper for providing semantic segmentaion data.
+"""Wrapper for providing semantic segmentation data.
 
 The SegmentationDataset class provides both images and annotations (semantic
 segmentation and/or instance segmentation) for TensorFlow. Currently, we
