@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 # Supported rnn cells.
@@ -161,7 +160,7 @@ class DeepSpeech2(object):
 
     # RNN layers.
     rnn_cell = SUPPORTED_RNNS[self.rnn_type]
-    for layer_counter in xrange(self.num_rnn_layers):
+    for layer_counter in range(self.num_rnn_layers):
       # No batch normalization on the first layer.
       is_batch_norm = (layer_counter != 0)
       inputs = _rnn_layer(
@@ -174,4 +173,3 @@ class DeepSpeech2(object):
         self.num_classes, use_bias=self.use_bias, activation="softmax")(inputs)
 
     return logits
-
