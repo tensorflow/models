@@ -73,7 +73,7 @@ def generate_instance_masks_np(height: int,
                                normalized: bool = True) -> np.ndarray:
   """Returns a fake numpy instance mask matrices array."""
   num_boxes = len(boxes_np)
-  instance_masks_np = np.zeros((num_boxes, height, width, 1))
+  instance_masks_np = np.zeros((num_boxes, height, width, 1), dtype=np.uint8)
   if normalized:
     boxes_np[:, 1::2] *= height
     boxes_np[:, ::2] *= width
