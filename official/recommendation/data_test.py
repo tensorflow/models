@@ -21,8 +21,7 @@ from __future__ import print_function
 from collections import defaultdict
 import hashlib
 import os
-
-import mock
+from unittest import mock
 
 import numpy as np
 import scipy.stats
