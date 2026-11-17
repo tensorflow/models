@@ -38,6 +38,7 @@ _ADE20K = 'ade20k'
 _CITYSCAPES = 'cityscapes'
 _MAPILLARY_VISTAS = 'mapillary_vistas'
 _PASCAL = 'pascal'
+_RUGD='rugd'                            #DOPLNENE
 
 # Max number of entries in the colormap for each dataset.
 _DATASET_MAX_ENTRIES = {
@@ -45,6 +46,7 @@ _DATASET_MAX_ENTRIES = {
     _CITYSCAPES: 256,
     _MAPILLARY_VISTAS: 66,
     _PASCAL: 512,
+    _RUGD: 24
 }
 
 
@@ -236,6 +238,75 @@ def create_cityscapes_label_colormap():
   colormap[17] = [0, 0, 230]
   colormap[18] = [119, 11, 32]
   return colormap
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  #MOJE DOPLNENIE
+def create_rugd_label_colormap():
+  """Creates a label colormap used in RUGD segmentation benchmark.
+
+  Returns:
+    A colormap for visualizing segmentation results.
+  """
+  colormap = np.zeros((256, 3), dtype=np.uint8)
+  colormap[0] = [255, 0, 127]   # container/generic-object
+  colormap[1] = [0, 255, 0]     # tree
+  colormap[2] = [0, 128, 255]
+  colormap[3] = [0, 0, 255]
+  colormap[4] = [153, 204, 255]
+  colormap[5] = [108, 64, 20]
+  colormap[6] = [255, 229, 204]
+  colormap[7] = [0, 102, 0]
+  colormap[8] = [255, 255, 0]
+  colormap[9] = [255, 153, 204]
+  colormap[10] = [102, 255, 255]
+  colormap[11] = [102, 102, 0]
+  colormap[12] = [114, 85, 47]
+  colormap[13] = [101, 101, 11]
+  colormap[14] = [0, 102, 102]
+  colormap[15] = [102, 0, 204]
+  colormap[16] = [204, 153, 255]
+  colormap[17] = [0, 255, 128]
+  colormap[18] = [102, 0, 0]
+  colormap[19] = [153, 76, 0]
+  colormap[20] = [255, 0, 0]
+  colormap[21] = [255, 128, 0]
+  colormap[22] = [64, 64, 64]
+  colormap[23] = [0, 153, 153]
+  colormap[24] = [0, 0, 0]      #viod
+  return colormap
+  #MOJE DOPLNENIE
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
 
 def create_mapillary_vistas_label_colormap():
@@ -345,6 +416,30 @@ def get_mapillary_vistas_name():
 
 def get_pascal_name():
   return _PASCAL
+  
+  
+  
+  
+  
+  
+  
+  
+  
+#MOJE
+def get_rugd_name():
+  return _RUGD
+#MOJE
+
+
+
+
+
+
+
+
+
+
+
 
 
 def bit_get(val, idx):
@@ -360,7 +455,7 @@ def bit_get(val, idx):
   return (val >> idx) & 1
 
 
-def create_label_colormap(dataset=_PASCAL):
+def create_label_colormap(dataset=_RUGD):
   """Creates a label colormap for the specified dataset.
 
   Args:
@@ -380,11 +475,13 @@ def create_label_colormap(dataset=_PASCAL):
     return create_mapillary_vistas_label_colormap()
   elif dataset == _PASCAL:
     return create_pascal_label_colormap()
+  elif dataset == _RUGD:#                                       DOPLNENE
+    return create_rugd_label_colormap()#                        DOPLNENE
   else:
     raise ValueError('Unsupported dataset.')
 
 
-def label_to_color_image(label, dataset=_PASCAL):
+def label_to_color_image(label, dataset=_RUGD):                 #UPRAVENE NA RUGD, bolo _PASCAL
   """Adds color defined by the dataset colormap to the label.
 
   Args:
@@ -403,7 +500,7 @@ def label_to_color_image(label, dataset=_PASCAL):
   if label.ndim != 2:
     raise ValueError('Expect 2-D input label. Got {}'.format(label.shape))
 
-  if np.max(label) >= _DATASET_MAX_ENTRIES[dataset]:
+  if np.max(label) >= _DATASET_MAX_ENTRIES[dataset]+1:  # +1 :-D
     raise ValueError(
         'label value too large: {} >= {}.'.format(
             np.max(label), _DATASET_MAX_ENTRIES[dataset]))
