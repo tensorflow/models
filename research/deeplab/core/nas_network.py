@@ -135,7 +135,7 @@ def _build_nas_base(images,
     hparams: Hyperparameters needed to construct the network.
     global_pool: If True, we perform global average pooling before computing the
       logits. Set to True for image classification, False for dense prediction.
-    output_stride: Interger, the stride of output feature maps.
+    output_stride: Integer, the stride of output feature maps.
     nas_use_classification_head: Boolean, use image classification head.
     reuse: Whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
