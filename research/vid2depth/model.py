@@ -134,7 +134,7 @@ class Model(object):
       self.smooth_loss = 0
       self.ssim_loss = 0
       self.icp_transform_loss = 0
-      self.icp_residual_loss = 0
+      self.residual_loss = 0
 
       # self.images is organized by ...[scale][B, h, w, seq_len * 3].
       self.images = [{} for _ in range(NUM_SCALES)]
@@ -218,12 +218,20 @@ class Model(object):
             if self.icp_weight > 0:
               cloud_a = self.cloud[j][s]
               cloud_b = self.cloud[i][s]
-              self.icp_transform[s][key], self.icp_residual[s][key] = icp(
-                  cloud_a, egomotion, cloud_b)
-              self.icp_transform_loss += 1.0 / (2**s) * tf.reduce_mean(
-                  tf.abs(self.icp_transform[s][key]))
-              self.icp_residual_loss += 1.0 / (2**s) * tf.reduce_mean(
-                  tf.abs(self.icp_residual[s][key]))
+              # (kristijanbartol): ICP is not differentiable. Moreover, we have
+              # to be very careful with backpropagation in this case. It can be
+              # shown that the only correct way to apply gradients to achieve
+              # approximatelly the procedure described in paper is to apply 
+              # only translation transform, under the assumption that rotation 
+              # did not happen. I will write a blog post soon on
+              # kristijanbartol.github.io. As a result, there is actually no
+              # iterative closest point algorithm needed.
+              estimated_cloud_b = cloud_a + tf.stack([egomotion[0][3],
+                                                      egomotion[1][3],
+                                                      egomotion[2][3]], axis=0)
+              residuals = cloud_b - estimated_cloud_b
+              self.residual_loss += 1.0 / (2**s) * tf.reduce_mean(
+                tf.abs(residuals))
 
       self.total_loss = self.reconstr_weight * self.reconstr_loss
       if self.smooth_weight > 0:
@@ -231,8 +239,7 @@ class Model(object):
       if self.ssim_weight > 0:
         self.total_loss += self.ssim_weight * self.ssim_loss
       if self.icp_weight > 0:
-        self.total_loss += self.icp_weight * (self.icp_transform_loss +
-                                              self.icp_residual_loss)
+        self.total_loss += self.icp_weight * self.residual_loss
 
   def gradient_x(self, img):
     return img[:, :, :-1, :] - img[:, :, 1:, :]
@@ -283,7 +290,7 @@ class Model(object):
       tf.summary.scalar('ssim_loss', self.ssim_loss)
     if self.icp_weight > 0:
       tf.summary.scalar('icp_transform_loss', self.icp_transform_loss)
-      tf.summary.scalar('icp_residual_loss', self.icp_residual_loss)
+      tf.summary.scalar('icp_residual_loss', self.residual_loss)
 
     for i in range(self.seq_length - 1):
       tf.summary.histogram('tx%d' % i, self.egomotion[:, i, 0])
