@@ -2269,7 +2269,7 @@ class KeypointEstimationParams(
         estimation, the class id should correspond to the "human" class. Note
         that the ID is 0-based, meaning that class 0 corresponds to the first
         non-background object class.
-      keypoint_indices: A list of integers representing the indicies of the
+      keypoint_indices: A list of integers representing the indices of the
         keypoints to be considered in this task. This is used to retrieve the
         subset of the keypoints from gt_keypoints that should be considered in
         this task.
@@ -4247,7 +4247,7 @@ class CenterNetMetaArch(model.DetectionModel):
           tf.one_hot(
               postprocess_dict[fields.DetectionResultFields.detection_classes],
               depth=num_classes), tf.bool)
-      # Surpress the scores of those unselected classes to be zeros. Otherwise,
+      # Suppress the scores of those unselected classes to be zeros. Otherwise,
       # the downstream NMS ops might be confused and introduce issues.
       multiclass_scores = tf.where(
           class_mask, multiclass_scores, tf.zeros_like(multiclass_scores))
