@@ -113,7 +113,7 @@ def _get_all_image_files_and_labels(name, csv_path, image_dir):
   image_paths = tf.io.gfile.glob(os.path.join(image_dir, '*.jpg'))
   file_ids = [os.path.basename(os.path.normpath(f))[:-4] for f in image_paths]
   if name == _TRAIN_SPLIT:
-    with tf.io.gfile.GFile(csv_path, 'rb') as csv_file:
+    with tf.io.gfile.GFile(csv_path, 'r') as csv_file:
       df = pd.read_csv(csv_file)
     df = df.set_index('id')
     labels = [int(df.loc[fid]['landmark_id']) for fid in file_ids]
@@ -140,7 +140,7 @@ def _get_clean_train_image_files_and_labels(csv_path, image_dir):
                 a continuous set of labels.
   """
   # Load the content of the CSV file (landmark_id/label -> images).
-  with tf.io.gfile.GFile(csv_path, 'rb') as csv_file:
+  with tf.io.gfile.GFile(csv_path, 'r') as csv_file:
     df = pd.read_csv(csv_file)
 
   # Create the dictionary (key = image_id, value = {label, file_id}).
