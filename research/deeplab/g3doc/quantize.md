@@ -56,6 +56,7 @@ First use the following commandline to export your trained model.
 # From tensorflow/models/research/
 python deeplab/export_model.py \
     --checkpoint_path=${CHECKPOINT_PATH} \
+    --output_stride=16 \
     --quantize_delay_step=0 \
     --export_path=${OUTPUT_DIR}/frozen_inference_graph.pb
 
