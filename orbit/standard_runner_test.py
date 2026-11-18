@@ -122,6 +122,12 @@ class StandardRunnerTest(parameterized.TestCase):
     trainer = TestTrainer(options)
     self.assertEqual(trainer.train(tf.constant(10)), 10)
 
+  def test_trainer_with_tpu_summary_optimization_zero_steps(self):
+    options = standard_runner.StandardTrainerOptions(
+        use_tpu_summary_optimization=True)
+    trainer = TestTrainer(options)
+    self.assertEqual(trainer.train(tf.constant(0)), 0)
+
   @parameterized.named_parameters(("use_tf_while_loop", True), ("", False))
   def test_default_evaluator(self, use_tf_while_loop):
     options = standard_runner.StandardEvaluatorOptions(
