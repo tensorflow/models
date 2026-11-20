@@ -134,7 +134,7 @@ def get_configs_from_pipeline_file(pipeline_config_path, config_override=None):
       corresponding config objects.
   """
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-  with tf.gfile.GFile(pipeline_config_path, "r") as f:
+  with open(pipeline_config_path, "r",encoding='utf-8') as f:
     proto_str = f.read()
     text_format.Merge(proto_str, pipeline_config)
   if config_override:
